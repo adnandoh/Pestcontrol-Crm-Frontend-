@@ -1,0 +1,166 @@
+import axios from 'axios';
+import { AuthTokens, PaginatedResponse, Client, Inquiry, JobCard, Renewal } from '../types';
+
+const API_URL = 'http://localhost:8000/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to add the auth token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add a response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid, redirect to login
+      console.log('API: 401 Unauthorized, redirecting to login');
+      localStorage.clear(); // Clear all stored data
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Authentication services
+export const authService = {
+  login: async (username: string, password: string): Promise<AuthTokens> => {
+    try {
+      console.log('API: Making login request...');
+      const response = await api.post<AuthTokens>('/token/', { username, password });
+      console.log('API: Login response received:', response.data);
+      
+      // Store tokens and user data in localStorage
+      try {
+        localStorage.setItem('access_token', response.data.access);
+        localStorage.setItem('refresh_token', response.data.refresh);
+        localStorage.setItem('user_id', response.data.user_id.toString());
+        localStorage.setItem('username', response.data.username);
+        localStorage.setItem('is_staff', response.data.is_staff.toString());
+        console.log('API: Data stored in localStorage successfully');
+      } catch (storageError) {
+        console.error('API: Error storing data in localStorage:', storageError);
+        throw new Error('Failed to store authentication data');
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('API: Login request failed:', error);
+      throw error;
+    }
+  },
+  logout: () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
+    localStorage.removeItem('is_staff');
+  },
+  refreshToken: async (): Promise<string> => {
+    const refresh = localStorage.getItem('refresh_token');
+    const response = await api.post<{ access: string }>('/token/refresh/', { refresh });
+    localStorage.setItem('access_token', response.data.access);
+    return response.data.access;
+  },
+};
+
+// Client services
+export const clientService = {
+  getClients: async (params?: { q?: string; city?: string }): Promise<PaginatedResponse<Client>> => {
+    const response = await api.get<PaginatedResponse<Client>>('/clients/', { params });
+    return response.data;
+  },
+  getClient: async (id: number): Promise<Client> => {
+    const response = await api.get<Client>(`/clients/${id}/`);
+    return response.data;
+  },
+  createClient: async (client: Partial<Client>): Promise<Client> => {
+    const response = await api.post<Client>('/clients/', client);
+    return response.data;
+  },
+  updateClient: async (id: number, client: Partial<Client>): Promise<Client> => {
+    const response = await api.patch<Client>(`/clients/${id}/`, client);
+    return response.data;
+  },
+};
+
+// Inquiry services
+export const inquiryService = {
+  getInquiries: async (params?: { status?: string }): Promise<PaginatedResponse<Inquiry>> => {
+    const response = await api.get<PaginatedResponse<Inquiry>>('/inquiries/', { params });
+    return response.data;
+  },
+  getInquiry: async (id: number): Promise<Inquiry> => {
+    const response = await api.get<Inquiry>(`/inquiries/${id}/`);
+    return response.data;
+  },
+  createInquiry: async (inquiry: Partial<Inquiry>): Promise<Inquiry> => {
+    const response = await api.post<Inquiry>('/inquiries/', inquiry);
+    return response.data;
+  },
+  updateInquiry: async (id: number, inquiry: Partial<Inquiry>): Promise<Inquiry> => {
+    const response = await api.patch<Inquiry>(`/inquiries/${id}/`, inquiry);
+    return response.data;
+  },
+  convertToJobCard: async (id: number): Promise<JobCard> => {
+    const response = await api.post<JobCard>(`/inquiries/${id}/convert/`);
+    return response.data;
+  },
+};
+
+// JobCard services
+export const jobCardService = {
+  getJobCards: async (params?: {
+    status?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+    city?: string;
+  }): Promise<PaginatedResponse<JobCard>> => {
+    const response = await api.get<PaginatedResponse<JobCard>>('/jobcards/', { params });
+    return response.data;
+  },
+  getJobCard: async (id: number): Promise<JobCard> => {
+    const response = await api.get<JobCard>(`/jobcards/${id}/`);
+    return response.data;
+  },
+  createJobCard: async (jobCard: Partial<JobCard>): Promise<JobCard> => {
+    const response = await api.post<JobCard>('/jobcards/', jobCard);
+    return response.data;
+  },
+  updateJobCard: async (id: number, jobCard: Partial<JobCard>): Promise<JobCard> => {
+    const response = await api.patch<JobCard>(`/jobcards/${id}/`, jobCard);
+    return response.data;
+  },
+};
+
+// Renewal services
+export const renewalService = {
+  getRenewals: async (params?: { upcoming?: boolean }): Promise<PaginatedResponse<Renewal>> => {
+    const response = await api.get<PaginatedResponse<Renewal>>('/renewals/', { params });
+    return response.data;
+  },
+  getRenewal: async (id: number): Promise<Renewal> => {
+    const response = await api.get<Renewal>(`/renewals/${id}/`);
+    return response.data;
+  },
+  updateRenewal: async (id: number, renewal: Partial<Renewal>): Promise<Renewal> => {
+    const response = await api.patch<Renewal>(`/renewals/${id}/`, renewal);
+    return response.data;
+  },
+};
