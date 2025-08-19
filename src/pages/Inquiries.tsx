@@ -1,29 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
   Box,
   TextField,
   MenuItem,
-  Grid,
   CircularProgress,
   Snackbar,
   Alert,
   Chip,
 } from '@mui/material';
-import CustomPagination from '../components/CustomPagination';
-import { Add as AddIcon, Visibility as ViewIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { inquiryService } from '../services/api';
 import { Inquiry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import ModernTable from '../components/ModernTable';
 
 const Inquiries: React.FC = () => {
   const navigate = useNavigate();
@@ -34,7 +24,6 @@ const Inquiries: React.FC = () => {
   const [convertingId, setConvertingId] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -94,18 +83,6 @@ const Inquiries: React.FC = () => {
     return null;
   }
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleStatusFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setStatusFilter(event.target.value);
-  };
 
   const handleConvertToJob = async (id: number) => {
     try {
@@ -130,23 +107,47 @@ const Inquiries: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  return (
-    <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Inquiries
-      </Typography>
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'New':
+        return { bg: '#E3F2FD', color: '#1565C0' };
+      case 'Contacted':
+        return { bg: '#FFF9C4', color: '#F57F17' };
+      case 'Converted':
+        return { bg: '#C8E6C9', color: '#388E3C' };
+      case 'Closed':
+        return { bg: '#E0E0E0', color: '#616161' };
+      default:
+        return { bg: 'transparent', color: 'inherit' };
+    }
+  };
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+  return (
+    <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+          <CircularProgress size={60} />
+        </Box>
+      ) : (
+        <ModernTable
+          title="Inquiries"
+          totalCount={totalCount}
+          page={page}
+          rowsPerPage={10}
+          onPageChange={setPage}
+          filters={
             <TextField
               select
-              fullWidth
+              size="small"
               label="Status"
               value={statusFilter}
-              onChange={handleStatusFilterChange}
-              variant="outlined"
-              margin="normal"
+              onChange={(e) => setStatusFilter(e.target.value)}
+              sx={{
+                minWidth: 120,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1,
+                },
+              }}
             >
               {statusOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -154,110 +155,69 @@ const Inquiries: React.FC = () => {
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Paper>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Mobile</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Service Interest</TableCell>
-                  <TableCell>City</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Created Date</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {inquiries.length > 0 ? (
-                  inquiries
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((inquiry) => (
-                      <TableRow key={inquiry.id} hover>
-                        <TableCell>{inquiry.name}</TableCell>
-                        <TableCell>{inquiry.mobile}</TableCell>
-                        <TableCell>{inquiry.email || '-'}</TableCell>
-                        <TableCell>{inquiry.service_interest}</TableCell>
-                        <TableCell>{inquiry.city}</TableCell>
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: 'inline-block',
-                              px: 1,
-                              py: 0.5,
-                              borderRadius: 1,
-                              backgroundColor: (() => {
-                                switch (inquiry.status) {
-                                  case 'New':
-                                    return '#E3F2FD'; // Light blue
-                                  case 'Contacted':
-                                    return '#FFF9C4'; // Light yellow
-                                  case 'Converted':
-                                    return '#C8E6C9'; // Light green
-                                  case 'Closed':
-                                    return '#E0E0E0'; // Light grey
-                                  default:
-                                    return 'transparent';
-                                }
-                              })(),
-                            }}
-                          >
-                            {inquiry.status}
-                          </Box>
-                        </TableCell>
-                        <TableCell>{formatDate(inquiry.created_at)}</TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleConvertToJob(inquiry.id)}
-                            disabled={
-                              inquiry.status === 'Converted' ||
-                              inquiry.status === 'Closed' ||
-                              isConverting
-                            }
-                            sx={{
-                              bgcolor: '#2E7D32',
-                              '&:hover': { bgcolor: '#1B5E20' },
-                              '&.Mui-disabled': { bgcolor: '#E0E0E0' },
-                            }}
-                          >
-                            {isConverting && convertingId === inquiry.id ? (
-                              <CircularProgress size={24} color="inherit" />
-                            ) : (
-                              'Convert to Job'
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+          }
+          columns={[
+            { id: 'name', label: 'Name', minWidth: 150 },
+            { id: 'mobile', label: 'Mobile', minWidth: 120 },
+            { id: 'email', label: 'Email', minWidth: 150 },
+            { id: 'service_interest', label: 'Service Interest', minWidth: 150 },
+            { id: 'city', label: 'City', minWidth: 100 },
+            { id: 'status', label: 'Status', minWidth: 100 },
+            { id: 'created_at', label: 'Created Date', minWidth: 120, format: (value: string) => formatDate(value) },
+            { id: 'actions', label: 'Actions', minWidth: 150 },
+          ]}
+          rows={inquiries.length > 0 ? inquiries.map(inquiry => ({
+            name: inquiry.name,
+            mobile: inquiry.mobile,
+            email: inquiry.email || '-',
+            service_interest: inquiry.service_interest,
+            city: inquiry.city,
+            status: (
+              <Chip
+                label={inquiry.status}
+                size="small"
+                sx={{
+                  backgroundColor: getStatusColor(inquiry.status).bg,
+                  color: getStatusColor(inquiry.status).color,
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  height: 24,
+                  borderRadius: 1,
+                }}
+              />
+            ),
+            created_at: inquiry.created_at,
+            actions: (
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => handleConvertToJob(inquiry.id)}
+                disabled={
+                  inquiry.status === 'Converted' ||
+                  inquiry.status === 'Closed' ||
+                  isConverting
+                }
+                sx={{
+                  bgcolor: '#2E7D32',
+                  '&:hover': { bgcolor: '#1B5E20' },
+                  '&.Mui-disabled': { bgcolor: '#E0E0E0' },
+                  borderRadius: 1,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  px: 2,
+                  py: 0.5,
+                }}
+              >
+                {isConverting && convertingId === inquiry.id ? (
+                  <CircularProgress size={16} color="inherit" />
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      No inquiries found
-                    </TableCell>
-                  </TableRow>
+                  'Convert to Job'
                 )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <CustomPagination
-            count={Math.ceil(totalCount / rowsPerPage)}
-            page={page + 1}
-            onChange={(event, value) => setPage(value - 1)}
-          />
-        </Paper>
+              </Button>
+            ),
+          })) : []}
+        />
       )}
 
       <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
@@ -271,7 +231,7 @@ const Inquiries: React.FC = () => {
           {success}
         </Alert>
       </Snackbar>
-    </>
+    </Box>
   );
 };
 

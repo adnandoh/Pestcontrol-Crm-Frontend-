@@ -40,10 +40,19 @@ const JobCardDetail: React.FC = () => {
     const fetchJobCard = async () => {
       if (!id || !isAuthenticated) return;
 
+      // Validate that id is a valid number
+      const jobCardId = parseInt(id, 10);
+      if (isNaN(jobCardId)) {
+        setError('Invalid job card ID');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
-        const data = await jobCardService.getJobCard(parseInt(id));
+        console.log('Fetching job card with ID:', jobCardId);
+        const data = await jobCardService.getJobCard(jobCardId);
         setJobCard(data);
       } catch (err) {
         console.error('Error fetching job card:', err);

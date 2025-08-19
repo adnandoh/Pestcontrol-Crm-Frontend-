@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Paper,
@@ -20,17 +20,18 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { clientService, jobCardService } from '../services/api';
 import { JobCard } from '../types';
 
-const CreateJobCard: React.FC = () => {
+const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
-  // Removed isLoading state as we no longer fetch clients
+  const { id } = useParams<{ id: string }>();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  // Always creating new client - no toggle needed
 
   // Predefined service types for pest control
   const serviceTypes = [
@@ -47,8 +48,9 @@ const CreateJobCard: React.FC = () => {
     '🔍 Other'
   ];
 
-  // Form states - removed selectedClientId as we only create new clients
-  const [newClient, setNewClient] = useState({
+  // Form states
+  const [client, setClient] = useState({
+    id: 0,
     full_name: '',
     mobile: '',
     email: '',
@@ -60,18 +62,69 @@ const CreateJobCard: React.FC = () => {
     schedule_date: new Date(),
     price_subtotal: '' as string | number, // Changed to empty string to avoid showing 0
     payment_status: 'Unpaid' as 'Unpaid' | 'Paid',
+    status: 'Enquiry' as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive',
     notes: '',
     next_service_date: null as Date | null,
   });
 
-  // Removed client fetching as we only create new clients
+  useEffect(() => {
+    const fetchJobCard = async () => {
+      if (!id) return;
 
-  // Removed handleClientChange as we only create new clients
+      const jobCardId = parseInt(id, 10);
+      if (isNaN(jobCardId)) {
+        setError('Invalid job card ID');
+        setIsLoading(false);
+        return;
+      }
 
-  const handleNewClientChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Fetch job card details
+        const jobCardData = await jobCardService.getJobCard(jobCardId);
+        
+        // Fetch client details
+        const clientData = await clientService.getClient(jobCardData.client);
+        
+        // Set client data
+        setClient({
+          id: clientData.id,
+          full_name: clientData.full_name,
+          mobile: clientData.mobile,
+          email: clientData.email || '',
+          city: clientData.city,
+          address: clientData.address || '',
+        });
+
+        // Set job card data
+        setJobCard({
+          service_type: jobCardData.service_type ? jobCardData.service_type.split(', ') : [], // Convert string to array
+          schedule_date: new Date(jobCardData.schedule_date),
+          price_subtotal: jobCardData.price_subtotal,
+          payment_status: jobCardData.payment_status,
+          status: jobCardData.status,
+          notes: jobCardData.notes || '',
+          next_service_date: jobCardData.next_service_date 
+            ? new Date(jobCardData.next_service_date) 
+            : null,
+        });
+      } catch (err) {
+        console.error('Error fetching job card:', err);
+        setError('Failed to load job card details. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobCard();
+  }, [id]);
+
+  const handleClientChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setNewClient({
-      ...newClient,
+    setClient({
+      ...client,
       [name]: value,
     });
   };
@@ -81,7 +134,8 @@ const CreateJobCard: React.FC = () => {
     setJobCard({
       ...jobCard,
       [name]: name === 'price_subtotal' ? (value === '' ? '' : Number(value)) :
-        name === 'payment_status' ? (value as 'Unpaid' | 'Paid') : value,
+        name === 'payment_status' ? (value as 'Unpaid' | 'Paid') :
+        name === 'status' ? (value as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive') : value,
     });
   };
 
@@ -93,21 +147,22 @@ const CreateJobCard: React.FC = () => {
     });
   };
 
-
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    
+    if (!id) return;
+    
     try {
       setIsSaving(true);
       setError(null);
 
-      // Validate new client data
-      if (!newClient.full_name || !newClient.mobile || !newClient.city) {
+      // Validate client data
+      if (!client.full_name || !client.mobile || !client.city) {
         setError('Please fill in all required client fields (Name, Mobile, City).');
         return;
       }
-
-      if (newClient.mobile.length !== 10 || !/^\d{10}$/.test(newClient.mobile)) {
+      
+      if (client.mobile.length !== 10 || !/^\d{10}$/.test(client.mobile)) {
         setError('Mobile number must be exactly 10 digits.');
         return;
       }
@@ -123,38 +178,39 @@ const CreateJobCard: React.FC = () => {
         return;
       }
 
-      // Create new client first
-      const newClientResponse = await clientService.createClient(newClient);
-      const clientId = newClientResponse.id;
+      // Update client
+      await clientService.updateClient(client.id, {
+        full_name: client.full_name.trim(),
+        mobile: client.mobile.trim(),
+        email: client.email.trim(),
+        city: client.city.trim(),
+        address: client.address.trim(),
+      });
 
-      // Create job card with default technician and tax values
+      // Update job card
       const jobCardData: Partial<JobCard> = {
-        client: Number(clientId),
         service_type: jobCard.service_type.join(', '), // Join array to string
-        technician_name: 'TBD', // Default value since technician field is removed
         schedule_date: jobCard.schedule_date.toISOString().split('T')[0],
         price_subtotal: Number(jobCard.price_subtotal),
-        tax_percent: 18, // Default tax percentage
         payment_status: jobCard.payment_status,
+        status: jobCard.status,
         notes: jobCard.notes.trim(),
         next_service_date: jobCard.next_service_date
           ? jobCard.next_service_date.toISOString().split('T')[0]
           : undefined,
       };
 
-      console.log('Sending job card data:', jobCardData);
-      await jobCardService.createJobCard(jobCardData);
-      setSuccess('Job card created successfully!');
+      await jobCardService.updateJobCard(parseInt(id), jobCardData);
+      setSuccess('Job card updated successfully!');
 
       // Redirect after a short delay
       setTimeout(() => {
         navigate('/jobcards');
       }, 2000);
     } catch (err: any) {
-      console.error('Error creating job card:', err);
-
-      // Try to extract more specific error message
-      let errorMessage = 'Failed to create job card. Please check your inputs and try again.';
+      console.error('Error updating job card:', err);
+      
+      let errorMessage = 'Failed to update job card. Please check your inputs and try again.';
       if (err.response?.data) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -163,7 +219,6 @@ const CreateJobCard: React.FC = () => {
         } else if (err.response.data.error) {
           errorMessage = err.response.data.error;
         } else {
-          // Handle field-specific errors
           const errors = Object.entries(err.response.data)
             .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
             .join('; ');
@@ -172,22 +227,48 @@ const CreateJobCard: React.FC = () => {
           }
         }
       }
-
+      
       setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleBack = () => {
+    navigate('/jobcards');
+  };
+
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-          Create Job Card
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleBack}
+            startIcon={<ArrowBackIcon />}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
+          >
+            Back
+          </Button>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+            Edit Job Card
+          </Typography>
+        </Box>
         <Typography variant="body1" color="text.secondary">
-          Fill in the details below to create a new service job card
+          Update the job card and client details below
         </Typography>
       </Box>
 
@@ -210,7 +291,7 @@ const CreateJobCard: React.FC = () => {
               pb: 2,
               borderBottom: '2px solid #f0f0f0'
             }}>
-              Add New Client
+              Client Details
             </Typography>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -218,10 +299,10 @@ const CreateJobCard: React.FC = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Client Name"
+                  label="Client Name *"
                   name="full_name"
-                  value={newClient.full_name}
-                  onChange={handleNewClientChange}
+                  value={client.full_name}
+                  onChange={handleClientChange}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
@@ -238,10 +319,10 @@ const CreateJobCard: React.FC = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Mobile Number"
+                  label="Mobile Number *"
                   name="mobile"
-                  value={newClient.mobile}
-                  onChange={handleNewClientChange}
+                  value={client.mobile}
+                  onChange={handleClientChange}
                   inputProps={{ maxLength: 10, pattern: '[0-9]{10}' }}
                   helperText="10-digit mobile number"
                   sx={{
@@ -264,8 +345,8 @@ const CreateJobCard: React.FC = () => {
                   label="Email"
                   name="email"
                   type="email"
-                  value={newClient.email}
-                  onChange={handleNewClientChange}
+                  value={client.email}
+                  onChange={handleClientChange}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
@@ -282,10 +363,10 @@ const CreateJobCard: React.FC = () => {
                 <TextField
                   required
                   fullWidth
-                  label="City"
+                  label="City *"
                   name="city"
-                  value={newClient.city}
-                  onChange={handleNewClientChange}
+                  value={client.city}
+                  onChange={handleClientChange}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
@@ -306,8 +387,8 @@ const CreateJobCard: React.FC = () => {
                 name="address"
                 multiline
                 rows={3}
-                value={newClient.address}
-                onChange={handleNewClientChange}
+                value={client.address}
+                onChange={handleClientChange}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 1,
@@ -431,7 +512,7 @@ const CreateJobCard: React.FC = () => {
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
-                    label="Schedule Date"
+                    label="Schedule Date *"
                     value={jobCard.schedule_date}
                     onChange={(newValue: Date | null) =>
                       setJobCard({ ...jobCard, schedule_date: newValue || new Date() })
@@ -460,7 +541,37 @@ const CreateJobCard: React.FC = () => {
                   select
                   required
                   fullWidth
-                  label="Payment Status"
+                  label="Job Status *"
+                  name="status"
+                  value={jobCard.status}
+                  onChange={handleJobCardChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1,
+                      backgroundColor: '#fafafa',
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff',
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="Enquiry">Enquiry</MenuItem>
+                  <MenuItem value="WIP">Work in Progress</MenuItem>
+                  <MenuItem value="Done">Completed</MenuItem>
+                  <MenuItem value="Hold">On Hold</MenuItem>
+                  <MenuItem value="Cancel">Cancelled</MenuItem>
+                  <MenuItem value="Inactive">Inactive</MenuItem>
+                </TextField>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField
+                  select
+                  required
+                  fullWidth
+                  label="Payment Status *"
                   name="payment_status"
                   value={jobCard.payment_status}
                   onChange={handleJobCardChange}
@@ -500,12 +611,13 @@ const CreateJobCard: React.FC = () => {
               <TextField
                 required
                 fullWidth
-                label="Service Price "
+                label="Service Price *"
                 name="price_subtotal"
                 type="number"
                 value={jobCard.price_subtotal}
                 onChange={handleJobCardChange}
                 inputProps={{ min: 0, step: "0.01" }}
+                helperText="Service price (tax will be calculated automatically at 18%)"
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 1,
@@ -597,9 +709,24 @@ const CreateJobCard: React.FC = () => {
           <Box sx={{
             display: 'flex',
             justifyContent: 'center',
+            gap: 2,
             pt: 3,
             borderTop: '1px solid #e0e0e0'
           }}>
+            <Button
+              variant="outlined"
+              onClick={handleBack}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 4,
+                py: 2,
+                fontSize: '1rem',
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               variant="contained"
@@ -621,7 +748,7 @@ const CreateJobCard: React.FC = () => {
                 transition: 'all 0.2s ease-in-out',
               }}
             >
-              {isSaving ? <CircularProgress size={24} color="inherit" /> : 'Submit'}
+              {isSaving ? <CircularProgress size={24} color="inherit" /> : 'Update Job Card'}
             </Button>
           </Box>
         </form>
@@ -642,4 +769,4 @@ const CreateJobCard: React.FC = () => {
   );
 };
 
-export default CreateJobCard;
+export default EditJobCard;

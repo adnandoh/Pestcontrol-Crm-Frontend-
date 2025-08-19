@@ -184,7 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
     {
       text: 'Create Job Card',
       icon: <CreateJobIcon />,
-      path: '/create-jobcard',
+      path: '/jobcards/create',
       description: 'Add new service job'
     },
   ];

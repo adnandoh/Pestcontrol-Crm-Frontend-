@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Avatar,
-  Chip,
   useTheme,
   alpha,
 } from '@mui/material';
@@ -401,15 +400,6 @@ const Dashboard: React.FC = () => {
               icon={<RenewalIcon />}
               color={theme.palette.warning.main}
               onClick={() => {/* Navigate to renewals */}}
-            />
-          </Box>
-          <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-            <QuickActionCard
-              title="Manage Inquiries"
-              description="Handle customer inquiries"
-              icon={<InquiryIcon />}
-              color={theme.palette.info.main}
-              onClick={() => {/* Navigate to inquiries */}}
             />
           </Box>
         </Box>

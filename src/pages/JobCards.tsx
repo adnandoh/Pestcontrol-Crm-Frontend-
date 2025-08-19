@@ -1,55 +1,38 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Typography,
-  Paper,
   Button,
   Box,
   TextField,
   MenuItem,
-  Grid,
   CircularProgress,
   Snackbar,
   Alert,
-  Card,
-  CardContent,
   Chip,
-  useTheme,
-  useMediaQuery,
-  Pagination,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
-  Add as AddIcon,
-  Visibility as ViewIcon,
-  Phone as PhoneIcon,
-  LocationOn as LocationIcon,
-  Schedule as ScheduleIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { jobCardService } from '../services/api';
 import { JobCard } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import ResponsiveTable from '../components/ResponsiveTable';
 import ModernTable from '../components/ModernTable';
 
 const JobCards: React.FC = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [cityFilter, setCityFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | null>(null);
-  const [toDate, setToDate] = useState<Date | null>(null);
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -81,11 +64,10 @@ const JobCards: React.FC = () => {
         params.from = fromDate.toISOString().split('T')[0];
       }
 
-      if (toDate) {
-        params.to = toDate.toISOString().split('T')[0];
-      }
 
       const response = await jobCardService.getJobCards(params);
+      console.log('Job cards response:', response);
+      console.log('Job cards data:', response.results);
       setJobCards(response.results);
       setTotalCount(response.count);
     } catch (err) {
@@ -94,7 +76,7 @@ const JobCards: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, cityFilter, searchQuery, fromDate, toDate, isAuthenticated]);
+  }, [statusFilter, cityFilter, searchQuery, fromDate, isAuthenticated]);
 
   useEffect(() => {
     // Only fetch job cards when authenticated
@@ -117,21 +99,17 @@ const JobCards: React.FC = () => {
     return null;
   }
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  // Removed handleCreateJobCard - users will use sidebar navigation
 
-  const handleCreateJobCard = () => {
-    navigate('/jobcards/create');
-  };
-
-  const handleViewJobCard = (id: number) => {
-    navigate(`/jobcards/${id}`);
+  const handleEditJobCard = (id: number) => {
+    console.log('Navigating to job card edit with ID:', id);
+    if (!id || isNaN(id)) {
+      console.error('Invalid job card ID:', id);
+      setError('Invalid job card ID');
+      return;
+    }
+    navigate(`/jobcards/${id}/edit`);
   };
 
   const formatDate = (dateString: string) => {
@@ -165,131 +143,12 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Define table columns
-  const columns = [
-    { id: 'code', label: 'Job ID', minWidth: 120 },
-    { id: 'client_name', label: 'Client Name', minWidth: 150 },
-    { id: 'client_mobile', label: 'Mobile', minWidth: 120 },
-    { id: 'client_city', label: 'City', minWidth: 100 },
-    { id: 'service_type', label: 'Service Type', minWidth: 150 },
-    { id: 'status', label: 'Status', minWidth: 100 },
-    { id: 'schedule_date', label: 'Date', minWidth: 120, format: (value: string) => formatDate(value) },
-    { id: 'grand_total', label: 'Amount', minWidth: 120, format: (value: number) => formatCurrency(value) },
-    { id: 'actions', label: 'Actions', minWidth: 100 },
-  ];
-
-  // Mobile card render function
-  const renderMobileCard = (jobCard: JobCard, index: number) => {
-    const statusStyle = getStatusColor(jobCard.status);
-
-    return (
-      <Card
-        key={jobCard.id}
-        elevation={0}
-        sx={{
-          border: '1px solid #e0e0e0',
-          borderRadius: 3,
-          overflow: 'hidden',
-          '&:hover': {
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-            transform: 'translateY(-2px)',
-            transition: 'all 0.2s ease-in-out',
-          },
-        }}
-      >
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {jobCard.code}
-            </Typography>
-            <Chip
-              label={jobCard.status}
-              sx={{
-                backgroundColor: statusStyle.bg,
-                color: statusStyle.color,
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                height: 28,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-              {jobCard.client_name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-              <PhoneIcon fontSize="small" />
-              {jobCard.client_mobile}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <LocationIcon fontSize="small" />
-              {jobCard.client_city}
-            </Typography>
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              Service: {jobCard.service_type}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <ScheduleIcon fontSize="small" />
-              {formatDate(jobCard.schedule_date)}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#4caf50' }}>
-              {formatCurrency(jobCard.grand_total)}
-            </Typography>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<ViewIcon />}
-              onClick={() => handleViewJobCard(jobCard.id)}
-              sx={{
-                bgcolor: '#4CAF50',
-                '&:hover': { bgcolor: '#45a049' },
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 500,
-              }}
-            >
-              View
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  };
 
   return (
     <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: { xs: 'flex-start', md: 'center' },
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 2,
-        mb: 4
-      }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateJobCard}
-          sx={{
-            bgcolor: '#4CAF50',
-            '&:hover': { bgcolor: '#45a049' },
-            borderRadius: 0,
-            textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-            py: 1.5,
-          }}
-        >
-          Create Job Card
-        </Button>
+      <Box sx={{ mb: 4 }}>
+        {/* Removed Create Job Card button - users will use sidebar navigation */}
       </Box>
 
       {/* Modern Table */}
@@ -304,7 +163,8 @@ const JobCards: React.FC = () => {
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           page={page}
-          rowsPerPage={rowsPerPage}
+
+          rowsPerPage={10}
           onPageChange={setPage}
           filters={
             <>
@@ -345,23 +205,6 @@ const JobCards: React.FC = () => {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                select
-                size="small"
-                label="Booking For"
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                sx={{
-                  minWidth: 120,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 1,
-                  },
-                }}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="Local">Local</MenuItem>
-                <MenuItem value="Outstation">Outstation</MenuItem>
-              </TextField>
               <Button
                 variant="outlined"
                 size="small"
@@ -391,12 +234,12 @@ const JobCards: React.FC = () => {
             </>
           }
           columns={[
-            { id: 'booking_id', label: 'Booking Id', minWidth: 100 },
+            { id: 'booking_id', label: 'Id', minWidth: 100 },
             { id: 'client_name', label: 'Client Name', minWidth: 120 },
             { id: 'mobile_number', label: 'Mobile Number', minWidth: 120 },
             { id: 'client_address', label: 'Client Address', minWidth: 150 },
-            { id: 'booking_for', label: 'Booking For', minWidth: 100 },
             { id: 'status', label: 'Status', minWidth: 100 },
+            { id: 'actions', label: 'Actions', minWidth: 100 },
           ]}
           rows={jobCards.length > 0 ? jobCards.map(jobCard => ({
             booking_id: jobCard.code,
@@ -417,6 +260,26 @@ const JobCards: React.FC = () => {
                   borderRadius: 1,
                 }}
               />
+            ),
+            actions: (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={() => handleEditJobCard(jobCard.id)}
+                sx={{
+                  bgcolor: '#4CAF50',
+                  '&:hover': { bgcolor: '#45a049' },
+                  borderRadius: 1,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  px: 2,
+                  py: 0.5,
+                }}
+              >
+                Edit
+              </Button>
             ),
           })) : []}
         />

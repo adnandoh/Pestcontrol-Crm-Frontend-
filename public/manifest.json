@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "PestControl",
+  "name": "PestControl Management System",
+  "description": "Professional Pest Control Management System for managing job cards, clients, renewals, and inquiries",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,7 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#4CAF50",
+  "background_color": "#ffffff",
+  "categories": ["business", "productivity", "utilities"]
 }

@@ -1,13 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
   Box,
   CircularProgress,
@@ -15,12 +7,14 @@ import {
   Alert,
   Tabs,
   Tab,
+  Paper,
+  Chip,
 } from '@mui/material';
-import CustomPagination from '../components/CustomPagination';
 import { useNavigate } from 'react-router-dom';
 import { renewalService } from '../services/api';
 import { Renewal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import ModernTable from '../components/ModernTable';
 
 const Renewals: React.FC = () => {
   const navigate = useNavigate();
@@ -29,7 +23,6 @@ const Renewals: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
 
@@ -95,14 +88,6 @@ const Renewals: React.FC = () => {
     return null;
   }
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -117,37 +102,53 @@ const Renewals: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const getDueDateStatus = (dueDate: string) => {
+
+  const getStatusColor = (dueDate: string) => {
     const today = new Date();
     const due = new Date(dueDate);
     
     if (due < today) {
-      return { label: 'Overdue', color: '#FFCDD2' }; // Light red
+      return { label: 'Overdue', bg: '#FFCDD2', color: '#D32F2F' };
     }
     
     const diffTime = Math.abs(due.getTime() - today.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays <= 7) {
-      return { label: 'Due soon', color: '#FFECB3' }; // Light amber
+      return { label: 'Due soon', bg: '#FFECB3', color: '#F57C00' };
     }
     
-    return { label: 'Upcoming', color: '#C8E6C9' }; // Light green
+    return { label: 'Upcoming', bg: '#C8E6C9', color: '#388E3C' };
+  };
+
+  const getTabTitle = () => {
+    switch (tabValue) {
+      case 0:
+        return 'Renewals Due in 7 Days';
+      case 1:
+        return 'Renewals Due in 15 Days';
+      case 2:
+        return 'Overdue Renewals';
+      default:
+        return 'Renewals';
+    }
   };
 
   return (
-    <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Renewals
-      </Typography>
-
-      <Paper sx={{ mb: 3 }}>
+    <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+      <Paper sx={{ mb: 3, overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 0 }}>
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           indicatorColor="primary"
           textColor="primary"
           variant="fullWidth"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 500,
+            },
+          }}
         >
           <Tab label="Due in 7 Days" />
           <Tab label="Due in 15 Days" />
@@ -156,77 +157,71 @@ const Renewals: React.FC = () => {
       </Paper>
 
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+          <CircularProgress size={60} />
         </Box>
       ) : (
-        <Paper>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                  <TableCell>Job ID</TableCell>
-                  <TableCell>Client Name</TableCell>
-                  <TableCell>Service Type</TableCell>
-                  <TableCell>Due Date</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {renewals.length > 0 ? (
-                  renewals
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((renewal) => {
-                      const statusInfo = getDueDateStatus(renewal.due_date);
-                      return (
-                        <TableRow key={renewal.id} hover>
-                          <TableCell>{renewal.jobcard_code}</TableCell>
-                          <TableCell>{renewal.client_name}</TableCell>
-                          <TableCell>Service Renewal</TableCell>
-                          <TableCell>{formatDate(renewal.due_date)}</TableCell>
-                          <TableCell>
-                            <Box
-                              sx={{
-                                display: 'inline-block',
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1,
-                                backgroundColor: statusInfo.color,
-                              }}
-                            >
-                              {statusInfo.label}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => handleViewJobCard(renewal.jobcard)}
-                              sx={{ color: '#2E7D32', borderColor: '#2E7D32' }}
-                            >
-                              View Job
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No renewals found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <CustomPagination
-            count={Math.ceil(totalCount / rowsPerPage)}
-            page={page + 1}
-            onChange={(event, value) => setPage(value - 1)}
-          />
-        </Paper>
+        <ModernTable
+          title={getTabTitle()}
+          totalCount={totalCount}
+          page={page}
+          rowsPerPage={10}
+          onPageChange={setPage}
+          columns={[
+            { id: 'jobcard_code', label: 'Job ID', minWidth: 120 },
+            { id: 'client_name', label: 'Client Name', minWidth: 150 },
+            { id: 'service_type', label: 'Service Type', minWidth: 150 },
+            { id: 'due_date', label: 'Due Date', minWidth: 120, format: (value: string) => formatDate(value) },
+            { id: 'status', label: 'Status', minWidth: 100 },
+            { id: 'actions', label: 'Actions', minWidth: 120 },
+          ]}
+          rows={renewals.length > 0 ? renewals.map(renewal => {
+            const statusInfo = getStatusColor(renewal.due_date);
+            return {
+              jobcard_code: renewal.jobcard_code,
+              client_name: renewal.client_name,
+              service_type: 'Service Renewal',
+              due_date: renewal.due_date,
+              status: (
+                <Chip
+                  label={statusInfo.label}
+                  size="small"
+                  sx={{
+                    backgroundColor: statusInfo.bg,
+                    color: statusInfo.color,
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    height: 24,
+                    borderRadius: 1,
+                  }}
+                />
+              ),
+              actions: (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleViewJobCard(renewal.jobcard)}
+                  sx={{
+                    color: '#2E7D32',
+                    borderColor: '#2E7D32',
+                    '&:hover': {
+                      bgcolor: '#E8F5E8',
+                      borderColor: '#1B5E20',
+                    },
+                    borderRadius: 1,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    px: 2,
+                    py: 0.5,
+                  }}
+                >
+                  View Job
+                </Button>
+              ),
+            };
+          }) : []}
+        />
       )}
 
       <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
@@ -234,7 +229,7 @@ const Renewals: React.FC = () => {
           {error}
         </Alert>
       </Snackbar>
-    </>
+    </Box>
   );
 };
 

@@ -18,7 +18,6 @@ import {
   PersonOutline,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import pestlogo from '../images/pestlogo.svg';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -58,17 +57,8 @@ const Login: React.FC = () => {
             mx: 'auto',
           }}
         >
-          {/* Logo Section */}
+          {/* Header Section */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <img
-              src={pestlogo}
-              alt="PestControl Logo"
-              style={{
-                height: '80px',
-                width: 'auto',
-                marginBottom: '16px',
-              }}
-            />
             <Typography
               component="h1"
               variant="h4"

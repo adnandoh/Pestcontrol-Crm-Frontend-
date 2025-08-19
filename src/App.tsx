@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import JobCards from './pages/JobCards';
 import CreateJobCard from './pages/CreateJobCard';
+import EditJobCard from './pages/EditJobCard';
 import Renewals from './pages/Renewals';
 import Inquiries from './pages/Inquiries';
 import JobCardDetail from './pages/JobCardDetail';
@@ -279,8 +280,9 @@ function App() {
               }>
                 <Route index element={<Dashboard />} />
                 <Route path="jobcards" element={<JobCards />} />
+                <Route path="jobcards/create" element={<CreateJobCard />} />
                 <Route path="jobcards/:id" element={<JobCardDetail />} />
-                <Route path="create-jobcard" element={<CreateJobCard />} />
+                <Route path="jobcards/:id/edit" element={<EditJobCard />} />
                 <Route path="renewals" element={<Renewals />} />
                 <Route path="inquiries" element={<Inquiries />} />
               </Route>
