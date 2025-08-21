@@ -13,11 +13,13 @@ import {
 import { inquiryService } from '../services/api';
 import { Inquiry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import ModernTable from '../components/ModernTable';
 
 const Inquiries: React.FC = () => {
   // Removed unused navigate - navigation handled by table actions
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { markInquiryAsRead } = useNotifications();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConverting, setIsConverting] = useState(false);
@@ -83,6 +85,18 @@ const Inquiries: React.FC = () => {
     return null;
   }
 
+
+  const handleViewInquiry = async (id: number) => {
+    try {
+      // Mark inquiry as read when viewing
+      await markInquiryAsRead(id);
+      setSuccess('Inquiry marked as read!');
+      fetchInquiries(); // Refresh the list
+    } catch (err) {
+      console.error('Error marking inquiry as read:', err);
+      setError('Failed to mark inquiry as read. Please try again.');
+    }
+  };
 
   const handleConvertToJob = async (id: number) => {
     try {
@@ -164,7 +178,7 @@ const Inquiries: React.FC = () => {
             { id: 'city', label: 'City', minWidth: 100 },
             { id: 'status', label: 'Status', minWidth: 100 },
             { id: 'created_at', label: 'Created Date', minWidth: 120, format: (value: string) => formatDate(value) },
-            { id: 'actions', label: 'Actions', minWidth: 150 },
+            { id: 'actions', label: 'Actions', minWidth: 200 },
           ]}
           rows={inquiries.length > 0 ? inquiries.map(inquiry => ({
             name: inquiry.name,
@@ -188,33 +202,56 @@ const Inquiries: React.FC = () => {
             ),
             created_at: inquiry.created_at,
             actions: (
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => handleConvertToJob(inquiry.id)}
-                disabled={
-                  inquiry.status === 'Converted' ||
-                  inquiry.status === 'Closed' ||
-                  isConverting
-                }
-                sx={{
-                  bgcolor: '#2E7D32',
-                  '&:hover': { bgcolor: '#1B5E20' },
-                  '&.Mui-disabled': { bgcolor: '#E0E0E0' },
-                  borderRadius: 1,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  px: 2,
-                  py: 0.5,
-                }}
-              >
-                {isConverting && convertingId === inquiry.id ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : (
-                  'Convert to Job'
-                )}
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleViewInquiry(inquiry.id)}
+                  sx={{
+                    borderColor: '#1976D2',
+                    color: '#1976D2',
+                    '&:hover': { 
+                      borderColor: '#1565C0',
+                      backgroundColor: '#E3F2FD'
+                    },
+                    borderRadius: 1,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    px: 2,
+                    py: 0.5,
+                  }}
+                >
+                  View Details
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => handleConvertToJob(inquiry.id)}
+                  disabled={
+                    inquiry.status === 'Converted' ||
+                    inquiry.status === 'Closed' ||
+                    isConverting
+                  }
+                  sx={{
+                    bgcolor: '#2E7D32',
+                    '&:hover': { bgcolor: '#1B5E20' },
+                    '&.Mui-disabled': { bgcolor: '#E0E0E0' },
+                    borderRadius: 1,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    px: 2,
+                    py: 0.5,
+                  }}
+                >
+                  {isConverting && convertingId === inquiry.id ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    'Convert to Job'
+                  )}
+                </Button>
+              </Box>
             ),
           })) : []}
         />

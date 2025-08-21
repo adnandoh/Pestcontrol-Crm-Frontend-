@@ -20,6 +20,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 const theme = createTheme({
   palette: {
@@ -271,23 +272,25 @@ function App() {
         <CssBaseline />
         <Router>
           <AuthProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="jobcards" element={<JobCards />} />
-                <Route path="jobcards/create" element={<CreateJobCard />} />
-                <Route path="jobcards/:id" element={<JobCardDetail />} />
-                <Route path="jobcards/:id/edit" element={<EditJobCard />} />
-                <Route path="renewals" element={<Renewals />} />
-                <Route path="inquiries" element={<Inquiries />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <NotificationProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="jobcards" element={<JobCards />} />
+                  <Route path="jobcards/create" element={<CreateJobCard />} />
+                  <Route path="jobcards/:id" element={<JobCardDetail />} />
+                  <Route path="jobcards/:id/edit" element={<EditJobCard />} />
+                  <Route path="renewals" element={<Renewals />} />
+                  <Route path="inquiries" element={<Inquiries />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </NotificationProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>

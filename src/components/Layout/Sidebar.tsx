@@ -30,6 +30,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
+import NotificationBadge from '../NotificationBadge';
 
 const drawerWidth = 240;
 
@@ -158,6 +160,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { logout, user } = useAuth();
+  const { inquiryCounts } = useNotifications();
+  
+  console.log('🔍 Sidebar: inquiryCounts:', inquiryCounts);
+  console.log('🔍 Sidebar: unread_new count:', inquiryCounts.unread_new);
 
   const menuItems = [
     {
@@ -180,7 +186,16 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
     },
     {
       text: 'Inquiries',
-      icon: <InquiryIcon />,
+      icon: (
+        <Box sx={{ position: 'relative' }}>
+          <InquiryIcon />
+          <NotificationBadge 
+            count={inquiryCounts.unread_new} 
+            size="small" 
+            color="red" 
+          />
+        </Box>
+      ),
       path: '/inquiries',
       description: 'Customer inquiries'
     },

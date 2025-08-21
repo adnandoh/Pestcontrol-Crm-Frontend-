@@ -121,6 +121,9 @@ export const inquiryService = {
     const response = await api.post<JobCard>(`/inquiries/${id}/convert/`);
     return response.data;
   },
+  markAsRead: async (id: number): Promise<void> => {
+    await api.post(`/inquiries/${id}/mark_as_read/`);
+  },
 };
 
 // JobCard services
