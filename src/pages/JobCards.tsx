@@ -30,7 +30,7 @@ const JobCards: React.FC = () => {
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [cityFilter, setCityFilter] = useState<string>('');
+  const [cityFilter] = useState<string>(''); // Removed setCityFilter - not used in current implementation
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | null>(null);
 
@@ -112,17 +112,8 @@ const JobCards: React.FC = () => {
     navigate(`/jobcards/${id}/edit`);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amount);
-  };
+  // Removed unused utility functions - formatDate and formatCurrency
+  // These can be added back when needed for table formatting
 
   const getStatusColor = (status: string) => {
     switch (status) {

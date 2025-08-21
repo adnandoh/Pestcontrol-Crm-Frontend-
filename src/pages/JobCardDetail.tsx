@@ -19,7 +19,6 @@ import {
   Person as ClientIcon,
   LocationOn as LocationIcon,
   Phone as PhoneIcon,
-  Email as EmailIcon,
   Schedule as ScheduleIcon,
   Payment as PaymentIcon,
   Notes as NotesIcon,

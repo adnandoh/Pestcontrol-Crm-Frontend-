@@ -30,9 +30,16 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:local": "REACT_APP_ENVIRONMENT=development react-scripts start",
+    "start:prod": "REACT_APP_ENVIRONMENT=production react-scripts start",
     "build": "react-scripts build",
+    "build:local": "REACT_APP_ENVIRONMENT=development react-scripts build",
+    "build:prod": "REACT_APP_ENVIRONMENT=production react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "eject": "react-scripts eject",
+    "analyze": "npm run build && npx serve -s build",
+    "health-check": "node -e \"fetch('http://localhost:8000/api/health/').then(r=>r.json()).then(console.log).catch(console.error)\""
   },
   "eslintConfig": {
     "extends": [

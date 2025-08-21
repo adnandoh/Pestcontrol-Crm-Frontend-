@@ -48,6 +48,7 @@ const openedMixin = (theme: Theme): CSSObject => ({
   display: 'flex',
   flexDirection: 'column',
   boxShadow: '1px 0 4px rgba(0,0,0,0.04)',
+  position: 'fixed',
 });
 
 const closedMixin = (theme: Theme): CSSObject => ({
@@ -65,6 +66,7 @@ const closedMixin = (theme: Theme): CSSObject => ({
   display: 'flex',
   flexDirection: 'column',
   boxShadow: '1px 0 2px rgba(0,0,0,0.03)',
+  position: 'fixed',
   [theme.breakpoints.up('sm')]: {
     width: `calc(${theme.spacing(9)} + 1px)`,
   },
@@ -84,17 +86,18 @@ const StyledListItemButton = styled(ListItemButton, {
   shouldForwardProp: (prop) => prop !== 'active',
 })<{ active?: boolean }>(({ theme, active }) => ({
   margin: theme.spacing(0.5, 1),
-  borderRadius: theme.spacing(1),
+  borderRadius: theme.shape.borderRadius,
   minHeight: 48,
-  transition: theme.transitions.create(['background-color', 'color'], {
+  transition: theme.transitions.create(['background-color', 'color', 'transform'], {
     duration: theme.transitions.duration.shorter,
   }),
   position: 'relative',
 
-  backgroundColor: active ? '#e3f2fd' : 'transparent',
+  backgroundColor: active ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
 
   '&:hover': {
-    backgroundColor: active ? '#e3f2fd' : '#f5f5f5',
+    backgroundColor: active ? alpha(theme.palette.primary.main, 0.12) : alpha(theme.palette.action.hover, 0.04),
+    transform: 'translateX(4px)',
   },
 
   ...(active && {
@@ -104,7 +107,7 @@ const StyledListItemButton = styled(ListItemButton, {
       left: 0,
       top: '50%',
       transform: 'translateY(-50%)',
-      width: 3,
+      width: 4,
       height: '60%',
       background: theme.palette.primary.main,
       borderRadius: '0 2px 2px 0',

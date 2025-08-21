@@ -9,16 +9,12 @@ import {
   Paper,
   Box,
   Typography,
-  Chip,
-  Button,
   TextField,
-  MenuItem,
   InputAdornment,
 } from '@mui/material';
 import CustomPagination from './CustomPagination';
 import {
   Search as SearchIcon,
-  FilterList as FilterIcon,
 } from '@mui/icons-material';
 
 interface Column {

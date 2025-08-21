@@ -71,7 +71,11 @@ export interface AuthTokens {
   refresh: string;
   user_id: number;
   username: string;
+  email?: string;
   is_staff: boolean;
+  is_superuser?: boolean;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface User {

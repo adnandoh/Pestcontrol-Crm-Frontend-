@@ -9,14 +9,14 @@ import {
   Alert,
   Chip,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom'; // Removed - not used in current implementation
 import { inquiryService } from '../services/api';
 import { Inquiry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import ModernTable from '../components/ModernTable';
 
 const Inquiries: React.FC = () => {
-  const navigate = useNavigate();
+  // Removed unused navigate - navigation handled by table actions
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);

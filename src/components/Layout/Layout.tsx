@@ -23,6 +23,7 @@ const MainContent = styled(Box, {
     duration: theme.transitions.duration.enteringScreen,
   }),
   marginLeft: open ? 0 : `-${240 - 73}px`,
+  marginTop: '70px',
   height: '100vh',
   overflowY: 'auto',
   overflowX: 'hidden',
@@ -53,7 +54,7 @@ const Layout: React.FC = () => {
       <MainContent 
         open={open}
         sx={{
-          background: `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.grey[50]} 100%)`,
+          background: theme.palette.background.default,
           minHeight: '100vh',
         }}
       >
