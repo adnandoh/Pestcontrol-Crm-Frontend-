@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { AuthTokens, PaginatedResponse, Client, Inquiry, JobCard, Renewal } from '../types';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+
+// Debug: Log the API URL being used
+console.log('🔍 API Service: Using API URL:', API_URL);
+console.log('🔍 API Service: Environment:', process.env.REACT_APP_ENVIRONMENT || 'development');
 
 const api = axios.create({
   baseURL: API_URL,
