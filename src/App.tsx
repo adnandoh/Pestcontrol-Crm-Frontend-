@@ -26,9 +26,9 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#2563eb', // Modern blue
-      light: '#3b82f6',
-      dark: '#1d4ed8',
+      main: '#3b82f6', // Brand blue for primary buttons
+      light: '#60a5fa',
+      dark: '#2563eb',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -58,7 +58,7 @@ const theme = createTheme({
       dark: '#2563eb',
     },
     background: {
-      default: '#f8fafc',
+      default: '#f5f7fa',
       paper: '#ffffff',
     },
     text: {
@@ -81,19 +81,19 @@ const theme = createTheme({
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontSize: '2.5rem',
+      fontSize: '26px',
       fontWeight: 700,
       lineHeight: 1.2,
       letterSpacing: '-0.025em',
     },
     h2: {
-      fontSize: '2rem',
+      fontSize: '22px',
       fontWeight: 600,
       lineHeight: 1.3,
       letterSpacing: '-0.025em',
     },
     h3: {
-      fontSize: '1.5rem',
+      fontSize: '18px',
       fontWeight: 600,
       lineHeight: 1.4,
       letterSpacing: '-0.025em',

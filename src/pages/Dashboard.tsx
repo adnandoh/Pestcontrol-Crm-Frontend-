@@ -14,6 +14,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Container,
+  Grid,
 } from '@mui/material';
 import {
   Assignment as JobCardIcon,
@@ -26,6 +28,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { jobCardService, renewalService, inquiryService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+// Define spacing scale
+const spacing = {
+  xs: 8,
+  sm: 16,
+  md: 24,
+  lg: 32
+};
 
 const Dashboard: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -42,6 +52,14 @@ const Dashboard: React.FC = () => {
   const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
   const theme = useTheme();
   const [error, setError] = useState<string | null>(null);
+  
+  // Spacing scale based on 8px increments
+  const spacing = {
+    xs: 8,
+    sm: 16,
+    md: 24,
+    lg: 32
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -108,7 +126,8 @@ const Dashboard: React.FC = () => {
     icon, 
     color, 
     subtitle,
-    onClick
+    onClick,
+    highlight
   }: { 
     title: string; 
     value: number | string; 
@@ -116,6 +135,7 @@ const Dashboard: React.FC = () => {
     color: string;
     subtitle?: string;
     onClick?: () => void;
+    highlight?: boolean;
   }) => (
     <Card
       elevation={0}
@@ -123,42 +143,31 @@ const Dashboard: React.FC = () => {
       sx={{
         height: '100%',
         width: '100%',
-        borderRadius: 3,
-        border: `1px solid ${theme.palette.grey[200]}`,
+        borderRadius: '16px',
+        border: highlight ? `1px solid ${theme.palette.error.light}` : `1px solid ${theme.palette.grey[200]}`,
         transition: 'all 0.3s ease-in-out',
         cursor: onClick ? 'pointer' : 'default',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-        p: { xs: 1.5, sm: 2 },
+        boxShadow: highlight ? '0 4px 12px rgba(244,67,54,0.1)' : '0 4px 12px rgba(0,0,0,0.06)',
+        backgroundColor: 'white',
         '&:hover': {
           transform: 'translateY(-3px)',
-          boxShadow: '0 8px 18px rgba(0,0,0,0.1)',
+          boxShadow: highlight ? '0 8px 18px rgba(244,67,54,0.15)' : '0 8px 18px rgba(0,0,0,0.1)',
           '& .stat-card-icon': {
             transform: 'scale(1.05) rotate(3deg)',
           }
         }
       }}
     >
-      <Box 
-        sx={{ 
-          position: 'absolute', 
-          top: 0, 
-          right: 0, 
-          width: '100%', 
-          height: '100%', 
-          background: `linear-gradient(135deg, transparent 20%, ${color}30 100%)`,
-          zIndex: 0
-        }} 
-      />
-      <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
+      <CardContent sx={{ p: spacing.md / 8, position: 'relative', zIndex: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ flex: 1 }}>
             <Typography 
               variant="body2" 
               sx={{ 
-                mb: 1, 
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                mb: spacing.xs / 8, 
+                fontSize: '12px',
                 color: theme.palette.text.secondary,
                 fontWeight: 600,
                 textTransform: 'uppercase',
@@ -171,48 +180,20 @@ const Dashboard: React.FC = () => {
               variant="h3" 
               component="div" 
               sx={{ 
-                fontWeight: 700, 
-                color: theme.palette.text.primary, 
-                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' }, 
-                mb: 1,
-                display: 'flex',
-                alignItems: 'baseline'
+                fontWeight: 600, 
+                color: highlight ? theme.palette.error.main : theme.palette.text.primary, 
+                fontSize: '34px', 
+                mb: spacing.xs / 8,
+                lineHeight: 1.2
               }}
             >
               {value}
-              <Box 
-                component="span" 
-                sx={{ 
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  ml: 1,
-                  color,
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  fontWeight: 500
-                }}
-              >
-                {value > 0 && (
-                  <Box 
-                    component="span" 
-                    sx={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      color: theme.palette.success.main,
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      ml: 1
-                    }}
-                  >
-                    {/* Optional trend indicator could go here */}
-                  </Box>
-                )}
-              </Box>
             </Typography>
             {subtitle && (
               <Typography 
                 variant="body2" 
                 sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontSize: '12px',
                   color: theme.palette.text.secondary,
                   fontWeight: 500,
                   display: 'flex',
@@ -226,9 +207,9 @@ const Dashboard: React.FC = () => {
           <Box 
             className="stat-card-icon"
             sx={{ 
-              width: { xs: 50, sm: 60 }, 
-              height: { xs: 50, sm: 60 }, 
-              borderRadius: '14px',
+              width: 60, 
+              height: 60, 
+              borderRadius: '16px',
               background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
               display: 'flex',
               alignItems: 'center',
@@ -237,7 +218,7 @@ const Dashboard: React.FC = () => {
               boxShadow: `0 8px 16px ${color}40`,
               transition: 'all 0.3s ease',
               '& .MuiSvgIcon-root': {
-                fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                fontSize: '1.75rem'
               }
             }}
           >
@@ -346,224 +327,268 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: theme.palette.background.default, maxWidth: '100%', overflow: 'hidden' }}>
-      {/* Dashboard Header with Summary */}
-      <Card 
-        elevation={0} 
-        sx={{ 
-          mb: 3, 
-          p: { xs: 2, md: 3 },
-          borderRadius: 3,
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 8px 20px rgba(0,0,0,0.08)'
-        }}
-      >
-        <Box sx={{ position: 'absolute', top: 0, right: 0, opacity: 0.1, transform: 'translate(10%, -10%)' }}>
-          <JobCardIcon sx={{ fontSize: 150 }} />
+    <Container maxWidth="lg" sx={{ py: spacing.md / 8 }}>
+      {isLoading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
         </Box>
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography 
-            variant="h5" 
-            component="h1" 
-            sx={{ 
-              fontWeight: 700, 
-              mb: 1,
-              fontSize: { xs: '1.5rem', md: '1.75rem' },
-              textShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}
-          >
-            Welcome back!
-          </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontSize: '0.95rem',
-              opacity: 0.9,
-              maxWidth: '800px',
-              mb: 2
-            }}
-          >
-            Here's what's happening with your pest control business today
-          </Typography>
-          
-          {/* Summary Stats */}
-          <Box sx={{ 
-            display: 'flex', 
-            flexWrap: 'wrap',
-            gap: { xs: 1.5, md: 2.5 },
-            mt: 2,
-            justifyContent: { xs: 'space-between', md: 'flex-start' }
-          }}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              bgcolor: 'rgba(255,255,255,0.2)',
-              p: 1.5,
-              px: 2,
-              borderRadius: 2,
-              boxShadow: '0 3px 8px rgba(0,0,0,0.06)',
-              minWidth: { xs: '45%', sm: 'auto' }
-            }}>
-              <JobCardIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ mr: 1 }}>Total Jobs:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>{stats.totalJobCards}</Typography>
-            </Box>
-            
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              bgcolor: 'rgba(255,255,255,0.2)',
-              p: 1.5,
-              px: 2,
-              borderRadius: 2,
-              boxShadow: '0 3px 8px rgba(0,0,0,0.06)',
-              minWidth: { xs: '45%', sm: 'auto' }
-            }}>
-              <CompletedIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ mr: 1 }}>Completed:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>{stats.completedJobs}</Typography>
-            </Box>
-            
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              bgcolor: 'rgba(255,255,255,0.2)',
-              p: 1.5,
-              px: 2,
-              borderRadius: 2,
-              boxShadow: '0 3px 8px rgba(0,0,0,0.06)',
-              minWidth: { xs: '45%', sm: 'auto' }
-            }}>
-              <RenewalIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ mr: 1 }}>Renewals Due:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>{stats.pendingRenewals}</Typography>
-            </Box>
+      ) : (
+        <>
+          {/* Page Title */}
+          <Box sx={{ mb: spacing.md / 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h1" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 0 }}>
+              Dashboard 🏠
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/jobcards/create')}
+              sx={{ 
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
+              }}
+            >
+              Create Job
+            </Button>
           </Box>
-        </Box>
-      </Card>
+
+          {/* Stats Cards */}
+          <Grid container spacing={spacing.sm / 8} sx={{ mb: spacing.md / 8 }}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <StatCard
+                title="Total Jobs"
+                value={stats.totalJobCards}
+                icon={<JobCardIcon />}
+                color={theme.palette.primary.main}
+                subtitle="Active jobs"
+                onClick={() => navigate('/jobcards')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <StatCard
+                title="Completed"
+                value={stats.completedJobs}
+                icon={<CompletedIcon />}
+                color={theme.palette.success.main}
+                subtitle="Successfully delivered"
+                onClick={() => navigate('/jobcards?status=Done')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <StatCard
+                title="Renewals Due"
+                value={stats.pendingRenewals}
+                icon={<RenewalIcon />}
+                color={theme.palette.warning.main}
+                subtitle="Upcoming renewals"
+                onClick={() => navigate('/renewals')}
+                highlight={stats.pendingRenewals > 0}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <StatCard
+                title="New Inquiries"
+                value={stats.newInquiries}
+                icon={<InquiryIcon />}
+                color={theme.palette.info.main}
+                subtitle="Potential clients"
+                onClick={() => navigate('/inquiries')}
+              />
+            </Grid>
+          </Grid>
 
       {/* Main Dashboard Content */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 1fr', lg: '3fr 1fr' }, gap: { xs: 2, md: 3 }, mt: 3 }}>
-        {/* Left Column - Main Content */}
-        <Box>
-          {/* Statistics Cards */}
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, 
-            gap: { xs: 3, md: 4 }, 
-            mb: 5 
-          }}>
-            <StatCard
-              title="Total Jobs"
-              value={stats.totalJobCards}
-              icon={<JobCardIcon />}
-              color={theme.palette.primary.main}
-              subtitle="Active jobs"
-              onClick={() => navigate('/jobcards')}
-            />
-            <StatCard
-              title="Completed"
-              value={stats.completedJobs}
-              icon={<CompletedIcon />}
-              color={theme.palette.success.main}
-              subtitle="Successfully delivered"
-              onClick={() => navigate('/jobcards?status=Done')}
-            />
-            <StatCard
-              title="Renewals Due"
-              value={stats.pendingRenewals}
-              icon={<RenewalIcon />}
-              color={theme.palette.warning.main}
-              subtitle="Upcoming renewals"
-              onClick={() => navigate('/renewals')}
-            />
-            <StatCard
-              title="New Inquiries"
-              value={stats.newInquiries}
-              icon={<InquiryIcon />}
-              color={theme.palette.info.main}
-              subtitle="Potential clients"
-              onClick={() => navigate('/inquiries')}
-            />
-          </Box>
-
-          {/* No Recent Activity Section - Removed as requested */}
-        </Box>
-
-        {/* Right Column - Quick Actions */}
-        <Box sx={{ width: '100%' }}>
+      <Grid container spacing={spacing.md / 8}>
+        {/* Left Column - Upcoming Jobs Table (on desktop) */}
+        <Grid size={{ xs: 12, md: 8 }} sx={{ order: { xs: 2, md: 1 } }}>
           <Card 
             elevation={0} 
             sx={{ 
-              borderRadius: 4, 
+              borderRadius: '16px', 
               border: `1px solid ${theme.palette.grey[200]}`,
-              boxShadow: '0 6px 16px rgba(0,0,0,0.08)',
-              mb: 3,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
               overflow: 'hidden',
               height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
+              backgroundColor: 'white'
             }}
           >
             <Box sx={{ 
-              p: { xs: 2, sm: 3 }, 
-              pb: { xs: 1.5, sm: 2 }, 
+              p: spacing.md / 8, 
               borderBottom: `1px solid ${theme.palette.grey[100]}`,
               display: 'flex',
               alignItems: 'center',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}10 0%, transparent 70%)`,
-              pt: 2.5,
-              px: 3.5
             }}>
-              <AddIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '18px' }}>
+                Upcoming Jobs
+              </Typography>
+            </Box>
+            <Box sx={{ p: spacing.sm / 8 }}>
+              {recentJobs.length > 0 ? (
+                <Box sx={{ 
+                  overflowX: 'auto',
+                  '& table': {
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    '& th': {
+                      textAlign: 'left',
+                      padding: spacing.sm / 8,
+                      borderBottom: `1px solid ${theme.palette.grey[200]}`,
+                      fontWeight: 600,
+                      color: theme.palette.text.secondary,
+                      fontSize: '14px'
+                    },
+                    '& td': {
+                      padding: spacing.sm / 8,
+                      borderBottom: `1px solid ${theme.palette.grey[100]}`,
+                      fontSize: '14px',
+                      position: 'relative',
+                      '&::before': {
+                        // For mobile responsive table
+                        display: 'none',
+                        content: 'attr(data-label)',
+                        fontWeight: 600,
+                        color: theme.palette.text.secondary,
+                        fontSize: '12px'
+                      }
+                    },
+                    // Mobile responsive table
+                    '@media (max-width: 768px)': {
+                      '& thead': {
+                        display: 'none'
+                      },
+                      '& tbody tr': {
+                        display: 'block',
+                        marginBottom: spacing.sm / 8,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme.palette.grey[200]}`
+                      },
+                      '& td': {
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        textAlign: 'right',
+                        borderBottom: 'none',
+                        padding: `${spacing.xs / 8}px ${spacing.sm / 8}px`,
+                        '&::before': {
+                          display: 'block'
+                        }
+                      }
+                    }
+                  }
+                }}>
+                  <table className="responsive-table">
+                    <thead>
+                      <tr>
+                        <th>Job ID</th>
+                        <th>Client</th>
+                        <th>Service</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentJobs.map((job) => (
+                        <tr key={job.id} onClick={() => navigate(`/jobcards/${job.id}`)} style={{ cursor: 'pointer' }}>
+                          <td data-label="Job ID">{job.id}</td>
+                          <td data-label="Client">{job.client_name}</td>
+                          <td data-label="Service">{job.service_type}</td>
+                          <td data-label="Date">{new Date(job.scheduled_date).toLocaleDateString()}</td>
+                          <td data-label="Status">
+                            <Chip 
+                              label={job.status} 
+                              size="small"
+                              sx={{
+                                backgroundColor: 
+                                  job.status === 'Done' ? theme.palette.success.light : 
+                                  job.status === 'Scheduled' ? theme.palette.info.light : 
+                                  job.status === 'In Progress' ? theme.palette.warning.light : 
+                                  theme.palette.grey[200],
+                                color: 
+                                  job.status === 'Done' ? theme.palette.success.dark : 
+                                  job.status === 'Scheduled' ? theme.palette.info.dark : 
+                                  job.status === 'In Progress' ? theme.palette.warning.dark : 
+                                  theme.palette.grey[700],
+                                fontWeight: 600,
+                                fontSize: '12px'
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Box>
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    No upcoming jobs found.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Card>
+        </Grid>
+
+        {/* Right Column - Quick Actions (on top for mobile) */}
+        <Grid size={{ xs: 12, md: 4 }} sx={{ order: { xs: 1, md: 2 } }}>
+          <Card 
+            elevation={0} 
+            sx={{ 
+              borderRadius: '16px', 
+              border: `1px solid ${theme.palette.grey[200]}`,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: 'white'
+            }}
+          >
+            <Box sx={{ 
+              p: spacing.md / 8, 
+              borderBottom: `1px solid ${theme.palette.grey[100]}`,
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '18px' }}>
                 Quick Actions
               </Typography>
             </Box>
-            <Box sx={{ p: { xs: 1.5, sm: 2.5 }, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Box sx={{ p: spacing.md / 8, flex: 1, display: 'flex', flexDirection: 'column', gap: spacing.sm / 8 }}>
               <Button
                 fullWidth
                 variant="contained"
                 color="primary"
-                size="large"
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/jobcards/create')}
                 sx={{ 
-                  mb: 2, 
-                  py: { xs: 1.2, sm: 1.5 }, 
-                  borderRadius: 2,
+                  py: 1.5, 
+                  borderRadius: '8px',
                   textTransform: 'none',
                   fontWeight: 600,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
-                  }
+                  display: { xs: 'flex', sm: 'flex' }
                 }}
               >
-                Create New Job Card
+                Create New Job
               </Button>
               
               <Button
                 fullWidth
-                variant="outlined"
-                color="success"
+                variant="contained"
+                color="primary"
                 startIcon={<JobCardIcon />}
                 onClick={() => navigate('/jobcards')}
                 sx={{ 
-                  mb: 2, 
-                  py: { xs: 1, sm: 1.2 }, 
-                  borderRadius: 2,
+                  py: 1.2, 
+                  borderRadius: '8px',
                   textTransform: 'none',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
-                  }
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}
               >
                 View All Jobs
@@ -572,19 +597,14 @@ const Dashboard: React.FC = () => {
               <Button
                 fullWidth
                 variant="outlined"
-                color="warning"
                 startIcon={<ScheduleIcon />}
                 onClick={() => navigate('/renewals')}
                 sx={{ 
-                  mb: 2, 
-                  py: { xs: 1, sm: 1.2 }, 
-                  borderRadius: 2,
+                  py: 1.2, 
+                  borderRadius: '8px',
                   textTransform: 'none',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
-                  }
+                  borderColor: theme.palette.grey[300],
+                  color: theme.palette.text.primary
                 }}
               >
                 Check Renewals
@@ -593,27 +613,25 @@ const Dashboard: React.FC = () => {
               <Button
                 fullWidth
                 variant="outlined"
-                color="info"
                 startIcon={<InquiryIcon />}
                 onClick={() => navigate('/inquiries')}
                 sx={{ 
-                  py: { xs: 1, sm: 1.2 }, 
-                  borderRadius: 2,
+                  py: 1.2, 
+                  borderRadius: '8px',
                   textTransform: 'none',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
-                  }
+                  borderColor: theme.palette.grey[300],
+                  color: theme.palette.text.primary
                 }}
               >
                 New Inquiries
               </Button>
             </Box>
           </Card>
-        </Box>
-      </Box>
-    </Box>
+        </Grid>
+      </Grid>
+        </>
+      )}
+    </Container>
   );
 };
 
