@@ -107,9 +107,21 @@ const CreateJobCard: React.FC = () => {
         return;
       }
 
-      if (newClient.mobile.length !== 10 || !/^\d{10}$/.test(newClient.mobile)) {
-        setError('Mobile number must be exactly 10 digits.');
+      // Clean mobile number (remove spaces, dashes, parentheses)
+      const cleanedMobile = newClient.mobile.replace(/[\s\-\(\)]/g, '');
+      
+      if (cleanedMobile.length !== 10 || !/^\d{10}$/.test(cleanedMobile)) {
+        setError('Mobile number must be exactly 10 digits (e.g., 9876543210).');
         return;
+      }
+
+      // Validate email if provided
+      if (newClient.email && newClient.email.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newClient.email)) {
+          setError('Please enter a valid email address.');
+          return;
+        }
       }
 
       // Validate job card data
@@ -123,8 +135,17 @@ const CreateJobCard: React.FC = () => {
         return;
       }
 
+      // Prepare client data with cleaned mobile number
+      const clientData = {
+        ...newClient,
+        mobile: cleanedMobile,
+        email: newClient.email.trim() || undefined, // Send undefined if empty
+        address: newClient.address.trim() || undefined, // Send undefined if empty
+      };
+
       // Create new client first
-      const newClientResponse = await clientService.createClient(newClient);
+      console.log('Creating client with data:', clientData);
+      const newClientResponse = await clientService.createClient(clientData);
       const clientId = newClientResponse.id;
 
       // Create job card with default technician and tax values
@@ -152,19 +173,42 @@ const CreateJobCard: React.FC = () => {
       }, 2000);
     } catch (err: any) {
       console.error('Error creating job card:', err);
+      console.error('Error response data:', err.response?.data);
 
       // Try to extract more specific error message
       let errorMessage = 'Failed to create job card. Please check your inputs and try again.';
+      
       if (err.response?.data) {
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data.detail) {
-          errorMessage = err.response.data.detail;
-        } else if (err.response.data.error) {
-          errorMessage = err.response.data.error;
+        const responseData = err.response.data;
+        
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+          
+          // If there are detailed validation errors, append them
+          if (responseData.details) {
+            if (typeof responseData.details === 'object') {
+              const fieldErrors = Object.entries(responseData.details)
+                .map(([field, messages]: [string, any]) => {
+                  if (Array.isArray(messages)) {
+                    return `${field}: ${messages.join(', ')}`;
+                  }
+                  return `${field}: ${messages}`;
+                })
+                .join('; ');
+              if (fieldErrors) {
+                errorMessage += ` - ${fieldErrors}`;
+              }
+            } else {
+              errorMessage += ` - ${responseData.details}`;
+            }
+          }
         } else {
           // Handle field-specific errors
-          const errors = Object.entries(err.response.data)
+          const errors = Object.entries(responseData)
             .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
             .join('; ');
           if (errors) {

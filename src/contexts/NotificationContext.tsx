@@ -44,8 +44,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   });
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isUserActive, setIsUserActive] = useState(true);
+  const [isPageVisible, setIsPageVisible] = useState(true);
 
   const fetchInquiryCounts = async () => {
+    // Only fetch if user is active and page is visible
+    if (!isUserActive || !isPageVisible) {
+      console.log('🔍 NotificationContext: Skipping fetch - user inactive or page hidden');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -73,13 +81,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       console.log('🔍 NotificationContext: Response status:', response.status);
       
-             if (response.ok) {
-         const data = await response.json();
-         setInquiryCounts(data);
-         setLastUpdated(new Date());
-         console.log('✅ Inquiry counts updated:', data);
-         console.log('🔍 Badge should show unread_new:', data.unread_new);
-       } else {
+      if (response.ok) {
+        const data = await response.json();
+        setInquiryCounts(data);
+        setLastUpdated(new Date());
+        console.log('✅ Inquiry counts updated:', data);
+        console.log('🔍 Badge should show unread_new:', data.unread_new);
+      } else {
         const errorText = await response.text();
         console.error('❌ Failed to fetch inquiry counts:', response.status, errorText);
       }
@@ -90,14 +98,70 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Fetch counts on mount and every 30 seconds for testing (30000 ms)
+  // User activity detection
+  useEffect(() => {
+    let activityTimeout: NodeJS.Timeout;
+
+    const resetActivityTimer = () => {
+      setIsUserActive(true);
+      clearTimeout(activityTimeout);
+      
+      // Set user as inactive after 5 minutes of no activity
+      activityTimeout = setTimeout(() => {
+        setIsUserActive(false);
+        console.log('🔍 NotificationContext: User marked as inactive');
+      }, 5 * 60 * 1000); // 5 minutes
+    };
+
+    // Page visibility detection
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+      console.log('🔍 NotificationContext: Page visibility changed:', !document.hidden);
+      
+      if (!document.hidden) {
+        // Page became visible, fetch counts immediately
+        fetchInquiryCounts();
+      }
+    };
+
+    // Activity events
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetActivityTimer, true);
+    });
+
+    // Page visibility events
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Initial activity setup
+    resetActivityTimer();
+
+    // Cleanup
+    return () => {
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetActivityTimer, true);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(activityTimeout);
+    };
+  }, []);
+
+  // Fetch counts on mount and every 30 minutes when user is active
   useEffect(() => {
     fetchInquiryCounts(); // Initial fetch
     
-    const interval = setInterval(fetchInquiryCounts, 30000); // 30 seconds for testing
+    const interval = setInterval(() => {
+      if (isUserActive && isPageVisible) {
+        console.log('🔍 NotificationContext: 30-minute interval - fetching counts');
+        fetchInquiryCounts();
+      } else {
+        console.log('🔍 NotificationContext: 30-minute interval - skipping fetch (user inactive or page hidden)');
+      }
+    }, 30 * 60 * 1000); // 30 minutes
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isUserActive, isPageVisible]);
 
   const refreshCounts = () => {
     fetchInquiryCounts();
