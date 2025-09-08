@@ -327,7 +327,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: spacing.md / 8 }}>
+    <Container maxWidth={false} sx={{ py: spacing.md / 8, px: { xs: 2, sm: 3 } }}>
       {isLoading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
@@ -496,7 +496,7 @@ const Dashboard: React.FC = () => {
                           <td data-label="Job ID">{job.id}</td>
                           <td data-label="Client">{job.client_name}</td>
                           <td data-label="Service">{job.service_type}</td>
-                          <td data-label="Date">{new Date(job.scheduled_date).toLocaleDateString()}</td>
+                          <td data-label="Date">{new Date(job.schedule_date).toLocaleDateString()}</td>
                           <td data-label="Status">
                             <Chip 
                               label={job.status} 

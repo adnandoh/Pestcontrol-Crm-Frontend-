@@ -22,6 +22,7 @@ export interface Inquiry {
   service_interest: string;
   city: string;
   status: 'New' | 'Contacted' | 'Converted' | 'Closed';
+  is_read: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,9 @@ export interface JobCard {
   payment_status: 'Unpaid' | 'Paid';
   next_service_date?: string;
   notes?: string;
+  job_type: 'Customer' | 'Society';
+  contract_duration?: '12' | '6' | '3';
+  is_paused: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -82,4 +86,11 @@ export interface User {
   id: number;
   username: string;
   is_staff: boolean;
+}
+
+export interface InquiryConversionData {
+  technician_name?: string;
+  schedule_date?: string;
+  price_subtotal?: number;
+  tax_percent?: number;
 }

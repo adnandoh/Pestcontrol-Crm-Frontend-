@@ -1,9 +1,11 @@
 import React from 'react';
-import { Box, Pagination } from '@mui/material';
+import { Box, Pagination, Typography } from '@mui/material';
+import { PAGE_SIZE } from '../utils/pagination';
 
 interface CustomPaginationProps {
   count: number;
   page: number;
+  totalCount: number;
   onChange: (event: React.ChangeEvent<unknown>, value: number) => void;
   showBorder?: boolean;
 }
@@ -11,20 +13,28 @@ interface CustomPaginationProps {
 const CustomPagination: React.FC<CustomPaginationProps> = ({
   count,
   page,
+  totalCount,
   onChange,
   showBorder = true,
 }) => {
   if (count <= 1) return null;
 
+  const startIndex = (page - 1) * PAGE_SIZE + 1;
+  const endIndex = Math.min(page * PAGE_SIZE, totalCount);
+
   return (
     <Box sx={{ 
       display: 'flex', 
+      flexDirection: 'column',
       justifyContent: 'center', 
       alignItems: 'center',
       mt: 3,
       py: 2,
       ...(showBorder && { borderTop: '1px solid #e0e0e0' })
     }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Showing {startIndex}-{endIndex} of {totalCount} items
+      </Typography>
       <Pagination 
         count={count} 
         page={page}

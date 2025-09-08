@@ -1,26 +1,29 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import './App.css';
 
-// Pages
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import JobCards from './pages/JobCards';
-import CreateJobCard from './pages/CreateJobCard';
-import EditJobCard from './pages/EditJobCard';
-import Renewals from './pages/Renewals';
-import Inquiries from './pages/Inquiries';
-import JobCardDetail from './pages/JobCardDetail';
-
 // Components
 import Layout from './components/Layout/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
+import AsyncErrorBoundary from './components/AsyncErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+
+// Lazy load pages for better performance
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const JobCards = lazy(() => import('./pages/JobCards'));
+const SocietyJobCards = lazy(() => import('./pages/SocietyJobCards'));
+const CreateJobCard = lazy(() => import('./pages/CreateJobCard'));
+const EditJobCard = lazy(() => import('./pages/EditJobCard'));
+const Renewals = lazy(() => import('./pages/Renewals'));
+const Inquiries = lazy(() => import('./pages/Inquiries'));
+const JobCardDetail = lazy(() => import('./pages/JobCardDetail'));
 
 const theme = createTheme({
   palette: {
@@ -188,7 +191,25 @@ const theme = createTheme({
         },
       },
     },
+    // Merged TextField with variants and overrides
     MuiTextField: {
+      variants: [
+        {
+          props: { size: 'small' },
+          style: {
+            '& .MuiOutlinedInput-input': {
+              padding: '8.5px 14px',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              lineHeight: '1.5',
+            },
+            '& .MuiInputLabel-root': {
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            },
+          },
+        },
+      ],
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
@@ -200,6 +221,52 @@ const theme = createTheme({
               borderColor: '#2563eb',
               borderWidth: '2px',
             },
+            '& .MuiOutlinedInput-input': {
+              padding: '14px 14px',
+              fontSize: '1rem',
+              fontWeight: 500,
+              lineHeight: '1.5',
+            },
+          },
+          '& .MuiInputLabel-root': {
+            fontSize: '1rem',
+            fontWeight: 500,
+            '&.MuiInputLabel-shrink': {
+              transform: 'translate(14px, -9px) scale(0.75)',
+            },
+          },
+        },
+      },
+    },
+    MuiFormControl: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            '& .MuiOutlinedInput-input': {
+              padding: '14px 14px',
+              fontSize: '1rem',
+              fontWeight: 500,
+              lineHeight: '1.5',
+            },
+          },
+          '& .MuiInputLabel-root': {
+            fontSize: '1rem',
+            fontWeight: 500,
+            '&.MuiInputLabel-shrink': {
+              transform: 'translate(14px, -9px) scale(0.75)',
+            },
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-input': {
+            padding: '14px 14px',
+            fontSize: '1rem',
+            fontWeight: 500,
+            lineHeight: '1.5',
           },
         },
       },
@@ -274,19 +341,113 @@ function App() {
           <AuthProvider>
             <NotificationProvider>
               <Routes>
-                <Route path="/login" element={<Login />} />
+                <Route 
+                  path="/login" 
+                  element={
+                    <RouteErrorBoundary>
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Login />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  } 
+                />
                 <Route path="/" element={
                   <ProtectedRoute>
                     <Layout />
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Dashboard />} />
-                  <Route path="jobcards" element={<JobCards />} />
-                  <Route path="jobcards/create" element={<CreateJobCard />} />
-                  <Route path="jobcards/:id" element={<JobCardDetail />} />
-                  <Route path="jobcards/:id/edit" element={<EditJobCard />} />
-                  <Route path="renewals" element={<Renewals />} />
-                  <Route path="inquiries" element={<Inquiries />} />
+                  <Route 
+                    index 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <Dashboard />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="jobcards" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <JobCards />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="society-jobcards" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <SocietyJobCards />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="jobcards/create" 
+                    element={
+                      <RouteErrorBoundary>
+                        <Suspense fallback={<LoadingSpinner />}>
+                          <CreateJobCard />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="jobcards/:id" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <JobCardDetail />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="jobcards/:id/edit" 
+                    element={
+                      <RouteErrorBoundary>
+                        <Suspense fallback={<LoadingSpinner />}>
+                          <EditJobCard />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="renewals" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <Renewals />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="inquiries" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <Inquiries />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

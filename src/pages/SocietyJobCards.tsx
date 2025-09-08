@@ -21,7 +21,7 @@ import { JobCard } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import ModernTable from '../components/ModernTable';
 
-const JobCards: React.FC = () => {
+const SocietyJobCards: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
@@ -30,7 +30,7 @@ const JobCards: React.FC = () => {
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [cityFilter] = useState<string>('');
+  const [contractFilter, setContractFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | null>(null);
 
@@ -44,6 +44,13 @@ const JobCards: React.FC = () => {
     { value: 'Inactive', label: 'Inactive' },
   ];
 
+  const contractOptions = [
+    { value: '', label: 'All Contracts' },
+    { value: '12', label: '12 Months' },
+    { value: '6', label: '6 Months' },
+    { value: '3', label: '3 Months' },
+  ];
+
   const fetchJobCards = useCallback(async () => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
@@ -55,9 +62,9 @@ const JobCards: React.FC = () => {
       setError(null);
 
       const params: any = {
-        job_type: 'Customer', // Filter for Customer job cards only
+        job_type: 'Society', // Filter for Society job cards only
         status: statusFilter,
-        city: cityFilter,
+        contract_duration: contractFilter,
         q: searchQuery,
       };
 
@@ -68,19 +75,18 @@ const JobCards: React.FC = () => {
         params.page = page + 1; // Convert from 0-based to 1-based
       }
 
-
       const response = await jobCardService.getJobCards(params);
-      console.log('Job cards response:', response);
-      console.log('Job cards data:', response.results);
+      console.log('Society job cards response:', response);
+      console.log('Society job cards data:', response.results);
       setJobCards(response.results);
       setTotalCount(response.count);
     } catch (err) {
-      console.error('Error fetching job cards:', err);
-      setError('Failed to load job cards. Please try again.');
+      console.error('Error fetching society job cards:', err);
+      setError('Failed to load society job cards. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, cityFilter, searchQuery, fromDate, isAuthenticated, page]);
+  }, [statusFilter, contractFilter, searchQuery, fromDate, isAuthenticated, page]);
 
   useEffect(() => {
     // Only fetch job cards when authenticated
@@ -102,8 +108,6 @@ const JobCards: React.FC = () => {
   if (!isAuthenticated) {
     return null;
   }
-
-
 
   const handleEditJobCard = (id: number) => {
     console.log('Navigating to job card edit with ID:', id);
@@ -142,9 +146,17 @@ const JobCards: React.FC = () => {
     }
   };
 
+  const getContractLabel = (duration?: string) => {
+    if (!duration) return 'N/A';
+    return `${duration} Months`;
+  };
 
   return (
     <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        {/* Header content can be added here if needed */}
+      </Box>
 
       {/* Modern Table */}
       {isLoading ? (
@@ -153,12 +165,11 @@ const JobCards: React.FC = () => {
         </Box>
       ) : (
         <ModernTable
-          title="Customer Job Cards"
+          title="Society Job Cards"
           totalCount={totalCount}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           page={page}
-
           rowsPerPage={20}
           onPageChange={setPage}
           filters={
@@ -201,9 +212,34 @@ const JobCards: React.FC = () => {
                   </MenuItem>
                 ))}
               </TextField>
+              <TextField
+                select
+                size="small"
+                label="Contract Duration"
+                value={contractFilter}
+                onChange={(e) => setContractFilter(e.target.value)}
+                sx={{
+                  minWidth: 150,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 1,
+                  },
+                }}
+              >
+                {contractOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
               <Button
                 variant="outlined"
                 size="small"
+                onClick={() => {
+                  setStatusFilter('');
+                  setContractFilter('');
+                  setSearchQuery('');
+                  setFromDate(null);
+                }}
                 sx={{
                   borderRadius: 1,
                   textTransform: 'none',
@@ -216,6 +252,7 @@ const JobCards: React.FC = () => {
               <Button
                 variant="contained"
                 size="small"
+                onClick={fetchJobCards}
                 sx={{
                   bgcolor: '#007bff',
                   '&:hover': { bgcolor: '#0056b3' },
@@ -235,6 +272,7 @@ const JobCards: React.FC = () => {
             { id: 'mobile_number', label: 'Mobile Number', minWidth: 120 },
             { id: 'client_address', label: 'Client Address', minWidth: 150 },
             { id: 'schedule_date', label: 'Schedule Date', minWidth: 120 },
+            { id: 'contract_duration', label: 'Contract Duration', minWidth: 130 },
             { id: 'status', label: 'Status', minWidth: 100 },
             { id: 'actions', label: 'Actions', minWidth: 100 },
           ]}
@@ -244,7 +282,7 @@ const JobCards: React.FC = () => {
             mobile_number: jobCard.client_mobile,
             client_address: jobCard.client_city,
             schedule_date: formatDate(jobCard.schedule_date),
-            booking_for: jobCard.service_type,
+            contract_duration: getContractLabel(jobCard.contract_duration),
             status: (
               <Chip
                 label={jobCard.status}
@@ -283,8 +321,6 @@ const JobCards: React.FC = () => {
         />
       )}
 
-
-
       <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
         <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
           {error}
@@ -294,4 +330,4 @@ const JobCards: React.FC = () => {
   );
 };
 
-export default JobCards;
+export default SocietyJobCards;

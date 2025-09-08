@@ -24,8 +24,7 @@ const MainContent = styled(Box, {
   }),
   marginLeft: open ? 0 : `-${240 - 73}px`,
   marginTop: '70px',
-  height: '100vh',
-  overflowY: 'auto',
+  minHeight: 'calc(100vh - 70px)',
   overflowX: 'hidden',
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
@@ -47,7 +46,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
       <CssBaseline />
       <AppBar />
       <Sidebar open={open} handleDrawerClose={handleDrawerClose} />
@@ -55,7 +54,6 @@ const Layout: React.FC = () => {
         open={open}
         sx={{
           background: theme.palette.background.default,
-          minHeight: '100vh',
         }}
       >
         <DrawerHeader />

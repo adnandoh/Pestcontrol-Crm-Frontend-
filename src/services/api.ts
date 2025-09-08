@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { AuthTokens, PaginatedResponse, Client, Inquiry, JobCard, Renewal } from '../types';
+import { AuthTokens, PaginatedResponse, Client, Inquiry, JobCard, Renewal, InquiryConversionData } from '../types';
+import { getPaginationParams } from '../utils/pagination';
 
 const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -85,8 +86,10 @@ export const authService = {
 
 // Client services
 export const clientService = {
-  getClients: async (params?: { q?: string; city?: string }): Promise<PaginatedResponse<Client>> => {
-    const response = await api.get<PaginatedResponse<Client>>('/clients/', { params });
+  getClients: async (params?: { q?: string; city?: string; page?: number }): Promise<PaginatedResponse<Client>> => {
+    const paginationParams = getPaginationParams(params?.page || 1);
+    const queryParams = { ...params, ...paginationParams };
+    const response = await api.get<PaginatedResponse<Client>>('/clients/', { params: queryParams });
     return response.data;
   },
   getClient: async (id: number): Promise<Client> => {
@@ -105,8 +108,10 @@ export const clientService = {
 
 // Inquiry services
 export const inquiryService = {
-  getInquiries: async (params?: { status?: string }): Promise<PaginatedResponse<Inquiry>> => {
-    const response = await api.get<PaginatedResponse<Inquiry>>('/inquiries/', { params });
+  getInquiries: async (params?: { status?: string; page?: number }): Promise<PaginatedResponse<Inquiry>> => {
+    const paginationParams = getPaginationParams(params?.page || 1);
+    const queryParams = { ...params, ...paginationParams };
+    const response = await api.get<PaginatedResponse<Inquiry>>('/inquiries/', { params: queryParams });
     return response.data;
   },
   getInquiry: async (id: number): Promise<Inquiry> => {
@@ -121,12 +126,15 @@ export const inquiryService = {
     const response = await api.patch<Inquiry>(`/inquiries/${id}/`, inquiry);
     return response.data;
   },
-  convertToJobCard: async (id: number): Promise<JobCard> => {
-    const response = await api.post<JobCard>(`/inquiries/${id}/convert/`);
+  convertToJobCard: async (id: number, conversionData?: InquiryConversionData): Promise<JobCard> => {
+    const response = await api.post<JobCard>(`/inquiries/${id}/convert/`, conversionData || {});
     return response.data;
   },
   markAsRead: async (id: number): Promise<void> => {
     await api.post(`/inquiries/${id}/mark_as_read/`);
+  },
+  deleteInquiry: async (id: number): Promise<void> => {
+    await api.delete(`/inquiries/${id}/`);
   },
 };
 
@@ -138,8 +146,11 @@ export const jobCardService = {
     to?: string;
     q?: string;
     city?: string;
+    page?: number;
   }): Promise<PaginatedResponse<JobCard>> => {
-    const response = await api.get<PaginatedResponse<JobCard>>('/jobcards/', { params });
+    const paginationParams = getPaginationParams(params?.page || 1);
+    const queryParams = { ...params, ...paginationParams };
+    const response = await api.get<PaginatedResponse<JobCard>>('/jobcards/', { params: queryParams });
     return response.data;
   },
   getJobCard: async (id: number): Promise<JobCard> => {
@@ -158,8 +169,10 @@ export const jobCardService = {
 
 // Renewal services
 export const renewalService = {
-  getRenewals: async (params?: { upcoming?: boolean }): Promise<PaginatedResponse<Renewal>> => {
-    const response = await api.get<PaginatedResponse<Renewal>>('/renewals/', { params });
+  getRenewals: async (params?: { upcoming?: boolean; page?: number }): Promise<PaginatedResponse<Renewal>> => {
+    const paginationParams = getPaginationParams(params?.page || 1);
+    const queryParams = { ...params, ...paginationParams };
+    const response = await api.get<PaginatedResponse<Renewal>>('/renewals/', { params: queryParams });
     return response.data;
   },
   getRenewal: async (id: number): Promise<Renewal> => {

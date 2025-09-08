@@ -7,6 +7,122 @@ body {
   -moz-osx-font-smoothing: grayscale;
   color: #1e293b;
   background-color: #f5f7fa;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix for Material-UI components that might cause scroll issues */
+.MuiTableContainer-root {
+  max-height: none !important;
+}
+
+.MuiPaper-root {
+  overflow: visible !important;
+}
+
+/* Ensure proper scrolling behavior */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* Additional fixes for double scroll issue */
+.MuiBox-root {
+  overflow-x: hidden;
+}
+
+/* Ensure proper table scrolling */
+.MuiTableContainer-root {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+/* Fix for Material-UI Paper components */
+.MuiPaper-root {
+  overflow: visible !important;
+}
+
+/* Ensure proper layout structure */
+.MuiDrawer-root {
+  overflow: hidden !important;
+}
+
+/* Fix for any potential scroll containers */
+.scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Ensure proper height calculations */
+.full-height {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Fix for status badges and chips */
+.MuiChip-root {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+.MuiChip-label {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Ensure proper badge visibility */
+.status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 60px !important;
+  height: 28px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border: 1px solid !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Fix for table cell alignment with badges */
+.MuiTableCell-root {
+  vertical-align: middle !important;
+}
+
+/* Ensure badges are not clipped in table cells */
+.MuiTableCell-root .status-badge {
+  margin: 0 auto !important;
+  display: inline-flex !important;
 }
 
 code {

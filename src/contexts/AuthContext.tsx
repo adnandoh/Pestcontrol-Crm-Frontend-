@@ -34,30 +34,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check if user is already logged in
-    console.log('AuthContext useEffect running - checking existing authentication...');
-    const userId = localStorage.getItem('user_id');
-    const username = localStorage.getItem('username');
-    const isStaff = localStorage.getItem('is_staff') === 'true';
-    const token = localStorage.getItem('access_token');
+    let isMounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        const userId = localStorage.getItem('user_id');
+        const username = localStorage.getItem('username');
+        const isStaff = localStorage.getItem('is_staff') === 'true';
+        const token = localStorage.getItem('access_token');
 
-    console.log('Stored auth data:', { userId, username, isStaff, token: token ? 'exists' : 'missing' });
+        if (isMounted) {
+          if (userId && username && token) {
+            setUser({
+              id: parseInt(userId),
+              username,
+              is_staff: isStaff,
+            });
+          }
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error initializing auth:', error);
+          setIsLoading(false);
+        }
+      }
+    };
 
-    if (userId && username && token) {
-      console.log('Setting user from localStorage');
-      setUser({
-        id: parseInt(userId),
-        username,
-        is_staff: isStaff,
-      });
-    } else {
-      console.log('No valid auth data found in localStorage');
-    }
-    setIsLoading(false);
+    initializeAuth();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Monitor user state changes
+  // Monitor user state changes with cleanup
   useEffect(() => {
-    console.log('User state changed:', user);
+    let isMounted = true;
+    
+    if (isMounted && process.env.NODE_ENV === 'development') {
+      console.log('User state changed:', user);
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const login = async (username: string, password: string) => {

@@ -16,7 +16,10 @@ import {
   Checkbox,
   ListItemText,
   Chip,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
+import FixedTextField from '../components/FixedTextField';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -65,6 +68,9 @@ const EditJobCard: React.FC = () => {
     status: 'Enquiry' as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive',
     notes: '',
     next_service_date: null as Date | null,
+    job_type: 'Customer' as 'Customer' | 'Society',
+    contract_duration: undefined as undefined | '12' | '6' | '3',
+    is_paused: false,
   });
 
   useEffect(() => {
@@ -109,6 +115,9 @@ const EditJobCard: React.FC = () => {
           next_service_date: jobCardData.next_service_date 
             ? new Date(jobCardData.next_service_date) 
             : null,
+          job_type: jobCardData.job_type || 'Customer',
+          contract_duration: jobCardData.contract_duration || undefined,
+          is_paused: jobCardData.is_paused || false,
         });
       } catch (err) {
         console.error('Error fetching job card:', err);
@@ -130,12 +139,30 @@ const EditJobCard: React.FC = () => {
   };
 
   const handleJobCardChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
+    
+    if (name === 'job_type') {
+      setJobCard({
+        ...jobCard,
+        job_type: value as 'Customer' | 'Society',
+        contract_duration: value === 'Customer' ? undefined : jobCard.contract_duration,
+      });
+    } else {
+      setJobCard({
+        ...jobCard,
+        [name]: type === 'checkbox' ? checked :
+          name === 'price_subtotal' ? (value === '' ? '' : Number(value)) :
+          name === 'payment_status' ? (value as 'Unpaid' | 'Paid') :
+          name === 'status' ? (value as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive') :
+          name === 'contract_duration' ? (value as undefined | '12' | '6' | '3') : value,
+      });
+    }
+  };
+
+  const handlePauseToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
     setJobCard({
       ...jobCard,
-      [name]: name === 'price_subtotal' ? (value === '' ? '' : Number(value)) :
-        name === 'payment_status' ? (value as 'Unpaid' | 'Paid') :
-        name === 'status' ? (value as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive') : value,
+      is_paused: event.target.checked,
     });
   };
 
@@ -173,8 +200,25 @@ const EditJobCard: React.FC = () => {
         return;
       }
 
-      if (!jobCard.price_subtotal || Number(jobCard.price_subtotal) <= 0) {
-        setError('Price must be greater than zero.');
+      // For Society job cards, allow zero price; for Customer job cards, require price > 0
+      if (jobCard.job_type === 'Customer') {
+        if (!jobCard.price_subtotal || Number(jobCard.price_subtotal) <= 0) {
+          setError('Price must be greater than zero for Customer job cards.');
+          return;
+        }
+      } else if (jobCard.job_type === 'Society') {
+        // For Society job cards, set price to 0 if not provided or allow any non-negative value
+        if (jobCard.price_subtotal === '' || jobCard.price_subtotal === null || jobCard.price_subtotal === undefined) {
+          jobCard.price_subtotal = 0;
+        } else if (Number(jobCard.price_subtotal) < 0) {
+          setError('Price cannot be negative.');
+          return;
+        }
+      }
+
+      // Validate contract duration for Society job type
+      if (jobCard.job_type === 'Society' && !jobCard.contract_duration) {
+        setError('Please select contract duration for Society job type.');
         return;
       }
 
@@ -198,6 +242,9 @@ const EditJobCard: React.FC = () => {
         next_service_date: jobCard.next_service_date
           ? jobCard.next_service_date.toISOString().split('T')[0]
           : undefined,
+        job_type: jobCard.job_type,
+        contract_duration: jobCard.job_type === 'Society' ? jobCard.contract_duration : undefined,
+        is_paused: jobCard.is_paused,
       };
 
       await jobCardService.updateJobCard(parseInt(id), jobCardData);
@@ -247,7 +294,7 @@ const EditJobCard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', mt: 2 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -276,6 +323,7 @@ const EditJobCard: React.FC = () => {
         elevation={0}
         sx={{
           p: { xs: 3, md: 4 },
+          pt: { xs: 4, md: 5 },
           border: '1px solid #e0e0e0',
           borderRadius: 0,
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
@@ -294,94 +342,46 @@ const EditJobCard: React.FC = () => {
               Client Details
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                <TextField
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible', paddingTop: '16px' }}>
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible' }}>
+                <FixedTextField
                   required
                   fullWidth
-                  label="Client Name *"
+                  label="Client Name"
                   name="full_name"
                   value={client.full_name}
                   onChange={handleClientChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1,
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: '#ffffff',
-                      },
-                    },
-                  }}
                 />
-                <TextField
+                <FixedTextField
                   required
                   fullWidth
-                  label="Mobile Number *"
+                  label="Mobile Number"
                   name="mobile"
                   value={client.mobile}
                   onChange={handleClientChange}
                   inputProps={{ maxLength: 10, pattern: '[0-9]{10}' }}
                   helperText="10-digit mobile number"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1,
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: '#ffffff',
-                      },
-                    },
-                  }}
                 />
               </Box>
-              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                <TextField
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible' }}>
+                <FixedTextField
                   fullWidth
                   label="Email"
                   name="email"
                   type="email"
                   value={client.email}
                   onChange={handleClientChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1,
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: '#ffffff',
-                      },
-                    },
-                  }}
                 />
-                <TextField
+                <FixedTextField
                   required
                   fullWidth
-                  label="City *"
+                  label="City"
                   name="city"
                   value={client.city}
                   onChange={handleClientChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1,
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: '#ffffff',
-                      },
-                    },
-                  }}
                 />
               </Box>
-              <TextField
+              <FixedTextField
                 fullWidth
                 label="Address"
                 name="address"
@@ -417,7 +417,40 @@ const EditJobCard: React.FC = () => {
               Service Details
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible', paddingTop: '16px' }}>
+              {/* Pause Service Toggle - Moved to top */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: { xs: 'center', sm: 'flex-start' },
+                alignItems: 'center',
+                p: 2,
+                backgroundColor: '#f8f9fa',
+                borderRadius: 2,
+                border: '1px solid #e9ecef'
+              }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={jobCard.is_paused}
+                      onChange={handlePauseToggle}
+                      name="is_paused"
+                      color="primary"
+                      size="medium"
+                    />
+                  }
+                  label="Pause Service"
+                  sx={{
+                    '& .MuiFormControlLabel-label': {
+                      fontSize: { xs: '1rem', sm: '1.1rem' },
+                      fontWeight: 600,
+                      color: jobCard.is_paused ? '#d32f2f' : '#333',
+                    },
+                    '& .MuiSwitch-root': {
+                      mr: 1,
+                    },
+                  }}
+                />
+              </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
                 <FormControl 
                   required 
@@ -510,6 +543,60 @@ const EditJobCard: React.FC = () => {
                 </FormControl>
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+                <FixedTextField
+                  select
+                  required
+                  fullWidth
+                  label="Customer Type *"
+                  name="job_type"
+                  value={jobCard.job_type}
+                  onChange={handleJobCardChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1,
+                      backgroundColor: '#fafafa',
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff',
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="Customer">Customer</MenuItem>
+                  <MenuItem value="Society">Society</MenuItem>
+                </FixedTextField>
+                {jobCard.job_type === 'Society' && (
+                  <FixedTextField
+                    select
+                    required
+                    fullWidth
+                    label="Contract Duration *"
+                    name="contract_duration"
+                    value={jobCard.contract_duration || ''}
+                    onChange={handleJobCardChange}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1,
+                        backgroundColor: '#fafafa',
+                        '&:hover': {
+                          backgroundColor: '#f5f5f5',
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: '#ffffff',
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem value="">Select Duration</MenuItem>
+                    <MenuItem value="12">12 Months</MenuItem>
+                    <MenuItem value="6">6 Months</MenuItem>
+                    <MenuItem value="3">3 Months</MenuItem>
+                  </FixedTextField>
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
                     label="Schedule Date *"
@@ -517,6 +604,7 @@ const EditJobCard: React.FC = () => {
                     onChange={(newValue: Date | null) =>
                       setJobCard({ ...jobCard, schedule_date: newValue || new Date() })
                     }
+                    format="dd/MM/yy"
                     slotProps={{
                       textField: {
                         fullWidth: true,
@@ -532,12 +620,12 @@ const EditJobCard: React.FC = () => {
                               backgroundColor: '#ffffff',
                             },
                           },
-                        }
-                      }
+                        },
+                      },
                     }}
                   />
                 </LocalizationProvider>
-                <TextField
+                <FixedTextField
                   select
                   required
                   fullWidth
@@ -564,80 +652,84 @@ const EditJobCard: React.FC = () => {
                   <MenuItem value="Hold">On Hold</MenuItem>
                   <MenuItem value="Cancel">Cancelled</MenuItem>
                   <MenuItem value="Inactive">Inactive</MenuItem>
-                </TextField>
+                </FixedTextField>
               </Box>
-              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                <TextField
-                  select
+              {jobCard.job_type !== 'Society' && (
+                <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+                  <FixedTextField
+                    select
+                    required
+                    fullWidth
+                    label="Payment Status *"
+                    name="payment_status"
+                    value={jobCard.payment_status}
+                    onChange={handleJobCardChange}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1,
+                        backgroundColor: '#fafafa',
+                        '&:hover': {
+                          backgroundColor: '#f5f5f5',
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: '#ffffff',
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem value="Unpaid">Unpaid</MenuItem>
+                    <MenuItem value="Paid">Paid</MenuItem>
+                  </FixedTextField>
+                </Box>
+              )}
+            </Box>
+          </Box>
+
+          {/* Pricing Details Section */}
+          {jobCard.job_type !== 'Society' && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{
+                fontWeight: 600,
+                color: '#333',
+                mb: 3,
+                pb: 2,
+                borderBottom: '2px solid #f0f0f0'
+              }}>
+                Pricing Details
+              </Typography>
+
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible', paddingTop: '16px' }}>
+                <FixedTextField
                   required
                   fullWidth
-                  label="Payment Status *"
-                  name="payment_status"
-                  value={jobCard.payment_status}
+                  label="Service Price *"
+                  name="price_subtotal"
+                  type="number"
+                  value={jobCard.price_subtotal}
                   onChange={handleJobCardChange}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  helperText="Service price (tax will be calculated automatically at 18%)"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
-                      backgroundColor: '#fafafa',
+                      backgroundColor: '#e8f5e8',
+                      '& input': {
+                        fontWeight: 600,
+                        fontSize: '1.1rem',
+                        color: '#2e7d32',
+                      },
                       '&:hover': {
-                        backgroundColor: '#f5f5f5',
+                        backgroundColor: '#e0f2e0',
                       },
                       '&.Mui-focused': {
                         backgroundColor: '#ffffff',
                       },
                     },
                   }}
-                >
-                  <MenuItem value="Unpaid">Unpaid</MenuItem>
-                  <MenuItem value="Paid">Paid</MenuItem>
-                </TextField>
+                />
               </Box>
             </Box>
-          </Box>
-
-          {/* Pricing Details Section */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{
-              fontWeight: 600,
-              color: '#333',
-              mb: 3,
-              pb: 2,
-              borderBottom: '2px solid #f0f0f0'
-            }}>
-              Pricing Details
-            </Typography>
-
-            <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Service Price *"
-                name="price_subtotal"
-                type="number"
-                value={jobCard.price_subtotal}
-                onChange={handleJobCardChange}
-                inputProps={{ min: 0, step: "0.01" }}
-                helperText="Service price (tax will be calculated automatically at 18%)"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 1,
-                    backgroundColor: '#e8f5e8',
-                    '& input': {
-                      fontWeight: 600,
-                      fontSize: '1.1rem',
-                      color: '#2e7d32',
-                    },
-                    '&:hover': {
-                      backgroundColor: '#e0f2e0',
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: '#ffffff',
-                    },
-                  },
-                }}
-              />
-            </Box>
-          </Box>
+          )}
 
           {/* Additional Details Section */}
           <Box sx={{ mb: 4 }}>
@@ -651,36 +743,39 @@ const EditJobCard: React.FC = () => {
               Additional Details
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box sx={{ maxWidth: { xs: '100%', md: '50%' } }}>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Next Service Date (Optional)"
-                    value={jobCard.next_service_date}
-                    onChange={(newValue: Date | null) =>
-                      setJobCard({ ...jobCard, next_service_date: newValue })
-                    }
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        sx: {
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: 1,
-                            backgroundColor: '#fafafa',
-                            '&:hover': {
-                              backgroundColor: '#f5f5f5',
-                            },
-                            '&.Mui-focused': {
-                              backgroundColor: '#ffffff',
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible', paddingTop: '16px' }}>
+              {jobCard.job_type !== 'Society' && (
+                <Box sx={{ maxWidth: { xs: '100%', md: '50%' } }}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DatePicker
+                      label="Next Service Date (Optional)"
+                      value={jobCard.next_service_date}
+                      onChange={(newValue: Date | null) =>
+                        setJobCard({ ...jobCard, next_service_date: newValue })
+                      }
+                      format="dd/MM/yy"
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          sx: {
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 1,
+                              backgroundColor: '#fafafa',
+                              '&:hover': {
+                                backgroundColor: '#f5f5f5',
+                              },
+                              '&.Mui-focused': {
+                                backgroundColor: '#ffffff',
+                              },
                             },
                           },
-                        }
-                      }
-                    }}
-                  />
-                </LocalizationProvider>
-              </Box>
-              <TextField
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+                </Box>
+              )}
+              <FixedTextField
                 fullWidth
                 label="Extra Notes"
                 name="notes"

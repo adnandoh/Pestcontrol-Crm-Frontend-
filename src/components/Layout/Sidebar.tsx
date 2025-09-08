@@ -179,6 +179,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
       description: 'Manage service jobs'
     },
     {
+      text: 'Society Job Card',
+      icon: <JobCardIcon />,
+      path: '/society-jobcards',
+      description: 'Manage society service jobs'
+    },
+    {
       text: 'Renewals',
       icon: <RenewalIcon />,
       path: '/renewals',

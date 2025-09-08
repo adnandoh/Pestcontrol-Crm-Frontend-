@@ -56,6 +56,10 @@ const Renewals: React.FC = () => {
         params.due_date_lt = new Date().toISOString();
       }
 
+      if (page > 0) {
+        params.page = page + 1; // Convert from 0-based to 1-based
+      }
+
       const response = await renewalService.getRenewals(params);
       setRenewals(response.results);
       setTotalCount(response.count);
@@ -65,7 +69,7 @@ const Renewals: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [tabValue, isAuthenticated]);
+  }, [tabValue, isAuthenticated, page]);
 
   useEffect(() => {
     // Only fetch renewals when authenticated
@@ -94,12 +98,15 @@ const Renewals: React.FC = () => {
   };
 
   const handleViewJobCard = (jobCardId: number) => {
-    navigate(`/jobcards/${jobCardId}`);
+    navigate(`/jobcards/${jobCardId}/edit`);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}/${month}/${year}`;
   };
 
 
@@ -135,7 +142,7 @@ const Renewals: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Paper sx={{ mb: 3, overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 0 }}>
         <Tabs
           value={tabValue}
@@ -165,7 +172,7 @@ const Renewals: React.FC = () => {
           title={getTabTitle()}
           totalCount={totalCount}
           page={page}
-          rowsPerPage={10}
+          rowsPerPage={20}
           onPageChange={setPage}
           columns={[
             { id: 'jobcard_code', label: 'Job ID', minWidth: 120 },

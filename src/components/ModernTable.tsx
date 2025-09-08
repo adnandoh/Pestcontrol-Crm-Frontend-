@@ -123,10 +123,11 @@ const ModernTable: React.FC<ModernTableProps> = ({
         sx={{ 
           border: '1px solid #e0e0e0',
           borderRadius: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          maxHeight: 'none'
         }}
       >
-        <TableContainer>
+        <TableContainer sx={{ maxHeight: 'none' }}>
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
@@ -189,6 +190,7 @@ const ModernTable: React.FC<ModernTableProps> = ({
         <CustomPagination
           count={Math.ceil(totalCount / rowsPerPage)}
           page={page + 1}
+          totalCount={totalCount}
           onChange={(event, value) => onPageChange(value - 1)}
         />
       )}

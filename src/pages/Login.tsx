@@ -11,6 +11,7 @@ import {
   InputAdornment,
   IconButton,
 } from '@mui/material';
+import FixedTextField from '../components/FixedTextField';
 import {
   Visibility,
   VisibilityOff,
@@ -110,8 +111,8 @@ const Login: React.FC = () => {
           )}
 
           {/* Login Form */}
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
+          <Box component="form" onSubmit={handleSubmit} sx={{ overflow: 'visible', paddingTop: '16px' }}>
+            <FixedTextField
               required
               fullWidth
               id="username"
@@ -144,7 +145,7 @@ const Login: React.FC = () => {
               }}
             />
             
-            <TextField
+            <FixedTextField
               required
               fullWidth
               name="password"

@@ -9,21 +9,23 @@ import {
   Alert,
   Chip,
 } from '@mui/material';
-// import { useNavigate } from 'react-router-dom'; // Removed - not used in current implementation
+import { useNavigate } from 'react-router-dom';
 import { inquiryService } from '../services/api';
 import { Inquiry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../contexts/NotificationContext';
+
 import ModernTable from '../components/ModernTable';
 
 const Inquiries: React.FC = () => {
-  // Removed unused navigate - navigation handled by table actions
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { markInquiryAsRead } = useNotifications();
+
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConverting, setIsConverting] = useState(false);
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +54,9 @@ const Inquiries: React.FC = () => {
       if (statusFilter) {
         params.status = statusFilter;
       }
+      if (page > 0) {
+        params.page = page + 1; // Convert from 0-based to 1-based
+      }
 
       const response = await inquiryService.getInquiries(params);
       setInquiries(response.results);
@@ -62,7 +67,7 @@ const Inquiries: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, isAuthenticated]);
+  }, [statusFilter, isAuthenticated, page]);
 
   useEffect(() => {
     // Only fetch inquiries when authenticated
@@ -86,17 +91,7 @@ const Inquiries: React.FC = () => {
   }
 
 
-  const handleViewInquiry = async (id: number) => {
-    try {
-      // Mark inquiry as read when viewing
-      await markInquiryAsRead(id);
-      setSuccess('Inquiry marked as read!');
-      fetchInquiries(); // Refresh the list
-    } catch (err) {
-      console.error('Error marking inquiry as read:', err);
-      setError('Failed to mark inquiry as read. Please try again.');
-    }
-  };
+
 
   const handleConvertToJob = async (id: number) => {
     try {
@@ -104,40 +99,78 @@ const Inquiries: React.FC = () => {
       setConvertingId(id);
       setError(null);
 
-      const response = await inquiryService.convertToJobCard(id);
-      setSuccess(`Inquiry converted to Job Card ${response.code} successfully!`);
-      fetchInquiries(); // Refresh the list
+      // Get the inquiry data first
+      const inquiry = inquiries.find(inq => inq.id === id);
+      if (!inquiry) {
+        setError('Inquiry not found');
+        return;
+      }
+
+      // Navigate to CreateJobCard with inquiry data
+      navigate('/jobcards/create', { 
+        state: { 
+          fromInquiry: true, 
+          inquiryData: inquiry 
+        } 
+      });
     } catch (err) {
-      console.error('Error converting inquiry to job card:', err);
-      setError('Failed to convert inquiry to job card. Please try again.');
+      console.error('Error preparing inquiry for job card conversion:', err);
+      setError('Failed to prepare inquiry for job card conversion. Please try again.');
     } finally {
       setIsConverting(false);
       setConvertingId(null);
     }
   };
 
+  const handleDeleteInquiry = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this inquiry? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeletingId(id);
+      setError(null);
+
+      await inquiryService.deleteInquiry(id);
+      setSuccess('Inquiry deleted successfully!');
+      
+      // Refresh the inquiries list
+      await fetchInquiries();
+    } catch (err) {
+      console.error('Error deleting inquiry:', err);
+      setError('Failed to delete inquiry. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}/${month}/${year}`;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New':
-        return { bg: '#E3F2FD', color: '#1565C0' };
+        return { bg: '#E3F2FD', color: '#1565C0', border: '#1565C0' };
       case 'Contacted':
-        return { bg: '#FFF9C4', color: '#F57F17' };
+        return { bg: '#FFF9C4', color: '#F57F17', border: '#F57F17' };
       case 'Converted':
-        return { bg: '#C8E6C9', color: '#388E3C' };
+        return { bg: '#C8E6C9', color: '#388E3C', border: '#388E3C' };
       case 'Closed':
-        return { bg: '#E0E0E0', color: '#616161' };
+        return { bg: '#E0E0E0', color: '#616161', border: '#616161' };
       default:
-        return { bg: 'transparent', color: 'inherit' };
+        return { bg: '#F5F5F5', color: '#666666', border: '#CCCCCC' };
     }
   };
 
   return (
-    <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
           <CircularProgress size={60} />
@@ -147,7 +180,7 @@ const Inquiries: React.FC = () => {
           title="Inquiries"
           totalCount={totalCount}
           page={page}
-          rowsPerPage={10}
+          rowsPerPage={20}
           onPageChange={setPage}
           filters={
             <TextField
@@ -176,7 +209,7 @@ const Inquiries: React.FC = () => {
             { id: 'email', label: 'Email', minWidth: 150 },
             { id: 'service_interest', label: 'Service Interest', minWidth: 150 },
             { id: 'city', label: 'City', minWidth: 100 },
-            { id: 'status', label: 'Status', minWidth: 100 },
+            { id: 'status', label: 'Status', minWidth: 120, align: 'center' },
             { id: 'created_at', label: 'Created Date', minWidth: 120, format: (value: string) => formatDate(value) },
             { id: 'actions', label: 'Actions', minWidth: 200 },
           ]}
@@ -187,43 +220,45 @@ const Inquiries: React.FC = () => {
             service_interest: inquiry.service_interest,
             city: inquiry.city,
             status: (
-              <Chip
-                label={inquiry.status}
-                size="small"
-                sx={{
-                  backgroundColor: getStatusColor(inquiry.status).bg,
-                  color: getStatusColor(inquiry.status).color,
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  height: 24,
-                  borderRadius: 1,
-                }}
-              />
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Chip
+                  label={inquiry.status}
+                  size="small"
+                  variant="outlined"
+                  className="status-badge"
+                  sx={{
+                    backgroundColor: getStatusColor(inquiry.status).bg,
+                    color: getStatusColor(inquiry.status).color,
+                    borderColor: getStatusColor(inquiry.status).border,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    height: 28,
+                    minWidth: 60,
+                    borderRadius: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '& .MuiChip-label': {
+                      padding: '0 8px',
+                      fontWeight: 600,
+                      display: 'block',
+                      whiteSpace: 'nowrap',
+                    },
+                    '&:hover': {
+                      backgroundColor: getStatusColor(inquiry.status).bg,
+                      opacity: 0.9,
+                    },
+                  }}
+                />
+              </Box>
             ),
             created_at: inquiry.created_at,
             actions: (
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => handleViewInquiry(inquiry.id)}
-                  sx={{
-                    borderColor: '#1976D2',
-                    color: '#1976D2',
-                    '&:hover': { 
-                      borderColor: '#1565C0',
-                      backgroundColor: '#E3F2FD'
-                    },
-                    borderRadius: 1,
-                    textTransform: 'none',
-                    fontWeight: 500,
-                    fontSize: '0.75rem',
-                    px: 2,
-                    py: 0.5,
-                  }}
-                >
-                  View Details
-                </Button>
                 <Button
                   size="small"
                   variant="contained"
@@ -231,7 +266,8 @@ const Inquiries: React.FC = () => {
                   disabled={
                     inquiry.status === 'Converted' ||
                     inquiry.status === 'Closed' ||
-                    isConverting
+                    isConverting ||
+                    isDeleting
                   }
                   sx={{
                     bgcolor: '#2E7D32',
@@ -249,6 +285,36 @@ const Inquiries: React.FC = () => {
                     <CircularProgress size={16} color="inherit" />
                   ) : (
                     'Convert to Job'
+                  )}
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleDeleteInquiry(inquiry.id)}
+                  disabled={isConverting || isDeleting}
+                  sx={{
+                    color: '#d32f2f',
+                    borderColor: '#d32f2f',
+                    '&:hover': { 
+                      bgcolor: '#ffebee',
+                      borderColor: '#c62828'
+                    },
+                    '&.Mui-disabled': { 
+                      color: '#bdbdbd',
+                      borderColor: '#e0e0e0'
+                    },
+                    borderRadius: 1,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    px: 2,
+                    py: 0.5,
+                  }}
+                >
+                  {isDeleting && deletingId === inquiry.id ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    'Delete'
                   )}
                 </Button>
               </Box>
