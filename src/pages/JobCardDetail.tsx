@@ -165,7 +165,7 @@ const JobCardDetail: React.FC = () => {
       {/* Breadcrumb Navigation */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Agent Booking / View Booking / {jobCard.code}
+          Agent Booking / View Booking / {jobCard.code?.replace('JC-', '') || ''}
         </Typography>
       </Box>
 
@@ -238,7 +238,7 @@ const JobCardDetail: React.FC = () => {
               <JobCardIcon />
             </Box>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, color: '#1976d2' }}>
-              {jobCard.code}
+              {jobCard.code?.replace('JC-', '') || ''}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

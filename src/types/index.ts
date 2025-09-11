@@ -47,6 +47,7 @@ export interface JobCard {
   job_type: 'Customer' | 'Society';
   contract_duration?: '12' | '6' | '3';
   is_paused: boolean;
+  reference?: string; // New reference field
   created_at: string;
   updated_at: string;
 }

@@ -13,8 +13,9 @@ import { useNavigate } from 'react-router-dom';
 import { inquiryService } from '../services/api';
 import { Inquiry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-
 import ModernTable from '../components/ModernTable';
+import SortSelector from '../components/SortSelector';
+import { SORT_OPTIONS, getDefaultSorting, addSortingToParams } from '../utils/sorting';
 
 const Inquiries: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ const Inquiries: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>(getDefaultSorting('INQUIRIES'));
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -58,7 +60,10 @@ const Inquiries: React.FC = () => {
         params.page = page + 1; // Convert from 0-based to 1-based
       }
 
-      const response = await inquiryService.getInquiries(params);
+      // Add sorting parameter
+      const paramsWithSorting = addSortingToParams(params, sortBy);
+
+      const response = await inquiryService.getInquiries(paramsWithSorting);
       setInquiries(response.results);
       setTotalCount(response.count);
     } catch (err) {
@@ -67,7 +72,7 @@ const Inquiries: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, isAuthenticated, page]);
+  }, [statusFilter, isAuthenticated, page, sortBy]);
 
   useEffect(() => {
     // Only fetch inquiries when authenticated
@@ -183,25 +188,50 @@ const Inquiries: React.FC = () => {
           rowsPerPage={20}
           onPageChange={setPage}
           filters={
-            <TextField
-              select
-              size="small"
-              label="Status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{
-                minWidth: 120,
-                '& .MuiOutlinedInput-root': {
+            <>
+              <TextField
+                select
+                size="small"
+                label="Status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                sx={{
+                  minWidth: 120,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 1,
+                  },
+                }}
+              >
+                {statusOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <SortSelector
+                value={sortBy}
+                onChange={setSortBy}
+                options={SORT_OPTIONS.INQUIRIES}
+                label="Sort by"
+                size="small"
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setStatusFilter('');
+                  setSortBy(getDefaultSorting('INQUIRIES'));
+                }}
+                sx={{
                   borderRadius: 1,
-                },
-              }}
-            >
-              {statusOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  px: 2,
+                }}
+              >
+                Clear
+              </Button>
+            </>
           }
           columns={[
             { id: 'name', label: 'Name', minWidth: 150 },

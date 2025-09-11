@@ -29,7 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { jobCardService, renewalService, inquiryService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-// Define spacing scale
+// Define spacing scale for consistent spacing
 const spacing = {
   xs: 8,
   sm: 16,
@@ -52,14 +52,6 @@ const Dashboard: React.FC = () => {
   const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
   const theme = useTheme();
   const [error, setError] = useState<string | null>(null);
-  
-  // Spacing scale based on 8px increments
-  const spacing = {
-    xs: 8,
-    sm: 16,
-    md: 24,
-    lg: 32
-  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -83,7 +75,13 @@ const Dashboard: React.FC = () => {
           completedJobs: jobCardsResponse.results.filter(job => job.status === 'Done').length,
         });
 
-        setRecentJobs(jobCardsResponse.results.slice(0, 5));
+        // Get recent jobs (not completed) and upcoming jobs
+        const upcomingJobs = jobCardsResponse.results
+          .filter(job => job.status !== 'Done' && job.status !== 'Cancel')
+          .sort((a, b) => new Date(a.schedule_date).getTime() - new Date(b.schedule_date).getTime())
+          .slice(0, 5);
+        
+        setRecentJobs(upcomingJobs);
         setUpcomingRenewals(renewalsResponse.results.slice(0, 5));
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -327,36 +325,43 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Container maxWidth={false} sx={{ py: spacing.md / 8, px: { xs: 2, sm: 3 } }}>
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
-          {/* Page Title */}
-          <Box sx={{ mb: spacing.md / 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h1" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 0 }}>
-              Dashboard 🏠
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/jobcards/create')}
-              sx={{ 
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
-              }}
-            >
-              Create Job
-            </Button>
-          </Box>
+    <Container maxWidth={false} sx={{ py: 3, px: { xs: 2, sm: 3 } }}>
+      {/* Page Title */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h1" component="h1" sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          mb: 0,
+          fontSize: { xs: '1.8rem', sm: '2.2rem' },
+          fontWeight: 700,
+          color: theme.palette.text.primary
+        }}>
+          Dashboard 🏠
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/jobcards/create')}
+          sx={{ 
+            borderRadius: '12px',
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 3,
+            py: 1.5,
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
+            '&:hover': {
+              boxShadow: '0 6px 16px rgba(59, 130, 246, 0.3)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          + Create Job
+        </Button>
+      </Box>
 
-          {/* Stats Cards */}
-          <Grid container spacing={spacing.sm / 8} sx={{ mb: spacing.md / 8 }}>
+      {/* Stats Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 title="Total Jobs"
@@ -401,7 +406,7 @@ const Dashboard: React.FC = () => {
           </Grid>
 
       {/* Main Dashboard Content */}
-      <Grid container spacing={spacing.md / 8}>
+      <Grid container spacing={3}>
         {/* Left Column - Upcoming Jobs Table (on desktop) */}
         <Grid size={{ xs: 12, md: 8 }} sx={{ order: { xs: 2, md: 1 } }}>
           <Card 
@@ -416,16 +421,29 @@ const Dashboard: React.FC = () => {
             }}
           >
             <Box sx={{ 
-              p: spacing.md / 8, 
+              p: 3, 
               borderBottom: `1px solid ${theme.palette.grey[100]}`,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between'
             }}>
               <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '18px' }}>
                 Upcoming Jobs
               </Typography>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => navigate('/jobcards')}
+                sx={{ 
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  color: theme.palette.primary.main
+                }}
+              >
+                View All
+              </Button>
             </Box>
-            <Box sx={{ p: spacing.sm / 8 }}>
+            <Box sx={{ p: 0 }}>
               {recentJobs.length > 0 ? (
                 <Box sx={{ 
                   overflowX: 'auto',
@@ -434,14 +452,15 @@ const Dashboard: React.FC = () => {
                     borderCollapse: 'collapse',
                     '& th': {
                       textAlign: 'left',
-                      padding: spacing.sm / 8,
+                      padding: '16px 12px',
                       borderBottom: `1px solid ${theme.palette.grey[200]}`,
                       fontWeight: 600,
                       color: theme.palette.text.secondary,
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      backgroundColor: theme.palette.grey[50]
                     },
                     '& td': {
-                      padding: spacing.sm / 8,
+                      padding: '12px',
                       borderBottom: `1px solid ${theme.palette.grey[100]}`,
                       fontSize: '14px',
                       position: 'relative',
@@ -492,7 +511,16 @@ const Dashboard: React.FC = () => {
                     </thead>
                     <tbody>
                       {recentJobs.map((job) => (
-                        <tr key={job.id} onClick={() => navigate(`/jobcards/${job.id}`)} style={{ cursor: 'pointer' }}>
+                        <tr 
+                          key={job.id} 
+                          onClick={() => navigate(`/jobcards/${job.id}`)} 
+                          style={{ 
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.palette.grey[50]}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
                           <td data-label="Job ID">{job.id}</td>
                           <td data-label="Client">{job.client_name}</td>
                           <td data-label="Service">{job.service_type}</td>
@@ -523,10 +551,53 @@ const Dashboard: React.FC = () => {
                   </table>
                 </Box>
               ) : (
-                <Box sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">
-                    No upcoming jobs found.
+                <Box sx={{ 
+                  p: 4, 
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2
+                }}>
+                  <Box sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    backgroundColor: theme.palette.grey[100],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 1
+                  }}>
+                    <ScheduleIcon sx={{ fontSize: 32, color: theme.palette.grey[400] }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ 
+                    color: theme.palette.text.secondary,
+                    fontWeight: 500,
+                    mb: 1
+                  }}>
+                    No upcoming jobs
                   </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: theme.palette.text.secondary,
+                    mb: 2,
+                    maxWidth: 300
+                  }}>
+                    All your jobs are completed or you don't have any scheduled jobs yet.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/jobcards/create')}
+                    sx={{ 
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      fontWeight: 600
+                    }}
+                  >
+                    Create New Job
+                  </Button>
                 </Box>
               )}
             </Box>
@@ -549,7 +620,7 @@ const Dashboard: React.FC = () => {
             }}
           >
             <Box sx={{ 
-              p: spacing.md / 8, 
+              p: 3, 
               borderBottom: `1px solid ${theme.palette.grey[100]}`,
               display: 'flex',
               alignItems: 'center',
@@ -558,7 +629,7 @@ const Dashboard: React.FC = () => {
                 Quick Actions
               </Typography>
             </Box>
-            <Box sx={{ p: spacing.md / 8, flex: 1, display: 'flex', flexDirection: 'column', gap: spacing.sm / 8 }}>
+            <Box sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Button
                 fullWidth
                 variant="contained"
@@ -629,8 +700,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-        </>
-      )}
     </Container>
   );
 };

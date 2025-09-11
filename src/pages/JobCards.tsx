@@ -20,6 +20,9 @@ import { jobCardService } from '../services/api';
 import { JobCard } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import ModernTable from '../components/ModernTable';
+import ServiceTypesDisplay from '../components/ServiceTypesDisplay';
+import SortSelector from '../components/SortSelector';
+import { SORT_OPTIONS, getDefaultSorting, addSortingToParams } from '../utils/sorting';
 
 const JobCards: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +36,7 @@ const JobCards: React.FC = () => {
   const [cityFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [sortBy, setSortBy] = useState<string>(getDefaultSorting('JOB_CARDS'));
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -61,15 +65,17 @@ const JobCards: React.FC = () => {
         q: searchQuery,
       };
 
+      // Add sorting parameter
+      const paramsWithSorting = addSortingToParams(params, sortBy);
+
       if (fromDate) {
-        params.from = fromDate.toISOString().split('T')[0];
+        paramsWithSorting.from = fromDate.toISOString().split('T')[0];
       }
       if (page > 0) {
-        params.page = page + 1; // Convert from 0-based to 1-based
+        paramsWithSorting.page = page + 1; // Convert from 0-based to 1-based
       }
 
-
-      const response = await jobCardService.getJobCards(params);
+      const response = await jobCardService.getJobCards(paramsWithSorting);
       console.log('Job cards response:', response);
       console.log('Job cards data:', response.results);
       setJobCards(response.results);
@@ -80,7 +86,7 @@ const JobCards: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, cityFilter, searchQuery, fromDate, isAuthenticated, page]);
+  }, [statusFilter, cityFilter, searchQuery, fromDate, isAuthenticated, page, sortBy]);
 
   useEffect(() => {
     // Only fetch job cards when authenticated
@@ -201,9 +207,22 @@ const JobCards: React.FC = () => {
                   </MenuItem>
                 ))}
               </TextField>
+              <SortSelector
+                value={sortBy}
+                onChange={setSortBy}
+                options={SORT_OPTIONS.JOB_CARDS}
+                label="Sort by"
+                size="small"
+              />
               <Button
                 variant="outlined"
                 size="small"
+                onClick={() => {
+                  setStatusFilter('');
+                  setSearchQuery('');
+                  setFromDate(null);
+                  setSortBy(getDefaultSorting('JOB_CARDS'));
+                }}
                 sx={{
                   borderRadius: 1,
                   textTransform: 'none',
@@ -216,6 +235,7 @@ const JobCards: React.FC = () => {
               <Button
                 variant="contained"
                 size="small"
+                onClick={fetchJobCards}
                 sx={{
                   bgcolor: '#007bff',
                   '&:hover': { bgcolor: '#0056b3' },
@@ -234,17 +254,24 @@ const JobCards: React.FC = () => {
             { id: 'client_name', label: 'Client Name', minWidth: 120 },
             { id: 'mobile_number', label: 'Mobile Number', minWidth: 120 },
             { id: 'client_address', label: 'Client Address', minWidth: 150 },
+            { id: 'service_types', label: 'Service Types', minWidth: 200 },
             { id: 'schedule_date', label: 'Schedule Date', minWidth: 120 },
             { id: 'status', label: 'Status', minWidth: 100 },
             { id: 'actions', label: 'Actions', minWidth: 100 },
           ]}
           rows={jobCards.length > 0 ? jobCards.map(jobCard => ({
-            booking_id: jobCard.code,
+            booking_id: jobCard.code?.replace('JC-', '') || '',
             client_name: jobCard.client_name,
             mobile_number: jobCard.client_mobile,
             client_address: jobCard.client_city,
+            service_types: (
+              <ServiceTypesDisplay
+                serviceTypes={jobCard.service_type || ''}
+                maxDisplay={2}
+                showViewMore={true}
+              />
+            ),
             schedule_date: formatDate(jobCard.schedule_date),
-            booking_for: jobCard.service_type,
             status: (
               <Chip
                 label={jobCard.status}

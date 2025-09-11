@@ -165,6 +165,14 @@ export const jobCardService = {
     const response = await api.patch<JobCard>(`/jobcards/${id}/`, jobCard);
     return response.data;
   },
+  getReferenceReport: async (): Promise<{
+    results: Array<{ reference_name: string; reference_count: number }>;
+    total_job_cards: number;
+    total_with_reference: number;
+  }> => {
+    const response = await api.get('/jobcards/reference-report/');
+    return response.data;
+  },
 };
 
 // Renewal services

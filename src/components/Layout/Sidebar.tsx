@@ -23,6 +23,7 @@ import {
   Autorenew as RenewalIcon,
   QuestionAnswer as InquiryIcon,
   PostAdd as CreateJobIcon,
+  Assessment as AssessmentIcon,
   KeyboardDoubleArrowLeft as CollapseIcon,
   KeyboardDoubleArrowRight as ExpandIcon,
   Person as PersonIcon,
@@ -211,6 +212,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
       path: '/jobcards/create',
       description: 'Add new service job'
     },
+    {
+      text: 'Reference Report',
+      icon: <AssessmentIcon />,
+      path: '/reference-report',
+      description: 'Reference source analytics'
+    },
   ];
 
   return (
@@ -318,7 +325,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                             : '#666',
                           transition: 'all 0.2s ease-in-out',
                           '& svg': {
-                            fontSize: '1.2rem',
+                            fontSize: '1.1rem',
                           },
                         }}
                       >
@@ -336,11 +343,11 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                             color: isActive
                               ? theme.palette.primary.main
                               : '#333',
-                            fontSize: '0.9rem',
+                            fontSize: '0.8rem',
                             transition: 'all 0.2s ease-in-out',
                           },
                           '& .MuiListItemText-secondary': {
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
                             color: '#666',
                             opacity: 0.8,
                             transition: 'all 0.2s ease-in-out',
@@ -384,7 +391,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                       fontWeight: 600,
                       color: '#333',
                       lineHeight: 1.2,
-                      fontSize: '0.9rem',
+                      fontSize: '0.8rem',
                     }}
                   >
                     {user.username}
@@ -394,7 +401,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                     sx={{ 
                       color: '#666',
                       lineHeight: 1,
-                      fontSize: '0.75rem',
+                      fontSize: '0.7rem',
                     }}
                   >
                     Administrator

@@ -9,24 +9,18 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  OutlinedInput,
-  Checkbox,
-  ListItemText,
-  Chip,
   Switch,
   FormControlLabel,
 } from '@mui/material';
 import FixedTextField from '../components/FixedTextField';
+import ServiceTypeSelector from '../components/ServiceTypeSelector';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { clientService, jobCardService } from '../services/api';
-import { JobCard } from '../types';
+import { JobCard } from '../types/index';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -36,20 +30,6 @@ const EditJobCard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Predefined service types for pest control
-  const serviceTypes = [
-    '🐜 Ants',
-    '🪳 Cockroaches',
-    '🐛 Termites',
-    '🐭 Rodents (Mice/Rats)',
-    '🕷️ Spiders',
-    '🐝 Wasps/Bees',
-    '🛏️ Bed Bugs',
-    '🦟 Fleas',
-    '🦟 Mosquitoes',
-    '🪰 House Flies',
-    '🔍 Other'
-  ];
 
   // Form states
   const [client, setClient] = useState({
@@ -71,6 +51,7 @@ const EditJobCard: React.FC = () => {
     job_type: 'Customer' as 'Customer' | 'Society',
     contract_duration: undefined as undefined | '12' | '6' | '3',
     is_paused: false,
+    reference: '', // New reference field
   });
 
   useEffect(() => {
@@ -118,6 +99,7 @@ const EditJobCard: React.FC = () => {
           job_type: jobCardData.job_type || 'Customer',
           contract_duration: jobCardData.contract_duration || undefined,
           is_paused: jobCardData.is_paused || false,
+          reference: jobCardData.reference || '', // Add reference field
         });
       } catch (err) {
         console.error('Error fetching job card:', err);
@@ -166,11 +148,10 @@ const EditJobCard: React.FC = () => {
     });
   };
 
-  const handleServiceTypeChange = (event: any) => {
-    const value = event.target.value;
+  const handleServiceTypeChange = (value: string[]) => {
     setJobCard({
       ...jobCard,
-      service_type: typeof value === 'string' ? value.split(',') : value,
+      service_type: value,
     });
   };
 
@@ -245,6 +226,7 @@ const EditJobCard: React.FC = () => {
         job_type: jobCard.job_type,
         contract_duration: jobCard.job_type === 'Society' ? jobCard.contract_duration : undefined,
         is_paused: jobCard.is_paused,
+        reference: jobCard.reference,
       };
 
       await jobCardService.updateJobCard(parseInt(id), jobCardData);
@@ -452,9 +434,23 @@ const EditJobCard: React.FC = () => {
                 />
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                <FormControl 
-                  required 
+                <ServiceTypeSelector
+                  value={jobCard.service_type}
+                  onChange={handleServiceTypeChange}
+                  required
+                  label="Service Type"
+                />
+              </Box>
+              
+              {/* Reference Field */}
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+                <FixedTextField
+                  select
                   fullWidth
+                  label="Reference"
+                  name="reference"
+                  value={jobCard.reference}
+                  onChange={handleJobCardChange}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
@@ -468,79 +464,24 @@ const EditJobCard: React.FC = () => {
                     },
                   }}
                 >
-                  <InputLabel id="service-type-label">Service Type *</InputLabel>
-                  <Select
-                    labelId="service-type-label"
-                    multiple
-                    value={jobCard.service_type}
-                    onChange={handleServiceTypeChange}
-                    input={<OutlinedInput label="Service Type *" />}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip 
-                            key={value} 
-                            label={value} 
-                            size="small"
-                            sx={{
-                              backgroundColor: '#e8f5e9',
-                              color: '#2e7d32',
-                              fontWeight: 500,
-                              '& .MuiChip-deleteIcon': {
-                                color: '#2e7d32',
-                              },
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      PaperProps: {
-                        style: {
-                          maxHeight: 300,
-                          width: 'auto',
-                        },
-                      },
-                    }}
-                  >
-                    {serviceTypes.map((service) => (
-                      <MenuItem 
-                        key={service} 
-                        value={service}
-                        sx={{
-                          py: 1,
-                          '&:hover': {
-                            backgroundColor: '#f8f9fa',
-                          },
-                          '&.Mui-selected': {
-                            backgroundColor: '#e8f5e9',
-                            '&:hover': {
-                              backgroundColor: '#e0f2e1',
-                            },
-                          },
-                        }}
-                      >
-                        <Checkbox 
-                          checked={jobCard.service_type.indexOf(service) > -1}
-                          sx={{
-                            color: '#4CAF50',
-                            '&.Mui-checked': {
-                              color: '#4CAF50',
-                            },
-                          }}
-                        />
-                        <ListItemText 
-                          primary={service}
-                          sx={{
-                            '& .MuiListItemText-primary': {
-                              fontSize: '0.95rem',
-                            },
-                          }}
-                        />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                  <MenuItem value="">Select Reference Source</MenuItem>
+                  <MenuItem value="Google">Google</MenuItem>
+                  <MenuItem value="Facebook">Facebook</MenuItem>
+                  <MenuItem value="YouTube">YouTube</MenuItem>
+                  <MenuItem value="LinkedIn">LinkedIn</MenuItem>
+                  <MenuItem value="SMS">SMS</MenuItem>
+                  <MenuItem value="website">Website</MenuItem>
+                  <MenuItem value="Play Store">Play Store</MenuItem>
+                  <MenuItem value="Instagram">Instagram</MenuItem>
+                  <MenuItem value="WhatsApp">WhatsApp</MenuItem>
+                  <MenuItem value="Justdial">Justdial</MenuItem>
+                  <MenuItem value="poster">Poster</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                  <MenuItem value="previous client">Previous Client</MenuItem>
+                  <MenuItem value="friend reference">Friend Reference</MenuItem>
+                  <MenuItem value="no parking board">No Parking Board</MenuItem>
+                  <MenuItem value="holding">Holding</MenuItem>
+                </FixedTextField>
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
                 <FixedTextField

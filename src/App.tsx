@@ -24,6 +24,7 @@ const EditJobCard = lazy(() => import('./pages/EditJobCard'));
 const Renewals = lazy(() => import('./pages/Renewals'));
 const Inquiries = lazy(() => import('./pages/Inquiries'));
 const JobCardDetail = lazy(() => import('./pages/JobCardDetail'));
+const ReferenceReport = lazy(() => import('./pages/ReferenceReport'));
 
 const theme = createTheme({
   palette: {
@@ -82,7 +83,7 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontSize: '26px',
       fontWeight: 700,
@@ -443,6 +444,18 @@ function App() {
                         <AsyncErrorBoundary>
                           <Suspense fallback={<LoadingSpinner />}>
                             <Inquiries />
+                          </Suspense>
+                        </AsyncErrorBoundary>
+                      </RouteErrorBoundary>
+                    } 
+                  />
+                  <Route 
+                    path="reference-report" 
+                    element={
+                      <RouteErrorBoundary>
+                        <AsyncErrorBoundary>
+                          <Suspense fallback={<LoadingSpinner />}>
+                            <ReferenceReport />
                           </Suspense>
                         </AsyncErrorBoundary>
                       </RouteErrorBoundary>
