@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Chip, Button, Typography } from '@mui/material';
+import { Box, Chip, Button, Typography, Tooltip } from '@mui/material';
 
 interface ServiceTypesDisplayProps {
   serviceTypes: string;
@@ -29,67 +29,77 @@ const ServiceTypesDisplay: React.FC<ServiceTypesDisplayProps> = ({
   const hasMore = serviceTypesArray.length > maxDisplay;
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
-      {displayTypes.map((serviceType, index) => (
-        <Chip
-          key={index}
-          label={serviceType}
-          size="small"
-          sx={{
-            backgroundColor: '#e8f5e9',
-            color: '#2e7d32',
-            fontWeight: 500,
-            fontSize: '0.7rem',
-            height: 20,
-            '& .MuiChip-label': {
+    <Tooltip title={serviceTypes} arrow placement="top">
+      <Box sx={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: 0.5, 
+        alignItems: 'center',
+        maxWidth: '250px',
+        overflow: 'hidden',
+        cursor: 'help'
+      }}>
+        {displayTypes.map((serviceType, index) => (
+          <Chip
+            key={index}
+            label={serviceType}
+            size="small"
+            sx={{
+              backgroundColor: '#e8f5e9',
+              color: '#2e7d32',
+              fontWeight: 500,
+              fontSize: '0.6rem',
+              height: 20,
+              '& .MuiChip-label': {
+                px: 1,
+              },
+            }}
+          />
+        ))}
+        
+        {hasMore && showViewMore && !showAll && (
+          <Button
+            size="small"
+            onClick={() => setShowAll(true)}
+            sx={{
+              minWidth: 'auto',
               px: 1,
-            },
-          }}
-        />
-      ))}
-      
-      {hasMore && showViewMore && !showAll && (
-        <Button
-          size="small"
-          onClick={() => setShowAll(true)}
-          sx={{
-            minWidth: 'auto',
-            px: 1,
-            py: 0,
-            fontSize: '0.7rem',
-            textTransform: 'none',
-            color: '#1976d2',
-            fontWeight: 500,
-            '&:hover': {
-              backgroundColor: 'rgba(25, 118, 210, 0.04)',
-            },
-          }}
-        >
-          +{serviceTypesArray.length - maxDisplay} more
-        </Button>
-      )}
-      
-      {hasMore && showViewMore && showAll && (
-        <Button
-          size="small"
-          onClick={() => setShowAll(false)}
-          sx={{
-            minWidth: 'auto',
-            px: 1,
-            py: 0,
-            fontSize: '0.7rem',
-            textTransform: 'none',
-            color: '#1976d2',
-            fontWeight: 500,
-            '&:hover': {
-              backgroundColor: 'rgba(25, 118, 210, 0.04)',
-            },
-          }}
-        >
-          show less
-        </Button>
-      )}
-    </Box>
+              py: 0,
+              fontSize: '0.6rem',
+              textTransform: 'none',
+              color: '#1976d2',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              },
+            }}
+          >
+            +{serviceTypesArray.length - maxDisplay} more
+          </Button>
+        )}
+        
+        {hasMore && showViewMore && showAll && (
+          <Button
+            size="small"
+            onClick={() => setShowAll(false)}
+            sx={{
+              minWidth: 'auto',
+              px: 1,
+              py: 0,
+              fontSize: '0.6rem',
+              textTransform: 'none',
+              color: '#1976d2',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              },
+            }}
+          >
+            show less
+          </Button>
+        )}
+      </Box>
+    </Tooltip>
   );
 };
 

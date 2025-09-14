@@ -11,11 +11,15 @@ import {
   Typography,
   TextField,
   InputAdornment,
+  Button,
+  Tooltip,
 } from '@mui/material';
 import CustomPagination from './CustomPagination';
 import {
   Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
+import { getSearchPlaceholder } from '../utils/searchValidation';
 
 interface Column {
   id: string;
@@ -32,6 +36,11 @@ interface ModernTableProps {
   totalCount?: number;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  searchError?: string | null;
+  onSearchKeyPress?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  onSearchSubmit?: () => void;
+  onSearchClear?: () => void;
+  searchContext?: string;
   filters?: React.ReactNode;
   actions?: React.ReactNode;
   page?: number;
@@ -46,6 +55,11 @@ const ModernTable: React.FC<ModernTableProps> = ({
   totalCount,
   searchValue,
   onSearchChange,
+  searchError,
+  onSearchKeyPress,
+  onSearchSubmit,
+  onSearchClear,
+  searchContext = 'general',
   filters,
   actions,
   page = 0,
@@ -63,7 +77,7 @@ const ModernTable: React.FC<ModernTableProps> = ({
         flexWrap: 'wrap',
         gap: 2
       }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, color: '#333' }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
           {title}
         </Typography>
         {actions && (
@@ -88,31 +102,78 @@ const ModernTable: React.FC<ModernTableProps> = ({
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {totalCount !== undefined && (
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+            <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
               Total Count: <strong>{totalCount}</strong>
             </Typography>
           )}
           {onSearchChange && (
-            <TextField
-              size="small"
-              placeholder="Search"
-              value={searchValue || ''}
-              onChange={(e) => onSearchChange(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: '1.2rem', color: '#666' }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                minWidth: 200,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 0,
-                  backgroundColor: '#f8f9fa',
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                size="small"
+                placeholder={getSearchPlaceholder(searchContext)}
+                value={searchValue || ''}
+                onChange={(e) => onSearchChange(e.target.value)}
+                onKeyPress={onSearchKeyPress}
+                error={!!searchError}
+                helperText={searchError}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: '1.2rem', color: '#666' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 250,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 0,
+                    backgroundColor: '#f8f9fa',
+                  },
+                '& .MuiFormHelperText-root': {
+                  position: 'absolute',
+                  bottom: '-20px',
+                  margin: 0,
+                  fontSize: '0.6rem',
                 },
-              }}
-            />
+                }}
+              />
+              {onSearchSubmit && (
+                <Tooltip title="Search">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={onSearchSubmit}
+                    sx={{
+                      bgcolor: '#007bff',
+                      '&:hover': { bgcolor: '#0056b3' },
+                      borderRadius: 0,
+                      minWidth: 'auto',
+                      px: 2,
+                      height: '40px',
+                    }}
+                  >
+                    <SearchIcon sx={{ fontSize: '1.2rem' }} />
+                  </Button>
+                </Tooltip>
+              )}
+              {onSearchClear && searchValue && (
+                <Tooltip title="Clear search">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={onSearchClear}
+                    sx={{
+                      borderRadius: 0,
+                      minWidth: 'auto',
+                      px: 2,
+                      height: '40px',
+                    }}
+                  >
+                    <ClearIcon sx={{ fontSize: '1.2rem' }} />
+                  </Button>
+                </Tooltip>
+              )}
+            </Box>
           )}
         </Box>
       </Box>
@@ -138,10 +199,10 @@ const ModernTable: React.FC<ModernTableProps> = ({
                     style={{ 
                       minWidth: column.minWidth,
                       fontWeight: 600,
-                      fontSize: '0.875rem',
+                      fontSize: '0.75rem',
                       color: '#333',
                       borderBottom: '1px solid #e0e0e0',
-                      padding: '16px 12px',
+                      padding: '12px 10px',
                     }}
                   >
                     {column.label}
@@ -170,8 +231,8 @@ const ModernTable: React.FC<ModernTableProps> = ({
                         align={column.align}
                         sx={{
                           borderBottom: '1px solid #f0f0f0',
-                          padding: '12px',
-                          fontSize: '0.875rem',
+                          padding: '10px',
+                          fontSize: '0.75rem',
                         }}
                       >
                         {column.format ? column.format(value) : value}

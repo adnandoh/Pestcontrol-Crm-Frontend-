@@ -21,8 +21,14 @@ import { JobCard } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import ModernTable from '../components/ModernTable';
 import ServiceTypesDisplay from '../components/ServiceTypesDisplay';
+import AddressDisplay from '../components/AddressDisplay';
 import SortSelector from '../components/SortSelector';
 import { SORT_OPTIONS, getDefaultSorting, addSortingToParams } from '../utils/sorting';
+import { 
+  handleSearchInputChange, 
+  handleSearchSubmission, 
+  validateSearchInput 
+} from '../utils/searchValidation';
 
 const JobCards: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +41,7 @@ const JobCards: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [cityFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState<string>(getDefaultSorting('JOB_CARDS'));
 
@@ -48,7 +55,7 @@ const JobCards: React.FC = () => {
     { value: 'Inactive', label: 'Inactive' },
   ];
 
-  const fetchJobCards = useCallback(async () => {
+  const fetchJobCards = useCallback(async (searchTerm?: string) => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
       return;
@@ -62,7 +69,7 @@ const JobCards: React.FC = () => {
         job_type: 'Customer', // Filter for Customer job cards only
         status: statusFilter,
         city: cityFilter,
-        q: searchQuery,
+        q: searchTerm !== undefined ? searchTerm : searchQuery,
       };
 
       // Add sorting parameter
@@ -86,14 +93,14 @@ const JobCards: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, cityFilter, searchQuery, fromDate, isAuthenticated, page, sortBy]);
+  }, [statusFilter, cityFilter, fromDate, isAuthenticated, page, sortBy]);
 
   useEffect(() => {
-    // Only fetch job cards when authenticated
+    // Only fetch job cards when authenticated and on initial load or filter changes
     if (isAuthenticated && !authLoading) {
       fetchJobCards();
     }
-  }, [fetchJobCards, isAuthenticated, authLoading]);
+  }, [statusFilter, cityFilter, fromDate, isAuthenticated, authLoading, page, sortBy]);
 
   // Show loading state while authentication is being checked
   if (authLoading) {
@@ -119,6 +126,31 @@ const JobCards: React.FC = () => {
       return;
     }
     navigate(`/jobcards/${id}/edit`);
+  };
+
+  // Handle search input change with validation
+  const handleSearchChange = (value: string) => {
+    handleSearchInputChange(value, setSearchQuery, setSearchError);
+  };
+
+  // Handle search on Enter key press
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSearchSubmission(searchQuery, setSearchError, () => fetchJobCards(searchQuery));
+    }
+  };
+
+  // Handle search button click
+  const handleSearchSubmit = () => {
+    handleSearchSubmission(searchQuery, setSearchError, () => fetchJobCards(searchQuery));
+  };
+
+  // Handle search clear
+  const handleSearchClear = () => {
+    setSearchQuery('');
+    setSearchError(null);
+    fetchJobCards(''); // Clear search by passing empty string
   };
 
   const formatDate = (dateString: string) => {
@@ -162,9 +194,13 @@ const JobCards: React.FC = () => {
           title="Customer Job Cards"
           totalCount={totalCount}
           searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
+          searchError={searchError}
+          onSearchKeyPress={handleSearchKeyPress}
+          onSearchSubmit={handleSearchSubmit}
+          onSearchClear={handleSearchClear}
+          searchContext="jobcards"
           page={page}
-
           rowsPerPage={20}
           onPageChange={setPage}
           filters={
@@ -220,8 +256,10 @@ const JobCards: React.FC = () => {
                 onClick={() => {
                   setStatusFilter('');
                   setSearchQuery('');
+                  setSearchError(null);
                   setFromDate(null);
                   setSortBy(getDefaultSorting('JOB_CARDS'));
+                  fetchJobCards(''); // Clear search
                 }}
                 sx={{
                   borderRadius: 1,
@@ -231,21 +269,6 @@ const JobCards: React.FC = () => {
                 }}
               >
                 Clear
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={fetchJobCards}
-                sx={{
-                  bgcolor: '#007bff',
-                  '&:hover': { bgcolor: '#0056b3' },
-                  borderRadius: 1,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  px: 2,
-                }}
-              >
-                Search
               </Button>
             </>
           }
@@ -263,7 +286,13 @@ const JobCards: React.FC = () => {
             booking_id: jobCard.code?.replace('JC-', '') || '',
             client_name: jobCard.client_name,
             mobile_number: jobCard.client_mobile,
-            client_address: jobCard.client_city,
+            client_address: (
+              <AddressDisplay
+                address={jobCard.client_city || ''}
+                maxWords={4}
+                showViewMore={true}
+              />
+            ),
             service_types: (
               <ServiceTypesDisplay
                 serviceTypes={jobCard.service_type || ''}
@@ -280,7 +309,7 @@ const JobCards: React.FC = () => {
                   backgroundColor: getStatusColor(jobCard.status).bg,
                   color: getStatusColor(jobCard.status).color,
                   fontWeight: 500,
-                  fontSize: '0.75rem',
+                  fontSize: '0.65rem',
                   height: 24,
                   borderRadius: 1,
                 }}
@@ -298,7 +327,7 @@ const JobCards: React.FC = () => {
                   borderRadius: 1,
                   textTransform: 'none',
                   fontWeight: 500,
-                  fontSize: '0.75rem',
+                  fontSize: '0.65rem',
                   px: 2,
                   py: 0.5,
                 }}

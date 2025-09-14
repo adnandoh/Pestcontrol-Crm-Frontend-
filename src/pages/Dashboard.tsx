@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
               variant="body2" 
               sx={{ 
                 mb: spacing.xs / 8, 
-                fontSize: '12px',
+                fontSize: '10px',
                 color: theme.palette.text.secondary,
                 fontWeight: 600,
                 textTransform: 'uppercase',
@@ -180,7 +180,7 @@ const Dashboard: React.FC = () => {
               sx={{ 
                 fontWeight: 600, 
                 color: highlight ? theme.palette.error.main : theme.palette.text.primary, 
-                fontSize: '34px', 
+                fontSize: '24px', 
                 mb: spacing.xs / 8,
                 lineHeight: 1.2
               }}
@@ -191,7 +191,7 @@ const Dashboard: React.FC = () => {
               <Typography 
                 variant="body2" 
                 sx={{ 
-                  fontSize: '12px',
+                  fontSize: '10px',
                   color: theme.palette.text.secondary,
                   fontWeight: 500,
                   display: 'flex',
@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
               boxShadow: `0 8px 16px ${color}40`,
               transition: 'all 0.3s ease',
               '& .MuiSvgIcon-root': {
-                fontSize: '1.75rem'
+                fontSize: '1.4rem'
               }
             }}
           >
@@ -288,17 +288,17 @@ const Dashboard: React.FC = () => {
               boxShadow: `0 8px 16px ${color}40`,
               transition: 'all 0.3s ease',
               '& .MuiSvgIcon-root': {
-                fontSize: { xs: '1.3rem', sm: '1.5rem' }
+                fontSize: { xs: '1.1rem', sm: '1.2rem' }
               }
             }}
           >
             {icon}
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
               {title}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.85, fontSize: { xs: '0.75rem', sm: '0.8rem' } }}>
+            <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.85, fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
               {description}
             </Typography>
           </Box>
@@ -332,7 +332,7 @@ const Dashboard: React.FC = () => {
           display: 'flex', 
           alignItems: 'center', 
           mb: 0,
-          fontSize: { xs: '1.8rem', sm: '2.2rem' },
+          fontSize: { xs: '1.4rem', sm: '1.6rem' },
           fontWeight: 700,
           color: theme.palette.text.primary
         }}>
@@ -427,7 +427,7 @@ const Dashboard: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '18px' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '14px' }}>
                 Upcoming Jobs
               </Typography>
               <Button
@@ -456,13 +456,13 @@ const Dashboard: React.FC = () => {
                       borderBottom: `1px solid ${theme.palette.grey[200]}`,
                       fontWeight: 600,
                       color: theme.palette.text.secondary,
-                      fontSize: '14px',
+                      fontSize: '12px',
                       backgroundColor: theme.palette.grey[50]
                     },
                     '& td': {
                       padding: '12px',
                       borderBottom: `1px solid ${theme.palette.grey[100]}`,
-                      fontSize: '14px',
+                      fontSize: '12px',
                       position: 'relative',
                       '&::before': {
                         // For mobile responsive table
@@ -470,7 +470,7 @@ const Dashboard: React.FC = () => {
                         content: 'attr(data-label)',
                         fontWeight: 600,
                         color: theme.palette.text.secondary,
-                        fontSize: '12px'
+                        fontSize: '10px'
                       }
                     },
                     // Mobile responsive table
@@ -541,7 +541,7 @@ const Dashboard: React.FC = () => {
                                   job.status === 'In Progress' ? theme.palette.warning.dark : 
                                   theme.palette.grey[700],
                                 fontWeight: 600,
-                                fontSize: '12px'
+                                fontSize: '10px'
                               }}
                             />
                           </td>
@@ -625,7 +625,7 @@ const Dashboard: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
             }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '18px' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '14px' }}>
                 Quick Actions
               </Typography>
             </Box>

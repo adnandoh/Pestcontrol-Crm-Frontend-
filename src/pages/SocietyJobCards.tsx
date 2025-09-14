@@ -21,8 +21,14 @@ import { JobCard } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import ModernTable from '../components/ModernTable';
 import ServiceTypesDisplay from '../components/ServiceTypesDisplay';
+import AddressDisplay from '../components/AddressDisplay';
 import SortSelector from '../components/SortSelector';
 import { SORT_OPTIONS, getDefaultSorting, addSortingToParams } from '../utils/sorting';
+import { 
+  handleSearchInputChange, 
+  handleSearchSubmission, 
+  validateSearchInput 
+} from '../utils/searchValidation';
 
 const SocietyJobCards: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +41,7 @@ const SocietyJobCards: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [contractFilter, setContractFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState<string>(getDefaultSorting('JOB_CARDS'));
 
@@ -55,7 +62,7 @@ const SocietyJobCards: React.FC = () => {
     { value: '3', label: '3 Months' },
   ];
 
-  const fetchJobCards = useCallback(async () => {
+  const fetchJobCards = useCallback(async (searchTerm?: string) => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
       return;
@@ -69,7 +76,7 @@ const SocietyJobCards: React.FC = () => {
         job_type: 'Society', // Filter for Society job cards only
         status: statusFilter,
         contract_duration: contractFilter,
-        q: searchQuery,
+        q: searchTerm !== undefined ? searchTerm : searchQuery,
       };
 
       // Add sorting parameter
@@ -93,14 +100,14 @@ const SocietyJobCards: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, contractFilter, searchQuery, fromDate, isAuthenticated, page, sortBy]);
+  }, [statusFilter, contractFilter, fromDate, isAuthenticated, page, sortBy]);
 
   useEffect(() => {
-    // Only fetch job cards when authenticated
+    // Only fetch job cards when authenticated and on initial load or filter changes
     if (isAuthenticated && !authLoading) {
       fetchJobCards();
     }
-  }, [fetchJobCards, isAuthenticated, authLoading]);
+  }, [statusFilter, contractFilter, fromDate, isAuthenticated, authLoading, page, sortBy]);
 
   // Show loading state while authentication is being checked
   if (authLoading) {
@@ -115,6 +122,31 @@ const SocietyJobCards: React.FC = () => {
   if (!isAuthenticated) {
     return null;
   }
+
+  // Handle search input change with validation
+  const handleSearchChange = (value: string) => {
+    handleSearchInputChange(value, setSearchQuery, setSearchError);
+  };
+
+  // Handle search on Enter key press
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSearchSubmission(searchQuery, setSearchError, () => fetchJobCards(searchQuery));
+    }
+  };
+
+  // Handle search button click
+  const handleSearchSubmit = () => {
+    handleSearchSubmission(searchQuery, setSearchError, () => fetchJobCards(searchQuery));
+  };
+
+  // Handle search clear
+  const handleSearchClear = () => {
+    setSearchQuery('');
+    setSearchError(null);
+    fetchJobCards(''); // Clear search by passing empty string
+  };
 
   const handleEditJobCard = (id: number) => {
     console.log('Navigating to job card edit with ID:', id);
@@ -175,7 +207,12 @@ const SocietyJobCards: React.FC = () => {
           title="Society Job Cards"
           totalCount={totalCount}
           searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
+          searchError={searchError}
+          onSearchKeyPress={handleSearchKeyPress}
+          onSearchSubmit={handleSearchSubmit}
+          onSearchClear={handleSearchClear}
+          searchContext="society"
           page={page}
           rowsPerPage={20}
           onPageChange={setPage}
@@ -252,8 +289,10 @@ const SocietyJobCards: React.FC = () => {
                   setStatusFilter('');
                   setContractFilter('');
                   setSearchQuery('');
+                  setSearchError(null);
                   setFromDate(null);
                   setSortBy(getDefaultSorting('JOB_CARDS'));
+                  fetchJobCards(''); // Clear search
                 }}
                 sx={{
                   borderRadius: 1,
@@ -263,21 +302,6 @@ const SocietyJobCards: React.FC = () => {
                 }}
               >
                 Clear
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={fetchJobCards}
-                sx={{
-                  bgcolor: '#007bff',
-                  '&:hover': { bgcolor: '#0056b3' },
-                  borderRadius: 1,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  px: 2,
-                }}
-              >
-                Search
               </Button>
             </>
           }
@@ -296,7 +320,13 @@ const SocietyJobCards: React.FC = () => {
             booking_id: jobCard.code?.replace('JC-', '') || '',
             client_name: jobCard.client_name,
             mobile_number: jobCard.client_mobile,
-            client_address: jobCard.client_city,
+            client_address: (
+              <AddressDisplay
+                address={jobCard.client_city || ''}
+                maxWords={4}
+                showViewMore={true}
+              />
+            ),
             service_types: (
               <ServiceTypesDisplay
                 serviceTypes={jobCard.service_type || ''}
@@ -314,7 +344,7 @@ const SocietyJobCards: React.FC = () => {
                   backgroundColor: getStatusColor(jobCard.status).bg,
                   color: getStatusColor(jobCard.status).color,
                   fontWeight: 500,
-                  fontSize: '0.75rem',
+                  fontSize: '0.65rem',
                   height: 24,
                   borderRadius: 1,
                 }}
@@ -332,7 +362,7 @@ const SocietyJobCards: React.FC = () => {
                   borderRadius: 1,
                   textTransform: 'none',
                   fontWeight: 500,
-                  fontSize: '0.75rem',
+                  fontSize: '0.65rem',
                   px: 2,
                   py: 0.5,
                 }}

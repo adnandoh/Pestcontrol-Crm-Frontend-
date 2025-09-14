@@ -325,7 +325,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                             : '#666',
                           transition: 'all 0.2s ease-in-out',
                           '& svg': {
-                            fontSize: '1.1rem',
+                            fontSize: '0.9rem',
                           },
                         }}
                       >
@@ -343,7 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                             color: isActive
                               ? theme.palette.primary.main
                               : '#333',
-                            fontSize: '0.8rem',
+                            fontSize: '0.7rem',
                             transition: 'all 0.2s ease-in-out',
                           },
                           '& .MuiListItemText-secondary': {
@@ -378,7 +378,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                     width: 40,
                     height: 40,
                     background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-                    fontSize: '1rem',
+                    fontSize: '0.8rem',
                     fontWeight: 600,
                   }}
                 >
@@ -391,7 +391,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, handleDrawerClose }) => {
                       fontWeight: 600,
                       color: '#333',
                       lineHeight: 1.2,
-                      fontSize: '0.8rem',
+                      fontSize: '0.7rem',
                     }}
                   >
                     {user.username}
