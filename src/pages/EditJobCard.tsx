@@ -43,7 +43,7 @@ const EditJobCard: React.FC = () => {
   const [jobCard, setJobCard] = useState({
     service_type: [] as string[], // Changed to array for multi-select
     schedule_date: new Date(),
-    price_subtotal: '' as string | number, // Changed to empty string to avoid showing 0
+    price: '', // Store price as string exactly as entered
     payment_status: 'Unpaid' as 'Unpaid' | 'Paid',
     status: 'Enquiry' as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive',
     notes: '',
@@ -89,7 +89,7 @@ const EditJobCard: React.FC = () => {
         setJobCard({
           service_type: jobCardData.service_type ? jobCardData.service_type.split(', ') : [], // Convert string to array
           schedule_date: new Date(jobCardData.schedule_date),
-          price_subtotal: jobCardData.price_subtotal,
+          price: jobCardData.price,
           payment_status: jobCardData.payment_status,
           status: jobCardData.status,
           notes: jobCardData.notes || '',
@@ -133,7 +133,7 @@ const EditJobCard: React.FC = () => {
       setJobCard({
         ...jobCard,
         [name]: type === 'checkbox' ? checked :
-          name === 'price_subtotal' ? (value === '' ? '' : Number(value)) :
+          name === 'price' ? value :
           name === 'payment_status' ? (value as 'Unpaid' | 'Paid') :
           name === 'status' ? (value as 'Enquiry' | 'WIP' | 'Done' | 'Hold' | 'Cancel' | 'Inactive') :
           name === 'contract_duration' ? (value as undefined | '12' | '6' | '3') : value,
@@ -181,20 +181,10 @@ const EditJobCard: React.FC = () => {
         return;
       }
 
-      // For Society job cards, allow zero price; for Customer job cards, require price > 0
-      if (jobCard.job_type === 'Customer') {
-        if (!jobCard.price_subtotal || Number(jobCard.price_subtotal) <= 0) {
-          setError('Price must be greater than zero for Customer job cards.');
-          return;
-        }
-      } else if (jobCard.job_type === 'Society') {
-        // For Society job cards, set price to 0 if not provided or allow any non-negative value
-        if (jobCard.price_subtotal === '' || jobCard.price_subtotal === null || jobCard.price_subtotal === undefined) {
-          jobCard.price_subtotal = 0;
-        } else if (Number(jobCard.price_subtotal) < 0) {
-          setError('Price cannot be negative.');
-          return;
-        }
+      // Validate that price is provided
+      if (!jobCard.price || jobCard.price.trim() === '') {
+        setError('Please enter a valid price.');
+        return;
       }
 
       // Validate contract duration for Society job type
@@ -216,7 +206,7 @@ const EditJobCard: React.FC = () => {
       const jobCardData: Partial<JobCard> = {
         service_type: jobCard.service_type.join(', '), // Join array to string
         schedule_date: jobCard.schedule_date.toISOString().split('T')[0],
-        price_subtotal: Number(jobCard.price_subtotal),
+        price: jobCard.price,
         payment_status: jobCard.payment_status,
         status: jobCard.status,
         notes: jobCard.notes.trim(),
@@ -644,12 +634,9 @@ const EditJobCard: React.FC = () => {
                   required
                   fullWidth
                   label="Service Price *"
-                  name="price_subtotal"
-                  type="number"
-                  value={jobCard.price_subtotal}
+                  name="price"
+                  value={jobCard.price}
                   onChange={handleJobCardChange}
-                  inputProps={{ min: 0, step: "0.01" }}
-                  helperText="Service price (tax will be calculated automatically at 18%)"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,

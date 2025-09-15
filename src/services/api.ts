@@ -27,20 +27,83 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle 401 errors
+// Add a response interceptor to handle 401 errors with automatic token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid, redirect to login
-      console.log('API: 401 Unauthorized, redirecting to login');
-      localStorage.clear(); // Clear all stored data
-      window.location.href = '/login';
-      return Promise.reject(error);
+    const originalRequest = error.config;
+    
+    // Handle 401 Unauthorized errors
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Skip refresh for auth endpoints to prevent infinite loops
+      if (originalRequest.url?.includes('/token/')) {
+        console.log('API: Auth endpoint failed, redirecting to login');
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+      
+      try {
+        console.log('API: Access token expired, attempting refresh...');
+        const refreshToken = localStorage.getItem('refresh_token');
+        
+        if (!refreshToken) {
+          console.log('API: No refresh token available, redirecting to login');
+          localStorage.clear();
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+        
+        // Attempt to refresh the token
+        const refreshResponse = await api.post('/token/refresh/', { 
+          refresh: refreshToken 
+        });
+        
+        const { access, refresh: newRefresh } = refreshResponse.data;
+        
+        // Update access token
+        localStorage.setItem('access_token', access);
+        
+        // Update refresh token if a new one is provided (token rotation)
+        if (newRefresh) {
+          localStorage.setItem('refresh_token', newRefresh);
+          console.log('API: Refresh token rotated successfully');
+        }
+        
+        console.log('API: Token refreshed successfully, retrying original request');
+        
+        // Update the original request with new token
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        
+        // Retry the original request
+        return api(originalRequest);
+        
+      } catch (refreshError) {
+        console.error('API: Token refresh failed:', refreshError);
+        
+        // Refresh failed, clear tokens and redirect to login
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
     }
+    
     return Promise.reject(error);
   }
 );
+
+// Token validation utility
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    return payload.exp < currentTime;
+  } catch {
+    return true; // If we can't parse the token, consider it expired
+  }
+};
 
 // Authentication services
 export const authService = {
@@ -78,9 +141,68 @@ export const authService = {
   },
   refreshToken: async (): Promise<string> => {
     const refresh = localStorage.getItem('refresh_token');
-    const response = await api.post<{ access: string }>('/token/refresh/', { refresh });
-    localStorage.setItem('access_token', response.data.access);
-    return response.data.access;
+    if (!refresh) {
+      throw new Error('No refresh token available');
+    }
+    
+    try {
+      const response = await api.post<{ access: string; refresh?: string }>('/token/refresh/', { refresh });
+      const { access, refresh: newRefresh } = response.data;
+      
+      // Update access token
+      localStorage.setItem('access_token', access);
+      
+      // Update refresh token if a new one is provided (token rotation)
+      if (newRefresh) {
+        localStorage.setItem('refresh_token', newRefresh);
+        console.log('API: Refresh token rotated successfully');
+      }
+      
+      return access;
+    } catch (error) {
+      console.error('API: Manual token refresh failed:', error);
+      // Clear tokens on refresh failure
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      throw error;
+    }
+  },
+
+  // Proactive token refresh - checks if token is close to expiry and refreshes it
+  ensureValidToken: async (): Promise<string | null> => {
+    const accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
+    
+    if (!accessToken || !refreshToken) {
+      return null;
+    }
+    
+    // Check if token is expired or will expire in the next 5 minutes
+    if (isTokenExpired(accessToken)) {
+      try {
+        console.log('API: Token expired, refreshing proactively...');
+        return await authService.refreshToken();
+      } catch (error) {
+        console.error('API: Proactive token refresh failed:', error);
+        return null;
+      }
+    }
+    
+    return accessToken;
+  },
+
+  // Check if user is authenticated with valid tokens
+  isAuthenticated: (): boolean => {
+    const accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
+    
+    if (!accessToken || !refreshToken) {
+      return false;
+    }
+    
+    // If access token is expired but refresh token exists, user is still authenticated
+    // (the interceptor will handle the refresh)
+    return !isTokenExpired(refreshToken);
   },
 };
 

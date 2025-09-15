@@ -41,21 +41,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userId = localStorage.getItem('user_id');
         const username = localStorage.getItem('username');
         const isStaff = localStorage.getItem('is_staff') === 'true';
-        const token = localStorage.getItem('access_token');
+        
+        // Check if user has valid tokens
+        const isAuthenticated = authService.isAuthenticated();
 
         if (isMounted) {
-          if (userId && username && token) {
-            setUser({
-              id: parseInt(userId),
-              username,
-              is_staff: isStaff,
-            });
+          if (userId && username && isAuthenticated) {
+            // Ensure token is valid before setting user
+            const validToken = await authService.ensureValidToken();
+            if (validToken) {
+              setUser({
+                id: parseInt(userId),
+                username,
+                is_staff: isStaff,
+              });
+            } else {
+              // Tokens are invalid, clear them
+              authService.logout();
+            }
           }
           setIsLoading(false);
         }
       } catch (error) {
         if (isMounted) {
           console.error('Error initializing auth:', error);
+          // Clear invalid tokens on error
+          authService.logout();
           setIsLoading(false);
         }
       }
@@ -80,6 +91,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       isMounted = false;
     };
+  }, [user]);
+
+  // Periodic token refresh to keep tokens fresh
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        await authService.ensureValidToken();
+      } catch (error) {
+        console.error('Periodic token refresh failed:', error);
+        // If periodic refresh fails, user might need to re-login
+        // But don't force logout immediately, let the interceptor handle it
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(refreshInterval);
   }, [user]);
 
   const login = async (username: string, password: string) => {

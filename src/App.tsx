@@ -14,6 +14,11 @@ import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 
+// Import test utilities in development
+if (process.env.NODE_ENV === 'development') {
+  import('./utils/tokenTest');
+}
+
 // Lazy load pages for better performance
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));

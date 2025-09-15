@@ -87,8 +87,7 @@ export interface UpdateInquiryRequest extends Partial<CreateInquiryRequest> {
 export interface InquiryConversionRequest {
   technician_name?: string;
   schedule_date?: string;
-  price_subtotal?: number;
-  tax_percent?: number;
+  price?: string;
   client_id?: number;
 }
 
@@ -106,9 +105,7 @@ export interface JobCard {
   service_type: string;
   schedule_date: string;
   technician_name: string;
-  price_subtotal: number;
-  tax_percent: number;
-  grand_total: number;
+  price: string;
   payment_status: PaymentStatus;
   next_service_date?: string;
   notes?: string;
@@ -130,8 +127,7 @@ export interface CreateJobCardRequest {
   service_type: string;
   schedule_date: string;
   technician_name: string;
-  price_subtotal: number;
-  tax_percent?: number;
+  price: string;
   next_service_date?: string;
   notes?: string;
 }

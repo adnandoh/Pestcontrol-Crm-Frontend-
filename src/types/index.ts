@@ -38,9 +38,7 @@ export interface JobCard {
   service_type: string;
   schedule_date: string;
   technician_name: string;
-  price_subtotal: number;
-  tax_percent: number;
-  grand_total: number;
+  price: string; // Changed to string to preserve exact user input
   payment_status: 'Unpaid' | 'Paid';
   next_service_date?: string;
   notes?: string;
@@ -92,6 +90,5 @@ export interface User {
 export interface InquiryConversionData {
   technician_name?: string;
   schedule_date?: string;
-  price_subtotal?: number;
-  tax_percent?: number;
+  price?: string;
 }

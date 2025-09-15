@@ -445,32 +445,12 @@ const JobCardDetail: React.FC = () => {
             </Typography>
           </Box>
           <CardContent sx={{ p: 3 }}>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Subtotal
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                {formatCurrency(jobCard.price_subtotal)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Tax ({jobCard.tax_percent}%)
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1rem' }}>
-                {formatCurrency((jobCard.price_subtotal * jobCard.tax_percent) / 100)}
-              </Typography>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Grand Total
+                Service Price
               </Typography>
               <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>
-                {formatCurrency(jobCard.grand_total)}
+                {jobCard.price}
               </Typography>
             </Box>
           </CardContent>
