@@ -153,6 +153,7 @@ const JobCards: React.FC = () => {
     fetchJobCards(''); // Clear search by passing empty string
   };
 
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const day = date.getDate().toString().padStart(2, '0');

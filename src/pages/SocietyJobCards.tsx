@@ -148,6 +148,7 @@ const SocietyJobCards: React.FC = () => {
     fetchJobCards(''); // Clear search by passing empty string
   };
 
+
   const handleEditJobCard = (id: number) => {
     console.log('Navigating to job card edit with ID:', id);
     if (!id || isNaN(id)) {

@@ -13,17 +13,17 @@ import {
 
 // Predefined service types for pest control
 export const SERVICE_TYPES = [
-  '🐜 Ants',
-  '🪳 Cockroaches',
-  '🐛 Termites',
-  '🐭 Rodents (Mice/Rats)',
-  '🕷️ Spiders',
-  '🐝 Wasps/Bees',
-  '🛏️ Bed Bugs',
-  '🦟 Fleas',
-  '🦟 Mosquitoes',
-  '🪰 House Flies',
-  '🔍 Other'
+  'Ants',
+  'Cockroaches',
+  'Termites',
+  'Rodents (Mice/Rats)',
+  'Spiders',
+  'Wasps/Bees',
+  'Bed Bugs',
+  'Fleas',
+  'Mosquitoes',
+  'House Flies',
+  'Other'
 ];
 
 interface ServiceTypeSelectorProps {

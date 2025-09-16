@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Paper,
@@ -11,7 +11,11 @@ import {
   Alert,
   Switch,
   FormControlLabel,
+  Chip,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
+import { CheckCircle, Warning, Search } from '@mui/icons-material';
 import FixedTextField from '../components/FixedTextField';
 import ServiceTypeSelector from '../components/ServiceTypeSelector';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -19,7 +23,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clientService, jobCardService, inquiryService } from '../services/api';
-import { JobCard, Inquiry } from '../types/index';
+import { JobCard, Inquiry, Client } from '../types/index';
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +37,15 @@ const CreateJobCard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   // Always creating new client - no toggle needed
+  
+  // Client existence checking states
+  const [isCheckingClient, setIsCheckingClient] = useState(false);
+  const [clientExists, setClientExists] = useState<{
+    exists: boolean;
+    client: Client | null;
+    message: string;
+  } | null>(null);
+  const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
 
 
   // Form states - removed selectedClientId as we only create new clients
@@ -66,7 +79,53 @@ const CreateJobCard: React.FC = () => {
       ...newClient,
       [name]: value,
     });
+    
+    // Clear client existence check when mobile number changes
+    if (name === 'mobile') {
+      setClientExists(null);
+      setLastCheckedMobile('');
+    }
   };
+
+  // Function to check if client exists by mobile number
+  const checkClientExists = async (mobile: string) => {
+    if (!mobile || mobile.length !== 10 || !/^\d{10}$/.test(mobile)) {
+      setClientExists(null);
+      return;
+    }
+
+    // Don't check if we already checked this mobile number
+    if (mobile === lastCheckedMobile) {
+      return;
+    }
+
+    try {
+      setIsCheckingClient(true);
+      const result = await jobCardService.checkClientExists(mobile);
+      setClientExists(result);
+      setLastCheckedMobile(mobile);
+    } catch (error) {
+      console.error('Error checking client existence:', error);
+      setClientExists(null);
+    } finally {
+      setIsCheckingClient(false);
+    }
+  };
+
+  // Debounced client check when mobile number changes
+  useEffect(() => {
+    const cleanedMobile = newClient.mobile.replace(/[\s\-\(\)]/g, '');
+    if (cleanedMobile.length === 10 && /^\d{10}$/.test(cleanedMobile)) {
+      const timeoutId = setTimeout(() => {
+        checkClientExists(cleanedMobile);
+      }, 1000); // 1 second debounce
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setClientExists(null);
+      setLastCheckedMobile('');
+    }
+  }, [newClient.mobile]);
 
   const handleJobCardChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = event.target;
@@ -149,7 +208,7 @@ const CreateJobCard: React.FC = () => {
          return;
        }
 
-      // All validations passed - now create client and job card
+      // All validations passed - now create job card with client data using new API
       // Prepare client data with cleaned mobile number
       const clientData = {
         ...newClient,
@@ -158,14 +217,9 @@ const CreateJobCard: React.FC = () => {
         address: newClient.address?.trim() || undefined, // Send undefined if empty
       };
 
-      // Create new client first
-      console.log('Creating client with data:', clientData);
-      const newClientResponse = await clientService.createClient(clientData);
-      const clientId = newClientResponse.id;
-
-      // Create job card with default technician values
-      const jobCardData: Partial<JobCard> = {
-        client: Number(clientId),
+      // Create job card with client data using the new API
+      const jobCardData = {
+        client_data: clientData,
         service_type: jobCard.service_type.join(', '), // Join array to string
         technician_name: 'TBD', // Default value since technician field is removed
         schedule_date: jobCard.schedule_date.toISOString().split('T')[0],
@@ -181,8 +235,12 @@ const CreateJobCard: React.FC = () => {
         reference: jobCard.reference,
       };
 
-      console.log('Sending job card data:', jobCardData);
-      await jobCardService.createJobCard(jobCardData);
+      console.log('Sending job card data with client data:', jobCardData);
+      const result = await jobCardService.createJobCardWithClient(jobCardData);
+      
+      console.log('Job card created:', result);
+      console.log('Client created:', result.client_created);
+      console.log('Message:', result.message);
       
       // If this was converted from an inquiry, delete the inquiry
       if (fromInquiry && inquiryData?.id) {
@@ -195,10 +253,19 @@ const CreateJobCard: React.FC = () => {
         }
       }
       
-      setSuccess(fromInquiry 
-        ? 'Inquiry converted to job card successfully and inquiry deleted!' 
-        : 'Job card created successfully!'
-      );
+      // Create success message based on client creation status
+      let successMessage = 'Job card created successfully!';
+      if (result.client_created) {
+        successMessage = 'Job card created successfully with new client!';
+      } else if (clientExists?.exists) {
+        successMessage = 'Job card created successfully with existing client!';
+      }
+      
+      if (fromInquiry) {
+        successMessage += ' Inquiry converted and deleted!';
+      }
+      
+      setSuccess(successMessage);
 
       // Redirect after a short delay
       setTimeout(() => {
@@ -324,16 +391,58 @@ const CreateJobCard: React.FC = () => {
                   value={newClient.full_name}
                   onChange={handleNewClientChange}
                 />
-                <FixedTextField
-                  required
-                  fullWidth
-                  label="Mobile Number"
-                  name="mobile"
-                  value={newClient.mobile}
-                  onChange={handleNewClientChange}
-                  inputProps={{ maxLength: 10, pattern: '[0-9]{10}' }}
-                  helperText="10-digit mobile number"
-                />
+                <Box sx={{ position: 'relative', width: '100%' }}>
+                  <FixedTextField
+                    required
+                    fullWidth
+                    label="Mobile Number"
+                    name="mobile"
+                    value={newClient.mobile}
+                    onChange={handleNewClientChange}
+                    inputProps={{ maxLength: 10, pattern: '[0-9]{10}' }}
+                    helperText="10-digit mobile number"
+                    InputProps={{
+                      endAdornment: (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {isCheckingClient && (
+                            <CircularProgress size={20} />
+                          )}
+                          {clientExists && !isCheckingClient && (
+                            <Tooltip title={clientExists.message}>
+                              {clientExists.exists ? (
+                                <Chip
+                                  icon={<CheckCircle />}
+                                  label="Exists"
+                                  color="success"
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              ) : (
+                                <Chip
+                                  icon={<Warning />}
+                                  label="New"
+                                  color="info"
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Tooltip>
+                          )}
+                        </Box>
+                      ),
+                    }}
+                  />
+                  {clientExists?.exists && clientExists.client && (
+                    <Box sx={{ mt: 1, p: 2, bgcolor: '#e8f5e8', borderRadius: 1, border: '1px solid #4caf50' }}>
+                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
+                        ✓ Existing client found: {clientExists.client.full_name} ({clientExists.client.city})
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Job card will be linked to this existing client
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible' }}>
                 <FixedTextField
@@ -545,78 +654,76 @@ const CreateJobCard: React.FC = () => {
                     }}
                   />
                 </LocalizationProvider>
-                {jobCard.job_type !== 'Society' && (
-                  <FixedTextField
-                    select
-                    required
-                    fullWidth
-                    label="Payment Status"
-                    name="payment_status"
-                    value={jobCard.payment_status}
-                    onChange={handleJobCardChange}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 1,
-                        backgroundColor: '#fafafa',
-                        '&:hover': {
-                          backgroundColor: '#f5f5f5',
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: '#ffffff',
-                        },
-                      },
-                    }}
-                  >
-                    <MenuItem value="Unpaid">Unpaid</MenuItem>
-                    <MenuItem value="Paid">Paid</MenuItem>
-                  </FixedTextField>
-                )}
               </Box>
             </Box>
           </Box>
 
           {/* Pricing Details Section */}
-          {jobCard.job_type !== 'Society' && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{
-                fontWeight: 600,
-                color: '#333',
-                mb: 3,
-                pb: 2,
-                borderBottom: '2px solid #f0f0f0'
-              }}>
-                Pricing Details
-              </Typography>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" sx={{
+              fontWeight: 600,
+              color: '#333',
+              mb: 3,
+              pb: 2,
+              borderBottom: '2px solid #f0f0f0'
+            }}>
+              Pricing Details
+            </Typography>
 
-              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible', paddingTop: '16px' }}>
+            <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible', paddingTop: '16px' }}>
+              <FixedTextField
+                required
+                fullWidth
+                label="Service Price"
+                name="price"
+                value={jobCard.price}
+                onChange={handleJobCardChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 1,
+                    backgroundColor: '#e8f5e8',
+                    '& input': {
+                      fontWeight: 600,
+                      fontSize: '1.1rem',
+                      color: '#2e7d32',
+                    },
+                    '&:hover': {
+                      backgroundColor: '#e0f2e0',
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                    },
+                  },
+                }}
+              />
+              {jobCard.job_type !== 'Society' && (
                 <FixedTextField
+                  select
                   required
                   fullWidth
-                  label="Service Price"
-                  name="price"
-                  value={jobCard.price}
+                  label="Payment Status"
+                  name="payment_status"
+                  value={jobCard.payment_status}
                   onChange={handleJobCardChange}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 1,
-                      backgroundColor: '#e8f5e8',
-                      '& input': {
-                        fontWeight: 600,
-                        fontSize: '1.1rem',
-                        color: '#2e7d32',
-                      },
+                      backgroundColor: '#fafafa',
                       '&:hover': {
-                        backgroundColor: '#e0f2e0',
+                        backgroundColor: '#f5f5f5',
                       },
                       '&.Mui-focused': {
                         backgroundColor: '#ffffff',
                       },
                     },
                   }}
-                />
-              </Box>
+                >
+                  <MenuItem value="Unpaid">Unpaid</MenuItem>
+                  <MenuItem value="Paid">Paid</MenuItem>
+                </FixedTextField>
+              )}
             </Box>
-          )}
+          </Box>
 
           {/* Additional Details Section */}
           <Box sx={{ mb: 4 }}>

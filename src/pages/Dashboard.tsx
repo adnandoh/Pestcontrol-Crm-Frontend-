@@ -336,7 +336,7 @@ const Dashboard: React.FC = () => {
           fontWeight: 700,
           color: theme.palette.text.primary
         }}>
-          Dashboard 🏠
+          Dashboard
         </Typography>
         <Button
           variant="contained"

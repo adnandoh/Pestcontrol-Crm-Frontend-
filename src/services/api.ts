@@ -283,6 +283,32 @@ export const jobCardService = {
     const response = await api.post<JobCard>('/jobcards/', jobCard);
     return response.data;
   },
+  createJobCardWithClient: async (jobCardData: {
+    client_data?: Partial<Client>;
+    client?: number;
+    service_type: string;
+    schedule_date: string;
+    technician_name?: string;
+    price?: string;
+    payment_status?: 'Unpaid' | 'Paid';
+    notes?: string;
+    next_service_date?: string;
+    job_type?: 'Customer' | 'Society';
+    contract_duration?: '12' | '6' | '3';
+    is_paused?: boolean;
+    reference?: string;
+  }): Promise<JobCard & { client_created?: boolean; message?: string }> => {
+    const response = await api.post<JobCard & { client_created?: boolean; message?: string }>('/jobcards/', jobCardData);
+    return response.data;
+  },
+  checkClientExists: async (mobile: string): Promise<{
+    exists: boolean;
+    client: Client | null;
+    message: string;
+  }> => {
+    const response = await api.get(`/jobcards/check-client/?mobile=${encodeURIComponent(mobile)}`);
+    return response.data;
+  },
   updateJobCard: async (id: number, jobCard: Partial<JobCard>): Promise<JobCard> => {
     const response = await api.patch<JobCard>(`/jobcards/${id}/`, jobCard);
     return response.data;
