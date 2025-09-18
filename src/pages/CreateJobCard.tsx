@@ -438,7 +438,6 @@ const CreateJobCard: React.FC = () => {
                         ✓ Existing client found: {clientExists.client.full_name} ({clientExists.client.city})
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Job card will be linked to this existing client
                       </Typography>
                     </Box>
                   )}
