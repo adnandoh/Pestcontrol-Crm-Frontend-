@@ -69,6 +69,20 @@ const CreateJobCard: React.FC = () => {
     reference: '', // New reference field
   });
 
+  // Helper function to check if a date is in the past
+  // Uses UTC to match backend timezone (UTC)
+  const isPastDate = (date: Date): boolean => {
+    const today = new Date();
+    const todayUTC = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+    todayUTC.setUTCHours(0, 0, 0, 0); // Reset time to start of day in UTC
+    
+    const checkDate = new Date(date);
+    const checkDateUTC = new Date(checkDate.getTime() - (checkDate.getTimezoneOffset() * 60000));
+    checkDateUTC.setUTCHours(0, 0, 0, 0); // Reset time to start of day in UTC
+    
+    return checkDateUTC < todayUTC;
+  };
+
   // Removed client fetching as we only create new clients
 
   // Removed handleClientChange as we only create new clients
@@ -196,6 +210,17 @@ const CreateJobCard: React.FC = () => {
         return;
       }
 
+      // Past dates are allowed - no confirmation needed
+
+      // Validate next service date if provided
+      if (jobCard.next_service_date) {
+        // Past dates are allowed for next service date too
+        if (jobCard.next_service_date <= jobCard.schedule_date) {
+          setError('Next service date must be after the schedule date.');
+          return;
+        }
+      }
+
       // Validate that price is provided
       if (!jobCard.price || jobCard.price.trim() === '') {
         setError('Service price is required.');
@@ -294,9 +319,9 @@ const CreateJobCard: React.FC = () => {
               const fieldErrors = Object.entries(responseData.details)
                 .map(([field, messages]: [string, any]) => {
                   if (Array.isArray(messages)) {
-                    return `${field}: ${messages.join(', ')}`;
+                    return `${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${messages.join(', ')}`;
                   }
-                  return `${field}: ${messages}`;
+                  return `${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${messages}`;
                 })
                 .join('; ');
               if (fieldErrors) {
@@ -319,9 +344,20 @@ const CreateJobCard: React.FC = () => {
                 if (mobileErrors.length > 0) {
                   return `A client with mobile number ${newClient.mobile} already exists. Please check if this client is already registered or use a different mobile number.`;
                 }
-                return `${field}: ${messages.join(', ')}`;
+                return `Mobile: ${messages.join(', ')}`;
               }
-              return `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
+              // Special handling for schedule_date validation errors
+              if (field === 'schedule_date' && Array.isArray(messages)) {
+                const scheduleErrors = messages.filter(msg => 
+                  typeof msg === 'string' && 
+                  msg.includes('past')
+                );
+                if (scheduleErrors.length > 0) {
+                  return 'Schedule Date: Cannot be in the past. Please select today\'s date or a future date.';
+                }
+                return `Schedule Date: ${messages.join(', ')}`;
+              }
+              return `${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
             })
             .join('; ');
           if (errors) {
@@ -353,6 +389,16 @@ const CreateJobCard: React.FC = () => {
           <Box sx={{ mt: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #1976d2' }}>
             <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
               📋 Converting Inquiry: {inquiryData.name} - {inquiryData.service_interest}
+            </Typography>
+          </Box>
+        )}
+        
+        {/* Past Date Warning Banner */}
+        {isPastDate(jobCard.schedule_date) && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ff9800' }}>
+            <Typography variant="body2" color="warning.main" sx={{ fontWeight: 500 }}>
+              ⚠️ Past Date Selected: The schedule date ({jobCard.schedule_date.toLocaleDateString()}) is in the past.
+              This is allowed for recording completed services or administrative purposes.
             </Typography>
           </Box>
         )}
@@ -633,16 +679,21 @@ const CreateJobCard: React.FC = () => {
                       setJobCard({ ...jobCard, schedule_date: newValue || new Date() })
                     }
                     format="dd/MM/yy"
+                    // Allow selection of past dates - validation will be handled in form submission
                     slotProps={{
                       textField: {
                         fullWidth: true,
                         required: true,
+                        error: false, // Don't show error state, just warning
+                        helperText: isPastDate(jobCard.schedule_date) 
+                          ? '⚠️ Warning: This date is in the past. Please confirm this is correct.' 
+                          : 'Select the service schedule date',
                         sx: {
                           '& .MuiOutlinedInput-root': {
                             borderRadius: 1,
-                            backgroundColor: '#fafafa',
+                            backgroundColor: isPastDate(jobCard.schedule_date) ? '#fff3e0' : '#fafafa', // Orange warning instead of red error
                             '&:hover': {
-                              backgroundColor: '#f5f5f5',
+                              backgroundColor: isPastDate(jobCard.schedule_date) ? '#ffe0b2' : '#f5f5f5',
                             },
                             '&.Mui-focused': {
                               backgroundColor: '#ffffff',
@@ -747,15 +798,38 @@ const CreateJobCard: React.FC = () => {
                         setJobCard({ ...jobCard, next_service_date: newValue })
                       }
                       format="dd/MM/yy"
+                      // Allow past dates - validation will be handled in form submission
                       slotProps={{
                         textField: {
                           fullWidth: true,
+                          error: jobCard.next_service_date ? (
+                            jobCard.next_service_date <= jobCard.schedule_date
+                          ) : false,
+                          helperText: jobCard.next_service_date ? (
+                            isPastDate(jobCard.next_service_date) 
+                              ? '⚠️ Warning: This date is in the past'
+                              : jobCard.next_service_date <= jobCard.schedule_date
+                              ? 'Next service date must be after schedule date'
+                              : 'Select the next service date'
+                          ) : 'Optional: Select the next service date',
                           sx: {
                             '& .MuiOutlinedInput-root': {
                               borderRadius: 1,
-                              backgroundColor: '#fafafa',
+                              backgroundColor: (jobCard.next_service_date && (
+                                isPastDate(jobCard.next_service_date) 
+                                  ? '#fff3e0' // Orange warning for past dates
+                                  : jobCard.next_service_date <= jobCard.schedule_date
+                                  ? '#ffebee' // Red error for invalid sequence
+                                  : '#fafafa'
+                              )) || '#fafafa',
                               '&:hover': {
-                                backgroundColor: '#f5f5f5',
+                                backgroundColor: (jobCard.next_service_date && (
+                                  isPastDate(jobCard.next_service_date) 
+                                    ? '#ffe0b2' // Orange hover for past dates
+                                    : jobCard.next_service_date <= jobCard.schedule_date
+                                    ? '#ffcdd2' // Red hover for invalid sequence
+                                    : '#f5f5f5'
+                                )) || '#f5f5f5',
                               },
                               '&.Mui-focused': {
                                 backgroundColor: '#ffffff',
