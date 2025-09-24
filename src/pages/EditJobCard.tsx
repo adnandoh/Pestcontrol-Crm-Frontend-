@@ -112,13 +112,7 @@ const EditJobCard: React.FC = () => {
     fetchJobCard();
   }, [id]);
 
-  const handleClientChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    setClient({
-      ...client,
-      [name]: value,
-    });
-  };
+  // handleClientChange removed - client data is read-only in job card editing
 
   const handleJobCardChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = event.target;
@@ -164,16 +158,7 @@ const EditJobCard: React.FC = () => {
       setIsSaving(true);
       setError(null);
 
-      // Validate client data
-      if (!client.full_name || !client.mobile || !client.city) {
-        setError('Please fill in all required client fields (Name, Mobile, City).');
-        return;
-      }
-      
-      if (client.mobile.length !== 10 || !/^\d{10}$/.test(client.mobile)) {
-        setError('Mobile number must be exactly 10 digits.');
-        return;
-      }
+      // Client data validation removed - client data is not updated when editing job cards
 
       // Validate job card data
       if (!jobCard.service_type || jobCard.service_type.length === 0) {
@@ -193,14 +178,8 @@ const EditJobCard: React.FC = () => {
         return;
       }
 
-      // Update client
-      await clientService.updateClient(client.id, {
-        full_name: client.full_name.trim(),
-        mobile: client.mobile.trim(),
-        email: client.email.trim(),
-        city: client.city.trim(),
-        address: client.address.trim(),
-      });
+      // Note: Client data is not updated when editing job cards
+      // This prevents changes from affecting other job cards for the same client
 
       // Update job card
       const jobCardData: Partial<JobCard> = {
@@ -220,7 +199,7 @@ const EditJobCard: React.FC = () => {
       };
 
       await jobCardService.updateJobCard(parseInt(id), jobCardData);
-      setSuccess('Job card updated successfully!');
+      setSuccess('Job card updated successfully! (Client information was not modified)');
 
       // Redirect after a short delay
       setTimeout(() => {
@@ -311,7 +290,11 @@ const EditJobCard: React.FC = () => {
               pb: 2,
               borderBottom: '2px solid #f0f0f0'
             }}>
-              Client Details
+              Client Details (Read-Only)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Client information cannot be edited here to prevent changes from affecting other job cards for the same client.
+              To update client details, please use the Client Management section.
             </Typography>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible', paddingTop: '16px' }}>
@@ -322,7 +305,15 @@ const EditJobCard: React.FC = () => {
                   label="Client Name"
                   name="full_name"
                   value={client.full_name}
-                  onChange={handleClientChange}
+                  InputProps={{ readOnly: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#f5f5f5',
+                      '& fieldset': {
+                        borderColor: '#e0e0e0',
+                      },
+                    },
+                  }}
                 />
                 <FixedTextField
                   required
@@ -330,9 +321,16 @@ const EditJobCard: React.FC = () => {
                   label="Mobile Number"
                   name="mobile"
                   value={client.mobile}
-                  onChange={handleClientChange}
-                  inputProps={{ maxLength: 10, pattern: '[0-9]{10}' }}
-                  helperText="10-digit mobile number"
+                  InputProps={{ readOnly: true }}
+                  helperText="10-digit mobile number (read-only)"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#f5f5f5',
+                      '& fieldset': {
+                        borderColor: '#e0e0e0',
+                      },
+                    },
+                  }}
                 />
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, overflow: 'visible' }}>
@@ -342,7 +340,15 @@ const EditJobCard: React.FC = () => {
                   name="email"
                   type="email"
                   value={client.email}
-                  onChange={handleClientChange}
+                  InputProps={{ readOnly: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#f5f5f5',
+                      '& fieldset': {
+                        borderColor: '#e0e0e0',
+                      },
+                    },
+                  }}
                 />
                 <FixedTextField
                   required
@@ -350,7 +356,15 @@ const EditJobCard: React.FC = () => {
                   label="City"
                   name="city"
                   value={client.city}
-                  onChange={handleClientChange}
+                  InputProps={{ readOnly: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#f5f5f5',
+                      '& fieldset': {
+                        borderColor: '#e0e0e0',
+                      },
+                    },
+                  }}
                 />
               </Box>
               <FixedTextField
@@ -360,16 +374,13 @@ const EditJobCard: React.FC = () => {
                 multiline
                 rows={3}
                 value={client.address}
-                onChange={handleClientChange}
+                InputProps={{ readOnly: true }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 1,
-                    backgroundColor: '#fafafa',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: '#ffffff',
+                    backgroundColor: '#f5f5f5',
+                    '& fieldset': {
+                      borderColor: '#e0e0e0',
                     },
                   },
                 }}
