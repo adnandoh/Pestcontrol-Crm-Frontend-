@@ -6,7 +6,8 @@ import {
   RefreshCw,
   FileText,
   Building2,
-  Plus
+  Plus,
+  LayoutDashboard
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -30,6 +31,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       href: '/jobcards/create',
       icon: Plus,
       isGreen: true, // Special styling for Create tab
+    },
+    {
+      name: 'Dashboard',
+      href: '/',
+      icon: LayoutDashboard,
     },
     {
       name: 'Job Cards',
