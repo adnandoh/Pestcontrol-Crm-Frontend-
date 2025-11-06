@@ -19,14 +19,14 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-white shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Left side - Menu toggle for mobile */}
+        {/* Left side - Logo and Menu toggle */}
         <div className="flex items-center space-x-4">
           {onMenuToggle && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onMenuToggle}
-              className="md:hidden"
+              className="flex-shrink-0"
               aria-label="Toggle menu"
             >
               {isMenuOpen ? (
@@ -36,8 +36,21 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
               )}
             </Button>
           )}
-          <div className="hidden md:block flex-1">
-            {/* This space can be used for breadcrumbs or other content */}
+          {/* Logo */}
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/logo pest99.png" 
+              alt="Pest99 Logo" 
+              className="h-10 w-auto object-contain"
+              onError={(e) => {
+                // Fallback if image doesn't load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+            <span className="hidden sm:block text-lg font-semibold text-gray-900">
+              Pest99 CRM
+            </span>
           </div>
         </div>
 

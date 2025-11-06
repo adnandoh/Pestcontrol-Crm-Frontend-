@@ -80,10 +80,10 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
           'w-64 border-r bg-white shadow-sm transition-transform duration-300',
           // Mobile: fixed positioning with overlay
           'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)]',
-          // Desktop: fixed but always visible
+          // Desktop: fixed positioning
           'md:fixed md:left-0 md:top-16 md:h-[calc(100vh-4rem)] md:z-10',
-          // Visibility - always visible on desktop, toggleable on mobile
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          // Visibility - toggleable on both mobile and desktop
+          isOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}
       >
