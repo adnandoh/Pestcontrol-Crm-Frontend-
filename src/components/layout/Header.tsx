@@ -1,14 +1,16 @@
 import React from 'react';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Menu, X } from 'lucide-react';
 import { Button } from '../ui';
 import type { AuthUser } from '../../types';
 
 interface HeaderProps {
   user?: AuthUser;
   onLogout: () => void;
+  onMenuToggle?: () => void;
+  isMenuOpen?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpen = false }) => {
   const [showUserMenu, setShowUserMenu] = React.useState(false);
 
   const userName = user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'User';
@@ -17,9 +19,26 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-white">
       <div className="flex h-16 items-center justify-between px-6">
-        {/* Left side - can be used for breadcrumbs or page title */}
-        <div className="flex-1">
-          {/* This space can be used for breadcrumbs or other content */}
+        {/* Left side - Menu toggle for mobile */}
+        <div className="flex items-center space-x-4">
+          {onMenuToggle && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMenuToggle}
+              className="md:hidden"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+          <div className="hidden md:block flex-1">
+            {/* This space can be used for breadcrumbs or other content */}
+          </div>
         </div>
 
         {/* Right side - User Profile */}
