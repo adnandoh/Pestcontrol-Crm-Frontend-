@@ -36,22 +36,22 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
   const sidebarIsOpen = !isMobile ? true : isSidebarOpen;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       <Header 
         user={user || undefined} 
         onLogout={onLogout}
         onMenuToggle={toggleSidebar}
         isMenuOpen={isSidebarOpen}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative">
+        {/* Sidebar - Fixed on both mobile and desktop */}
         <Sidebar 
           isOpen={sidebarIsOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
-        <main className="flex-1 overflow-y-auto md:ml-64 px-4 md:px-6 py-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+        {/* Main Content - Always has left margin on desktop to account for fixed sidebar */}
+        <main className="w-full md:ml-64 min-h-[calc(100vh-4rem)] px-4 md:px-6 py-6 transition-all duration-300">
+          {children}
         </main>
       </div>
     </div>

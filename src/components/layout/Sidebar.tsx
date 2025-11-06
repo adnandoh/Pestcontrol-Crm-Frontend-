@@ -77,9 +77,13 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       )}
       <aside
         className={cn(
-          'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r bg-white shadow-sm transition-transform duration-300',
-          'md:translate-x-0 md:static md:h-auto md:shadow-none',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'w-64 border-r bg-white shadow-sm transition-transform duration-300',
+          // Mobile: fixed positioning with overlay
+          'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)]',
+          // Desktop: fixed but always visible
+          'md:fixed md:left-0 md:top-16 md:h-[calc(100vh-4rem)] md:z-10',
+          // Visibility - always visible on desktop, toggleable on mobile
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           className
         )}
       >
