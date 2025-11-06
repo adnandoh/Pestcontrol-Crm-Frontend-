@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext, createContext, ReactNode, useCallback } from 'react';
+import { useState, useEffect, useContext, createContext, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
-import { AuthUser, LoginCredentials } from '../types';
+import type { AuthUser, LoginCredentials } from '../types';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -43,15 +44,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/login';
   }, []);
 
-  const refreshToken = async () => {
+  const refreshToken = async (): Promise<void> => {
     try {
       const response = await enhancedApiService.refreshToken();
       setUser(response.user);
       
       // Update user in localStorage
       localStorage.setItem('user_info', JSON.stringify(response.user));
-      
-      return response;
     } catch (error) {
       console.error('Token refresh failed:', error);
       logout();

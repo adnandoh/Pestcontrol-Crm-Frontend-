@@ -95,7 +95,7 @@ const Clients: React.FC = () => {
   };
 
   // Handle client form save
-  const handleClientSave = (client: Client) => {
+  const handleClientSave = (_client: Client) => {
     setShowClientForm(false);
     setSelectedClient(undefined);
     loadClients(pagination.current);

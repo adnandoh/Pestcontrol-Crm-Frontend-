@@ -4,9 +4,6 @@ import {
   ArrowLeft,
   Save,
   User,
-  Phone,
-  Mail,
-  MapPin,
   Settings,
   IndianRupee,
   Calendar
@@ -29,7 +26,6 @@ import {
 import {
   ValidatedInput,
   ValidatedTextarea,
-  ValidatedSelect,
   ValidatedDatePicker
 } from '../components/forms';
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
@@ -46,7 +42,7 @@ const EditJobCard: React.FC = () => {
   const [showPauseConfirmation, setShowPauseConfirmation] = useState(false);
   const [pendingPauseState, setPendingPauseState] = useState<boolean | null>(null);
   const [pauseLoading, setPauseLoading] = useState(false);
-  const [originalFormData, setOriginalFormData] = useState<JobCardFormData | null>(null);
+  const [_originalFormData, setOriginalFormData] = useState<JobCardFormData | null>(null);
 
   // Form state with localStorage persistence
   const getStorageKey = () => `editJobCardFormData_${id}`;
@@ -91,7 +87,7 @@ const EditJobCard: React.FC = () => {
     validateForm,
     clearError,
     scrollToFirstError,
-    hasErrors
+    hasErrors: _hasErrors
   } = useFormValidation(jobCardValidationRules);
 
   // Helper function to convert JobCard data to form data
@@ -247,7 +243,7 @@ const EditJobCard: React.FC = () => {
 
   // Handle field validation on blur
   const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
-    const error = validateField(field, value);
+    validateField(field, value);
     // Error is automatically set by the validation hook
   };
 
@@ -370,7 +366,7 @@ const EditJobCard: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
-      const result = await enhancedApiService.updateJobCard(parseInt(id), formData);
+      await enhancedApiService.updateJobCard(parseInt(id), formData);
 
       // Success - clear saved data and cache, then redirect
       localStorage.removeItem(getStorageKey());
@@ -595,7 +591,7 @@ const EditJobCard: React.FC = () => {
                 Contract Duration
               </label>
               <Select
-                value={formData.contract_duration}
+                value={formData.contract_duration || ''}
                 onChange={(value) => handleInputChange('contract_duration', value)}
                 options={contractDurationOptions}
                 placeholder="Select contract duration"
@@ -680,7 +676,7 @@ const EditJobCard: React.FC = () => {
                   Reference
                 </label>
                 <Select
-                  value={formData.reference}
+                  value={formData.reference || ''}
                   onChange={(value) => handleInputChange('reference', value)}
                   options={referenceOptions.map(option => ({ value: option, label: option }))}
                   placeholder="Select reference"

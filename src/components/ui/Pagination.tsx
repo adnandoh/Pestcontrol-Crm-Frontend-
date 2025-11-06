@@ -17,10 +17,10 @@ export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   totalItems,
-  itemsPerPage,
+  itemsPerPage: _itemsPerPage,
   onPageChange,
-  onPageSizeChange,
-  showPageSizeSelector = true,
+  onPageSizeChange: _onPageSizeChange,
+  showPageSizeSelector: _showPageSizeSelector = true,
   showGoToPage = true,
   className = ''
 }) => {

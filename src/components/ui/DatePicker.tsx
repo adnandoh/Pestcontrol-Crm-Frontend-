@@ -17,7 +17,7 @@ interface DatePickerProps {
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
-  placeholder = 'Select date',
+  placeholder: _placeholder = 'Select date',
   error,
   disabled = false,
   required = false,

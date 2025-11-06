@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 const AuthDebug: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     return null;
   }
 

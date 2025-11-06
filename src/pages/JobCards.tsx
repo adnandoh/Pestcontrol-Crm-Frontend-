@@ -221,13 +221,6 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Truncate address to show only first 5 words
-  const truncateAddress = (text: string, wordLimit: number = 5) => {
-    if (!text) return '';
-    const words = text.split(' ');
-    if (words.length <= wordLimit) return text;
-    return words.slice(0, wordLimit).join(' ') + '...';
-  };
 
   // Extract only the number from job card code (e.g., "JC-0018" -> "0018")
   const extractIdNumber = (code: string) => {

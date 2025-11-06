@@ -18,7 +18,6 @@ import type {
   ClientFormData,
   InquiryFormData,
   JobCardFormData,
-  DashboardStats,
   DashboardStatisticsResponse,
 } from '../types';
 
@@ -756,7 +755,8 @@ class EnhancedApiService {
     const cacheKey = apiCache.generateKey(`${API_ENDPOINTS.RENEWALS}active/`, params);
     
     return this.cachedRequest(
-      this.makeRequest(
+      cacheKey,
+      () => this.makeRequest(
         cacheKey,
         () => this.api.get<PaginatedResponse<Renewal>>(`${API_ENDPOINTS.RENEWALS}active/`, { params })
       ),

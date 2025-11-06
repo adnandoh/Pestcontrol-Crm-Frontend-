@@ -139,7 +139,7 @@ const CreateJobCard: React.FC = () => {
     validateForm,
     clearError,
     scrollToFirstError,
-    hasErrors
+    hasErrors: _hasErrors
   } = useFormValidation(jobCardValidationRules);
 
 
@@ -195,7 +195,7 @@ const CreateJobCard: React.FC = () => {
 
   // Handle field validation on blur
   const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
-    const error = validateField(field, value);
+    validateField(field, value);
     // Error is automatically set by the validation hook
   };
 
@@ -726,7 +726,7 @@ const CreateJobCard: React.FC = () => {
                   Reference
                 </label>
                 <Select
-                  value={formData.reference}
+                  value={formData.reference || ''}
                   onChange={(value) => handleInputChange('reference', value)}
                   options={referenceOptions.map(option => ({ value: option, label: option }))}
                   placeholder="Select reference"

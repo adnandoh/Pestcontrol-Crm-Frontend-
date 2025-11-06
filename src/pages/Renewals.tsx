@@ -57,8 +57,9 @@ const Renewals: React.FC = () => {
 
       // Remove empty filters
       Object.keys(params).forEach(key => {
-        if (params[key] === '') {
-          delete params[key];
+        const typedKey = key as keyof typeof params;
+        if (params[typedKey] === '') {
+          delete params[typedKey];
         }
       });
 
@@ -182,7 +183,7 @@ const Renewals: React.FC = () => {
   };
 
   // Get urgency icon and color
-  const getUrgencyDisplay = (urgencyLevel: string, urgencyColor: string) => {
+  const getUrgencyDisplay = (urgencyLevel: string, _urgencyColor: string) => {
     const iconProps = { className: "h-4 w-4 mr-1" };
 
     switch (urgencyLevel) {
@@ -233,7 +234,7 @@ const Renewals: React.FC = () => {
         <div className="flex items-center space-x-3">
           {selectedRenewals.length > 0 && (
             <Button 
-              variant="default" 
+              variant="primary" 
               size="sm" 
               onClick={handleBulkMarkCompleted}
               disabled={bulkLoading}
@@ -444,7 +445,7 @@ const Renewals: React.FC = () => {
                       <div className="flex items-center space-x-2 ml-4">
                         {renewal.status === 'Due' && (
                           <Button
-                            variant="default"
+                            variant="primary"
                             size="sm"
                             onClick={() => handleMarkCompleted(renewal.id)}
                           >

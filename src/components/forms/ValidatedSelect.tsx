@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { Select } from '../ui/Select';
 import { FieldError } from '../ui/FieldError';
 import { cn } from '../../utils/cn';
@@ -35,7 +35,7 @@ const ValidatedSelect = forwardRef<HTMLSelectElement, ValidatedSelectProps>(
     placeholder,
     disabled,
     ...props 
-  }, ref) => {
+  }) => {
     const hasError = Boolean(error);
 
     // Handle select change with validation
@@ -82,9 +82,8 @@ const ValidatedSelect = forwardRef<HTMLSelectElement, ValidatedSelectProps>(
         
         <div className={cn(hasError && 'select-error')}>
           <Select
-            value={value}
+            value={value || ''}
             onChange={handleChange}
-            onBlur={handleBlur}
             options={options}
             placeholder={placeholder}
             disabled={disabled}
@@ -96,6 +95,14 @@ const ValidatedSelect = forwardRef<HTMLSelectElement, ValidatedSelectProps>(
             {...props}
           />
         </div>
+        {onBlur && (
+          <input
+            type="hidden"
+            onBlur={handleBlur}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        )}
         
         {showError && (
           <FieldError 

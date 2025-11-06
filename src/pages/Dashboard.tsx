@@ -4,7 +4,6 @@ import {
   MessageSquare,
   ClipboardList,
   RefreshCw,
-  TrendingUp,
   AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, Button, PageLoading } from '../components/ui';

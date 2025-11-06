@@ -22,7 +22,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { Inquiry, PaginatedResponse } from '../types';
 
 const Inquiries: React.FC = () => {
-  const navigate = useNavigate();
+  useNavigate(); // Keep hook for potential future use
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,7 +262,7 @@ const Inquiries: React.FC = () => {
                       
                       {inquiry.status === 'New' && (
                         <Button 
-                          variant="default" 
+                          variant="primary" 
                           size="sm"
                           onClick={() => handleConvertToJobCard(inquiry)}
                         >

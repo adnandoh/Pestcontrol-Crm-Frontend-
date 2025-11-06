@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { DatePicker } from '../ui/DatePicker';
 import { FieldError } from '../ui/FieldError';
 import { cn } from '../../utils/cn';
@@ -33,7 +33,7 @@ const ValidatedDatePicker = forwardRef<HTMLInputElement, ValidatedDatePickerProp
     placeholder,
     disabled,
     ...props 
-  }, ref) => {
+  }) => {
     const hasError = Boolean(error);
 
     // Handle date change with validation
@@ -82,7 +82,6 @@ const ValidatedDatePicker = forwardRef<HTMLInputElement, ValidatedDatePickerProp
           <DatePicker
             value={value || ''}
             onChange={handleChange}
-            onBlur={handleBlur}
             error={error}
             name={name}
             id={name}
@@ -93,6 +92,14 @@ const ValidatedDatePicker = forwardRef<HTMLInputElement, ValidatedDatePickerProp
             {...props}
           />
         </div>
+        {onBlur && (
+          <input
+            type="hidden"
+            onBlur={handleBlur}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        )}
         
         {showError && (
           <FieldError 

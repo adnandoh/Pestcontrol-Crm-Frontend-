@@ -26,7 +26,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
     onChange,
     onBlur,
     ...props 
-  }, ref) => {
+  }) => {
     const hasError = Boolean(error);
 
     // Handle textarea change with validation
@@ -76,7 +76,6 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
         )}
         
         <Textarea
-          ref={ref}
           id={name}
           name={name}
           className={cn(

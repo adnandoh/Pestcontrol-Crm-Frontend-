@@ -23,7 +23,7 @@ import {
 } from '../components/ui';
 import { ClientForm } from '../components/forms';
 import { enhancedApiService } from '../services/api.enhanced';
-import { Client } from '../types';
+import type { Client } from '../types';
 
 const ClientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();

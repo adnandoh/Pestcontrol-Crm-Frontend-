@@ -36,7 +36,7 @@ const AppContent: React.FC = () => {
           path="/*"
           element={
             <ProtectedRoute>
-              <Layout user={user} onLogout={logout}>
+              <Layout user={user ?? null} onLogout={logout}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/clients" element={<Clients />} />

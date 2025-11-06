@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect } from 'react';
+import React, { forwardRef } from 'react';
 import { Input } from '../ui/Input';
 import { FieldError } from '../ui/FieldError';
 import { cn } from '../../utils/cn';

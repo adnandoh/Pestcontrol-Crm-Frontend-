@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, X } from 'lucide-react';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
-import { Client, ClientFormData } from '../../types';
+import type { Client, ClientFormData } from '../../types';
 
 interface ClientFormProps {
   client?: Client;

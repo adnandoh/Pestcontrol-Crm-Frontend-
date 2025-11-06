@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, AlertCircle, Info, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle, Info, Loader2, XCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface ClientCheckStatusProps {

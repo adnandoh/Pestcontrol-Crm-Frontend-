@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
-import { LoginCredentials } from '../types';
+import type { LoginCredentials } from '../types';
 
 const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
