@@ -70,15 +70,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       {/* Mobile overlay */}
       {isOpen && onClose && (
         <div
-          className="fixed inset-0 z-10 bg-black bg-opacity-50 md:hidden"
+          className="fixed inset-0 z-[15] bg-black bg-opacity-50 md:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
       <aside
         className={cn(
-          'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r bg-white transition-transform duration-300',
-          'md:translate-x-0 md:static',
+          'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r bg-white shadow-sm transition-transform duration-300',
+          'md:translate-x-0 md:static md:h-auto md:shadow-none',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}

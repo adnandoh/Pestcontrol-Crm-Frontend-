@@ -36,20 +36,22 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
   const sidebarIsOpen = !isMobile ? true : isSidebarOpen;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header 
         user={user || undefined} 
         onLogout={onLogout}
         onMenuToggle={toggleSidebar}
         isMenuOpen={isSidebarOpen}
       />
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar 
           isOpen={sidebarIsOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
-        <main className="flex-1 md:ml-64 px-4 md:px-6 py-6">
-          {children}
+        <main className="flex-1 overflow-y-auto md:ml-64 px-4 md:px-6 py-6">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

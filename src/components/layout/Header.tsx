@@ -17,8 +17,8 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
   const userRole = user?.is_staff ? 'Admin' : 'User';
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-white">
-      <div className="flex h-16 items-center justify-between px-6">
+    <header className="sticky top-0 z-30 w-full border-b bg-white shadow-sm">
+      <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left side - Menu toggle for mobile */}
         <div className="flex items-center space-x-4">
           {onMenuToggle && (
