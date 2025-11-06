@@ -79,15 +79,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
         className={cn(
           'w-64 border-r bg-white shadow-sm transition-transform duration-300',
           // Mobile: fixed positioning with overlay
-          'fixed left-0 top-16 z-20 h-[calc(100vh-4rem)]',
+          'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)]',
           // Desktop: fixed positioning
-          'md:fixed md:left-0 md:top-16 md:h-[calc(100vh-4rem)] md:z-10',
+          'md:fixed md:left-0 md:top-16 md:h-[calc(100vh-4rem)] md:z-40',
           // Visibility - toggleable on both mobile and desktop
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}
       >
-      <nav className="flex h-full flex-col space-y-1 p-4">
+      <nav className="flex h-full flex-col space-y-1 p-4 overflow-y-auto">
         {navigation.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);

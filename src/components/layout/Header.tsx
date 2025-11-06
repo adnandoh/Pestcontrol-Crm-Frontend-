@@ -12,12 +12,30 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpen = false }) => {
   const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   const userName = user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'User';
   const userRole = user?.is_staff ? 'Admin' : 'User';
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-white shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-white shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left side - Logo and Menu toggle */}
         <div className="flex items-center space-x-4">
@@ -55,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
         </div>
 
         {/* Right side - User Profile */}
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <Button
             variant="ghost"
             size="sm"
@@ -78,7 +96,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
           </Button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white p-1 shadow-lg">
+            <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white p-1 shadow-lg z-50">
               <div className="px-3 py-3">
                 <div className="text-sm font-medium text-gray-900">
                   {userName}
