@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Users,
   MessageSquare,
   ClipboardList,
   RefreshCw,
   FileText,
-  Building2
+  Building2,
+  Plus
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -20,21 +19,17 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) => {
   const location = useLocation();
 
-  const navigation = [
+  const navigation: Array<{
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    isGreen?: boolean;
+  }> = [
     {
-      name: 'Dashboard',
-      href: '/',
-      icon: LayoutDashboard,
-    },
-    {
-      name: 'Clients',
-      href: '/clients',
-      icon: Users,
-    },
-    {
-      name: 'Inquiries',
-      href: '/inquiries',
-      icon: MessageSquare,
+      name: 'Create',
+      href: '/jobcards/create',
+      icon: Plus,
+      isGreen: true, // Special styling for Create tab
     },
     {
       name: 'Job Cards',
@@ -45,6 +40,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       name: 'Society Job Cards',
       href: '/society-jobcards',
       icon: Building2,
+    },
+    {
+      name: 'Inquiries',
+      href: '/inquiries',
+      icon: MessageSquare,
     },
     {
       name: 'Renewals',
@@ -61,6 +61,10 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
   const isActive = (href: string) => {
     if (href === '/') {
       return location.pathname === '/';
+    }
+    // Special handling for Create tab - active when on create page
+    if (href === '/jobcards/create') {
+      return location.pathname === '/jobcards/create';
     }
     return location.pathname.startsWith(href);
   };
@@ -91,6 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
         {navigation.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
+          const isCreateTab = item.isGreen;
           
           return (
             <Link
@@ -98,7 +103,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
               to={item.href}
               className={cn(
                 'flex items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                active
+                isCreateTab
+                  ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                  : active
                   ? 'bg-primary-50 text-primary-700'
                   : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               )}
@@ -106,7 +113,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
               <Icon
                 className={cn(
                   'h-5 w-5',
-                  active ? 'text-primary-600' : 'text-gray-400'
+                  isCreateTab
+                    ? 'text-green-600'
+                    : active
+                    ? 'text-primary-600'
+                    : 'text-gray-400'
                 )}
               />
               <span>{item.name}</span>
