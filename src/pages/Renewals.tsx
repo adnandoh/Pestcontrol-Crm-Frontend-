@@ -165,7 +165,7 @@ const Renewals: React.FC = () => {
     const timeout = setTimeout(() => {
       if (filters.search !== searchInput) {
         setFilters(prev => ({ ...prev, search: searchInput }));
-        loadRenewals(1, { ...filters, search: searchInput });
+        loadRenewals(1);
       }
     }, 500);
     

@@ -5,7 +5,6 @@ import {
   Search,
 } from 'lucide-react';
 import { 
-  Button, 
   PageLoading,
   Pagination,
 } from '../components/ui';
@@ -16,7 +15,6 @@ import type { Inquiry, PaginatedResponse } from '../types';
 const Inquiries: React.FC = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -35,7 +33,7 @@ const Inquiries: React.FC = () => {
   const loadInquiries = async (page = 1) => {
     try {
       setLoading(true);
-      setError(null);
+
 
       const params = {
         page,
@@ -57,7 +55,6 @@ const Inquiries: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load inquiries');
       console.error('Error loading inquiries:', err);
     } finally {
       setLoading(false);
@@ -123,7 +120,7 @@ const Inquiries: React.FC = () => {
       alert(`Successfully converted to Job Card #${jobCard.code}`);
       loadInquiries(pagination.current);
     } catch (err: any) {
-      setError('Failed to convert inquiry: ' + err.message);
+      // Error handling
     }
   };
 

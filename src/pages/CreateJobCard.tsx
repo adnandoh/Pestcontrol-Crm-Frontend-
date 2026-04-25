@@ -15,7 +15,6 @@ import {
   Users
 } from 'lucide-react';
 import {
-  Button,
   Card,
   Input,
 } from '../components/ui';
@@ -27,7 +26,6 @@ const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
     
@@ -102,7 +100,6 @@ const CreateJobCard: React.FC = () => {
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
-  const [clientCheckError, setClientCheckError] = useState<string | null>(null);
   const [foundClientName, setFoundClientName] = useState<string>('');
   const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
 
@@ -230,10 +227,7 @@ const CreateJobCard: React.FC = () => {
     return updatedFormData;
   };
 
-  // Handle field validation on blur
-  const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
-    validateField(field, value);
-  };
+
 
   // Handle service type selection
   const handleServiceTypeChange = (service: string, checked: boolean) => {
@@ -285,7 +279,6 @@ const CreateJobCard: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error checking client:', error);
-      setClientCheckErrorState('Unable to check client.');
     }
   };
 
@@ -298,10 +291,7 @@ const CreateJobCard: React.FC = () => {
     setClientCheckStatus('not-found');
   };
 
-  const setClientCheckErrorState = (err: string) => {
-    setClientCheckStatus('error');
-    setClientCheckError(err);
-  };
+
 
   const resetClientCheckState = () => {
     setClientCheckStatus('idle');
@@ -330,11 +320,9 @@ const CreateJobCard: React.FC = () => {
     }
     try {
       setSubmitting(true);
-      setError(null);
       await enhancedApiService.createJobCard(formData, clientCheckStatus === 'found');
       navigate('/jobcards');
     } catch (err: any) {
-      setError(err.message || 'Failed to create booking');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);

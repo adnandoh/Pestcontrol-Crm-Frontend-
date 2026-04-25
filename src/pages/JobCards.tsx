@@ -12,7 +12,6 @@ import {
   Pagination
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
-import { cn } from '../utils/cn';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import type { JobCard, PaginatedResponse } from '../types';
 
@@ -20,7 +19,6 @@ const JobCards: React.FC = () => {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -62,18 +60,13 @@ const JobCards: React.FC = () => {
     { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
   ];
 
-  const datePresetOptions = [
-    { value: '', label: 'All Time' },
-    { value: 'today', label: 'Today' },
-    { value: 'tomorrow', label: 'Tomorrow' },
-    { value: 'custom', label: 'Custom Range' }
-  ];
+
 
   // Load job cards
   const loadJobCards = async (page = 1, currentFilters = filters) => {
     try {
       setLoading(true);
-      setError(null);
+
 
       const params: any = {
         page,
@@ -133,7 +126,6 @@ const JobCards: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load job cards');
       console.error('Error loading job cards:', err);
     } finally {
       setLoading(false);
@@ -244,43 +236,21 @@ const JobCards: React.FC = () => {
     loadJobCards(1, newFilters);
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = filters.search || filters.status || filters.service_category || filters.assigned_to || filters.date_preset;
+
 
   // Handle pagination
   const handlePageChange = (page: number) => {
     loadJobCards(page, filters);
   };
 
-  // Handle page size change
-  const handlePageSizeChange = (pageSize: number) => {
-    setPagination(prev => ({ ...prev, pageSize }));
-    loadJobCards(1, filters);
-  };
 
 
 
-  // Get status badge variant
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'Pending': return 'default';
-      case 'Confirmed': return 'warning';
-      case 'Completed': return 'success';
-      case 'Cancelled': return 'destructive';
-      case 'Hold': return 'secondary';
-      case 'Inactive': return 'secondary';
-      default: return 'default';
-    }
-  };
 
 
-  // Extract only the number from job card code (e.g., "JC-0018" -> "0018")
-  const extractIdNumber = (code: string) => {
-    if (!code) return '';
-    // Remove any prefix like "JC-", "#", etc. and return only the number part
-    const match = code.match(/(\d+)$/);
-    return match ? match[1] : code;
-  };
+
+
+
 
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">

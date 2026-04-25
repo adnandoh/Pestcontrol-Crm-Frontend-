@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save, X, Users } from 'lucide-react';
 import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
@@ -86,7 +86,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error for this field
-    if (errors[field]) {
+    if (errors[field as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
 

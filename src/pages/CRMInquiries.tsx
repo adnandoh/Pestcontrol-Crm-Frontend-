@@ -7,12 +7,10 @@ import {
   Calendar, 
   MapPin, 
   Zap,
-  MessageCircle,
-  ChevronRight
+  MessageCircle
 } from 'lucide-react';
 import { 
   Button, 
-  PageLoading, 
   Pagination, 
   ConfirmationModal
 } from '../components/ui';

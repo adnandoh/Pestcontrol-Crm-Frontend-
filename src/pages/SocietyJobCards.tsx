@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import {
   Button,
-  Pagination
+  Pagination,
+  PageLoading
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -18,7 +19,6 @@ const SocietyJobCards: React.FC = () => {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -57,18 +57,13 @@ const SocietyJobCards: React.FC = () => {
     { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
   ];
 
-  const datePresetOptions = [
-    { value: '', label: 'All Time' },
-    { value: 'today', label: 'Today' },
-    { value: 'tomorrow', label: 'Tomorrow' },
-    { value: 'custom', label: 'Custom Range' }
-  ];
+
 
   // Load society job cards
   const loadSocietyJobCards = async (page = 1, currentFilters = filters) => {
     try {
       setLoading(true);
-      setError(null);
+
 
       const params: any = {
         page,
@@ -125,7 +120,6 @@ const SocietyJobCards: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load society bookings');
       console.error('Error loading society job cards:', err);
     } finally {
       setLoading(false);
@@ -197,12 +191,7 @@ const SocietyJobCards: React.FC = () => {
     loadSocietyJobCards(1, newFilters);
   };
 
-  // Handle Enter key in search input
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearchSubmit();
-    }
-  };
+
 
   // Handle status filter change
   const handleStatusFilterChange = (status: string) => {
@@ -229,8 +218,7 @@ const SocietyJobCards: React.FC = () => {
     loadSocietyJobCards(1, newFilters);
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = filters.search || filters.status || filters.service_category || filters.assigned_to || filters.date_preset;
+
 
   // Handle pagination
   const handlePageChange = (page: number) => {
@@ -272,13 +260,7 @@ const SocietyJobCards: React.FC = () => {
     };
   };
 
-  // Truncate address to show only first 5 words
-  const truncateAddress = (text: string, wordLimit: number = 5) => {
-    if (!text) return '';
-    const words = text.split(' ');
-    if (words.length <= wordLimit) return text;
-    return words.slice(0, wordLimit).join(' ') + '...';
-  };
+
 
   // Extract only the number from job card code (e.g., "JC-0018" -> "0018")
   const extractIdNumber = (code: string) => {

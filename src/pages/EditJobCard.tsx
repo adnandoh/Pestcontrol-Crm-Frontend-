@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  Save,
   User,
-  Settings,
   IndianRupee,
   Calendar,
   ShieldCheck,
@@ -27,7 +25,6 @@ const EditJobCard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -64,8 +61,6 @@ const EditJobCard: React.FC = () => {
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
   const {
-    errors,
-    validateField,
     validateForm,
     clearError,
     scrollToFirstError,
@@ -85,7 +80,6 @@ const EditJobCard: React.FC = () => {
   const serviceTypeOptions = serviceTypeCategories.flatMap(cat => cat.options);
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [selectAll, setSelectAll] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -135,7 +129,7 @@ const EditJobCard: React.FC = () => {
         setSelectedServices(services.filter(s => serviceTypeOptions.includes(s)));
         
       } catch (err: any) {
-        setError(err.message || 'Failed to load data');
+        // Error handling
       } finally {
         setLoading(false);
       }
@@ -153,16 +147,6 @@ const EditJobCard: React.FC = () => {
       setSelectedServices(prev => [...prev, service]);
     } else {
       setSelectedServices(prev => prev.filter(s => s !== service));
-      setSelectAll(false);
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
-    if (checked) {
-      setSelectedServices([...serviceTypeOptions]);
-    } else {
-      setSelectedServices([]);
     }
   };
 
@@ -186,7 +170,6 @@ const EditJobCard: React.FC = () => {
       await enhancedApiService.updateJobCard(parseInt(id), formData);
       navigate(jobCard?.job_type === 'Society' ? '/society-jobcards' : '/jobcards');
     } catch (err: any) {
-      setError(err.message || 'Failed to update booking');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);

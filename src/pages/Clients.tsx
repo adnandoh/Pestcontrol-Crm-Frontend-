@@ -3,11 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Eye, Search } from 'lucide-react';
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
   PageLoading,
   Pagination
 } from '../components/ui';
@@ -21,7 +16,6 @@ const Clients: React.FC = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -41,7 +35,6 @@ const Clients: React.FC = () => {
   const loadClients = async (page = 1, currentSearch = searchInput) => {
     try {
       setLoading(true);
-      setError(null);
 
       const params: any = {
         page,
@@ -65,7 +58,6 @@ const Clients: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load clients');
       console.error('Error loading clients:', err);
     } finally {
       setLoading(false);
