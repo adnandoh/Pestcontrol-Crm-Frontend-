@@ -2,33 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
-  MessageSquare, 
   Phone, 
-  ExternalLink, 
   Trash2, 
-  CheckCircle, 
   Calendar, 
   MapPin, 
-  MoreHorizontal,
-  Edit,
-  User,
   Zap,
-  MessageCircle
+  MessageCircle,
+  ChevronRight
 } from 'lucide-react';
 import { 
   Button, 
-  Card, 
-  Badge, 
   PageLoading, 
   Pagination, 
-  Input, 
-  Select,
   ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
-import type { CRMInquiry, CRMInquiryStatus, PestType, PaginatedResponse } from '../types';
+import type { CRMInquiry, CRMInquiryStatus } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 
 const CRMInquiries: React.FC = () => {
@@ -240,7 +230,7 @@ const CRMInquiries: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="py-20 text-center text-gray-400 font-semibold uppercase italic text-sm tracking-tight opacity-70">No inquiries found. Create your first lead now!</td>
                 </tr>
-              ) : inquiries.map((inq, idx) => (
+              ) : inquiries.map((inq) => (
                 <tr key={inq.id} className="hover:bg-blue-50/20 transition-colors group">
                   <td className="px-4 py-3 text-xs font-extrabold text-gray-400">#{inq.id}</td>
                   <td className="px-4 py-3">
@@ -328,6 +318,8 @@ const CRMInquiries: React.FC = () => {
           <Pagination
             currentPage={pagination.current}
             totalPages={Math.ceil(pagination.count / pagination.pageSize)}
+            totalItems={pagination.count}
+            itemsPerPage={pagination.pageSize}
             onPageChange={loadInquiries}
           />
         </div>
@@ -346,7 +338,7 @@ const CRMInquiries: React.FC = () => {
         title="Delete Inquiry"
         message="Are you sure you want to permanently delete this lead? This action cannot be undone."
         confirmText="Yes, Delete"
-        variant="danger"
+        type="danger"
       />
     </div>
   );

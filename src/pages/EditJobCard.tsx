@@ -9,32 +9,14 @@ import {
   Calendar,
   ShieldCheck,
   Zap,
-  Target,
-  MoreHorizontal,
-  ClipboardList,
-  Users
+  Target
 } from 'lucide-react';
 import {
   Button,
   Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Checkbox,
-  Toggle,
   PageLoading,
-  ConfirmationModal,
-  DatePicker,
   Input,
-  Select,
-  Textarea,
-  Badge,
 } from '../components/ui';
-import {
-  ValidatedInput,
-  ValidatedTextarea,
-  ValidatedDatePicker
-} from '../components/forms';
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -47,12 +29,8 @@ const EditJobCard: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
-  const [showPauseConfirmation, setShowPauseConfirmation] = useState(false);
-  const [pendingPauseState, setPendingPauseState] = useState<boolean | null>(null);
-  const [pauseLoading, setPauseLoading] = useState(false);
   
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [loadingTechs, setLoadingTechs] = useState(false);
 
   const getInitialFormData = (): JobCardFormData => ({
     client_name: '',

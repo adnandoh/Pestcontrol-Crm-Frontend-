@@ -4,12 +4,9 @@ import {
   MessageSquare,
   ClipboardList,
   RefreshCw,
-  AlertCircle,
   Clock,
   CheckCircle2,
   XCircle,
-  PauseCircle,
-  CalendarCheck,
   ShieldCheck,
   MapPin,
   Home,
@@ -24,15 +21,12 @@ import type { DashboardStatisticsResponse } from '../types';
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
-      setError(null);
       const dashboardStats = await enhancedApiService.getDashboardStatistics();
       setStats(dashboardStats);
     } catch (error: any) {
-      setError('Failed to load dashboard statistics');
       console.error('Dashboard error:', error);
     } finally {
       setIsLoading(false);

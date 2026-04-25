@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users,
   Plus,
   Search,
   Phone,
   User,
   Trash2,
   Edit2,
-  CheckCircle2,
   XCircle,
   Hash,
   Contact2
@@ -15,8 +13,7 @@ import {
 import {
   Button,
   Card,
-  Input,
-  Badge
+  Input
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { Technician } from '../types';

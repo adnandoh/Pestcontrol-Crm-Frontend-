@@ -3,24 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Edit,
-  Calendar,
   Building2,
-  Search,
-  Filter,
-  X,
-  MapPin
+  Search
 } from 'lucide-react';
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
-  PageLoading,
-  Pagination,
-  Input,
-  Select
+  Pagination
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -226,7 +214,15 @@ const SocietyJobCards: React.FC = () => {
 
   // Clear all filters
   const clearFilters = () => {
-    const newFilters = { search: '', status: '' };
+    const newFilters = { 
+      search: '', 
+      status: '', 
+      service_category: '', 
+      assigned_to: '', 
+      date_preset: '', 
+      from: '', 
+      to: '' 
+    };
     setFilters(newFilters);
     setSearchInput('');
     setPagination(prev => ({ ...prev, current: 1 }));

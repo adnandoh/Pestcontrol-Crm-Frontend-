@@ -6,38 +6,19 @@ import {
   Save,
   User,
   Phone,
-  Mail,
-  MapPin,
   Settings,
   IndianRupee,
   Calendar,
   ShieldCheck,
   Zap,
   Target,
-  MoreHorizontal,
-  ClipboardList,
   Users
 } from 'lucide-react';
 import {
   Button,
   Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Checkbox,
-  ClientCheckStatus,
-  Select,
   Input,
-  DatePicker,
-  FieldError,
-  Badge,
 } from '../components/ui';
-import {
-  ValidatedInput,
-  ValidatedTextarea,
-  ValidatedSelect,
-  ValidatedDatePicker
-} from '../components/forms';
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, Technician } from '../types';
@@ -46,8 +27,6 @@ const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
     
@@ -118,46 +97,34 @@ const CreateJobCard: React.FC = () => {
   ];
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [customService, setCustomService] = useState('');
   const [selectAll, setSelectAll] = useState(false);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
-  const [clientCheckError, setClientCheckError] = useState<string>('');
-  const [foundClientName, setFoundClientName] = useState<string>('');
   const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
-  const [autoPopulatedFields, setAutoPopulatedFields] = useState<Set<string>>(new Set());
 
   // Locations data
   const [locations, setLocations] = useState<Record<string, string[]>>({});
-  const [loadingLocations, setLoadingLocations] = useState(false);
 
   // Technician data
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [loadingTechs, setLoadingTechs] = useState(false);
 
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        setLoadingLocations(true);
         const data = await enhancedApiService.getLocations();
         setLocations(data);
       } catch (err) {
         console.error('Failed to fetch locations:', err);
-      } finally {
-        setLoadingLocations(false);
       }
     };
     
     const fetchTechs = async () => {
        try {
-         setLoadingTechs(true);
          const data = await enhancedApiService.getActiveTechnicians();
          setTechnicians(data || []);
        } catch (err) {
          console.error('Failed to fetch techs:', err);
-       } finally {
-         setLoadingTechs(false);
        }
     };
 
@@ -261,8 +228,6 @@ const CreateJobCard: React.FC = () => {
   };
 
   // Handle field validation on blur
-  const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
-    validateField(field, value);
   };
 
   // Handle service type selection

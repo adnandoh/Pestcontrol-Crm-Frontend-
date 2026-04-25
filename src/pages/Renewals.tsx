@@ -5,21 +5,12 @@ import {
   Calendar,
   AlertTriangle,
   Clock,
-  Filter,
-  X,
   Search
 } from 'lucide-react';
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
   PageLoading,
   Pagination,
-  Select,
-  Input
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -28,7 +19,6 @@ import type { Renewal, PaginatedResponse } from '../types';
 const Renewals: React.FC = () => {
   const [renewals, setRenewals] = useState<Renewal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedRenewals, setSelectedRenewals] = useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -54,7 +44,6 @@ const Renewals: React.FC = () => {
   const loadRenewals = async (page = 1) => {
     try {
       setLoading(true);
-      setError(null);
 
       const params = {
         page,
@@ -83,7 +72,6 @@ const Renewals: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load renewals');
       console.error('Error loading renewals:', err);
     } finally {
       setLoading(false);
@@ -115,30 +103,25 @@ const Renewals: React.FC = () => {
       setSelectedRenewals(prev => prev.filter(rid => rid !== id));
       loadRenewals(pagination.current);
     } catch (err: any) {
-      setError('Failed to mark renewal as completed: ' + err.message);
     }
   };
 
   // Handle bulk mark as completed
   const handleBulkMarkCompleted = async () => {
     if (selectedRenewals.length === 0) {
-      setError('Please select at least one renewal to mark as completed');
       return;
     }
 
     try {
       setBulkLoading(true);
-      setError(null);
       const result = await enhancedApiService.bulkMarkRenewalsCompleted(selectedRenewals);
       
       if (result.failed_count > 0) {
-        setError(`Marked ${result.success_count} as completed, but ${result.failed_count} failed`);
       }
       
       setSelectedRenewals([]);
       loadRenewals(pagination.current);
     } catch (err: any) {
-      setError('Failed to mark renewals as completed: ' + err.message);
     } finally {
       setBulkLoading(false);
     }
@@ -189,44 +172,6 @@ const Renewals: React.FC = () => {
     setSearchTimeout(timeout);
     return () => clearTimeout(timeout);
   }, [searchInput]);
-
-  // Updated loadRenewals for internal call
-  const loadRenewalsFiltered = async (page = 1, currentFilters = filters) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params: any = {
-        page,
-        page_size: pagination.pageSize,
-        ordering: 'due_date',
-        ...currentFilters
-      };
-
-      // Remove empty filters
-      Object.keys(params).forEach(key => {
-        if (params[key] === '') {
-          delete params[key];
-        }
-      });
-
-      const response: PaginatedResponse<Renewal> = await enhancedApiService.getRenewals(params);
-
-      setRenewals(response.results);
-      setPagination(prev => ({
-        ...prev,
-        count: response.count,
-        next: response.next,
-        previous: response.previous,
-        current: page,
-        totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
-      }));
-    } catch (err: any) {
-      setError(err.message || 'Failed to load renewals');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Clear filters
   const clearFilters = () => {

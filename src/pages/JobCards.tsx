@@ -2,29 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
-  ClipboardList,
   Edit,
-  Calendar,
   Search,
-  Filter,
-  X,
-  Clock,
-  RefreshCw,
-  CheckCircle,
   Layout,
   Zap
 } from 'lucide-react';
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
-  PageLoading,
-  Pagination,
-  Input,
-  Select
+  Pagination
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -515,6 +500,8 @@ const JobCards: React.FC = () => {
            <Pagination
              currentPage={pagination.current}
              totalPages={Math.max(1, pagination.totalPages)}
+             totalItems={pagination.count}
+             itemsPerPage={pagination.pageSize}
              onPageChange={handlePageChange}
              showPageSizeSelector={false}
            />

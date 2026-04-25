@@ -1,37 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
-  Plus, 
   CheckCircle,
   ArrowRight,
-  Mail,
-  Phone,
-  MessageSquare,
   Search,
-  Filter,
-  X,
-  MapPin
 } from 'lucide-react';
 import { 
   Button, 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardContent,
-  Badge,
   PageLoading,
   Pagination,
-  Input
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { Inquiry, PaginatedResponse } from '../types';
 
 const Inquiries: React.FC = () => {
-  useNavigate(); // Keep hook for potential future use
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -139,17 +123,6 @@ const Inquiries: React.FC = () => {
       loadInquiries(pagination.current);
     } catch (err: any) {
       setError('Failed to convert inquiry: ' + err.message);
-    }
-  };
-
-  // Get status badge variant
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'New': return 'default';
-      case 'Contacted': return 'warning';
-      case 'Converted': return 'success';
-      case 'Closed': return 'secondary';
-      default: return 'default';
     }
   };
 

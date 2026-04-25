@@ -7,6 +7,10 @@ export interface Client {
   email?: string;
   state?: string;
   city?: string;
+  flat_number?: string;
+  building_name?: string;
+  landmark?: string;
+  area?: string;
   address?: string;
   notes?: string;
   is_active: boolean;
@@ -34,7 +38,13 @@ export interface Inquiry {
   service_interest: string;
   state?: string;
   city?: string;
+  flat_number?: string;
+  building_name?: string;
+  landmark?: string;
+  area?: string;
   status: 'New' | 'Contacted' | 'Converted' | 'Closed';
+  is_read?: boolean;
+  created_at: string;
   updated_at: string;
 }
 
@@ -68,21 +78,31 @@ export interface JobCard {
   client_city?: string;
   client_address?: string;
   client_notes?: string;
+  flat_number?: string;
+  building_name?: string;
+  landmark?: string;
+  area?: string;
   job_type: 'Customer' | 'Society';
   service_category?: 'One-Time Service' | 'AMC';
   property_type?: 'Home / Flat' | 'Bungalow' | 'Hotel' | 'Office' | 'Commercial Space';
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
   contract_duration?: string;
+  is_paused?: boolean;
   status: 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Hold' | 'Inactive';
+  payment_status?: string;
   service_type: string;
+  schedule_date: string;
   time_slot?: string;
   state?: string;
   city?: string;
+  price?: number | string;
   assigned_to?: string;
   technician?: number;
   technician_name?: string;
   reference?: string;
   customer_type?: string;
+  next_service_date?: string;
+  notes?: string;
   extra_notes?: string;
   created_at: string;
   updated_at: string;
@@ -169,6 +189,10 @@ export interface ClientFormData {
   email?: string;
   state?: string;
   city?: string;
+  flat_number?: string;
+  building_name?: string;
+  landmark?: string;
+  area?: string;
   address?: string;
   notes?: string;
 }
@@ -181,6 +205,10 @@ export interface InquiryFormData {
   service_interest: string;
   state?: string;
   city?: string;
+  flat_number?: string;
+  building_name?: string;
+  landmark?: string;
+  area?: string;
 }
 
 export interface CRMInquiryFormData {

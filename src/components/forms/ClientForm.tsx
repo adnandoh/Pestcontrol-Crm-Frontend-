@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, X } from 'lucide-react';
 import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
+import { cn } from '../../utils/cn';
 import type { Client, ClientFormData } from '../../types';
 
 interface ClientFormProps {
