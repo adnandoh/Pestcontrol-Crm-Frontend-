@@ -7,7 +7,8 @@ import {
   Building2,
   Search,
   Filter,
-  X
+  X,
+  MapPin
 } from 'lucide-react';
 import {
   Button,
@@ -22,6 +23,7 @@ import {
   Select
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
+import { cn } from '../utils/cn';
 import type { JobCard, PaginatedResponse } from '../types';
 
 const SocietyJobCards: React.FC = () => {
@@ -41,20 +43,37 @@ const SocietyJobCards: React.FC = () => {
   // Filter state
   const [filters, setFilters] = useState({
     search: '',
-    status: ''
+    status: '',
+    service_category: '',
+    assigned_to: '',
+    date_preset: '',
+    from: '',
+    to: ''
   });
   const [searchInput, setSearchInput] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Status options for dropdown
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'Enquiry', label: 'Enquiry' },
-    { value: 'WIP', label: 'WIP' },
-    { value: 'Done', label: 'Done' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Confirmed', label: 'Confirmed' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'Cancelled', label: 'Cancelled' },
     { value: 'Hold', label: 'Hold' },
-    { value: 'Cancel', label: 'Cancel' },
     { value: 'Inactive', label: 'Inactive' }
+  ];
+
+  const serviceCategoryOptions = [
+    { value: '', label: 'All Service Types' },
+    { value: 'One-Time Service', label: 'One-Time Service' },
+    { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
+  ];
+
+  const datePresetOptions = [
+    { value: '', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'tomorrow', label: 'Tomorrow' },
+    { value: 'custom', label: 'Custom Range' }
   ];
 
   // Load society job cards
@@ -80,6 +99,32 @@ const SocietyJobCards: React.FC = () => {
         params.status = currentFilters.status;
       }
 
+      // Add service category filter
+      if (currentFilters.service_category) {
+        params.service_category = currentFilters.service_category;
+      }
+
+      // Add technician filter
+      if (currentFilters.assigned_to) {
+        params.assigned_to = currentFilters.assigned_to;
+      }
+
+      // Add date filters
+      if (currentFilters.date_preset === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.from = today;
+        params.to = today;
+      } else if (currentFilters.date_preset === 'tomorrow') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        params.from = tomorrowStr;
+        params.to = tomorrowStr;
+      } else if (currentFilters.date_preset === 'custom' && currentFilters.from && currentFilters.to) {
+        params.from = currentFilters.from;
+        params.to = currentFilters.to;
+      }
+
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params);
 
       setJobCards(response.results);
@@ -92,7 +137,7 @@ const SocietyJobCards: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      setError(err.message || 'Failed to load society job cards');
+      setError(err.message || 'Failed to load society bookings');
       console.error('Error loading society job cards:', err);
     } finally {
       setLoading(false);
@@ -108,13 +153,13 @@ const SocietyJobCards: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('🔄 Page visible - refreshing society job cards data');
+        console.log('🔄 Page visible - refreshing society bookings data');
         loadSocietyJobCards(pagination.current, filters);
       }
     };
 
     const handleFocus = () => {
-      console.log('🔄 Window focused - refreshing society job cards data');
+      console.log('🔄 Window focused - refreshing society bookings data');
       loadSocietyJobCards(pagination.current, filters);
     };
 
@@ -189,7 +234,7 @@ const SocietyJobCards: React.FC = () => {
   };
 
   // Check if any filters are active
-  const hasActiveFilters = filters.search || filters.status;
+  const hasActiveFilters = filters.search || filters.status || filters.service_category || filters.assigned_to || filters.date_preset;
 
   // Handle pagination
   const handlePageChange = (page: number) => {
@@ -248,306 +293,173 @@ const SocietyJobCards: React.FC = () => {
   };
 
   if (loading && jobCards.length === 0) {
-    return <PageLoading text="Loading society job cards..." />;
+    return <PageLoading text="Loading society bookings..." />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Building2 className="h-6 w-6 mr-2 text-blue-600" />
-            Society Job Cards
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">Manage and track all society job cards</p>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
+      {/* 1. Header Area */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Society Bookings</h1>
+          <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
+            Total {pagination.count} Records
+          </span>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button size="sm" onClick={() => navigate('/jobcards/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Society Job Card
-          </Button>
+        <Button 
+          onClick={() => navigate('/jobcards/create')}
+          className="bg-blue-700 hover:bg-blue-800 h-8 text-[11px] font-extrabold shadow-lg px-6 uppercase tracking-wider"
+        >
+          <Plus className="h-4 w-4 mr-1" /> Create Society Booking
+        </Button>
+      </div>
+
+      {/* 2. Filter Bar - High Density */}
+      <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
+        <div className="flex-1 min-w-[240px]">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search Bookings</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search ID, Society, Mobile..."
+              value={searchInput}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
+              className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+            />
+          </div>
+        </div>
+
+        <div className="w-32">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Status</label>
+          <select
+            value={filters.status}
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700 uppercase"
+          >
+            {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label || 'All'}</option>)}
+          </select>
+        </div>
+
+        <div className="w-36">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service Type</label>
+           <select
+            value={filters.service_category}
+            onChange={(e) => {
+              const newFilters = { ...filters, service_category: e.target.value };
+              setFilters(newFilters);
+              setPagination(prev => ({ ...prev, current: 1 }));
+              loadSocietyJobCards(1, newFilters);
+            }}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {serviceCategoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+
+        <div className="flex gap-1 h-8">
+           <button onClick={clearFilters} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
+           <button onClick={handleSearchSubmit} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors uppercase">Search</button>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search Field */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by job code (e.g., JC-0021), society name, or contact number..."
-                  value={searchInput}
-                  onChange={(e) => handleSearchInputChange(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className="pl-10 pr-10"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => {
-                      setSearchInput('');
-                      if (searchTimeout) {
-                        clearTimeout(searchTimeout);
-                        setSearchTimeout(null);
-                      }
-                      if (filters.search) {
-                        const newFilters = { ...filters, search: '' };
-                        setFilters(newFilters);
-                        setPagination(prev => ({ ...prev, current: 1 }));
-                        loadSocietyJobCards(1, newFilters);
-                      }
-                    }}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Search Button */}
-            <Button onClick={handleSearchSubmit} variant="outline" size="sm">
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
-
-            {/* Status Filter */}
-            <div className="w-48">
-              <Select
-                value={filters.status}
-                onChange={handleStatusFilterChange}
-                options={statusOptions}
-                placeholder="Filter by status"
-              />
-            </div>
-
-            {/* Clear Filters Button */}
-            {hasActiveFilters && (
-              <Button onClick={clearFilters} variant="ghost" size="sm">
-                <X className="h-4 w-4 mr-2" />
-                Clear
-              </Button>
-            )}
-          </div>
-
-          {/* Active Filters Display */}
-          {hasActiveFilters && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {filters.search && (
-                <div className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                  <Search className="h-3 w-3 mr-1" />
-                  Search: "{filters.search}"
-                  <button
-                    onClick={() => {
-                      const newFilters = { ...filters, search: '' };
-                      setFilters(newFilters);
-                      setSearchInput('');
-                      setPagination(prev => ({ ...prev, current: 1 }));
-                      loadSocietyJobCards(1, newFilters);
-                    }}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-              {filters.status && (
-                <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                  <Filter className="h-3 w-3 mr-1" />
-                  Status: {filters.status}
-                  <button
-                    onClick={() => {
-                      const newFilters = { ...filters, status: '' };
-                      setFilters(newFilters);
-                      setPagination(prev => ({ ...prev, current: 1 }));
-                      loadSocietyJobCards(1, newFilters);
-                    }}
-                    className="ml-2 text-green-600 hover:text-green-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Error Message */}
-      {error && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-red-600 text-center">{error}</div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Society Job Cards List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <Building2 className="h-5 w-5 mr-2 text-blue-600" />
-              {hasActiveFilters ? 'Filtered Society Job Cards' : 'Society Job Cards'} ({pagination.count})
-            </span>
-            {loading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-primary-600" />
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {jobCards.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              {hasActiveFilters ? (
-                <>
-                  <p className="text-gray-500 mb-4">No society job cards match your search criteria</p>
-                  <Button onClick={clearFilters} variant="outline" size="sm">
-                    <X className="h-4 w-4 mr-2" />
-                    Clear Filters
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-500 mb-4">No society job cards found</p>
-                  <Button size="sm" onClick={() => navigate('/jobcards/create')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Society Job Card
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto -mx-6">
-              <div className="inline-block min-w-full align-middle px-6">
-                <table className="min-w-full table-fixed divide-y divide-gray-200">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-16">
-                      Id
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-32">
-                      Society Name
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-28">
-                      Mobile Number
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-32">
-                      Society Address
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-32">
-                      Service Types
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-28">
-                      Schedule Date
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-500 uppercase tracking-wider w-20">
-                      Status
-                    </th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-gray-500 uppercase tracking-wider w-16">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {jobCards.map((jobCard) => (
-                    <tr key={jobCard.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {extractIdNumber(jobCard.code)}
+      {/* 3. Table Results */}
+      <div className="bg-white border border-gray-200 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto max-h-[600px]">
+          <table className="w-full table-auto border-collapse text-[11px]">
+            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
+              <tr className="divide-x divide-gray-200">
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-12">ID</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-44">Society Name</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-28">Mobile</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-48">Address Details</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Service Types</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Schedule</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Status</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-16">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                   <td colSpan={8} className="py-20 text-center">
+                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
+                     <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Society Records...</span>
+                   </td>
+                </tr>
+              ) : jobCards.length === 0 ? (
+                <tr>
+                   <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Society Bookings Found</td>
+                </tr>
+              ) : jobCards.map((jobCard) => (
+                <tr key={jobCard.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
+                  <td className="px-3 py-2.5 font-bold text-gray-400 italic tabular-nums">{extractIdNumber(jobCard.code)}</td>
+                  <td className="px-3 py-2.5 font-bold text-gray-800 uppercase leading-tight">
+                    <div className="flex items-center gap-1.5">
+                       <Building2 className="h-3 w-3 text-blue-600 shrink-0" />
+                       <span className="truncate">{jobCard.client_name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 font-bold text-blue-600 tabular-nums">{jobCard.client_mobile}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="relative group">
+                      <div className="flex flex-col cursor-help">
+                        <span className="font-bold text-gray-700 uppercase line-clamp-1 truncate">{jobCard.flat_number || jobCard.building_name || jobCard.area || 'No Flat/Bldg'}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase italic truncate">{jobCard.client_city || 'Maharashtra'}</span>
+                      </div>
+                      {/* Premium Blue Tooltip */}
+                      <div className="absolute left-0 bottom-full mb-1 px-3 py-2 bg-blue-900 border border-blue-800 text-white text-[10px] rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 min-w-[200px] font-bold uppercase tracking-tight">
+                         <div className="text-blue-300 border-b border-blue-800/50 pb-1 mb-1 font-black">Full Location Data</div>
+                         <div className="space-y-0.5">
+                            {jobCard.flat_number && <div>Flat / Bldg: {jobCard.flat_number} {jobCard.building_name}</div>}
+                            {jobCard.area && <div>Area: {jobCard.area}</div>}
+                            {jobCard.landmark && <div className="text-blue-200">Landmark: {jobCard.landmark}</div>}
+                            <div>City: {jobCard.client_city}</div>
+                            {jobCard.client_address && <div className="mt-1 pt-1 border-t border-blue-800/30 text-[9px] text-blue-200 italic lowercase normal-case">"{jobCard.client_address}"</div>}
+                         </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                     <div className="relative group">
+                        <div className="flex flex-col cursor-help">
+                           <span className="font-black text-indigo-700 uppercase tracking-tighter truncate max-w-[120px]">{getServiceTypeDisplay(jobCard.service_type).first || 'N/A'}</span>
+                           {getServiceTypeDisplay(jobCard.service_type).remaining && (
+                             <span className="text-[9px] font-black text-amber-600">+{getServiceTypeDisplay(jobCard.service_type).remaining.split(',').length} ADDITIONAL SERVICES</span>
+                           )}
                         </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Building2 className="h-4 w-4 text-blue-600 mr-2" />
-                          <div className="text-sm font-medium text-gray-900">
-                            {jobCard.client_name}
+                        {/* Premium Blue Tooltip for Services */}
+                        {getServiceTypeDisplay(jobCard.service_type).remaining && (
+                          <div className="absolute left-0 top-full mt-1 px-3 py-2 bg-blue-900 border border-blue-800 text-white text-[10px] rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 min-w-[220px] font-bold uppercase tracking-tight">
+                             <div className="text-blue-300 border-b border-blue-800/50 pb-1 mb-1 font-black underline">Comprehensive Service List</div>
+                             <div className="italic leading-relaxed">{jobCard.service_type}</div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {jobCard.client_mobile}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="relative group">
-                          <div className="text-sm text-gray-900 cursor-help">
-                            {truncateAddress(jobCard.client_address || 'N/A')}
-                          </div>
-                          {/* Enhanced Tooltip for Address */}
-                          {(jobCard.client_address && jobCard.client_address !== 'N/A') && (
-                            <div className="absolute left-0 top-full mt-1 px-3 py-2 bg-black text-white text-sm rounded-md shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50 whitespace-normal max-w-xs">
-                              <div className="font-semibold mb-1">Full Address:</div>
-                              <div>{jobCard.client_address}</div>
-                              {jobCard.client_city && (
-                                <div className="mt-1 text-gray-300">
-                                  <span className="font-semibold">City:</span> {jobCard.client_city}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="relative group">
-                          <div className="text-sm text-gray-900 cursor-help">
-                            {getServiceTypeDisplay(jobCard.service_type).first || 'N/A'}
-                            {getServiceTypeDisplay(jobCard.service_type).remaining && (
-                              <span className="text-gray-400 ml-1">+{getServiceTypeDisplay(jobCard.service_type).remaining.split(',').length}</span>
-                            )}
-                          </div>
-                          {/* Enhanced Tooltip - Show remaining services */}
-                          {getServiceTypeDisplay(jobCard.service_type).remaining && (
-                            <div className="absolute left-0 top-full mt-1 px-3 py-2 bg-black text-white text-sm rounded-md shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50 whitespace-break-spaces max-w-xs">
-                              <div className="font-semibold mb-1">All Services:</div>
-                              {jobCard.service_type}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {jobCard.schedule_date ? (
-                            <div className="flex items-center">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(jobCard.schedule_date).toLocaleDateString()}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">Not scheduled</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <Badge variant={getStatusBadgeVariant(jobCard.status)}>
-                          {jobCard.status}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/jobcards/edit/${jobCard.id}`)}
-                            title="Edit Society Job Card"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        )}
+                     </div>
+                  </td>
+                  <td className="px-3 py-2.5 font-bold text-gray-600 italic uppercase">
+                    {jobCard.schedule_date ? new Date(jobCard.schedule_date).toLocaleDateString('en-GB') : '---'}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase ring-1 ring-inset", getStatusBadgeVariant(jobCard.status) === 'success' ? 'bg-green-50 text-green-700 ring-green-600/20' : getStatusBadgeVariant(jobCard.status) === 'warning' ? 'bg-amber-50 text-amber-700 ring-amber-600/20' : 'bg-gray-50 text-gray-700 ring-gray-600/20')}>
+                      {jobCard.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <button 
+                      onClick={() => navigate(`/jobcards/edit/${jobCard.id}`)}
+                      className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group"
+                    >
+                      <Edit className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Pagination */}
       <Pagination

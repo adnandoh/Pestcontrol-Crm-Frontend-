@@ -6,7 +6,8 @@ import {
   AlertTriangle,
   Clock,
   Filter,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import {
   Button,
@@ -17,9 +18,11 @@ import {
   Badge,
   PageLoading,
   Pagination,
-  Select
+  Select,
+  Input
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
+import { cn } from '../utils/cn';
 import type { Renewal, PaginatedResponse } from '../types';
 
 const Renewals: React.FC = () => {
@@ -29,10 +32,15 @@ const Renewals: React.FC = () => {
   const [selectedRenewals, setSelectedRenewals] = useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [filters, setFilters] = useState({
+    search: '',
     status: '',
     urgency_level: '',
-    renewal_type: ''
+    renewal_type: '',
+    jobcard__service_category: '',
+    jobcard__assigned_to: ''
   });
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -167,13 +175,70 @@ const Renewals: React.FC = () => {
     loadRenewals(1);
   };
 
+  // Handle search with debounce
+  useEffect(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    const timeout = setTimeout(() => {
+      if (filters.search !== searchInput) {
+        setFilters(prev => ({ ...prev, search: searchInput }));
+        loadRenewals(1, { ...filters, search: searchInput });
+      }
+    }, 500);
+    
+    setSearchTimeout(timeout);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
+  // Updated loadRenewals for internal call
+  const loadRenewalsFiltered = async (page = 1, currentFilters = filters) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params: any = {
+        page,
+        page_size: pagination.pageSize,
+        ordering: 'due_date',
+        ...currentFilters
+      };
+
+      // Remove empty filters
+      Object.keys(params).forEach(key => {
+        if (params[key] === '') {
+          delete params[key];
+        }
+      });
+
+      const response: PaginatedResponse<Renewal> = await enhancedApiService.getRenewals(params);
+
+      setRenewals(response.results);
+      setPagination(prev => ({
+        ...prev,
+        count: response.count,
+        next: response.next,
+        previous: response.previous,
+        current: page,
+        totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
+      }));
+    } catch (err: any) {
+      setError(err.message || 'Failed to load renewals');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Clear filters
   const clearFilters = () => {
     setFilters({
+      search: '',
       status: '',
       urgency_level: '',
-      renewal_type: ''
+      renewal_type: '',
+      jobcard__service_category: '',
+      jobcard__assigned_to: ''
     });
+    setSearchInput('');
     setTimeout(() => loadRenewals(1), 0);
   };
 
@@ -223,249 +288,192 @@ const Renewals: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Renewals</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage job card renewals and reminders</p>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
+      {/* 1. Header Area */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Renewals</h1>
+          <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
+            Total {pagination.count} Records
+          </span>
         </div>
-        
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2">
           {selectedRenewals.length > 0 && (
-            <Button 
-              variant="primary" 
-              size="sm" 
-              onClick={handleBulkMarkCompleted}
-              disabled={bulkLoading}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark {selectedRenewals.length} as Completed
+            <Button size="sm" onClick={handleBulkMarkCompleted} disabled={bulkLoading} className="bg-amber-500 hover:bg-amber-600 h-8 font-bold shadow-sm">
+              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Mark Selected ({selectedRenewals.length})
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={refreshRenewals}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button size="sm" onClick={refreshRenewals} variant="outline" className="h-8 font-bold shadow-sm border-gray-200">
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="h-5 w-5 mr-2" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <Select
-                value={filters.status}
-                onChange={(value) => handleFilterChange('status', value)}
-                options={[
-                  { value: '', label: 'All Statuses' },
-                  { value: 'Due', label: 'Due' },
-                  { value: 'Completed', label: 'Completed' }
-                ]}
-                placeholder="Select status"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Urgency Level
-              </label>
-              <Select
-                value={filters.urgency_level}
-                onChange={(value) => handleFilterChange('urgency_level', value)}
-                options={[
-                  { value: '', label: 'All Urgency Levels' },
-                  { value: 'High', label: 'High (Red)' },
-                  { value: 'Medium', label: 'Medium (Yellow)' },
-                  { value: 'Normal', label: 'Normal (Green)' }
-                ]}
-                placeholder="Select urgency"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Renewal Type
-              </label>
-              <Select
-                value={filters.renewal_type}
-                onChange={(value) => handleFilterChange('renewal_type', value)}
-                options={[
-                  { value: '', label: 'All Types' },
-                  { value: 'Contract', label: 'Contract Renewal' },
-                  { value: 'Monthly', label: 'Monthly Reminder' }
-                ]}
-                placeholder="Select type"
-              />
-            </div>
-
-            <div className="flex items-end space-x-2">
-              <Button onClick={applyFilters} size="sm">
-                Apply Filters
-              </Button>
-              <Button variant="outline" onClick={clearFilters} size="sm">
-                <X className="h-4 w-4 mr-1" />
-                Clear
-              </Button>
-            </div>
+      {/* 2. Filter Bar - High Density */}
+      <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search ID, Name, Mobile..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
+        <div className="w-32">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Status</label>
+          <select
+            value={filters.status}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {[
+              { value: '', label: 'Status' },
+              { value: 'Due', label: 'Due' },
+              { value: 'Completed', label: 'Completed' }
+            ].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
 
+        <div className="w-32">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Urgency</label>
+          <select
+            value={filters.urgency_level}
+            onChange={(e) => handleFilterChange('urgency_level', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {[
+              { value: '', label: 'Urgency' },
+              { value: 'High', label: 'High' },
+              { value: 'Medium', label: 'Medium' },
+              { value: 'Normal', label: 'Normal' }
+            ].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
 
-      {/* Error Message */}
-      {error && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-red-600 text-center">{error}</div>
-          </CardContent>
-        </Card>
-      )}
+        <div className="w-40">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Type</label>
+          <select
+            value={filters.renewal_type}
+            onChange={(e) => handleFilterChange('renewal_type', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {[
+              { value: '', label: 'All Types' },
+              { value: 'Contract', label: 'Contract' },
+              { value: 'Monthly', label: 'Monthly' }
+            ].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
 
-      {/* Renewals List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>
-              Renewals ({pagination.count})
-            </span>
-            {loading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-primary-600" />
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {renewals.length === 0 ? (
-            <div className="text-center py-12">
-              <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No renewals found</p>
-              <p className="text-sm text-gray-400">Renewals will appear here when job cards are due for renewal</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {/* Select All Checkbox */}
-              <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  checked={renewals.filter(r => r.status === 'Due').every(r => selectedRenewals.includes(r.id)) && renewals.filter(r => r.status === 'Due').length > 0}
-                  onChange={handleSelectAll}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300"
-                />
-                <label className="text-sm font-medium text-gray-700">
-                  Select all due renewals ({renewals.filter(r => r.status === 'Due').length} due)
-                </label>
-              </div>
-              {renewals.map((renewal) => {
-                const urgencyDisplay = getUrgencyDisplay(renewal.urgency_level, renewal.urgency_color);
-                const dueDate = new Date(renewal.due_date);
-                const isOverdue = dueDate < new Date() && renewal.status === 'Due';
+        <div className="flex gap-1 h-8">
+           <button onClick={clearFilters} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors">CLEAR</button>
+           <button onClick={applyFilters} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors">SEARCH</button>
+        </div>
+      </div>
 
+      {/* 3. Table Results */}
+      <div className="bg-white border border-gray-200 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto max-h-[600px]">
+          <table className="w-full table-auto border-collapse text-[11px]">
+            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
+              <tr className="divide-x divide-gray-200">
+                <th className="px-3 py-2 text-left bg-gray-50/50 w-10">
+                  <input
+                    type="checkbox"
+                    checked={renewals.length > 0 && renewals.filter(r => r.status === 'Due').every(r => selectedRenewals.includes(r.id)) && renewals.filter(r => r.status === 'Due').length > 0}
+                    onChange={handleSelectAll}
+                    className="h-3.5 w-3.5 rounded border-gray-300"
+                  />
+                </th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Booking ID</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Client Name</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Type</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Due Date</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Urgency</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Status</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
+                 <tr>
+                    <td colSpan={8} className="py-20 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
+                    </td>
+                 </tr>
+              ) : renewals.length === 0 ? (
+                 <tr>
+                    <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                       No Renewals Found
+                    </td>
+                 </tr>
+              ) : renewals.map((renewal) => {
+                const urgency = getUrgencyDisplay(renewal.urgency_level, "");
+                const isOverdue = new Date(renewal.due_date) < new Date() && renewal.status === 'Due';
+                
                 return (
-                  <div
-                    key={renewal.id}
-                    className={`p-6 hover:bg-gray-50 transition-colors ${isOverdue ? 'bg-red-50 border-l-4 border-l-red-500' : ''} ${selectedRenewals.includes(renewal.id) ? 'bg-blue-50' : ''}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1">
+                  <tr key={renewal.id} className={cn(
+                    "hover:bg-gray-50/80 transition-colors divide-x divide-gray-100",
+                    selectedRenewals.includes(renewal.id) && "bg-blue-50/50",
+                    isOverdue && "bg-red-50/30"
+                  )}>
+                    <td className="px-3 py-2.5">
+                      {renewal.status === 'Due' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedRenewals.includes(renewal.id)}
+                          onChange={() => handleToggleSelect(renewal.id)}
+                          className="h-3.5 w-3.5 rounded border-gray-300"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 font-bold text-blue-600">{renewal.jobcard_code}</td>
+                    <td className="px-3 py-2.5 font-semibold text-gray-800 uppercase">{renewal.client_name}</td>
+                    <td className="px-3 py-2.5 font-bold text-gray-600 uppercase">{renewal.renewal_type}</td>
+                    <td className="px-3 py-2.5">
+                      <div className={cn("font-bold", isOverdue ? "text-red-600" : "text-gray-600")}>
+                        {new Date(renewal.due_date).toLocaleDateString('en-GB')}
+                        {isOverdue && <span className="ml-1 text-[8px] font-black uppercase tracking-tighter">Overdue</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-bold">
+                       <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase ring-1 ring-inset", urgency.color, urgency.bgColor, "ring-gray-200")}>
+                         {renewal.urgency_level}
+                       </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
+                        renewal.status === 'Completed' ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-orange-50 text-orange-700 ring-orange-600/20'
+                      }`}>
+                        {renewal.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <div className="flex items-center justify-center gap-1">
                         {renewal.status === 'Due' && (
-                          <input
-                            type="checkbox"
-                            checked={selectedRenewals.includes(renewal.id)}
-                            onChange={() => handleToggleSelect(renewal.id)}
-                            className="h-4 w-4 text-primary-600 rounded border-gray-300 mt-1"
-                          />
+                           <button onClick={() => handleMarkCompleted(renewal.id)} className="p-1.5 bg-gray-100 hover:bg-green-100 rounded transition-all group">
+                             <CheckCircle className="h-3 w-3 text-gray-400 group-hover:text-green-600" />
+                           </button>
                         )}
-                        <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-gray-900">
-                            Job Card #{renewal.jobcard_code}
-                          </h3>
-                          <Badge variant={urgencyDisplay.variant} className="flex items-center">
-                            {urgencyDisplay.icon}
-                            {renewal.urgency_level}
-                          </Badge>
-                          <Badge variant={renewal.status === 'Completed' ? 'success' : 'default'}>
-                            {renewal.status}
-                          </Badge>
-                          {renewal.is_paused && (
-                            <Badge variant="secondary" size="sm">
-                              Paused
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="mb-3">
-                          <p className="text-sm text-gray-600 mb-1">
-                            <strong>Client:</strong> {renewal.client_name}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-1">
-                            <strong>Renewal Type:</strong> {renewal.renewal_type}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <strong>Due Date:</strong> {dueDate.toLocaleDateString('en-IN', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                            {isOverdue && (
-                              <span className="text-red-600 font-medium ml-2">(Overdue)</span>
-                            )}
-                          </p>
-                        </div>
-
-                        {renewal.remarks && (
-                          <div className="mb-3">
-                            <p className="text-sm text-gray-700">
-                              <strong>Remarks:</strong> {renewal.remarks}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="text-sm text-gray-500">
-                          Created on {new Date(renewal.created_at).toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </div>
+                        <button className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
+                           <Calendar className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
+                        </button>
                       </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2 ml-4">
-                        {renewal.status === 'Due' && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleMarkCompleted(renewal.id)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Mark Complete
-                          </Button>
-                        )}
-
-                        <Button variant="outline" size="sm">
-                          View Job Card
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Pagination */}
       <Pagination

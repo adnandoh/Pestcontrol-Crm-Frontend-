@@ -40,6 +40,8 @@ export const API_ENDPOINTS = {
   INQUIRIES: '/v1/inquiries/',
   JOBCARDS: '/v1/jobcards/',
   RENEWALS: '/v1/renewals/',
+  TECHNICIANS: '/v1/technicians/',
+  CRM_INQUIRIES: '/v1/crm-inquiries/',
   
   // Dashboard
   DASHBOARD_STATS: '/v1/dashboard/statistics/',
@@ -57,6 +59,8 @@ export const CACHE_KEYS = {
   JOBCARDS: 'jobcards',
   RENEWALS: 'renewals',
   DASHBOARD_STATS: 'dashboard_stats',
+  TECHNICIANS: 'technicians',
+  CRM_INQUIRIES: 'crm_inquiries',
 } as const;
 
 // Request timeout configurations for different operations

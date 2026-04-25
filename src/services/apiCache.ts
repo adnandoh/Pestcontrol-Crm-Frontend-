@@ -35,6 +35,17 @@ class ApiCache {
     this.cache.delete(key);
   }
 
+  // Delete all cache entries that include the given pattern (e.g., base URL)
+  deletePattern(pattern: string): void {
+    const keysToDelete: string[] = [];
+    this.cache.forEach((_, key) => {
+      if (key.includes(pattern)) {
+        keysToDelete.push(key);
+      }
+    });
+    keysToDelete.forEach(key => this.cache.delete(key));
+  }
+
   clear(): void {
     this.cache.clear();
   }

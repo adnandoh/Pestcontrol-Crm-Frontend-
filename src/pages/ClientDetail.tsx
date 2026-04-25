@@ -210,30 +210,54 @@ const ClientDetail: React.FC = () => {
           </Card>
 
           {/* Address Information */}
-          {(client.city || client.address) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  Address Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MapPin className="h-5 w-5 mr-2" />
+                Address Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {client.flat_number && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Flat/Shop No.</label>
+                    <p className="text-gray-900">{client.flat_number}</p>
+                  </div>
+                )}
+                {client.building_name && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Building/Society</label>
+                    <p className="text-gray-900">{client.building_name}</p>
+                  </div>
+                )}
+                {client.landmark && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Landmark</label>
+                    <p className="text-gray-900">{client.landmark}</p>
+                  </div>
+                )}
+                {client.area && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Area/Locality</label>
+                    <p className="text-gray-900">{client.area}</p>
+                  </div>
+                )}
                 {client.city && (
                   <div>
                     <label className="text-sm font-medium text-gray-500">City</label>
                     <p className="text-gray-900">{client.city}</p>
                   </div>
                 )}
-                {client.address && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Full Address</label>
-                    <p className="text-gray-900">{client.address}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+              {client.address && (
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="text-sm font-medium text-gray-500">Legacy Address (Combined)</label>
+                  <p className="text-gray-900">{client.address}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Notes */}
           {client.notes && (
@@ -261,7 +285,7 @@ const ClientDetail: React.FC = () => {
             <CardContent className="space-y-3">
               <Button className="w-full justify-start">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Job Card
+                Create Booking
               </Button>
               <Button variant="outline" className="w-full justify-start">
                 <FileText className="h-4 w-4 mr-2" />
@@ -281,7 +305,7 @@ const ClientDetail: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Job Cards</span>
+                <span className="text-sm text-gray-600">Total Bookings</span>
                 <span className="font-semibold">0</span>
               </div>
               <div className="flex justify-between items-center">

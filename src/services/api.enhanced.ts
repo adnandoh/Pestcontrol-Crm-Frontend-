@@ -10,6 +10,7 @@ import type {
   Inquiry,
   JobCard,
   Renewal,
+  Technician,
   PaginatedResponse,
   ClientFilters,
   InquiryFilters,
@@ -19,6 +20,9 @@ import type {
   InquiryFormData,
   JobCardFormData,
   DashboardStatisticsResponse,
+  CRMInquiry,
+  CRMInquiryFormData,
+  CRMInquiryFilters,
 } from '../types';
 
 // Enhanced API Error class
@@ -316,6 +320,123 @@ class EnhancedApiService {
     return JSON.parse(userInfoStr);
   }
 
+  // Technician methods
+  async getTechnicians(params?: any): Promise<PaginatedResponse<Technician>> {
+    const cacheKey = apiCache.generateKey('/technicians/', params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<Technician>>('/technicians/', { params })
+        )
+      )
+    );
+  }
+
+  async getActiveTechnicians(): Promise<Technician[]> {
+    const cacheKey = '/technicians/active/';
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<Technician[]>('/technicians/active/')
+        )
+      ),
+      5 * 60 * 1000 // 5 minutes cache
+    );
+  }
+
+  async createTechnician(data: Partial<Technician>): Promise<Technician> {
+    const result = await this.retryRequest(() =>
+      this.api.post<Technician>('/technicians/', data)
+    );
+    apiCache.clear();
+    return result.data;
+  }
+
+  async updateTechnician(id: number, data: Partial<Technician>): Promise<Technician> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<Technician>(`/technicians/${id}/`, data)
+    );
+    apiCache.clear();
+    return result.data;
+  }
+
+  async deleteTechnician(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`/technicians/${id}/`)
+    );
+    apiCache.clear();
+  }
+
+  // CRM Inquiry methods
+  async getCRMInquiries(params?: CRMInquiryFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<CRMInquiry>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.CRM_INQUIRIES, params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<CRMInquiry>>(API_ENDPOINTS.CRM_INQUIRIES, { params })
+        )
+      ),
+      2 * 60 * 1000 // 2 minutes cache
+    );
+  }
+
+  async getCRMInquiry(id: number): Promise<CRMInquiry> {
+    const cacheKey = `${API_ENDPOINTS.CRM_INQUIRIES}${id}`;
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<CRMInquiry>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`)
+        )
+      )
+    );
+  }
+
+  async createCRMInquiry(data: CRMInquiryFormData): Promise<CRMInquiry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<CRMInquiry>(API_ENDPOINTS.CRM_INQUIRIES, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    return result.data;
+  }
+
+  async updateCRMInquiry(id: number, data: Partial<CRMInquiryFormData>): Promise<CRMInquiry> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<CRMInquiry>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    apiCache.deletePattern(`${API_ENDPOINTS.CRM_INQUIRIES}${id}`);
+    return result.data;
+  }
+
+  async deleteCRMInquiry(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+  }
+
+  async convertInquiryToBooking(id: number): Promise<{ job_card_id: number; job_card_code: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ job_card_id: number; job_card_code: string }>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/convert/`)
+    );
+    // Invalidate both caches
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    return result.data;
+  }
+
   // Client methods
   async getClients(params?: ClientFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Client>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.CLIENTS, params);
@@ -352,7 +473,7 @@ class EnhancedApiService {
     );
 
     // Invalidate clients cache
-    apiCache.delete(CACHE_KEYS.CLIENTS);
+    apiCache.deletePattern(CACHE_KEYS.CLIENTS);
     
     return result.data;
   }
@@ -363,8 +484,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.CLIENTS);
-    apiCache.delete(`${API_ENDPOINTS.CLIENTS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.CLIENTS);
+    apiCache.deletePattern(`${API_ENDPOINTS.CLIENTS}${id}`);
     
     return result.data;
   }
@@ -375,8 +496,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.CLIENTS);
-    apiCache.delete(`${API_ENDPOINTS.CLIENTS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.CLIENTS);
+    apiCache.deletePattern(`${API_ENDPOINTS.CLIENTS}${id}`);
   }
 
   // Inquiry methods
@@ -415,7 +536,7 @@ class EnhancedApiService {
     );
 
     // Invalidate inquiries cache
-    apiCache.delete(CACHE_KEYS.INQUIRIES);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
     
     return result.data;
   }
@@ -426,8 +547,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.INQUIRIES);
-    apiCache.delete(`${API_ENDPOINTS.INQUIRIES}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
     
     return result.data;
   }
@@ -471,9 +592,9 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.INQUIRIES);
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
-    apiCache.delete(`${API_ENDPOINTS.INQUIRIES}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
     
     return result.data;
   }
@@ -484,8 +605,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.INQUIRIES);
-    apiCache.delete(`${API_ENDPOINTS.INQUIRIES}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
     
     return result.data;
   }
@@ -496,8 +617,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.INQUIRIES);
-    apiCache.delete(`${API_ENDPOINTS.INQUIRIES}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
   }
 
   // Job Card methods
@@ -548,21 +669,31 @@ class EnhancedApiService {
         ...(clientExists ? {} : { full_name: data.client_name }),
         mobile: data.client_mobile,
         email: data.client_email || '',
-        city: data.client_city,
+        state: data.client_state || data.state || '',
+        city: data.client_city || data.city || '',
         address: data.client_address || '',
         notes: data.client_notes || ''
       },
       client_address: data.client_address || '', // Send as direct field too
       job_type: data.job_type || 'Customer',
+      service_category: data.service_category || 'One-Time Service',
+      property_type: data.property_type || null,
+      bhk_size: data.bhk_size || null,
       is_paused: data.is_paused || false,
       service_type: data.service_type,
       schedule_date: data.schedule_date,
+      time_slot: data.time_slot || null,
+      state: data.state || '',
+      city: data.city || '',
       status: data.status || 'Enquiry',
       payment_status: data.payment_status || 'Unpaid',
+      assigned_to: data.assigned_to || '',
+      technician: data.technician || null,
       price: priceStr,
       next_service_date: data.next_service_date || null,
       contract_duration: data.contract_duration || null,
       reference: data.reference || '',
+      notes: data.notes || '',
       extra_notes: data.extra_notes || ''
     };
 
@@ -576,7 +707,7 @@ class EnhancedApiService {
     );
 
     // Invalidate job cards cache
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     
     return result.data;
   }
@@ -604,11 +735,19 @@ class EnhancedApiService {
     
     // Add other supported fields directly
     if (data.job_type !== undefined) requestData.job_type = data.job_type;
+    if (data.service_category !== undefined) requestData.service_category = data.service_category;
+    if (data.property_type !== undefined) requestData.property_type = data.property_type;
+    if (data.bhk_size !== undefined) requestData.bhk_size = data.bhk_size;
     if (data.is_paused !== undefined) requestData.is_paused = data.is_paused;
     if (data.service_type !== undefined) requestData.service_type = data.service_type;
     if (data.schedule_date !== undefined) requestData.schedule_date = data.schedule_date;
+    if (data.time_slot !== undefined) requestData.time_slot = data.time_slot;
+    if (data.state !== undefined) requestData.state = data.state;
+    if (data.city !== undefined) requestData.city = data.city;
     if (data.status !== undefined) requestData.status = data.status;
     if (data.payment_status !== undefined) requestData.payment_status = data.payment_status;
+    if (data.assigned_to !== undefined) requestData.assigned_to = data.assigned_to;
+    if (data.technician !== undefined) requestData.technician = data.technician;
     if (data.price !== undefined) {
       const priceStr = data.price === '' ? '0' : String(data.price || '0');
       if (priceStr.length > 50) {
@@ -619,6 +758,7 @@ class EnhancedApiService {
     if (data.next_service_date !== undefined) requestData.next_service_date = data.next_service_date || null;
     if (data.contract_duration !== undefined) requestData.contract_duration = data.contract_duration;
     if (data.reference !== undefined) requestData.reference = data.reference;
+    if (data.notes !== undefined) requestData.notes = data.notes;
     if (data.extra_notes !== undefined) requestData.extra_notes = data.extra_notes;
 
 
@@ -628,8 +768,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
-    apiCache.delete(`${API_ENDPOINTS.JOBCARDS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     
     return result.data;
   }
@@ -640,8 +780,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
-    apiCache.delete(`${API_ENDPOINTS.JOBCARDS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     
     return result.data;
   }
@@ -661,9 +801,12 @@ class EnhancedApiService {
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
-        this.api.get<any>(`${API_ENDPOINTS.JOBCARDS}statistics/`)
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<any>(`${API_ENDPOINTS.JOBCARDS}statistics/`)
+        )
       ),
-      1 * 60 * 1000 // 1 minute cache for statistics
+      5 * 60 * 1000 // 5 minutes cache
     );
   }
 
@@ -733,8 +876,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.RENEWALS);
-    apiCache.delete(`${API_ENDPOINTS.RENEWALS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(`${API_ENDPOINTS.RENEWALS}${id}`);
     
     return result.data;
   }
@@ -745,8 +888,8 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.RENEWALS);
-    apiCache.delete(`${API_ENDPOINTS.RENEWALS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(`${API_ENDPOINTS.RENEWALS}${id}`);
     
     return result.data;
   }
@@ -770,7 +913,7 @@ class EnhancedApiService {
     );
 
     // Invalidate renewals cache
-    apiCache.delete(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
     
     return result.data;
   }
@@ -783,9 +926,9 @@ class EnhancedApiService {
     );
 
     // Invalidate related caches
-    apiCache.delete(CACHE_KEYS.RENEWALS);
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
-    apiCache.delete(`${API_ENDPOINTS.JOBCARDS}${jobcardId}`);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${jobcardId}`);
     
     return result.data;
   }
@@ -799,7 +942,7 @@ class EnhancedApiService {
     );
 
     // Invalidate renewals cache
-    apiCache.delete(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
     
     return result.data;
   }
@@ -813,8 +956,8 @@ class EnhancedApiService {
     );
 
     // Invalidate renewals cache
-    apiCache.delete(CACHE_KEYS.RENEWALS);
-    apiCache.delete(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(CACHE_KEYS.RENEWALS);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     
     return result.data;
   }
@@ -857,6 +1000,22 @@ class EnhancedApiService {
 
   getCacheStats() {
     return apiCache.getStats();
+  }
+
+  // Location methods
+  async getLocations(): Promise<Record<string, string[]>> {
+    const cacheKey = 'location_data';
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<Record<string, string[]>>(`${API_ENDPOINTS.JOBCARDS}locations/`)
+        )
+      ),
+      24 * 60 * 60 * 1000 // 24 hours cache (static data)
+    );
   }
 }
 

@@ -7,7 +7,12 @@ import {
   Calendar,
   Search,
   Filter,
-  X
+  X,
+  Clock,
+  RefreshCw,
+  CheckCircle,
+  Layout,
+  Zap
 } from 'lucide-react';
 import {
   Button,
@@ -22,6 +27,8 @@ import {
   Select
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
+import { cn } from '../utils/cn';
+import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import type { JobCard, PaginatedResponse } from '../types';
 
 const JobCards: React.FC = () => {
@@ -41,20 +48,40 @@ const JobCards: React.FC = () => {
   // Filter state
   const [filters, setFilters] = useState({
     search: '',
-    status: ''
+    status: '',
+    service_category: '',
+    assigned_to: '',
+    date_preset: '', // today, tomorrow, custom
+    from: '',
+    to: ''
   });
   const [searchInput, setSearchInput] = useState('');
+  const [activeTab, setActiveTab] = useState('done');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
 
   // Status options for dropdown
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'Enquiry', label: 'Enquiry' },
-    { value: 'WIP', label: 'WIP' },
-    { value: 'Done', label: 'Done' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Confirmed', label: 'Confirmed' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'Cancelled', label: 'Cancelled' },
     { value: 'Hold', label: 'Hold' },
-    { value: 'Cancel', label: 'Cancel' },
     { value: 'Inactive', label: 'Inactive' }
+  ];
+
+  const serviceCategoryOptions = [
+    { value: '', label: 'All Service Types' },
+    { value: 'One-Time Service', label: 'One-Time Service' },
+    { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
+  ];
+
+  const datePresetOptions = [
+    { value: '', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'tomorrow', label: 'Tomorrow' },
+    { value: 'custom', label: 'Custom Range' }
   ];
 
   // Load job cards
@@ -65,8 +92,9 @@ const JobCards: React.FC = () => {
 
       const params: any = {
         page,
-        page_size: pagination.pageSize,
-        ordering: '-created_at'
+        page_size: 10,
+        ordering: '-created_at',
+        booking_type: activeTab
       };
 
       // Add search filter if provided
@@ -77,6 +105,32 @@ const JobCards: React.FC = () => {
       // Add status filter if provided
       if (currentFilters.status) {
         params.status = currentFilters.status;
+      }
+
+      // Add service category filter
+      if (currentFilters.service_category) {
+        params.service_category = currentFilters.service_category;
+      }
+
+      // Add technician filter
+      if (currentFilters.assigned_to) {
+        params.assigned_to = currentFilters.assigned_to;
+      }
+
+      // Add date filters
+      if (currentFilters.date_preset === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.from = today;
+        params.to = today;
+      } else if (currentFilters.date_preset === 'tomorrow') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        params.from = tomorrowStr;
+        params.to = tomorrowStr;
+      } else if (currentFilters.date_preset === 'custom' && currentFilters.from && currentFilters.to) {
+        params.from = currentFilters.from;
+        params.to = currentFilters.to;
       }
 
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params);
@@ -103,8 +157,8 @@ const JobCards: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    loadJobCards();
-  }, []);
+    loadJobCards(1);
+  }, [activeTab]);
 
   // Refetch data when page becomes visible (after returning from edit page)
   useEffect(() => {
@@ -173,11 +227,16 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Handle status filter change
-  const handleStatusFilterChange = (status: string) => {
-    console.log('🔍 Status filter changed to:', status);
-    const newFilters = { ...filters, status };
-    console.log('🔍 New filters:', newFilters);
+  // Handle filter changes
+  const handleFilterChange = (field: string, value: string) => {
+    const newFilters = { ...filters, [field]: value };
+    
+    // Reset range if preset is not custom
+    if (field === 'date_preset' && value !== 'custom') {
+      newFilters.from = '';
+      newFilters.to = '';
+    }
+
     setFilters(newFilters);
     setPagination(prev => ({ ...prev, current: 1 }));
     loadJobCards(1, newFilters);
@@ -185,7 +244,15 @@ const JobCards: React.FC = () => {
 
   // Clear all filters
   const clearFilters = () => {
-    const newFilters = { search: '', status: '' };
+    const newFilters = { 
+      search: '', 
+      status: '', 
+      service_category: '', 
+      assigned_to: '',
+      date_preset: '',
+      from: '',
+      to: ''
+    };
     setFilters(newFilters);
     setSearchInput('');
     setPagination(prev => ({ ...prev, current: 1 }));
@@ -193,7 +260,7 @@ const JobCards: React.FC = () => {
   };
 
   // Check if any filters are active
-  const hasActiveFilters = filters.search || filters.status;
+  const hasActiveFilters = filters.search || filters.status || filters.service_category || filters.assigned_to || filters.date_preset;
 
   // Handle pagination
   const handlePageChange = (page: number) => {
@@ -211,11 +278,11 @@ const JobCards: React.FC = () => {
   // Get status badge variant
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Enquiry': return 'default';
-      case 'WIP': return 'warning';
-      case 'Done': return 'success';
+      case 'Pending': return 'default';
+      case 'Confirmed': return 'warning';
+      case 'Completed': return 'success';
+      case 'Cancelled': return 'destructive';
       case 'Hold': return 'secondary';
-      case 'Cancel': return 'destructive';
       case 'Inactive': return 'secondary';
       default: return 'default';
     }
@@ -230,308 +297,236 @@ const JobCards: React.FC = () => {
     return match ? match[1] : code;
   };
 
-  if (loading && jobCards.length === 0) {
-    return <PageLoading text="Loading job cards..." />;
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Job Cards</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage and track all job cards</p>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
+      {/* 1. View Booking Header */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Bookings</h1>
+            <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
+              Total {pagination.count} Records
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setShowInquiryModal(true)} className="bg-amber-500 hover:bg-amber-600 h-8 font-bold shadow-sm flex items-center gap-1">
+              <Zap className="h-3.5 w-3.5 fill-amber-100" /> Create Inquiry
+            </Button>
+            <Button size="sm" onClick={() => navigate('/jobcards/create')} className="bg-blue-700 hover:bg-blue-800 h-8 font-bold shadow-sm">
+              <Plus className="h-4 w-4 mr-1" /> Create Booking
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button size="sm" onClick={() => navigate('/jobcards/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Job Card
-          </Button>
+
+        {/* Tab Selection Row (Reference Style) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none border-b border-gray-100">
+          {[
+            { id: 'done', label: 'Done' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'on_process', label: 'On Process' },
+            { id: 'all', label: 'All Bookings' },
+            { id: 'upcoming_services', label: 'Upcoming Services' },
+            { id: 'upcoming_renewals', label: 'Renewals' },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap px-4 py-1 text-[11px] font-bold rounded shadow-sm transition-all duration-200 border ${
+                  isActive 
+                    ? 'bg-red-500 text-white border-red-600' 
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search Field */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by job code (e.g., JC-0021), client name, or mobile number..."
-                  value={searchInput}
-                  onChange={(e) => handleSearchInputChange(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className="pl-10 pr-10"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => {
-                      setSearchInput('');
-                      if (searchTimeout) {
-                        clearTimeout(searchTimeout);
-                        setSearchTimeout(null);
-                      }
-                      if (filters.search) {
-                        const newFilters = { ...filters, search: '' };
-                        setFilters(newFilters);
-                        setPagination(prev => ({ ...prev, current: 1 }));
-                        loadJobCards(1, newFilters);
-                      }
-                    }}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Search Button */}
-            <Button onClick={handleSearchSubmit} variant="outline" size="sm">
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
-
-            {/* Status Filter */}
-            <div className="w-48">
-              <Select
-                value={filters.status}
-                onChange={handleStatusFilterChange}
-                options={statusOptions}
-                placeholder="Filter by status"
-              />
-            </div>
-
-            {/* Clear Filters Button */}
-            {hasActiveFilters && (
-              <Button onClick={clearFilters} variant="ghost" size="sm">
-                <X className="h-4 w-4 mr-2" />
-                Clear
-              </Button>
-            )}
+      {/* 2. Filter Bar - High Density (Reference Style) */}
+      <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search ID, Name, Mobile..."
+              value={searchInput}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
+              onKeyDown={handleSearchKeyPress}
+              className="w-full pl-8 pr-8 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+            />
           </div>
+        </div>
 
-          {/* Active Filters Display */}
-          {hasActiveFilters && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {filters.search && (
-                <div className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                  <Search className="h-3 w-3 mr-1" />
-                  Search: "{filters.search}"
-                  <button
-                    onClick={() => {
-                      const newFilters = { ...filters, search: '' };
-                      setFilters(newFilters);
-                      setSearchInput('');
-                      setPagination(prev => ({ ...prev, current: 1 }));
-                      loadJobCards(1, newFilters);
-                    }}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-              {filters.status && (
-                <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                  <Filter className="h-3 w-3 mr-1" />
-                  Status: {filters.status}
-                  <button
-                    onClick={() => {
-                      const newFilters = { ...filters, status: '' };
-                      setFilters(newFilters);
-                      setPagination(prev => ({ ...prev, current: 1 }));
-                      loadJobCards(1, newFilters);
-                    }}
-                    className="ml-2 text-green-600 hover:text-green-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <div className="w-32">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Status</label>
+          <select
+            value={filters.status}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label === 'All Statuses' ? 'Status' : opt.label}</option>)}
+          </select>
+        </div>
 
-      {/* Error Message */}
-      {error && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-red-600 text-center">{error}</div>
-          </CardContent>
-        </Card>
-      )}
+        <div className="w-40">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service Type</label>
+          <select
+            value={filters.service_category}
+            onChange={(e) => handleFilterChange('service_category', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            {serviceCategoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label === 'All Service Types' ? 'Booking For' : opt.label}</option>)}
+          </select>
+        </div>
 
-      {/* Job Cards List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>
-              {hasActiveFilters ? 'Filtered Job Cards' : 'Job Cards'} ({pagination.count})
-            </span>
-            {loading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-primary-600" />
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {jobCards.length === 0 ? (
-            <div className="text-center py-12">
-              <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              {hasActiveFilters ? (
-                <>
-                  <p className="text-gray-500 mb-4">No job cards match your search criteria</p>
-                  <Button onClick={clearFilters} variant="outline" size="sm">
-                    <X className="h-4 w-4 mr-2" />
-                    Clear Filters
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-500 mb-4">No job cards found</p>
-                  <Button size="sm" onClick={() => navigate('/jobcards/create')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Job Card
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto -mx-6">
-              <div className="inline-block min-w-full align-middle px-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Id
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Client Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Mobile Number
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Client Address
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Service Types
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Schedule Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {jobCards.map((jobCard) => (
-                    <tr key={jobCard.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {extractIdNumber(jobCard.code)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 max-w-[150px] truncate" title={jobCard.client_name}>
-                          {jobCard.client_name}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {jobCard.client_mobile}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative group">
-                          <div className="text-sm text-gray-900 cursor-help max-w-[200px] truncate">
-                            {jobCard.client_address || 'N/A'}
+        <div className="w-36 text-gray-400">
+           <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Select Date</label>
+           <input
+             type="date"
+             value={filters.from}
+             onChange={(e) => handleFilterChange('from', e.target.value)}
+             className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
+           />
+        </div>
+
+        <div className="flex gap-1 h-8">
+           <button onClick={clearFilters} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors">CLEAR</button>
+           <button onClick={handleSearchSubmit} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors">SEARCH</button>
+        </div>
+      </div>
+
+      {/* 3. Table Results - Full Width Compact */}
+      <div className="bg-white border-x border-t border-gray-200 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+          <table className="w-full table-auto border-collapse text-[11px]">
+            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
+              <tr className="divide-x divide-gray-200">
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Booking Id</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Client Name</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Mobile Info</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Service Area</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Service</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Technician</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Schedule Date</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Status</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
+                 <tr>
+                    <td colSpan={9} className="py-20 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
+                    </td>
+                 </tr>
+              ) : jobCards.length === 0 ? (
+                 <tr>
+                    <td colSpan={9} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                       No Bookings Found In This Category
+                    </td>
+                 </tr>
+              ) : jobCards.map((job) => (
+                <tr key={job.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
+                  <td className="px-3 py-2.5 font-bold text-blue-600">{job.code}</td>
+                  <td className="px-3 py-2.5 font-semibold text-gray-800 uppercase">{job.client_name || '---'}</td>
+                  <td className="px-3 py-2.5 text-gray-600 font-bold">{job.client_mobile || '---'}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="max-w-[220px] truncate leading-tight font-medium" title={job.client_address}>{job.client_address || '---'}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase">{job.city}, {job.state}</div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-col group relative">
+                      <div className="font-bold text-gray-800 leading-tight max-w-[150px] truncate" title={job.service_type}>
+                        {job.service_type?.split(',')[0]}
+                        {(job.service_type?.split(',').length ?? 0) > 1 && (
+                          <span className="ml-1 text-[9px] text-blue-600 font-black cursor-help">
+                            +{job.service_type!.split(',').length - 1} more
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-blue-500 font-black uppercase">{job.service_category}</div>
+                      
+                      {/* Hover Tooltip - Positioned below to avoid being cut off by header */}
+                      {(job.service_type?.split(',').length ?? 0) > 1 && (
+                        <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 bg-blue-900 text-white text-[10px] p-2.5 rounded shadow-2xl w-56 border border-blue-800 pointer-events-none whitespace-normal leading-normal">
+                          <div className="font-extrabold border-b border-blue-800/50 pb-1.5 mb-1.5 text-blue-200 flex items-center gap-1.5 uppercase tracking-tighter">
+                            <Layout className="h-3 w-3" />
+                            All Selected Pests:
                           </div>
-                          {/* Enhanced Tooltip for Address - Always show if text exists */}
-                          {(jobCard.client_address && jobCard.client_address !== 'N/A') && (
-                            <div className="absolute left-0 top-full mt-1 px-3 py-2 bg-gray-900 text-white text-xs rounded-md shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-normal max-w-xs">
-                              <div className="font-semibold mb-1">Full Address:</div>
-                              <div>{jobCard.client_address}</div>
-                              {jobCard.client_city && (
-                                <div className="mt-1 text-gray-300">
-                                  <span className="font-semibold">City:</span> {jobCard.client_city}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative group">
-                          <div className="text-sm text-gray-900 cursor-help max-w-[180px] truncate" title={jobCard.service_type}>
-                            {jobCard.service_type || 'N/A'}
+                          <div className="text-blue-50 font-medium">
+                            {job.service_type?.split(',').map((s, i) => (
+                              <div key={i} className="flex items-start gap-1 mb-0.5">
+                                <span className="text-blue-300">•</span>
+                                {s.trim()}
+                              </div>
+                            ))}
                           </div>
-                          {/* Enhanced Tooltip - Show full service type if it's long */}
-                          {jobCard.service_type && jobCard.service_type.length > 20 && (
-                            <div className="absolute left-0 top-full mt-1 px-3 py-2 bg-gray-900 text-white text-xs rounded-md shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-normal max-w-xs">
-                              <div className="font-semibold mb-1">Full Service Type:</div>
-                              {jobCard.service_type}
-                            </div>
-                          )}
+                          <div className="absolute -top-1 left-4 w-2 h-2 bg-blue-900 rotate-45 border-l border-t border-blue-800"></div>
                         </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {jobCard.schedule_date ? (
-                            <div className="flex items-center">
-                              <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
-                              <span className="whitespace-nowrap">{new Date(jobCard.schedule_date).toLocaleDateString()}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">Not scheduled</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <Badge variant={getStatusBadgeVariant(jobCard.status)}>
-                          {jobCard.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => navigate(`/jobcards/edit/${jobCard.id}`)}
-                            title="Edit Job Card"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 font-bold text-indigo-600 uppercase italic tracking-tighter">
+                    {job.technician_name || job.assigned_to || '---'}
+                  </td>
+                  <td className="px-3 py-2.5 font-bold text-gray-600">
+                    {job.schedule_date ? (
+                      <div className="flex flex-col">
+                        <span>{new Date(job.schedule_date).toLocaleDateString('en-GB')}</span>
+                        <span className="text-[9px] text-gray-400">---</span>
+                      </div>
+                    ) : '---'}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
+                      job.status === 'Completed' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
+                      job.status === 'Pending' ? 'bg-orange-50 text-orange-700 ring-orange-600/20' :
+                      job.status === 'Cancelled' ? 'bg-red-50 text-red-700 ring-red-600/20' :
+                      'bg-blue-50 text-blue-700 ring-blue-600/20'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <button onClick={() => navigate(`/jobcards/edit/${job.id}`)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
+                      <Edit className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Pagination */}
-      <Pagination
-        currentPage={pagination.current}
-        totalPages={Math.max(1, pagination.totalPages)}
-        totalItems={pagination.count}
-        itemsPerPage={pagination.pageSize}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
-        showPageSizeSelector={false}
-        showGoToPage={true}
+      {/* 4. Compact Pagination Footer */}
+      <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] border border-gray-200">
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+           Viewing {jobCards.length} of {pagination.count} Total Bookings
+        </span>
+        <div className="flex items-center gap-1">
+           <Pagination
+             currentPage={pagination.current}
+             totalPages={Math.max(1, pagination.totalPages)}
+             onPageChange={handlePageChange}
+             showPageSizeSelector={false}
+           />
+        </div>
+      </div>
+      <CreateCRMInquiryModal 
+        isOpen={showInquiryModal}
+        onClose={() => setShowInquiryModal(false)}
+        onSuccess={() => {
+           // Maybe navigate to inquiry page if needed, but for now just show success
+           console.log('Inquiry created successfully');
+        }}
       />
     </div>
   );

@@ -15,6 +15,8 @@ import EditJobCard from './pages/EditJobCard';
 import SocietyJobCards from './pages/SocietyJobCards';
 import Renewals from './pages/Renewals';
 import References from './pages/References';
+import Technicians from './pages/Technicians';
+import CRMInquiries from './pages/CRMInquiries';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +50,8 @@ const AppContent: React.FC = () => {
                   <Route path="/society-jobcards" element={<SocietyJobCards />} />
                   <Route path="/renewals" element={<Renewals />} />
                   <Route path="/references" element={<References />} />
+                  <Route path="/technicians" element={<Technicians />} />
+                  <Route path="/crm-inquiries" element={<CRMInquiries />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

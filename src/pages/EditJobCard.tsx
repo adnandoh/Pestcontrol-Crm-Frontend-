@@ -6,7 +6,13 @@ import {
   User,
   Settings,
   IndianRupee,
-  Calendar
+  Calendar,
+  ShieldCheck,
+  Zap,
+  Target,
+  MoreHorizontal,
+  ClipboardList,
+  Users
 } from 'lucide-react';
 import {
   Button,
@@ -21,7 +27,8 @@ import {
   DatePicker,
   Input,
   Select,
-  Textarea
+  Textarea,
+  Badge,
 } from '../components/ui';
 import {
   ValidatedInput,
@@ -30,7 +37,8 @@ import {
 } from '../components/forms';
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, JobCard } from '../types';
+import { cn } from '../utils/cn';
+import type { JobCardFormData, JobCard, Technician } from '../types';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -42,212 +50,126 @@ const EditJobCard: React.FC = () => {
   const [showPauseConfirmation, setShowPauseConfirmation] = useState(false);
   const [pendingPauseState, setPendingPauseState] = useState<boolean | null>(null);
   const [pauseLoading, setPauseLoading] = useState(false);
-  const [_originalFormData, setOriginalFormData] = useState<JobCardFormData | null>(null);
+  
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [loadingTechs, setLoadingTechs] = useState(false);
 
-  // Form state with localStorage persistence
-  const getStorageKey = () => `editJobCardFormData_${id}`;
-
-  const getInitialFormData = (): JobCardFormData => {
-    try {
-      const savedData = localStorage.getItem(getStorageKey());
-      if (savedData) {
-        return JSON.parse(savedData);
-      }
-    } catch (error) {
-      console.error('Error loading saved form data:', error);
-    }
-    
-    return {
-      client_name: '',
-      client_mobile: '',
-      client_email: '',
-      client_city: '',
-      client_address: '',
-      client_notes: '',
-      job_type: 'Customer',
-      is_paused: false,
-      service_type: '',
-      schedule_date: '',
-      status: 'Enquiry',
-      payment_status: 'Unpaid',
-      price: '',
-      next_service_date: '',
-      reference: '',
-      extra_notes: '',
-      contract_duration: ''
-    };
-  };
+  const getInitialFormData = (): JobCardFormData => ({
+    client_name: '',
+    client_mobile: '',
+    client_email: '',
+    client_city: '',
+    client_address: '',
+    client_notes: '',
+    job_type: 'Customer',
+    service_category: 'One-Time Service',
+    property_type: '',
+    bhk_size: '',
+    is_paused: false,
+    service_type: '',
+    schedule_date: '',
+    time_slot: '',
+    state: '',
+    city: '',
+    status: 'Pending',
+    payment_status: 'Unpaid',
+    assigned_to: '',
+    technician: undefined,
+    price: '',
+    next_service_date: '',
+    reference: '',
+    extra_notes: '',
+    contract_duration: '',
+    notes: ''
+  });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-  // Form validation
   const {
     errors,
     validateField,
     validateForm,
     clearError,
     scrollToFirstError,
-    hasErrors: _hasErrors
   } = useFormValidation(jobCardValidationRules);
 
-  // Helper function to convert JobCard data to form data
-  const getFormDataFromJobCard = (jobCardData: JobCard): JobCardFormData => {
-    return {
-      client_name: jobCardData.client_name || '',
-      client_mobile: jobCardData.client_mobile || '',
-      client_email: jobCardData.client_email || '',
-      client_city: jobCardData.client_city || '',
-      client_address: jobCardData.client_address || '',
-      client_notes: jobCardData.client_notes || '',
-      job_type: jobCardData.job_type || 'Customer',
-      is_paused: jobCardData.is_paused || false,
-      service_type: jobCardData.service_type || '',
-      schedule_date: jobCardData.schedule_date || '',
-      status: jobCardData.status || 'Enquiry',
-      payment_status: jobCardData.payment_status || 'Unpaid',
-      price: jobCardData.price || '0',
-      next_service_date: jobCardData.next_service_date || '',
-      reference: jobCardData.reference || '',
-      extra_notes: jobCardData.extra_notes || '',
-      contract_duration: jobCardData.contract_duration || ''
-    };
-  };
-
-  // Service type options
-  const serviceTypeOptions = [
-    'Ants',
-    'Cockroaches',
-    'Rodents (Mice/Rats)',
-    'Spiders',
-    'Wasps/Bees',
-    'Bed Bugs',
-    'Fleas',
-    'Mosquitoes',
-    'House Flies',
-    'Termites',
-    'Other'
+  const serviceTypeCategories = [
+    {
+      name: 'General Pest',
+      options: ['Cockroach', 'Ants', 'Mosquito', 'Spiders', 'Flies', 'Silverfish', 'Moths', 'Beetles', 'Centipedes/Millipedes', 'Earwigs', 'Crickets']
+    },
+    {
+      name: 'Advanced Pest',
+      options: ['Bed Bug', 'Rodent', 'Fleas', 'Ticks', 'Mites', 'Termite', 'Wood Borer', 'Aphids', 'Thrips', 'Scale Insects', 'Whiteflies', 'Caterpillars', 'Slugs/Snails']
+    }
   ];
+
+  const serviceTypeOptions = serviceTypeCategories.flatMap(cat => cat.options);
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [customService, setCustomService] = useState('');
   const [selectAll, setSelectAll] = useState(false);
 
-  // Reference options
-  const referenceOptions = [
-    'Website',
-    'Play Store',
-    'Previous Client',
-    'Facebook',
-    'YouTube',
-    'LinkedIn',
-    'SMS',
-    'Instagram',
-    'WhatsApp',
-    'Justdial',
-    'Poster',
-    'Friend Reference',
-    'No Parking Board',
-    'Holding',
-    'Other'
-  ];
-
-  // Job status options
-  const jobStatusOptions = [
-    'Enquiry',
-    'WIP',
-    'Done',
-    'Hold',
-    'Cancel',
-    'Inactive'
-  ];
-
-  // Payment status options
-  const paymentStatusOptions = [
-    'Paid',
-    'Unpaid'
-  ];
-
-  // Contract duration options
-  const contractDurationOptions = [
-    { value: '3', label: '3 Months' },
-    { value: '6', label: '6 Months' },
-    { value: '12', label: '1 Year' }
-  ];
-
-  // Load job card data
   useEffect(() => {
-    const loadJobCard = async () => {
-      if (!id) {
-        setError('Job card ID is required');
-        setLoading(false);
-        return;
-      }
-
+    const fetchData = async () => {
+      if (!id) return;
       try {
         setLoading(true);
-        const jobCardData = await enhancedApiService.getJobCard(parseInt(id));
-        setJobCard(jobCardData);
-
-        // Parse service types
-        const services = jobCardData.service_type ? jobCardData.service_type.split(', ') : [];
-        const knownServices = services.filter(s => serviceTypeOptions.includes(s));
-        const customServices = services.filter(s => !serviceTypeOptions.includes(s));
-
-        setSelectedServices(knownServices);
-        if (customServices.length > 0) {
-          setSelectedServices(prev => [...prev, 'Other']);
-          setCustomService(customServices.join(', '));
-        }
-
-        // Set form data
-        // Always use job card data for initial load, ignore localStorage for edit forms
-        // This ensures we always show the latest data from the server
-        const initialFormData = getFormDataFromJobCard(jobCardData);
+        const [jobData, techData] = await Promise.all([
+          enhancedApiService.getJobCard(parseInt(id)),
+          enhancedApiService.getActiveTechnicians()
+        ]);
         
-        console.log('🔄 EditJobCard: Job card data loaded:', jobCardData);
-        console.log('🔄 EditJobCard: Form data mapped:', initialFormData);
+        setJobCard(jobData);
+        setTechnicians(techData || []);
         
-        setFormData(initialFormData);
-        setOriginalFormData(initialFormData);
+        const initialForm = {
+          client_name: jobData.client_name || '',
+          client_mobile: jobData.client_mobile || '',
+          client_email: jobData.client_email || '',
+          client_city: jobData.client_city || '',
+          client_address: jobData.client_address || '',
+          client_notes: jobData.client_notes || '',
+          job_type: jobData.job_type || 'Customer',
+          service_category: jobData.service_category || 'One-Time Service',
+          property_type: jobData.property_type || '',
+          bhk_size: jobData.bhk_size || '',
+          is_paused: jobData.is_paused || false,
+          service_type: jobData.service_type || '',
+          schedule_date: jobData.schedule_date || '',
+          time_slot: jobData.time_slot || '',
+          state: jobData.state || '',
+          city: jobData.city || '',
+          status: jobData.status || 'Pending',
+          payment_status: jobData.payment_status || 'Unpaid',
+          assigned_to: jobData.assigned_to || '',
+          technician: jobData.technician,
+          price: jobData.price || '',
+          next_service_date: jobData.next_service_date || '',
+          reference: jobData.reference || '',
+          notes: jobData.notes || '',
+          extra_notes: jobData.extra_notes || '',
+          contract_duration: jobData.contract_duration || ''
+        };
         
-        // Clear any existing localStorage data to prevent confusion
-        localStorage.removeItem(getStorageKey());
+        setFormData(initialForm);
+        
+        const services = jobData.service_type ? jobData.service_type.split(', ') : [];
+        setSelectedServices(services.filter(s => serviceTypeOptions.includes(s)));
+        
       } catch (err: any) {
-        setError(err.message || 'Failed to load job card');
+        setError(err.message || 'Failed to load data');
       } finally {
         setLoading(false);
       }
     };
-
-    loadJobCard();
+    fetchData();
   }, [id]);
 
-  // Handle input changes with localStorage persistence and validation
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
-    const updatedFormData = {
-      ...formData,
-      [field]: value
-    };
-    setFormData(updatedFormData);
-    
-    // Clear validation error for this field
+    setFormData(prev => ({ ...prev, [field]: value }));
     clearError(field);
-    
-    // Save to localStorage
-    try {
-      localStorage.setItem(getStorageKey(), JSON.stringify(updatedFormData));
-    } catch (error) {
-      console.error('Error saving form data:', error);
-    }
   };
 
-  // Handle field validation on blur
-  const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
-    validateField(field, value);
-    // Error is automatically set by the validation hook
-  };
-
-  // Handle service type selection
   const handleServiceTypeChange = (service: string, checked: boolean) => {
     if (checked) {
       setSelectedServices(prev => [...prev, service]);
@@ -257,550 +179,181 @@ const EditJobCard: React.FC = () => {
     }
   };
 
-  // Handle select all services
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
-      setSelectedServices([...serviceTypeOptions.filter(s => s !== 'Other')]);
+      setSelectedServices([...serviceTypeOptions]);
     } else {
       setSelectedServices([]);
     }
   };
 
-  // Update service_type field when selections change
   useEffect(() => {
-    let services = [...selectedServices];
-    if (customService && selectedServices.includes('Other')) {
-      services = services.filter(s => s !== 'Other');
-      services.push(customService);
+    const updatedServiceType = selectedServices.join(', ');
+    if (formData.service_type !== updatedServiceType) {
+        handleInputChange('service_type', updatedServiceType);
     }
-    handleInputChange('service_type', services.join(', '));
-  }, [selectedServices, customService]);
+  }, [selectedServices]);
 
-  // Clear form data on page refresh (when component unmounts and remounts)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      localStorage.removeItem(getStorageKey());
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [id]);
-
-  // Handle mobile number change
-  const handleMobileChange = (value: string) => {
-    // Only allow numbers and limit to 10 digits
-    const numericValue = value.replace(/\D/g, '').slice(0, 10);
-    handleInputChange('client_mobile', numericValue);
-  };
-
-  // Handle pause service toggle with confirmation
-  const handlePauseToggle = (checked: boolean) => {
-    setPendingPauseState(checked);
-    setShowPauseConfirmation(true);
-  };
-
-  // Confirm pause service change
-  const confirmPauseChange = async () => {
-    if (!id || pendingPauseState === null) return;
-
-    try {
-      setPauseLoading(true);
-
-      // Use dedicated toggle pause endpoint
-      await enhancedApiService.toggleJobCardPause(parseInt(id), pendingPauseState);
-
-      // Update local state
-      handleInputChange('is_paused', pendingPauseState);
-
-      // Refresh job card data to get latest state
-      const updatedJobCard = await enhancedApiService.getJobCard(parseInt(id));
-      setJobCard(updatedJobCard);
-      
-      // Update form data to reflect the change
-      setFormData(prev => ({
-        ...prev,
-        is_paused: updatedJobCard.is_paused
-      }));
-
-      // Close modal
-      setShowPauseConfirmation(false);
-      setPendingPauseState(null);
-
-    } catch (err: any) {
-      setError(err.message || 'Failed to update pause status');
-    } finally {
-      setPauseLoading(false);
-    }
-  };
-
-  // Cancel pause service change
-  const cancelPauseChange = () => {
-    setShowPauseConfirmation(false);
-    setPendingPauseState(null);
-  };
-
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!id) {
-      setError('Job card ID is required');
-      return;
-    }
-
-    // Validate entire form
+    if (!id) return;
     const validationErrors = validateForm(formData);
-    
     if (Object.keys(validationErrors).length > 0) {
-      // Scroll to first error field
-      setTimeout(() => {
-        scrollToFirstError();
-      }, 100);
+      setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
-
     try {
       setSubmitting(true);
-      setError(null);
-
       await enhancedApiService.updateJobCard(parseInt(id), formData);
-
-      // Success - clear saved data and cache, then redirect
-      localStorage.removeItem(getStorageKey());
-      
-      // Clear API cache to ensure fresh data is fetched
-      enhancedApiService.clearCache();
-      
-      // Redirect to appropriate page based on job type
-      const redirectUrl = getBackUrl();
-      navigate(redirectUrl);
+      navigate(jobCard?.job_type === 'Society' ? '/society-jobcards' : '/jobcards');
     } catch (err: any) {
-      
-      let errorMessage = 'Failed to update job card';
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-      // Form data is preserved in state and localStorage
+      setError(err.message || 'Failed to update booking');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getBackUrl = () => {
-    if (jobCard?.job_type === 'Society') {
-      return '/society-jobcards';
-    }
-    return '/jobcards';
-  };
-
-  if (loading) {
-    return <PageLoading text="Loading job card..." />;
-  }
-
-  if (!jobCard) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-red-600 text-center">Job card not found</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <PageLoading text="Loading booking..." />;
+  if (!jobCard) return <div className="p-10 text-center">Booking Not Found</div>;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(getBackUrl())}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to {jobCard.job_type === 'Society' ? 'Society Job Cards' : 'Job Cards'}
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              Edit Job Card #{jobCard.code}
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">Update job card details</p>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-white rounded border border-gray-200 shadow-sm transition-colors">
+            <ArrowLeft className="h-4 w-4 text-gray-500" />
+          </button>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-extrabold text-gray-800 tracking-tight uppercase italic">Edit Booking</h1>
+            <span className="text-[10px] font-bold text-blue-600 uppercase">Code: {jobCard.code}</span>
           </div>
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-red-600 text-center">{error}</div>
-          </CardContent>
-        </Card>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Client Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <User className="h-5 w-5 mr-2" />
-              {jobCard.job_type === 'Society' ? 'Society Information' : 'Client Information'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ValidatedInput
-                name="client_name"
-                label={jobCard.job_type === 'Society' ? 'Society Name' : 'Client Name'}
-                type="text"
-                value={formData.client_name}
-                onChange={(e) => handleInputChange('client_name', e.target.value)}
-                onValidate={(value) => handleFieldValidation('client_name', value)}
-                placeholder={`Enter ${jobCard.job_type === 'Society' ? 'society' : 'client'} name`}
-                error={errors.client_name}
-                required
-                disabled={true}
-                readOnly={true}
-              />
-              <span className="text-xs text-gray-500 font-normal mt-1 block">
-                (Cannot edit existing client name)
-              </span>
-
-              <ValidatedInput
-                name="client_mobile"
-                label="Mobile Number"
-                type="tel"
-                value={formData.client_mobile}
-                onChange={(e) => handleMobileChange(e.target.value)}
-                onValidate={(value) => handleFieldValidation('client_mobile', value)}
-                placeholder="10-digit mobile number"
-                maxLength={10}
-                error={errors.client_mobile}
-                required
-              />
-
-              <ValidatedInput
-                name="client_email"
-                label="Email"
-                type="email"
-                value={formData.client_email || ''}
-                onChange={(e) => handleInputChange('client_email', e.target.value)}
-                onValidate={(value) => handleFieldValidation('client_email', value)}
-                placeholder="Enter email address"
-                error={errors.client_email}
-              />
-
-              <ValidatedInput
-                name="client_city"
-                label="City"
-                type="text"
-                value={formData.client_city}
-                onChange={(e) => handleInputChange('client_city', e.target.value)}
-                onValidate={(value) => handleFieldValidation('client_city', value)}
-                placeholder="Enter city"
-                error={errors.client_city}
-                required
-              />
-            </div>
-
-            <ValidatedTextarea
-              name="client_address"
-              label="Address"
-              value={formData.client_address}
-              onChange={(e) => handleInputChange('client_address', e.target.value)}
-              onValidate={(value) => handleFieldValidation('client_address', value)}
-              placeholder="Enter complete address"
-              rows={3}
-              error={errors.client_address}
-              required
-            />
-
-            <ValidatedTextarea
-              name="client_notes"
-              label="Notes"
-              value={formData.client_notes || ''}
-              onChange={(e) => handleInputChange('client_notes', e.target.value)}
-              onValidate={(value) => handleFieldValidation('client_notes', value)}
-              placeholder="Enter client notes (optional)"
-              rows={3}
-              error={errors.client_notes}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Service Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Settings className="h-5 w-5 mr-2" />
-              Service Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pause Service
-              </label>
-              <div className="flex items-center space-x-3">
-                <Toggle
-                  checked={formData.is_paused}
-                  onChange={handlePauseToggle}
-                  label={formData.is_paused ? "Service is paused" : "Service is active"}
-                  disabled={pauseLoading}
-                />
-                {pauseLoading && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600" />
-                )}
+      <Card className="border-gray-200 shadow-xs overflow-hidden">
+        <form onSubmit={handleSubmit} className="divide-y divide-gray-100">
+          <div className="p-4 bg-white/50">
+            <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <User className="h-3 w-3" /> Client & Service Location
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
+              <div>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Mobile Number</label>
+                <Input value={formData.client_mobile} readOnly disabled className="h-8 text-xs font-bold bg-gray-50 italic" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.is_paused
-                  ? "This service is currently paused and will not be scheduled."
-                  : "This service is active and can be scheduled normally."
-                }
-              </p>
+              <div>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Client Name</label>
+                <Input value={formData.client_name} readOnly disabled className="h-8 text-xs font-bold bg-gray-50 italic uppercase" />
+              </div>
+              <div>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service State</label>
+                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} className="h-8 text-xs font-bold" />
+              </div>
+              <div>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service City</label>
+                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} className="h-8 text-xs font-bold" />
+              </div>
+              <div className="lg:col-span-4">
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Detailed Address *</label>
+                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} className="h-8 text-xs font-medium" required />
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Job Type <span className="text-red-500">*</span>
-              </label>
-              <Select
-                value={formData.job_type}
-                onChange={(value) => handleInputChange('job_type', value as 'Customer' | 'Society')}
-                options={[
-                  { value: 'Customer', label: 'Customer' },
-                  { value: 'Society', label: 'Society' }
-                ]}
-                placeholder="Select job type"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contract Duration
-              </label>
-              <Select
-                value={formData.contract_duration || ''}
-                onChange={(value) => handleInputChange('contract_duration', value)}
-                options={contractDurationOptions}
-                placeholder="Select contract duration"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Service Type <span className="text-red-500">*</span>
-              </label>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Checkbox
-                    checked={selectAll}
-                    onChange={handleSelectAll}
-                    label="Select All"
-                    className="font-medium"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {serviceTypeOptions.map((service) => (
-                    <div key={service} className="flex items-center">
-                      <Checkbox
-                        checked={selectedServices.includes(service)}
-                        onChange={(checked) => handleServiceTypeChange(service, checked)}
-                        label={service}
-                      />
+          <div className="p-4 bg-white">
+            <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> Select Service Pest Types *
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {serviceTypeCategories.map((category, idx) => (
+                  <div key={category.name} className={cn("rounded-xl p-3 border", idx === 0 ? "bg-emerald-50/30 border-emerald-100" : "bg-indigo-50/30 border-indigo-100")}>
+                    <h5 className={cn("text-[9px] font-extrabold uppercase tracking-tighter mb-2 pb-1 border-b flex items-center gap-1.5", idx === 0 ? "text-emerald-700 border-emerald-100" : "text-indigo-700 border-indigo-100")}>
+                       {idx === 0 ? <Zap className="h-3 w-3" /> : <Target className="h-3 w-3" />} {category.name} Range
+                    </h5>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1.5">
+                       {category.options.map(pest => (
+                         <div key={pest} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`edit-pest-${pest}`}
+                              checked={selectedServices.includes(pest)}
+                              onChange={(e) => handleServiceTypeChange(pest, e.target.checked)}
+                              className={cn("h-3 w-3 rounded", idx === 0 ? "text-emerald-600" : "text-indigo-600")}
+                            />
+                            <label htmlFor={`edit-pest-${pest}`} className="text-[10px] font-bold text-gray-700 cursor-pointer truncate uppercase tracking-tighter">{pest}</label>
+                         </div>
+                       ))}
                     </div>
-                  ))}
-                </div>
-                {selectedServices.includes('Other') && (
-                  <div className="mt-2">
-                    <Input
-                      type="text"
-                      value={customService}
-                      onChange={(e) => setCustomService(e.target.value)}
-                      placeholder="Specify other pest type"
-                    />
                   </div>
-                )}
-              </div>
+                ))}
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ValidatedDatePicker
-                name="schedule_date"
-                label="Schedule Date"
-                value={formData.schedule_date}
-                onChange={(date) => handleInputChange('schedule_date', date)}
-                onValidate={(value) => handleFieldValidation('schedule_date', value)}
-                placeholder="Select schedule date"
-                error={errors.schedule_date}
-                required
-              />
-
+          <div className="p-4 bg-gray-50/50">
+            <h4 className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Calendar className="h-3 w-3" /> Schedule & Assignment
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Status
-                </label>
-                <Select
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Schedule Date *</label>
+                <Input type="date" value={formData.schedule_date} onChange={(e) => handleInputChange('schedule_date', e.target.value)} className="h-8 text-xs font-bold" required />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service Price *</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input type="number" value={formData.price} onChange={(e) => handleInputChange('price', e.target.value)} className="pl-6 h-8 text-xs font-extrabold text-blue-800" required />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Assigned Technician</label>
+                <select
+                  value={formData.technician || ''}
+                  onChange={(e) => {
+                    const techId = e.target.value;
+                    const tech = technicians.find(t => t.id.toString() === techId);
+                    handleInputChange('technician', techId ? parseInt(techId) : null);
+                    handleInputChange('assigned_to', tech ? tech.name : '');
+                  }}
+                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white font-extrabold uppercase tracking-tighter"
+                >
+                  <option value="">Select Technician</option>
+                  {technicians.map(tech => (
+                    <option key={tech.id} value={tech.id}>{tech.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-rose-500 mb-1 block uppercase tracking-tighter">Status</label>
+                <select
                   value={formData.status}
-                  onChange={(value) => handleInputChange('status', value)}
-                  options={jobStatusOptions.map(option => ({ value: option, label: option }))}
-                  placeholder="Select job status"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Status
-                </label>
-                <Select
-                  value={formData.payment_status}
-                  onChange={(value) => handleInputChange('payment_status', value)}
-                  options={paymentStatusOptions.map(option => ({ value: option, label: option }))}
-                  placeholder="Select payment status"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference
-                </label>
-                <Select
-                  value={formData.reference || ''}
-                  onChange={(value) => handleInputChange('reference', value)}
-                  options={referenceOptions.map(option => ({ value: option, label: option }))}
-                  placeholder="Select reference"
-                />
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className="w-full h-8 px-2 text-xs font-extrabold border border-gray-300 rounded outline-none bg-white text-rose-600 uppercase"
+                >
+                  {['Pending', 'Confirmed', 'Completed', 'Cancelled', 'Hold', 'Inactive'].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Pricing Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <IndianRupee className="h-5 w-5 mr-2" />
-              Pricing Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Service Price
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
-                <Input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', e.target.value)}
-                  placeholder="Enter service price"
-                  className="pl-8"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="p-4">
+             <label className="text-[10px] font-extrabold text-gray-400 mb-2 block uppercase">Additional Notes</label>
+             <textarea
+               value={formData.notes || ''}
+               onChange={(e) => handleInputChange('notes', e.target.value)}
+               rows={2}
+               className="w-full border border-gray-300 rounded p-2 text-xs font-medium outline-none"
+             />
+          </div>
 
-        {/* Additional Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Additional Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Next Service Date
-              </label>
-              <DatePicker
-                value={formData.next_service_date || ''}
-                onChange={(date) => handleInputChange('next_service_date', date)}
-                placeholder="Select next service date"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Extra Notes
-              </label>
-              <Textarea
-                value={formData.extra_notes || ''}
-                onChange={(e) => handleInputChange('extra_notes', e.target.value)}
-                placeholder="Example: Service: 1 year Gel & Spray"
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate(getBackUrl())}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center"
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Update Job Card
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
-
-      {/* Pause Service Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showPauseConfirmation}
-        onClose={cancelPauseChange}
-        onConfirm={confirmPauseChange}
-        title={pendingPauseState ? "Pause Service" : "Resume Service"}
-        message={
-          pendingPauseState
-            ? "Are you sure you want to pause this service? The service will be temporarily stopped and no new schedules will be created until resumed."
-            : "Are you sure you want to resume this service? The service will become active again and can be scheduled normally."
-        }
-        confirmText={pendingPauseState ? "Yes, Pause Service" : "Yes, Resume Service"}
-        cancelText="Cancel"
-        type={pendingPauseState ? "warning" : "info"}
-        isLoading={pauseLoading}
-      />
+          <div className="p-4 bg-gray-50 flex items-center justify-end gap-2">
+             <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-8 text-[11px] font-extrabold uppercase">Discard</Button>
+             <Button onClick={handleSubmit} disabled={submitting} className="h-8 text-[11px] font-extrabold bg-blue-700 hover:bg-blue-800 shadow-lg px-8 uppercase">Update Booking</Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 };

@@ -35,7 +35,7 @@ const ValidatedSelect = forwardRef<HTMLSelectElement, ValidatedSelectProps>(
     placeholder,
     disabled,
     ...props 
-  }) => {
+  }, ref) => {
     const hasError = Boolean(error);
 
     // Handle select change with validation
@@ -82,6 +82,7 @@ const ValidatedSelect = forwardRef<HTMLSelectElement, ValidatedSelectProps>(
         
         <div className={cn(hasError && 'select-error')}>
           <Select
+            ref={ref}
             value={value || ''}
             onChange={handleChange}
             options={options}

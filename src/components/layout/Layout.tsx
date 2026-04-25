@@ -38,22 +38,21 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        user={user || undefined} 
+      <Header
+        user={user || undefined}
         onLogout={onLogout}
         onMenuToggle={toggleSidebar}
         isMenuOpen={isSidebarOpen}
       />
       {/* Sidebar - Fixed on both mobile and desktop */}
-      <Sidebar 
+      <Sidebar
         isOpen={sidebarIsOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
       {/* Main Content - Dynamic margin based on sidebar state, fixed positioning for proper scrolling */}
-      <main 
-        className={`fixed top-16 right-0 bottom-0 overflow-y-auto transition-all duration-300 px-4 md:px-6 py-6 ${
-          sidebarIsOpen ? 'md:left-64' : 'left-0'
-        }`}
+      <main
+        className={`fixed top-16 right-0 bottom-0 overflow-y-auto transition-all duration-300 px-4 md:px-6 py-6 ${sidebarIsOpen ? 'md:left-60' : 'left-0'
+          }`}
         style={{
           scrollBehavior: 'smooth'
         }}
@@ -67,4 +66,3 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
 };
 
 export { Layout };
-

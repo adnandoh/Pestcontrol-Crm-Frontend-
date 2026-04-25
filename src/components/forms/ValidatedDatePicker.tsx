@@ -33,7 +33,7 @@ const ValidatedDatePicker = forwardRef<HTMLInputElement, ValidatedDatePickerProp
     placeholder,
     disabled,
     ...props 
-  }) => {
+  }, ref) => {
     const hasError = Boolean(error);
 
     // Handle date change with validation
@@ -80,6 +80,7 @@ const ValidatedDatePicker = forwardRef<HTMLInputElement, ValidatedDatePickerProp
         
         <div className={cn(hasError && 'datepicker-error')}>
           <DatePicker
+            ref={ref}
             value={value || ''}
             onChange={handleChange}
             error={error}

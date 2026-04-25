@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, Settings, Menu, X } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { Button } from '../ui';
 import type { AuthUser } from '../../types';
 
@@ -40,25 +40,35 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
         {/* Left side - Logo and Menu toggle */}
         <div className="flex items-center space-x-4">
           {onMenuToggle && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={onMenuToggle}
-              className="flex-shrink-0"
+              className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 hover:scale-105 active:scale-95"
               aria-label="Toggle menu"
             >
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </Button>
+              <div className="relative h-5 w-5">
+                {/* Animated hamburger/close icon */}
+                <span
+                  className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? 'rotate-45 translate-y-2' : 'translate-y-0'
+                    }`}
+                />
+                <span
+                  className={`absolute left-0 top-2 h-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? 'w-0 opacity-0' : 'w-5 opacity-100'
+                    }`}
+                />
+                <span
+                  className={`absolute left-0 top-4 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-2' : 'translate-y-0'
+                    }`}
+                />
+              </div>
+              {/* Ripple effect on hover */}
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/0 to-indigo-500/0 group-hover:from-blue-500/10 group-hover:to-indigo-500/10 transition-all duration-300" />
+            </button>
           )}
-          {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/logo pest99.png" 
-              alt="Pest99 Logo" 
+          {/* Logo - No text */}
+          <div className="flex items-center">
+            <img
+              src="/logo pest99.png"
+              alt="Pest99 Logo"
               className="h-10 w-auto object-contain"
               onError={(e) => {
                 // Fallback if image doesn't load
@@ -66,9 +76,6 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
                 target.style.display = 'none';
               }}
             />
-            <span className="hidden sm:block text-lg font-semibold text-gray-900">
-              Pest99 CRM
-            </span>
           </div>
         </div>
 
@@ -85,11 +92,11 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
                 {userName.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div className="hidden md:block text-left">
-              <div className="text-sm font-medium text-gray-900">
+            <div className="hidden md:block text-left italic">
+              <div className="text-xs font-black text-gray-800 uppercase tracking-tight leading-none mb-0.5">
                 {userName}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">
                 {userRole}
               </div>
             </div>
