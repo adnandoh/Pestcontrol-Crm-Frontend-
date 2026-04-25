@@ -27,6 +27,7 @@ const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
     
@@ -101,6 +102,8 @@ const CreateJobCard: React.FC = () => {
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
+  const [clientCheckError, setClientCheckError] = useState<string | null>(null);
+  const [foundClientName, setFoundClientName] = useState<string>('');
   const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
 
   // Locations data
@@ -228,6 +231,8 @@ const CreateJobCard: React.FC = () => {
   };
 
   // Handle field validation on blur
+  const handleFieldValidation = (field: keyof JobCardFormData, value: any) => {
+    validateField(field, value);
   };
 
   // Handle service type selection

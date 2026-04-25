@@ -180,44 +180,48 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 transition-all duration-300">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200 font-roboto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200 font-roboto">
         {/* Header Area */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur sticky top-0 z-10">
           <div className="flex flex-col">
-            <h2 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase leading-none">
+            <h2 className="text-xl font-extrabold text-gray-800 tracking-tight flex items-center gap-2 uppercase italic leading-none">
+               <Users className="h-5 w-5 text-blue-600" />
               {client ? 'Edit Client Profile' : 'Initialize New Client'}
             </h2>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
-              Standard CRM Profile Protocol
+            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest italic opacity-70">
+              Database Entry Module // Standard CRM Protocol
             </p>
           </div>
           <button 
             onClick={onCancel}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors group"
           >
             <X className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
         
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-gray-50/10">
-          <form id="client-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/5">
+          <form id="client-form" onSubmit={handleSubmit} className="space-y-8">
             {/* 1. Core Profile Identity */}
-            <div className="space-y-4">
-              <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest border-b border-blue-50 pb-1 mb-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
-                Core Identity & Contact
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                 <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2 whitespace-nowrap">
+                   Identity & Contact
+                 </h4>
+                 <div className="h-[1px] w-full bg-blue-100" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
                     Full Entity Name *
                   </label>
                   <Input
                     value={formData.full_name}
                     onChange={(e) => handleChange('full_name', e.target.value)}
                     placeholder="ENTER FULL NAME"
-                    className={cn("h-8 text-xs font-bold uppercase border-gray-300 focus:border-blue-500 rounded", errors.full_name && "border-red-500")}
+                    className={cn("h-9 text-xs font-bold uppercase border-gray-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-lg", errors.full_name && "border-red-500")}
                     required
                   />
                   {errors.full_name && (
@@ -226,16 +230,19 @@ const ClientForm: React.FC<ClientFormProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
                     Direct Mobile *
                   </label>
-                  <Input
-                    value={formData.mobile}
-                    onChange={(e) => handleChange('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="10-DIGIT NUMBER"
-                    className={cn("h-8 text-xs font-bold border-gray-300 focus:border-blue-500 rounded", errors.mobile && "border-red-500")}
-                    required
-                  />
+                  <div className="relative">
+                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400">+91</span>
+                     <Input
+                        value={formData.mobile}
+                        onChange={(e) => handleChange('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="10-DIGIT NUMBER"
+                        className={cn("h-9 pl-10 text-xs font-bold border-gray-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-lg", errors.mobile && "border-red-500")}
+                        required
+                     />
+                  </div>
                   {errors.mobile ? (
                     <p className="text-red-600 text-[9px] font-bold mt-0.5 uppercase italic">{errors.mobile}</p>
                   ) : mobileExists ? (
@@ -245,16 +252,16 @@ const ClientForm: React.FC<ClientFormProps> = ({
                   ) : null}
                 </div>
 
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
-                    Electronic Mail Repository
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
+                    Electronic Mail repository
                   </label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
                     placeholder="CUSTOMER@DOMAIN.COM"
-                    className="h-8 text-xs font-bold border-gray-300 focus:border-blue-500 rounded lowercase"
+                    className="h-9 text-xs font-bold border-gray-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-lg lowercase italic"
                   />
                   {errors.email && (
                     <p className="text-red-600 text-[9px] font-bold mt-0.5 uppercase italic">{errors.email}</p>
@@ -264,103 +271,108 @@ const ClientForm: React.FC<ClientFormProps> = ({
             </div>
 
             {/* 2. Service Area Logistics */}
-            <div className="space-y-4 pt-2">
-              <h4 className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest border-b border-indigo-50 pb-1 mb-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></span>
-                Logistics & Service Location
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                 <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em] flex items-center gap-2 whitespace-nowrap">
+                   Field Logistics
+                 </h4>
+                 <div className="h-[1px] w-full bg-indigo-100" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
                     Unit / Shop No.
                   </label>
                   <Input
                     value={formData.flat_number}
                     onChange={(e) => handleChange('flat_number', e.target.value)}
                     placeholder="E.G. B-402"
-                    className="h-8 text-xs font-bold border-gray-300 uppercase italic rounded"
+                    className="h-9 text-xs font-bold border-gray-300 uppercase italic rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
                     Building / Premise
                   </label>
                   <Input
                     value={formData.building_name}
                     onChange={(e) => handleChange('building_name', e.target.value)}
                     placeholder="E.G. STERLING HEIGHTS"
-                    className="h-8 text-xs font-bold border-gray-300 uppercase italic rounded"
+                    className="h-9 text-xs font-bold border-gray-300 uppercase italic rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
-                    Key Landmark
-                  </label>
-                  <Input
-                    value={formData.landmark}
-                    onChange={(e) => handleChange('landmark', e.target.value)}
-                    placeholder="E.G. NEAR HDFC BANK"
-                    className="h-8 text-xs font-bold border-gray-300 uppercase italic rounded"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
                     Sector / Area
                   </label>
                   <Input
                     value={formData.area}
                     onChange={(e) => handleChange('area', e.target.value)}
                     placeholder="E.G. MIRA ROAD EAST"
-                    className="h-8 text-xs font-bold border-gray-300 uppercase italic rounded"
+                    className="h-9 text-xs font-bold border-gray-300 uppercase italic rounded-lg"
                   />
                 </div>
 
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
-                    Main City Jurisdiction
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
+                    City Jurisdiction
                   </label>
                   <Input
                     value={formData.city}
                     onChange={(e) => handleChange('city', e.target.value)}
-                    placeholder="E.G. THANE"
-                    className="h-8 text-xs font-black border-gray-300 uppercase rounded bg-gray-50/30"
+                    placeholder="E.G. MUMBAI"
+                    className="h-9 text-xs font-black border-gray-300 uppercase rounded-lg bg-gray-50/50"
                   />
                 </div>
 
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
-                    Legacy Address Data (Overflow)
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
+                    Key Landmark Ref.
                   </label>
-                  <textarea
+                  <Input
+                    value={formData.landmark}
+                    onChange={(e) => handleChange('landmark', e.target.value)}
+                    placeholder="E.G. NEXT TO METRO STATION"
+                    className="h-9 text-xs font-bold border-gray-300 uppercase italic rounded-lg"
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
+                    Detailed Master Address
+                  </label>
+                  <Input
                     value={formData.address}
                     onChange={(e) => handleChange('address', e.target.value)}
-                    placeholder="FULL OVERFLOW ADDRESS..."
-                    rows={2}
-                    className="w-full px-3 py-1.5 text-[11px] font-bold border border-gray-300 rounded uppercase focus:border-blue-500 outline-none transition-all bg-white shadow-inner"
+                    placeholder="FULL OVERFLOW ADDRESS DATA..."
+                    className="h-9 text-[11px] font-bold border-gray-300 uppercase italic rounded-lg shadow-inner bg-white"
                   />
                 </div>
               </div>
             </div>
 
             {/* 3. Internal Intelligence */}
-            <div className="space-y-4 pt-2">
-              <h4 className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest border-b border-amber-50 pb-1 mb-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-amber-600 rounded-full"></span>
-                Internal Remarks & Intelligence
-              </h4>
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                 <h4 className="text-[11px] font-black text-amber-600 uppercase tracking-[0.2em] flex items-center gap-2 whitespace-nowrap">
+                   Internal Intel
+                 </h4>
+                 <div className="h-[1px] w-full bg-amber-100" />
+              </div>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-tight block ml-0.5">
-                  Strategic Client Notes
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight block ml-0.5">
+                  Strategic Client Preferences & Remarks
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => handleChange('notes', e.target.value)}
-                  placeholder="ADD CRITICAL CLIENT PREFERENCES..."
+                  placeholder="ADD CRITICAL NOTES FOR OPERATIONS..."
                   rows={2}
-                  className="w-full px-3 py-1.5 text-[11px] font-medium border border-gray-300 rounded uppercase italic focus:border-blue-500 outline-none transition-all placeholder:italic bg-white shadow-inner"
+                  className="w-full px-4 py-2.5 text-[11px] font-bold border border-gray-200 rounded-xl uppercase italic focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:italic bg-white shadow-sm"
                 />
               </div>
             </div>
@@ -368,33 +380,38 @@ const ClientForm: React.FC<ClientFormProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3 sticky bottom-0 z-10">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-            className="h-8 text-[11px] font-extrabold uppercase px-6 border-gray-300 hover:bg-white"
-          >
-            Cancel
-          </Button>
-          <Button
-            form="client-form"
-            type="submit"
-            disabled={loading || mobileExists}
-            className="h-8 text-[11px] font-extrabold bg-blue-700 hover:bg-blue-800 shadow-lg px-8 uppercase tracking-wider flex items-center gap-2"
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-            ) : (
-              <Save className="h-3.5 w-3.5" />
-            )}
-            {client ? 'Update Record' : 'Save Profile'}
-          </Button>
+        <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between sticky bottom-0 z-10">
+           <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest hidden sm:block">
+              All interactions are logged in standard security protocol
+           </p>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 sm:flex-none h-9 text-[11px] font-black uppercase px-8 border-gray-200 rounded-full hover:bg-gray-50 transition-all text-gray-500"
+            >
+              Discard
+            </Button>
+            <Button
+              form="client-form"
+              type="submit"
+              disabled={loading || mobileExists}
+              className="flex-1 sm:flex-none h-9 text-[11px] font-black bg-blue-700 hover:bg-blue-800 shadow-xl shadow-blue-200 px-10 rounded-full uppercase tracking-widest flex items-center gap-2 transition-all active:scale-[0.98]"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {client ? 'CONFIRM UPDATE' : 'INITIALIZE PROFILE'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default ClientForm;
+export default ClientForm;
