@@ -5,9 +5,6 @@ import {
   User,
   IndianRupee,
   Calendar,
-  ShieldCheck,
-  Zap,
-  Target
 } from 'lucide-react';
 import {
   Button,
@@ -19,7 +16,6 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import { cn } from '../utils/cn';
 import type { JobCardFormData, JobCard, Technician } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
@@ -187,15 +183,6 @@ const EditJobCard: React.FC = () => {
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     clearError(field);
-  };
-
-
-  const handleServiceTypeChange = (service: string, checked: boolean) => {
-    if (checked) {
-      setSelectedServices(prev => [...prev, service]);
-    } else {
-      setSelectedServices(prev => prev.filter(s => s !== service));
-    }
   };
 
   useEffect(() => {

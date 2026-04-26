@@ -1,4 +1,3 @@
-import { cn as utils_cn } from '../utils/cn';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,13 +5,8 @@ import {
   Save,
   User,
   Phone,
-  Settings,
   IndianRupee,
   Calendar,
-  ShieldCheck,
-  Zap,
-  Target,
-  Users,
   MessageCircle
 } from 'lucide-react';
 
@@ -129,7 +123,6 @@ const CreateJobCard: React.FC = () => {
   ];
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [selectAll, setSelectAll] = useState(false);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -168,20 +161,6 @@ const CreateJobCard: React.FC = () => {
   const stateOptions = Object.keys(locations).map(state => ({ value: state, label: state }));
   const jobCityOptions = formData.state ? locations[formData.state]?.map(city => ({ value: city, label: city })) || [] : [];
 
-  // Service Category options
-  const serviceCategoryOptions = [
-    { value: 'One-Time Service', label: 'One-Time Service' },
-    { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
-  ];
-
-  // Property Type options
-  const propertyTypeOptions = [
-    { value: 'Home / Flat', label: 'Home / Flat' },
-    { value: 'Bungalow', label: 'Bungalow' },
-    { value: 'Hotel', label: 'Hotel' },
-    { value: 'Office', label: 'Office' },
-    { value: 'Commercial Space', label: 'Commercial Space' }
-  ];
 
 
 
@@ -207,12 +186,6 @@ const CreateJobCard: React.FC = () => {
     'Unpaid'
   ];
 
-  // Contract duration options
-  const contractDurationOptions = [
-    { value: '3', label: '3 Months' },
-    { value: '6', label: '6 Months' },
-    { value: '12', label: '1 Year' }
-  ];
 
   // Handle input changes with localStorage persistence and validation
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
@@ -227,25 +200,6 @@ const CreateJobCard: React.FC = () => {
     return updatedFormData;
   };
 
-  // Handle service type selection
-  const handleServiceTypeChange = (service: string, checked: boolean) => {
-    if (checked) {
-      setSelectedServices(prev => [...prev, service]);
-    } else {
-      setSelectedServices(prev => prev.filter(s => s !== service));
-      setSelectAll(false);
-    }
-  };
-
-  // Handle select all services
-  const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
-    if (checked) {
-      setSelectedServices([...serviceTypeOptions]);
-    } else {
-      setSelectedServices([]);
-    }
-  };
 
   // Update service_type field when selections change
   useEffect(() => {
@@ -573,7 +527,7 @@ const CreateJobCard: React.FC = () => {
               <div>
                 <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Available Time Slot</label>
                 <ClockTimePicker
-                  value={formData.time_slot}
+                  value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
                   placeholder="Select Time"
                 />

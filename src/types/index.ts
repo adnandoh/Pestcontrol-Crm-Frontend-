@@ -88,7 +88,7 @@ export interface JobCard {
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
   contract_duration?: string;
   is_paused?: boolean;
-  status: 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Hold' | 'Inactive';
+  status: 'Pending' | 'On Process' | 'Done';
   payment_status?: string;
   service_type: string;
   schedule_date: string;
