@@ -89,17 +89,6 @@ const CreateJobCard: React.FC = () => {
     }
   }, [pricingService, pricingArea, pricingType]);
 
-  // Grouped service type options
-  const serviceTypeCategories = [
-    {
-      name: 'General Pest',
-      options: ['Cockroach', 'Ants', 'Mosquito', 'Spiders', 'Flies', 'Silverfish', 'Moths', 'Beetles', 'Centipedes/Millipedes', 'Earwigs', 'Crickets']
-    },
-    {
-      name: 'Advanced Pest',
-      options: ['Bed Bug', 'Rodent', 'Fleas', 'Ticks', 'Mites', 'Termite', 'Wood Borer', 'Aphids', 'Thrips', 'Scale Insects', 'Whiteflies', 'Caterpillars', 'Slugs/Snails']
-    }
-  ];
 
 
   // Reference options
