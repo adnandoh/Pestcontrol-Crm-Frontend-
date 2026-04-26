@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Edit,
-  Search
+  Search,
+  Zap,
+  Layout
 } from 'lucide-react';
 import {
   Button,

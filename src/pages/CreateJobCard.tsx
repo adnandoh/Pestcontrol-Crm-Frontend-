@@ -101,7 +101,6 @@ const CreateJobCard: React.FC = () => {
     }
   ];
 
-  const serviceTypeOptions = serviceTypeCategories.flatMap(cat => cat.options);
 
   // Reference options
   const referenceOptions = [
