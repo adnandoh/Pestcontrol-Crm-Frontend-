@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Clock,
   CheckCircle2,
-  XCircle,
   ShieldCheck,
   MapPin,
   Home,

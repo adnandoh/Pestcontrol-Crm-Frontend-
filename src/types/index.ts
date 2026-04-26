@@ -350,6 +350,8 @@ export interface DashboardStatisticsResponse {
   };
   status_stats?: {
     pending: number;
+    on_process: number;
+    done: number;
     confirmed: number;
     completed: number;
     cancelled: number;
