@@ -182,12 +182,11 @@ const Dashboard: React.FC = () => {
       <Card className="border-gray-100">
         <CardContent className="p-5">
            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic mb-5 border-b border-gray-50 pb-2">Booking Execution Lifecycle</h3>
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: 'Pending', val: stats?.status_stats?.pending || 0, color: 'text-gray-500', bg: 'bg-gray-50', icon: Clock },
-                { label: 'Confirmed', val: stats?.status_stats?.confirmed || 0, color: 'text-blue-500', bg: 'bg-blue-50', icon: ShieldCheck },
-                { label: 'Executed', val: stats?.status_stats?.completed || 0, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
-                { label: 'Cancelled', val: stats?.status_stats?.cancelled || 0, color: 'text-red-500', bg: 'bg-red-50', icon: XCircle },
+                { label: 'Pending', val: stats?.status_stats?.pending || 0, color: 'text-orange-500', bg: 'bg-orange-50', icon: Clock },
+                { label: 'On Process', val: stats?.status_stats?.on_process || 0, color: 'text-blue-500', bg: 'bg-blue-50', icon: ShieldCheck },
+                { label: 'Done', val: stats?.status_stats?.done || 0, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
               ].map((s, i) => (
                 <div key={i} className={cn("flex items-center justify-between p-3 rounded shadow-xs border border-transparent hover:border-gray-100 transition-all group", s.bg)}>
                    <div className="flex items-center gap-2">
