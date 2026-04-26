@@ -14,3 +14,4 @@ export { Toggle } from './Toggle';
 export { ConfirmationModal } from './ConfirmationModal';
 export { ClientCheckStatus } from './ClientCheckStatus';
 export { FieldError } from './FieldError';
+export { default as ClockTimePicker } from './ClockTimePicker';

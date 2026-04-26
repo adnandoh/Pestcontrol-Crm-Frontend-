@@ -151,7 +151,7 @@ const Dashboard: React.FC = () => {
       {/* Geolocation & Demographics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {[
-          { title: 'Top City Reach', icon: MapPin, color: 'text-blue-500', data: stats?.city_stats?.map(c => ({ key: c.client_city, val: c.count })) },
+          { title: 'Top City Reach', icon: MapPin, color: 'text-blue-500', data: stats?.city_stats?.map(c => ({ key: c.city, val: c.count })) },
           { title: 'Property Stats', icon: Home, color: 'text-emerald-500', data: stats?.property_type_stats?.map(p => ({ key: p.property_type, val: p.count })) },
           { title: 'Size Breakdown', icon: Briefcase, color: 'text-amber-500', data: stats?.bhk_stats?.map(b => ({ key: b.bhk_size, val: b.count })) },
         ].map((sec, i) => (

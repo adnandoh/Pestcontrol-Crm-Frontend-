@@ -39,7 +39,7 @@ const JobCards: React.FC = () => {
     to: ''
   });
   const [searchInput, setSearchInput] = useState('');
-  const [activeTab, setActiveTab] = useState('done');
+  const [activeTab, setActiveTab] = useState('pending');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
 
@@ -47,11 +47,8 @@ const JobCards: React.FC = () => {
   const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'Pending', label: 'Pending' },
-    { value: 'Confirmed', label: 'Confirmed' },
-    { value: 'Completed', label: 'Completed' },
-    { value: 'Cancelled', label: 'Cancelled' },
-    { value: 'Hold', label: 'Hold' },
-    { value: 'Inactive', label: 'Inactive' }
+    { value: 'On Process', label: 'On Process' },
+    { value: 'Done', label: 'Done' }
   ];
 
   const serviceCategoryOptions = [
@@ -276,12 +273,11 @@ const JobCards: React.FC = () => {
         {/* Tab Selection Row (Reference Style) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none border-b border-gray-100">
           {[
-            { id: 'done', label: 'Done' },
             { id: 'pending', label: 'Pending' },
             { id: 'on_process', label: 'On Process' },
-            { id: 'all', label: 'All Bookings' },
+            { id: 'done', label: 'Done' },
+            { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
-            { id: 'upcoming_renewals', label: 'Renewals' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -441,9 +437,8 @@ const JobCards: React.FC = () => {
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
-                      job.status === 'Completed' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
+                      job.status === 'Done' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
                       job.status === 'Pending' ? 'bg-orange-50 text-orange-700 ring-orange-600/20' :
-                      job.status === 'Cancelled' ? 'bg-red-50 text-red-700 ring-red-600/20' :
                       'bg-blue-50 text-blue-700 ring-blue-600/20'
                     }`}>
                       {job.status}

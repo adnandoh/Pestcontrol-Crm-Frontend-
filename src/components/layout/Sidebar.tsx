@@ -6,12 +6,11 @@ import {
   RefreshCw,
   FileText,
   Building2,
-  Plus,
   LayoutDashboard,
   Users,
   Zap,
-  Search
 } from 'lucide-react';
+
 import { cn } from '../../utils/cn';
 
 interface SidebarProps {
@@ -72,21 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
         )}
       >
         <div className="flex h-full flex-col px-3 py-4">
-          {/* Mock Search Bar (Reference Style) */}
-          <div className="px-2 mb-6">
-            <div className="relative group">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search" 
-                className="w-full pl-9 pr-8 py-1.5 bg-gray-200/50 border-transparent rounded-lg text-sm focus:bg-white focus:ring-1 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-500"
-                readOnly
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] text-gray-400 font-medium">
-                /
-              </div>
-            </div>
-          </div>
+
 
           <nav className="flex-1 space-y-6 overflow-y-auto custom-scrollbar">
             {navigationGroups.map((group, gIdx) => (
@@ -126,16 +111,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
             ))}
           </nav>
 
-          {/* Create Booking Action (Maintained but updated to match style better) */}
-          <div className="mt-auto px-2 pt-4">
-             <Link
-              to="/jobcards/create"
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm text-xs font-bold uppercase tracking-tight"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Booking</span>
-            </Link>
-          </div>
+
+
         </div>
       </aside>
     </>

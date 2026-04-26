@@ -12,23 +12,35 @@ import {
   ShieldCheck,
   Zap,
   Target,
-  Users
+  Users,
+  MessageCircle
 } from 'lucide-react';
+
 import {
   Card,
   Input,
+  ClockTimePicker,
 } from '../components/ui';
+
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, Technician } from '../types';
+
+import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
+  const [savingInquiry, setSavingInquiry] = useState(false);
+  
+  // Pricing selector states
+  const [pricingService, setPricingService] = useState('');
+  const [pricingArea, setPricingArea] = useState('');
+  const [pricingType, setPricingType] = useState('');
+
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
-    
     return {
       client_name: '',
       client_mobile: '',
@@ -39,19 +51,19 @@ const CreateJobCard: React.FC = () => {
       client_notes: '',
       job_type: 'Customer',
       service_category: 'One-Time Service',
-      property_type: '',
+      property_type: 'Home / Flat',
       bhk_size: '',
       is_paused: false,
       service_type: '',
       schedule_date: '',
       time_slot: '',
-      state: '',
-      city: '',
+      state: 'Maharashtra',
+      city: 'Mumbai',
       status: 'Pending',
       payment_status: 'Unpaid',
       assigned_to: '',
       technician: undefined,
-      price: '',
+      price: '0.00',
       next_service_date: '',
       reference: '',
       contract_duration: '',
@@ -61,6 +73,27 @@ const CreateJobCard: React.FC = () => {
   };
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
+
+  // Handle pricing calculation
+  useEffect(() => {
+    if (pricingService && pricingArea && pricingType) {
+      const serviceData = PRICING_DATA[pricingService];
+      if (serviceData && serviceData[pricingType]) {
+        const typeData = serviceData[pricingType];
+        if (typeof typeData === 'object') {
+          const price = (typeData as any)[pricingArea];
+          if (price !== undefined) {
+             setFormData(prev => ({ ...prev, price: price.toString() }));
+          }
+        } else if (typeof typeData === 'number') {
+           setFormData(prev => ({ ...prev, price: typeData.toString() }));
+        }
+      }
+    } else {
+      // Reset price if selection is incomplete
+      setFormData(prev => ({ ...prev, price: '0.00' }));
+    }
+  }, [pricingService, pricingArea, pricingType]);
 
   // Grouped service type options
   const serviceTypeCategories = [
@@ -150,33 +183,13 @@ const CreateJobCard: React.FC = () => {
     { value: 'Commercial Space', label: 'Commercial Space' }
   ];
 
-  // BHK Size options and prices
-  const bhkOptions = [
-    { value: '1 RK', label: '1 RK - ₹1800', price: '1800' },
-    { value: '1 BHK', label: '1 BHK - ₹2200', price: '2200' },
-    { value: '2 BHK', label: '2 BHK - ₹2500', price: '2500' },
-    { value: '3 BHK', label: '3 BHK - ₹3000', price: '3000' },
-    { value: '4 BHK', label: '4 BHK - ₹3500', price: '3500' }
-  ];
 
-  // Time Slot options
-  const timeSlotOptions = [
-    '8am–10am',
-    '10am–12pm',
-    '12pm–2pm',
-    '2pm–4pm',
-    '4pm–6pm',
-    '6pm–8pm'
-  ];
 
   // Job status options
   const jobStatusOptions = [
     'Pending',
-    'Confirmed',
-    'Completed',
-    'Cancelled',
-    'Hold',
-    'Inactive'
+    'On Process',
+    'Done'
   ];
 
   // Form validation
@@ -208,26 +221,11 @@ const CreateJobCard: React.FC = () => {
       [field]: value
     };
 
-    // Auto-fill price if BHK size is selected
-    if (field === 'bhk_size' && value) {
-      const selectedBhk = bhkOptions.find(opt => opt.value === value);
-      if (selectedBhk) {
-        updatedFormData.price = selectedBhk.price;
-      }
-    }
-
-    // Clear BHK size if property type changes from Home / Flat
-    if (field === 'property_type' && value !== 'Home / Flat') {
-      updatedFormData.bhk_size = '';
-    }
-
     setFormData(updatedFormData);
     clearError(field);
     
     return updatedFormData;
   };
-
-
 
   // Handle service type selection
   const handleServiceTypeChange = (service: string, checked: boolean) => {
@@ -291,8 +289,6 @@ const CreateJobCard: React.FC = () => {
     setClientCheckStatus('not-found');
   };
 
-
-
   const resetClientCheckState = () => {
     setClientCheckStatus('idle');
   };
@@ -339,7 +335,6 @@ const CreateJobCard: React.FC = () => {
           </button>
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight uppercase italic">Booking Form</h1>
         </div>
-
       </div>
 
       {/* Main Form Area */}
@@ -398,17 +393,6 @@ const CreateJobCard: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">City *</label>
-                <Input
-                   name="client_city"
-                   value={formData.client_city}
-                   onChange={(e) => handleInputChange('client_city', e.target.value)}
-                   placeholder="Client City"
-                   className="h-8 text-xs font-bold border-gray-300 rounded uppercase"
-                   required
-                />
-              </div>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service State *</label>
@@ -449,191 +433,190 @@ const CreateJobCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Section: Service Configuration */}
-          <div className="p-4 bg-[#fcfcfc]">
-            <h4 className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Settings className="h-3 w-3" /> Service Configuration
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Job Class</label>
-                <select
-                  value={formData.job_type}
-                  onChange={(e) => handleInputChange('job_type', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                >
-                  <option value="Customer">Regular Customer</option>
-                  <option value="Society">Building / Society</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service Category</label>
-                <select
-                  value={formData.service_category}
-                  onChange={(e) => handleInputChange('service_category', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                >
-                  {serviceCategoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Property Type</label>
-                <select
-                  value={formData.property_type}
-                  onChange={(e) => handleInputChange('property_type', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                >
-                   <option value="">Select Type</option>
-                   {propertyTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </div>
-
-              {formData.property_type === 'Home / Flat' && (
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">BHK Size</label>
-                  <select
-                    value={formData.bhk_size}
-                    onChange={(e) => handleInputChange('bhk_size', e.target.value)}
-                    className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                  >
-                    <option value="">Select Size</option>
-                    {bhkOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
+          {/* Section: Service Configuration & Pricing (Updated UI) */}
+          <div className="p-5 bg-white border-b">
+             <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div>
+                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Service*</label>
+                      <select
+                        value={pricingService}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPricingService(val);
+                          
+                          // Handle automatic type selection
+                          const availableTypes = SERVICE_TYPES[val] || [];
+                          if (availableTypes.length === 1) {
+                            setPricingType(availableTypes[0]);
+                            // Also map to backend category
+                            const typeVal = availableTypes[0];
+                            if (typeVal === 'AMC') {
+                                handleInputChange('service_category', 'AMC');
+                            } else if (typeVal.includes('One-Time')) {
+                                handleInputChange('service_category', 'One-Time Service');
+                            } else {
+                                handleInputChange('service_category', typeVal);
+                            }
+                          } else {
+                            setPricingType('');
+                          }
+                          
+                          // Auto-check pests
+                          const serviceToPestsMap: Record<string, string[]> = {
+                            'Cockroach / Ants': ['Cockroach', 'Ants'],
+                            'Bed Bugs': ['Bed Bug'],
+                            'Termite': ['Termite'],
+                            'Rodent': ['Rodent'],
+                            'Mosquito': ['Mosquito']
+                          };
+                          if (serviceToPestsMap[val]) {
+                            setSelectedServices(serviceToPestsMap[val]);
+                          } else {
+                            setSelectedServices([]);
+                          }
+                        }}
+                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        required
+                      >
+                        <option value="">Select Service</option>
+                        {Object.keys(SERVICE_TYPES).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                   </div>
+                   <div>
+                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Area*</label>
+                      <select
+                        value={pricingArea}
+                        onChange={(e) => {
+                          setPricingArea(e.target.value);
+                          if (PROPERTY_LOCATIONS.includes(e.target.value)) {
+                            handleInputChange('bhk_size', e.target.value);
+                          } else {
+                            handleInputChange('bhk_size', '');
+                          }
+                        }}
+                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        required
+                      >
+                        <option value="">Select Area</option>
+                        {pricingService === 'Rodent' ? (
+                          <>
+                            <option value="Society Area">Society Area</option>
+                            <option value="Windows">Windows</option>
+                          </>
+                        ) : pricingService === 'Hotel / Commercial' ? (
+                          <option value="Commercial Space">Commercial Space</option>
+                        ) : (
+                          PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)
+                        )}
+                      </select>
+                   </div>
+                   <div>
+                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Type*</label>
+                      <select
+                        value={pricingType}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPricingType(val);
+                          // Map to backend service_category
+                          if (val === 'AMC 3 Services') {
+                            handleInputChange('service_category', 'AMC');
+                          } else {
+                            handleInputChange('service_category', 'One-Time Service');
+                          }
+                        }}
+                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        required
+                        disabled={!pricingService}
+                      >
+                        <option value="">Select Type</option>
+                        {pricingService && SERVICE_TYPES[pricingService]?.map((t: string) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                   </div>
                 </div>
-              )}
 
-              {formData.job_type === 'Society' && (
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Contract Duration</label>
-                  <select
-                    value={formData.contract_duration}
-                    onChange={(e) => handleInputChange('contract_duration', e.target.value)}
-                    className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                  >
-                    <option value="">Select Duration</option>
-                    {contractDurationOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
+                <div className="flex flex-col items-center lg:items-end justify-center min-w-[120px]">
+                   <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">Total Price</span>
+                   <div className="text-4xl font-black text-yellow-500 flex items-center">
+                      <span className="text-2xl mr-1 italic">₹</span>
+                      {formData.price}
+                   </div>
                 </div>
-              )}
-            </div>
+             </div>
+             
+             {(pricingService === 'Hotel / Commercial' || (pricingService === 'Rodent' && pricingArea === 'Society Area')) && (
+               <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                 <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
+               </div>
+             )}
           </div>
 
-          {/* Section: Service Pest Types */}
-          <div className="p-5 bg-white">
-            <div className="flex items-center justify-between mb-5">
-                <h4 className="text-xs font-extrabold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" /> Select Service Pest Types *
-                </h4>
-                <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="selectAll" 
-                      checked={selectAll}
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="h-3.5 w-3.5 text-blue-600 rounded cursor-pointer"
-                    />
-                    <label htmlFor="selectAll" className="text-[11px] font-extrabold text-gray-500 uppercase cursor-pointer">Select All Pests</label>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {serviceTypeCategories.map((category, idx) => (
-                  <div key={category.name} className={utils_cn("rounded-xl p-4 border", idx === 0 ? "bg-emerald-50/30 border-emerald-100" : "bg-indigo-50/30 border-indigo-100")}>
-                    <h5 className={utils_cn("text-[11px] font-extrabold uppercase tracking-wide mb-3 pb-2 border-b flex items-center gap-1.5", idx === 0 ? "text-emerald-700 border-emerald-100" : "text-indigo-700 border-indigo-100")}>
-                       {idx === 0 ? <Zap className="h-3.5 w-3.5" /> : <Target className="h-3.5 w-3.5" />} {category.name} Range
-                    </h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2.5">
-                       {category.options.map(pest => (
-                         <div key={pest} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              id={`pest-${pest}`}
-                              checked={selectedServices.includes(pest)}
-                              onChange={(e) => handleServiceTypeChange(pest, e.target.checked)}
-                              className={utils_cn("h-4 w-4 rounded cursor-pointer", idx === 0 ? "text-emerald-600" : "text-indigo-600")}
-                            />
-                            <label htmlFor={`pest-${pest}`} className="text-xs font-bold text-gray-700 cursor-pointer truncate uppercase tracking-tight">{pest}</label>
-                         </div>
-                       ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
-            {errors.service_type && <p className="text-[9px] text-red-500 font-bold mt-2 uppercase">{errors.service_type}</p>}
-          </div>
 
           {/* Section: Schedule & Assignment */}
-          <div className="p-4 bg-gray-50/50">
+          <div className="p-5 bg-gray-50/30">
             <h4 className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Calendar className="h-3 w-3" /> Schedule & Assignment
+              <Calendar className="h-3.5 w-3.5" /> Schedule & Assignment
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Schedule Date *</label>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tight">Schedule Date *</label>
                 <Input
                   type="date"
                   value={formData.schedule_date}
                   onChange={(e) => handleInputChange('schedule_date', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none"
+                  className="w-full h-10 px-3 text-xs font-bold border-gray-200 rounded-lg shadow-sm"
                   required
                 />
-                {errors.schedule_date && <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase">{errors.schedule_date}</p>}
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase tracking-tighter">Available Time Slot</label>
-                <select
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Available Time Slot</label>
+                <ClockTimePicker
                   value={formData.time_slot}
-                  onChange={(e) => handleInputChange('time_slot', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                >
-                  <option value="">Select Slot</option>
-                  {timeSlotOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
+                  onChange={(val) => handleInputChange('time_slot', val)}
+                  placeholder="Select Time"
+                />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service Price *</label>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase">Service Price Override</label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <Input
                     type="number"
                     value={formData.price}
                     onChange={(e) => handleInputChange('price', e.target.value)}
-                    className="w-full h-8 pl-6 pr-2 text-xs font-extrabold border border-gray-300 rounded outline-none text-blue-800"
+                    className="w-full h-10 pl-9 pr-3 text-sm font-black border border-gray-200 rounded-lg outline-none text-blue-700 bg-white shadow-sm"
                     placeholder="0.00"
-                    required
                   />
                 </div>
-                {errors.price && <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase">{errors.price}</p>}
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Assigned Technician</label>
-                <div className="relative">
-                  <Users className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                  <select
-                    value={formData.technician || ''}
-                    onChange={(e) => {
-                      const techId = e.target.value;
-                      const tech = technicians.find(t => t.id.toString() === techId);
-                      handleInputChange('technician', techId ? parseInt(techId) : null);
-                      handleInputChange('assigned_to', tech ? tech.name : '');
-                    }}
-                    className="w-full h-8 pl-8 pr-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
-                  >
-                    <option value="">Select Technician</option>
-                    {technicians.map(tech => (
-                      <option key={tech.id} value={tech.id}>{tech.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase">Assigned Technician</label>
+                <select
+                  value={formData.technician || ''}
+                  onChange={(e) => {
+                    const techId = e.target.value;
+                    const tech = technicians.find(t => t.id.toString() === techId);
+                    handleInputChange('technician', techId ? parseInt(techId) : null);
+                    handleInputChange('assigned_to', tech ? tech.name : '');
+                  }}
+                  disabled={formData.status !== 'On Process'}
+                  className={`w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none shadow-sm uppercase ${formData.status !== 'On Process' ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'}`}
+                >
+                  <option value="">Select Technician</option>
+                  {technicians.map(tech => (
+                    <option key={tech.id} value={tech.id}>{tech.name}</option>
+                  ))}
+                </select>
               </div>
-
+            </div>
+          </div>
+          {/* Section: Additional Details */}
+          <div className="p-5 bg-white border-t">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase tracking-tighter">Payment Status</label>
                 <select
@@ -689,7 +672,41 @@ const CreateJobCard: React.FC = () => {
              </div>
              <div className="flex gap-2 w-full sm:w-auto">
                 <button type="button" onClick={() => navigate('/jobcards')} className="flex-1 sm:flex-none px-6 h-8 text-[11px] font-extrabold bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100 transition-all uppercase">Discard</button>
-                <button type="submit" disabled={submitting} className="flex-1 sm:flex-none px-8 h-8 text-[11px] font-extrabold bg-blue-700 text-white rounded hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all uppercase flex items-center justify-center gap-2">
+                                <button
+                  type="button"
+                  disabled={savingInquiry || submitting}
+                  onClick={async () => {
+                    if (!formData.client_mobile || !formData.client_name) {
+                      alert('Please fill in Client Name and Mobile Number before saving as inquiry.');
+                      return;
+                    }
+                    try {
+                      setSavingInquiry(true);
+                      const today = new Date().toISOString().split('T')[0];
+                      const now   = new Date().toTimeString().slice(0, 5);
+                      await enhancedApiService.createCRMInquiry({
+                        name:         formData.client_name,
+                        mobile:       formData.client_mobile,
+                        location:     formData.client_address || formData.city + ', ' + formData.state,
+                        pest_type:    formData.service_type   || 'Other',
+                        remark:       formData.notes          || formData.client_notes || '',
+                        inquiry_date: today,
+                        inquiry_time: now,
+                        status:       'New'
+                      } as any);
+                      navigate('/crm-inquiries');
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to save inquiry. Please try again.');
+                    } finally {
+                      setSavingInquiry(false);
+                    }
+                  }}
+                  className="flex-1 sm:flex-none px-5 h-8 text-[11px] font-extrabold bg-amber-500 text-white rounded hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {savingInquiry ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /> : <MessageCircle className="h-3 w-3" />}
+                  Inquiry
+                </button>
+                 <button type="submit" disabled={submitting} className="flex-1 sm:flex-none px-8 h-8 text-[11px] font-extrabold bg-blue-700 text-white rounded hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all uppercase flex items-center justify-center gap-2">
                   {submitting ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /> : <Save className="h-3 w-3" />}
                   CREATE BOOKING
                 </button>

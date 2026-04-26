@@ -254,7 +254,7 @@ export const jobCardValidationRules: ValidationRules = {
       return null;
     }
   },
-  client_city: {
+  city: {
     required: true,
     custom: (value) => {
       if (!value?.trim()) return 'City is required';

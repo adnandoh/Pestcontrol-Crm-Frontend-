@@ -384,7 +384,7 @@ const SocietyJobCards: React.FC = () => {
                     <div className="relative group">
                       <div className="flex flex-col cursor-help">
                         <span className="font-bold text-gray-700 uppercase line-clamp-1 truncate">{jobCard.flat_number || jobCard.building_name || jobCard.area || 'No Flat/Bldg'}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase italic truncate">{jobCard.client_city || 'Maharashtra'}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase italic truncate">{jobCard.city || 'Maharashtra'}</span>
                       </div>
                       {/* Premium Blue Tooltip */}
                       <div className="absolute left-0 bottom-full mb-1 px-3 py-2 bg-blue-900 border border-blue-800 text-white text-[10px] rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 min-w-[200px] font-bold uppercase tracking-tight">
@@ -393,7 +393,7 @@ const SocietyJobCards: React.FC = () => {
                             {jobCard.flat_number && <div>Flat / Bldg: {jobCard.flat_number} {jobCard.building_name}</div>}
                             {jobCard.area && <div>Area: {jobCard.area}</div>}
                             {jobCard.landmark && <div className="text-blue-200">Landmark: {jobCard.landmark}</div>}
-                            <div>City: {jobCard.client_city}</div>
+                            <div>City: {jobCard.city}</div>
                             {jobCard.client_address && <div className="mt-1 pt-1 border-t border-blue-800/30 text-[9px] text-blue-200 italic lowercase normal-case">"{jobCard.client_address}"</div>}
                          </div>
                       </div>

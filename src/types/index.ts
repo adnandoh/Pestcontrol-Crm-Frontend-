@@ -360,7 +360,7 @@ export interface DashboardStatisticsResponse {
     society: number;
   };
   city_stats?: Array<{
-    client_city: string;
+    city: string;
     count: number;
   }>;
   property_type_stats?: Array<{
