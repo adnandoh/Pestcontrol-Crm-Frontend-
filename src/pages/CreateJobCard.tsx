@@ -16,7 +16,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, Technician } from '../types';
+import type { JobCardFormData } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 

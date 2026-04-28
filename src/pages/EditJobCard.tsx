@@ -15,7 +15,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, JobCard, Technician } from '../types';
+import type { JobCardFormData, JobCard } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
@@ -113,10 +113,7 @@ const EditJobCard: React.FC = () => {
       if (!id) return;
       try {
         setLoading(true);
-        const [jobData, techData] = await Promise.all([
-          enhancedApiService.getJobCard(parseInt(id)),
-          enhancedApiService.getActiveTechnicians()
-        ]);
+        const jobData = await enhancedApiService.getJobCard(parseInt(id));
         
         setJobCard(jobData);
         
