@@ -12,7 +12,6 @@ import Inquiries from './pages/Inquiries';
 import JobCards from './pages/JobCards';
 import CreateJobCard from './pages/CreateJobCard';
 import EditJobCard from './pages/EditJobCard';
-import SocietyJobCards from './pages/SocietyJobCards';
 import Renewals from './pages/Renewals';
 import References from './pages/References';
 import Technicians from './pages/Technicians';
@@ -47,7 +46,6 @@ const AppContent: React.FC = () => {
                   <Route path="/jobcards" element={<JobCards />} />
                   <Route path="/jobcards/create" element={<CreateJobCard />} />
                   <Route path="/jobcards/edit/:id" element={<EditJobCard />} />
-                  <Route path="/society-jobcards" element={<SocietyJobCards />} />
                   <Route path="/renewals" element={<Renewals />} />
                   <Route path="/references" element={<References />} />
                   <Route path="/technicians" element={<Technicians />} />

@@ -33,7 +33,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
     },
     {
       items: [
-        { name: 'Society Orders', href: '/society-jobcards', icon: Building2 },
         { name: 'Client Directory', href: '/clients', icon: Users },
         { name: 'Technicians', href: '/technicians', icon: Users },
       ]
@@ -64,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       )}
       <aside
         className={cn(
-          'w-[240px] bg-[#f8f9fa] border-r border-gray-200 transition-all duration-300 ease-in-out',
+          'w-[220px] bg-[#f8f9fa] border-r border-gray-200 transition-all duration-300 ease-in-out',
           'fixed left-0 top-16 z-50 h-[calc(100vh-4rem)]',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
@@ -85,22 +84,22 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
                       key={item.name}
                       to={item.href}
                       className={cn(
-                        'group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150',
+                        'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
                         active 
-                          ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900' 
-                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'
+                          ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
                       )}
                     >
                       <div className={cn(
                         'flex items-center justify-center transition-colors',
-                        active ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'
+                        active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
                       )}>
                         <Icon className="h-[18px] w-[18px]" />
                       </div>
 
                       <span className={cn(
-                        'flex-1 text-[13px] font-medium transition-colors',
-                        active ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'
+                        'flex-1 text-[14px] font-semibold transition-colors',
+                        active ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
                       )}>
                         {item.name}
                       </span>

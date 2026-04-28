@@ -25,6 +25,14 @@ export interface Technician {
   age?: number;
   alternative_mobile?: string;
   is_active: boolean;
+  active_jobs?: number;
+  active_job_details?: {
+    id: number;
+    client__full_name: string;
+    service_type: string;
+    client_name?: string;
+    service?: string;
+  }[];
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +91,8 @@ export interface JobCard {
   landmark?: string;
   area?: string;
   job_type: 'Customer' | 'Society';
+  commercial_type: 'home' | 'hotel' | 'society' | 'villa' | 'office' | 'other';
+  is_price_estimated: boolean;
   service_category?: 'One-Time Service' | 'AMC';
   property_type?: 'Home / Flat' | 'Bungalow' | 'Hotel' | 'Office' | 'Commercial Space';
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
@@ -102,6 +112,9 @@ export interface JobCard {
   reference?: string;
   customer_type?: string;
   next_service_date?: string;
+  service_cycle?: number;
+  max_cycle?: number;
+  parent_job?: number;
   notes?: string;
   extra_notes?: string;
   created_at: string;
@@ -232,6 +245,8 @@ export interface JobCardFormData {
   client_address: string;
   client_notes?: string;
   job_type: 'Customer' | 'Society';
+  commercial_type: 'home' | 'hotel' | 'society' | 'villa' | 'office' | 'other';
+  is_price_estimated: boolean;
   service_category?: string;
   property_type?: string;
   bhk_size?: string;
@@ -247,6 +262,9 @@ export interface JobCardFormData {
   technician?: number;
   price: number | string;
   next_service_date?: string;
+  service_cycle?: number;
+  max_cycle?: number;
+  parent_job?: number;
   contract_duration?: string;
   reference?: string;
   notes?: string;

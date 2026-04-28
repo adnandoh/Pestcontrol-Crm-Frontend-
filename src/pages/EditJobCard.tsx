@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import {
   Button,
-  Card,
   PageLoading,
   Input,
   ClockTimePicker,
@@ -60,7 +59,9 @@ const EditJobCard: React.FC = () => {
     reference: '',
     extra_notes: '',
     contract_duration: '',
-    notes: ''
+    notes: '',
+    commercial_type: 'home',
+    is_price_estimated: false
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
@@ -107,6 +108,8 @@ const EditJobCard: React.FC = () => {
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
+  const [isNextDateManual, setIsNextDateManual] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -146,10 +149,17 @@ const EditJobCard: React.FC = () => {
           reference: jobData.reference || '',
           notes: jobData.notes || '',
           extra_notes: jobData.extra_notes || '',
-          contract_duration: jobData.contract_duration || ''
+          contract_duration: jobData.contract_duration || '',
+          commercial_type: jobData.commercial_type || 'home',
+          is_price_estimated: jobData.is_price_estimated || false
         };
         
         setFormData(initialForm);
+        
+        // If it already has a next service date, mark it as manual/respected
+        if (jobData.next_service_date) {
+          setIsNextDateManual(true);
+        }
         
         // Try to infer pricing states
         if (jobData.bhk_size) setPricingArea(jobData.bhk_size);
@@ -180,6 +190,34 @@ const EditJobCard: React.FC = () => {
     fetchData();
   }, [id]);
 
+  // Handle Next Service Date Auto-calculation
+  useEffect(() => {
+    if (loading || !formData.schedule_date || isNextDateManual) return;
+
+    const service = pricingService.toLowerCase();
+    const isCockroachAMC = service.includes('cockroach') && formData.service_category === 'AMC';
+    const isBedBug = service.includes('bedbug') || service.includes('bed bug');
+
+    if (isCockroachAMC || isBedBug) {
+        const scheduleDate = new Date(formData.schedule_date);
+        if (isNaN(scheduleDate.getTime())) return;
+
+        let nextDate = new Date(scheduleDate);
+        
+        if (isCockroachAMC) {
+          nextDate.setMonth(nextDate.getMonth() + 4);
+        } else if (isBedBug) {
+          nextDate.setDate(nextDate.getDate() + 15);
+        }
+        
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        
+        if (nextDateStr !== formData.next_service_date) {
+            setFormData(prev => ({ ...prev, next_service_date: nextDateStr }));
+        }
+    }
+  }, [pricingService, formData.service_category, formData.schedule_date, isNextDateManual, loading]);
+
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     clearError(field);
@@ -203,7 +241,7 @@ const EditJobCard: React.FC = () => {
     try {
       setSubmitting(true);
       await enhancedApiService.updateJobCard(parseInt(id), formData);
-      navigate(jobCard?.job_type === 'Society' ? '/society-jobcards' : '/jobcards');
+      navigate('/jobcards');
     } catch (err: any) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
@@ -215,55 +253,85 @@ const EditJobCard: React.FC = () => {
   if (!jobCard) return <div className="p-10 text-center">Booking Not Found</div>;
 
   return (
-    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-white rounded border border-gray-200 shadow-sm transition-colors">
-            <ArrowLeft className="h-4 w-4 text-gray-500" />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-extrabold text-gray-800 tracking-tight uppercase italic">Edit Booking</h1>
-            <span className="text-[10px] font-bold text-blue-600 uppercase">Code: {jobCard.code}</span>
-          </div>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full pb-10 relative">
+      {/* Page Title Area (Simplified) */}
+      <div className="flex items-center gap-3 px-4 py-4 -mx-4 sm:mx-0 mb-2">
+        <button type="button" onClick={() => navigate(-1)} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm bg-white/50">
+          <ArrowLeft className="h-4 w-4 text-gray-500" />
+        </button>
+        <div className="flex flex-col">
+          <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none">Edit Booking</h1>
+          <span className="text-[11px] font-bold text-gray-500 mt-1">{jobCard.id}</span>
         </div>
       </div>
 
-      <Card className="border-gray-200 shadow-xs overflow-hidden">
-        <form onSubmit={handleSubmit} className="divide-y divide-gray-100">
-          <div className="p-4 bg-white/50">
-            <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <User className="h-3 w-3" /> Client & Service Location
+      <div className="max-w-6xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Section: Client & Location */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+              <User className="h-4 w-4" /> Client & Service Location
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Mobile Number</label>
-                <Input value={formData.client_mobile} readOnly disabled className="h-8 text-xs font-bold bg-gray-50 italic" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Mobile Number</label>
+                <Input value={formData.client_mobile} readOnly disabled className="h-10 text-sm font-medium bg-gray-50 text-gray-500 shadow-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Client Name</label>
-                <Input value={formData.client_name} readOnly disabled className="h-8 text-xs font-bold bg-gray-50 italic uppercase" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Client Name</label>
+                <Input value={formData.client_name} readOnly disabled className="h-10 text-sm font-medium bg-gray-50 text-gray-500 shadow-sm uppercase" />
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service State</label>
-                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} className="h-8 text-xs font-bold" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State</label>
+                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Service City</label>
-                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} className="h-8 text-xs font-bold" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City</label>
+                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
+                <select
+                  value={formData.commercial_type}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      commercial_type: val,
+                      is_price_estimated: val !== 'home',
+                      price: val !== 'home' ? '0.00' : prev.price
+                    }));
+                  }}
+                  className="w-full h-10 px-3 text-sm font-bold border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="home">Home (Residential)</option>
+                  <option value="hotel">Hotel</option>
+                  <option value="society">Society</option>
+                  <option value="villa">Villa</option>
+                  <option value="office">Office</option>
+                  <option value="other">Other Commercial</option>
+                </select>
+                {formData.commercial_type !== 'home' && (
+                  <p className="text-[10px] text-blue-600 font-bold mt-1 animate-fade-in flex items-center gap-1">
+                    👉 Final price will be decided after technician visit.
+                  </p>
+                )}
+              </div>
+
               <div className="lg:col-span-4">
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Detailed Address *</label>
-                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} className="h-8 text-xs font-medium" required />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
+                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
               </div>
             </div>
           </div>
 
-          {/* Section: Service Configuration & Pricing (Updated UI) */}
-          <div className="p-5 bg-white border-b">
-             <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+          {/* Section: Service Configuration & Pricing */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+             <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
+             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6">
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Service*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Service *</label>
                       <select
                         value={pricingService}
                         onChange={(e) => {
@@ -299,7 +367,7 @@ const EditJobCard: React.FC = () => {
                             setSelectedServices(serviceToPestsMap[val]);
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-white shadow-sm"
                         required
                       >
                         <option value="">Select Service</option>
@@ -307,7 +375,7 @@ const EditJobCard: React.FC = () => {
                       </select>
                    </div>
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Area*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
                       <select
                         value={pricingArea}
                         onChange={(e) => {
@@ -318,7 +386,7 @@ const EditJobCard: React.FC = () => {
                             handleInputChange('bhk_size', '');
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-white shadow-sm"
                         required
                       >
                         <option value="">Select Area</option>
@@ -335,7 +403,7 @@ const EditJobCard: React.FC = () => {
                       </select>
                    </div>
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Type*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
                       <select
                         value={pricingType}
                         onChange={(e) => {
@@ -348,7 +416,7 @@ const EditJobCard: React.FC = () => {
                             handleInputChange('service_category', 'One-Time Service');
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-white shadow-sm disabled:bg-gray-50"
                         required
                         disabled={!pricingService}
                       >
@@ -358,33 +426,43 @@ const EditJobCard: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="flex flex-col items-center lg:items-end justify-center min-w-[120px]">
-                   <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">Total Price</span>
-                   <div className="text-4xl font-black text-yellow-500 flex items-center">
-                      <span className="text-2xl mr-1 italic">₹</span>
-                      {formData.price}
-                   </div>
+                <div className="flex flex-col items-start lg:items-end justify-center min-w-[140px] pl-4 lg:border-l border-gray-200">
+                   <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                     {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
+                   </span>
+                   {formData.commercial_type === 'home' ? (
+                     <div className="text-4xl font-black text-gray-900 flex items-center">
+                        <span className="text-2xl mr-1 text-gray-400">₹</span>
+                        {formData.price}
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-start lg:items-end">
+                       <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-md tracking-tighter uppercase mb-1">To be decided</span>
+                       <span className="text-sm font-bold text-gray-400 italic leading-tight">After Visit</span>
+                     </div>
+                   )}
                 </div>
              </div>
              
-             {(pricingService === 'Hotel / Commercial' || (pricingService === 'Rodent' && pricingArea === 'Society Area')) && (
+             {formData.commercial_type !== 'home' && (
                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
                </div>
              )}
           </div>
 
-          <div className="p-5 bg-gray-50/30">
-            <h4 className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5" /> Schedule & Assignment
+          {/* Section: Schedule & Assignment */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+              <Calendar className="h-4 w-4" /> Schedule & Assignment
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tight">Schedule Date *</label>
-                <Input type="date" value={formData.schedule_date} onChange={(e) => handleInputChange('schedule_date', e.target.value)} className="w-full h-10 px-3 text-xs font-bold border-gray-200 rounded-lg shadow-sm" required />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
+                <Input type="date" value={formData.schedule_date} onChange={(e) => handleInputChange('schedule_date', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Available Time Slot</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
                 <ClockTimePicker
                   value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
@@ -392,60 +470,56 @@ const EditJobCard: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase">Service Price Override</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                  <Input type="number" value={formData.price} onChange={(e) => handleInputChange('price', e.target.value)} className="w-full h-10 pl-9 pr-3 text-sm font-black border border-gray-200 rounded-lg outline-none text-blue-700 bg-white shadow-sm" required />
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input type="number" value={formData.price} onChange={(e) => handleInputChange('price', e.target.value)} className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm" required />
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Assigned Technician</label>
-                <select
-                  value={formData.technician || ''}
-                  onChange={(e) => {
-                    const techId = e.target.value;
-                    const tech = technicians.find(t => t.id.toString() === techId);
-                    handleInputChange('technician', techId ? parseInt(techId) : null);
-                    handleInputChange('assigned_to', tech ? tech.name : '');
-                  }}
-                  disabled={formData.status !== 'On Process'}
-                  className={`w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none shadow-sm uppercase ${formData.status !== 'On Process' ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'}`}
-                >
-                  <option value="">Select Technician</option>
-                  {technicians.map(tech => (
-                    <option key={tech.id} value={tech.id}>{tech.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full h-10 px-3 text-xs font-black border border-gray-200 rounded-lg outline-none bg-white text-rose-600 uppercase shadow-sm"
-                >
-                  {['Pending', 'On Process', 'Done'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+
+              {/* Next Service Date Field */}
+              {(pricingService.toLowerCase().includes('cockroach') || pricingService.toLowerCase().includes('bed bug')) && (
+                <div className="animate-fade-in md:col-span-1">
+                  <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
+                  <Input
+                    type="date"
+                    value={formData.next_service_date}
+                    onChange={(e) => {
+                      handleInputChange('next_service_date', e.target.value);
+                      setIsNextDateManual(true);
+                    }}
+                    className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
+                    {pricingService.toLowerCase().includes('cockroach') ? 'Every 4 months for AMC' : 'After 15 days for Bed Bug'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="p-4">
-             <label className="text-[10px] font-extrabold text-gray-400 mb-2 block uppercase">Additional Notes</label>
+          {/* Section: Notes */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+             <label className="text-[13px] font-bold text-gray-700 mb-2 block">Additional Internal Notes</label>
              <textarea
                value={formData.notes || ''}
                onChange={(e) => handleInputChange('notes', e.target.value)}
                rows={2}
-               className="w-full border border-gray-300 rounded p-2 text-xs font-medium outline-none"
+               placeholder="Optional notes or context..."
+               className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
              />
           </div>
 
-          <div className="p-4 bg-gray-50 flex items-center justify-end gap-2">
-             <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-8 text-[11px] font-extrabold uppercase">Discard</Button>
-             <Button onClick={handleSubmit} disabled={submitting} className="h-8 text-[11px] font-extrabold bg-blue-700 hover:bg-blue-800 shadow-lg px-8 uppercase">Update Booking</Button>
+          {/* Action Footer (Non-Sticky) */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col sm:flex-row items-center justify-end gap-3">
+             <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-10 px-6 text-[13px] font-bold text-gray-600 hover:bg-gray-50 border-gray-300">Discard Changes</Button>
+             <Button type="button" onClick={handleSubmit} disabled={submitting} className="h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+               {submitting ? 'Saving...' : 'Update Booking'}
+             </Button>
           </div>
+
         </form>
-      </Card>
+      </div>
     </div>
   );
 };

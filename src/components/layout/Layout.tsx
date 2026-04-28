@@ -51,7 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
       />
       {/* Main Content - Dynamic margin based on sidebar state, fixed positioning for proper scrolling */}
       <main
-        className={`fixed top-16 right-0 bottom-0 overflow-y-auto transition-all duration-300 px-4 md:px-6 py-6 ${sidebarIsOpen ? 'md:left-60' : 'left-0'
+        className={`fixed top-16 right-0 bottom-0 overflow-y-auto transition-all duration-300 px-4 py-4 ${sidebarIsOpen ? 'md:left-[220px]' : 'left-0'
           }`}
         style={{
           scrollBehavior: 'smooth'

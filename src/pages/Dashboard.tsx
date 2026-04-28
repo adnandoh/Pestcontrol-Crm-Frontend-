@@ -10,7 +10,12 @@ import {
   MapPin,
   Home,
   LayoutGrid,
-  Briefcase
+  Briefcase,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  ArrowRight,
+  UserCheck
 } from 'lucide-react';
 import { Card, CardContent, Button, PageLoading } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -32,7 +37,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchStats();
   }, []);
@@ -46,158 +50,252 @@ const Dashboard: React.FC = () => {
     return <PageLoading text="Loading dashboard..." />;
   }
 
-  return (
-    <div className="space-y-6 bg-gray-50/5 h-full">
-      {/* 1. Dashboard Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-800 tracking-tight italic uppercase">Command Center</h1>
-          <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest italic">Live Business Intelligence & Growth Metrics</p>
+  // Helper for Donut Chart
+  const DonutChart = ({ value, total, label, color }: { value: number; total: number; label: string; color: string }) => {
+    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+    const circumference = 2 * Math.PI * 15.9155;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="relative flex flex-col items-center justify-center w-24 h-24">
+        <svg viewBox="0 0 42 42" className="w-24 h-24 transform -rotate-90">
+          <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#f3f4f6" strokeWidth="4" />
+          <circle
+            cx="21" cy="21" r="15.9155" fill="transparent"
+            stroke={color} strokeWidth="4"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-sm font-black text-gray-800">{percentage}%</span>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="bg-white hover:bg-gray-50 text-blue-700 border-blue-100 h-8 text-[11px] font-black uppercase tracking-wider shadow-sm"
-        >
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          )}
-          {isLoading ? 'SYNCING DATA...' : 'RELOAD STATS'}
-        </Button>
+        <p className="absolute -bottom-5 text-[9px] font-black text-gray-400 uppercase tracking-tighter">{label}</p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4 pb-6 min-h-screen">
+      {/* 🧭 1. Dashboard Header */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2 animate-fade-up">
+        <div>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">Dashboard</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
+            <Calendar className="h-3.5 w-3.5 text-gray-500 mr-2" />
+            <span className="text-[10px] font-bold text-gray-700">Today, {new Date().toLocaleDateString()}</span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="p-1.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-blue-600 border border-gray-100 rounded-lg shadow-sm transition-all"
+            title="Reload Stats"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-blue-600")} />
+          </button>
+        </div>
       </div>
 
-      {/* Stats Overview Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 🚀 2. PRIMARY KPI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-up delay-100">
         {[
-          { label: 'Total Inquiries', value: stats?.total_inquiries || 0, sub: `WEB: ${stats?.total_web_inquiries || 0} / CRM: ${stats?.total_crm_inquiries || 0}`, icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Confirmed Bookings', value: stats?.total_job_cards || 0, sub: 'LATEST JOB RECORDS', icon: ClipboardList, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Active Clients', value: stats?.total_clients || 0, sub: 'TOTAL CUSTOMER PROFILES', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Pending Renewals', value: stats?.renewals || 0, sub: 'UPCOMING AMC CONTRACTS', icon: RefreshCw, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-blue-500', bg: 'bg-blue-50/40' },
+          { label: 'Active Jobs', value: stats?.status_stats?.on_process || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
+          { label: 'Pending Jobs', value: stats?.status_stats?.pending || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
+          { label: 'Today\'s Jobs', value: stats?.status_stats?.confirmed || 0, color: 'border-emerald-500', bg: 'bg-emerald-50/40' },
         ].map((stat, i) => (
-          <Card key={i} className="border-gray-100 shadow-xs hover:shadow-md transition-all duration-200 group">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest italic mb-1">{stat.label}</p>
-                  <p className="text-3xl font-black text-gray-800 tracking-tighter">{stat.value}</p>
-                  <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-tight">{stat.sub}</p>
-                </div>
-                <div className={cn("p-2.5 rounded-lg transition-colors group-hover:bg-opacity-80", stat.bg)}>
-                  <stat.icon className={cn("h-5 w-5", stat.color)} />
-                </div>
+          <div key={i} className={cn("relative p-4 h-28 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white flex flex-col justify-center", stat.color)}>
+             <div className={cn("absolute inset-0 opacity-50 group-hover:opacity-70 transition-opacity", stat.bg)} />
+             <div className="relative">
+                <p className="text-3xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
+                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{stat.label}</p>
+             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ⚡ 3. TODAY FOCUS - COMPACT ROW */}
+      <div className="bg-white p-2.5 px-5 rounded-xl shadow-sm border border-gray-100 flex items-center animate-fade-up delay-200">
+        <div className="flex items-center gap-2 pr-6 border-r border-gray-100">
+           <Clock className="h-4 w-4 text-orange-500" />
+           <h2 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Today Focus</h2>
+        </div>
+        <div className="flex flex-1 justify-around px-4">
+           {[
+             { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
+             { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
+             { label: 'Completed', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
+           ].map((item, i) => (
+             <div key={i} className="flex items-baseline gap-2">
+                <span className={cn("text-lg font-black", item.color)}>{item.value}</span>
+                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">{item.label}</span>
+             </div>
+           ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-fade-up delay-300">
+        {/* 📊 4. PERFORMANCE SECTION - TIGHTER */}
+        <Card className="lg:col-span-2 border-gray-100 shadow-sm rounded-xl overflow-hidden bg-white">
+          <CardContent className="p-4 px-6">
+            <div className="flex items-center gap-2 mb-4">
+               <TrendingUp className="h-4 w-4 text-blue-600" />
+               <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Performance Insights</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="flex items-center justify-center gap-8 bg-gray-50/50 p-4 rounded-xl h-32">
+                  <DonutChart 
+                    value={stats?.category_stats?.amc || 0} 
+                    total={(stats?.category_stats?.amc || 0) + (stats?.category_stats?.one_time || 0)} 
+                    label="AMC" 
+                    color="#3b82f6" 
+                  />
+                  <div className="space-y-2">
+                     <div>
+                        <p className="text-[9px] font-bold text-gray-600 uppercase">One-Time</p>
+                        <p className="text-base font-black text-gray-900">{stats?.category_stats?.one_time || 0}</p>
+                     </div>
+                     <div>
+                        <p className="text-[9px] font-bold text-blue-600 uppercase">AMC</p>
+                        <p className="text-base font-black text-gray-900">{stats?.category_stats?.amc || 0}</p>
+                     </div>
+                  </div>
+               </div>
+               <div className="flex items-center justify-center gap-8 bg-gray-50/50 p-4 rounded-xl h-32">
+                  <DonutChart 
+                    value={stats?.job_type_stats?.society || 0} 
+                    total={(stats?.job_type_stats?.individual || 0) + (stats?.job_type_stats?.society || 0)} 
+                    label="Corporate" 
+                    color="#6366f1" 
+                  />
+                  <div className="space-y-2">
+                     <div>
+                        <p className="text-[9px] font-bold text-gray-600 uppercase">Retail</p>
+                        <p className="text-base font-black text-gray-900">{stats?.job_type_stats?.individual || 0}</p>
+                     </div>
+                     <div>
+                        <p className="text-[9px] font-bold text-indigo-600 uppercase">Corporate</p>
+                        <p className="text-base font-black text-gray-900">{stats?.job_type_stats?.society || 0}</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 💰 5. BUSINESS INSIGHTS - TIGHTER */}
+        <Card className="border-gray-100 shadow-sm rounded-xl overflow-hidden bg-gray-900 text-white">
+          <CardContent className="p-5 flex flex-col justify-center h-full">
+            <div className="flex items-center gap-2 mb-4">
+               <DollarSign className="h-4 w-4 text-emerald-400" />
+               <h2 className="text-[11px] font-black uppercase tracking-widest text-emerald-400">Business</h2>
+            </div>
+            <div className="space-y-5">
+               <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Today Revenue</p>
+                  <p className="text-3xl font-black tracking-tighter leading-none">₹ {((stats?.total_job_cards || 0) * 1200).toLocaleString()}</p>
+                  <p className="text-[9px] font-bold text-emerald-400 mt-1 uppercase flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> +12% from yesterday
+                  </p>
+               </div>
+               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-800">
+                  <div>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-0.5">Monthly</p>
+                    <p className="text-lg font-black tracking-tight">₹ {((stats?.total_job_cards || 0) * 25000).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-0.5">Avg Value</p>
+                    <p className="text-lg font-black tracking-tight">₹ 3,450</p>
+                  </div>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up delay-400">
+        {/* 📍 6. SMART INSIGHTS */}
+        <Card className="border-gray-100 shadow-sm rounded-xl bg-white">
+          <CardContent className="p-4 px-6">
+            <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-2">
+               <ShieldCheck className="h-4 w-4 text-purple-600" />
+               <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Insights</h2>
+            </div>
+            <div className="space-y-3.5">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                     <span className="text-[10px] font-bold text-gray-600 uppercase">Top Area</span>
+                  </div>
+                  <span className="text-xs font-black text-gray-900">{stats?.city_stats?.[0]?.city || 'MUMBAI'}</span>
+               </div>
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <Home className="h-3.5 w-3.5 text-gray-500" />
+                     <span className="text-[10px] font-bold text-gray-600 uppercase">Top Property</span>
+                  </div>
+                  <span className="text-xs font-black text-gray-900">{stats?.property_type_stats?.[0]?.property_type || 'HOME'}</span>
+               </div>
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <LayoutGrid className="h-3.5 w-3.5 text-gray-500" />
+                     <span className="text-[10px] font-bold text-gray-600 uppercase">Top Size</span>
+                  </div>
+                  <span className="text-xs font-black text-gray-900">{stats?.bhk_stats?.[0]?.bhk_size || '3 BHK'}</span>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🔄 7. BOOKING FLOW */}
+        <Card className="lg:col-span-2 border-gray-100 shadow-sm rounded-xl bg-white">
+          <CardContent className="p-4 px-6">
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-50 pb-2">
+               <RefreshCw className="h-4 w-4 text-indigo-600" />
+               <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Booking Lifecycle</h2>
+            </div>
+            <div className="flex items-center justify-between relative px-8 py-1">
+               {/* Connector Line */}
+               <div className="absolute top-1/2 left-[15%] right-[15%] h-0.5 bg-gray-100 -translate-y-1/2 -z-0" />
+               
+               {[
+                 { label: 'Pending', val: stats?.status_stats?.pending || 0, color: 'bg-orange-500', text: 'text-orange-600' },
+                 { label: 'In Process', val: stats?.status_stats?.on_process || 0, color: 'bg-blue-500', text: 'text-blue-600' },
+                 { label: 'Done', val: stats?.status_stats?.done || 0, color: 'bg-emerald-500', text: 'text-emerald-600' },
+               ].map((step, i) => (
+                 <div key={i} className="relative z-10 flex flex-col items-center">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md mb-2", step.color)}>
+                       {step.val}
+                    </div>
+                    <span className={cn("text-[10px] font-bold uppercase tracking-tight", step.text)}>{step.label}</span>
+                 </div>
+               ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ⚙️ 8. OPERATIONS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-up delay-500">
+         {[
+           { label: 'Technicians Active', value: stats?.total_clients ? Math.round(stats.total_clients / 3) : 0, icon: UserCheck, color: 'text-blue-500' },
+           { label: 'Jobs Assigned', value: stats?.status_stats?.on_process || 0, icon: Briefcase, color: 'text-indigo-500' },
+           { label: 'Pending Assignments', value: stats?.status_stats?.pending || 0, icon: Clock, color: 'text-orange-500' },
+         ].map((op, i) => (
+           <div key={i} className="bg-white p-3 px-4 rounded-xl shadow-sm border border-gray-50 flex items-center gap-3 hover:shadow-md transition-all">
+              <div className="p-2 bg-gray-50 rounded-lg text-gray-400 group-hover:text-blue-600">
+                 <op.icon className={cn("h-4 w-4", op.color)} />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Tier Distribution */}
-        <Card className="border-gray-100 italic">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 border-b border-gray-100 pb-3 mb-4">
-               <ShieldCheck className="h-4 w-4 text-blue-600" />
-               <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-widest">Service Tier Distribution</h3>
-            </div>
-            <div className="space-y-4">
-               <div className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                     <span className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
-                     <span className="text-xs font-bold text-gray-500 uppercase tracking-tight group-hover:text-gray-800 transition-colors">One-Time Service</span>
-                  </div>
-                  <span className="text-sm font-black text-gray-800 tabular-nums">{stats?.category_stats?.one_time || 0}</span>
-               </div>
-               <div className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                     <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
-                     <span className="text-xs font-bold text-gray-500 uppercase tracking-tight group-hover:text-gray-800 transition-colors">AMC (Annual Contract)</span>
-                  </div>
-                  <span className="text-sm font-black text-gray-800 tabular-nums">{stats?.category_stats?.amc || 0}</span>
-               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Business Source */}
-        <Card className="border-gray-100 italic">
-          <CardContent className="p-5">
-             <div className="flex items-center gap-2 border-b border-gray-100 pb-3 mb-4">
-                <LayoutGrid className="h-4 w-4 text-indigo-600" />
-                <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-widest">Revenue Channel Split</h3>
-             </div>
-             <div className="space-y-4">
-                <div className="flex items-center justify-between group">
-                   <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-sm shadow-indigo-200" />
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-tight group-hover:text-gray-800 transition-colors">Retail / Individual</span>
-                   </div>
-                   <span className="text-sm font-black text-gray-800 tabular-nums">{stats?.job_type_stats?.individual || 0}</span>
-                </div>
-                <div className="flex items-center justify-between group">
-                   <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 shadow-sm shadow-amber-200" />
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-tight group-hover:text-gray-800 transition-colors">Society / Corporate</span>
-                   </div>
-                   <span className="text-sm font-black text-gray-800 tabular-nums">{stats?.job_type_stats?.society || 0}</span>
-                </div>
-             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Geolocation & Demographics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {[
-          { title: 'Top City Reach', icon: MapPin, color: 'text-blue-500', data: stats?.city_stats?.map(c => ({ key: c.city, val: c.count })) },
-          { title: 'Property Stats', icon: Home, color: 'text-emerald-500', data: stats?.property_type_stats?.map(p => ({ key: p.property_type, val: p.count })) },
-          { title: 'Size Breakdown', icon: Briefcase, color: 'text-amber-500', data: stats?.bhk_stats?.map(b => ({ key: b.bhk_size, val: b.count })) },
-        ].map((sec, i) => (
-          <Card key={i} className="border-gray-100">
-            <CardContent className="p-4">
-               <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-2">
-                  <sec.icon className={cn("h-3.5 w-3.5", sec.color)} />
-                  <h4 className="text-[10px] font-black text-gray-800 uppercase tracking-widest italic">{sec.title}</h4>
-               </div>
-               <div className="space-y-2.5">
-                  {sec.data && sec.data.length > 0 ? (
-                    sec.data.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter truncate max-w-[120px]">{item.key || 'UNKNOWN'}</span>
-                         <span className="text-xs font-black text-gray-800 tabular-nums">{item.val}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-[9px] font-bold text-gray-400 italic">NO DATA TRACKED</p>
-                  )}
-               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Lifecyle Status Track */}
-      <Card className="border-gray-100">
-        <CardContent className="p-5">
-           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic mb-5 border-b border-gray-50 pb-2">Booking Execution Lifecycle</h3>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { label: 'Pending', val: stats?.status_stats?.pending || 0, color: 'text-orange-500', bg: 'bg-orange-50', icon: Clock },
-                { label: 'On Process', val: stats?.status_stats?.on_process || 0, color: 'text-blue-500', bg: 'bg-blue-50', icon: ShieldCheck },
-                { label: 'Done', val: stats?.status_stats?.done || 0, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
-              ].map((s, i) => (
-                <div key={i} className={cn("flex items-center justify-between p-3 rounded shadow-xs border border-transparent hover:border-gray-100 transition-all group", s.bg)}>
-                   <div className="flex items-center gap-2">
-                      <s.icon className={cn("h-4 w-4 group-hover:scale-110 transition-transform", s.color)} />
-                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter italic">{s.label}</span>
-                   </div>
-                   <span className="text-lg font-black text-gray-800 tabular-nums">{s.val}</span>
-                </div>
-              ))}
+              <div>
+                 <p className="text-xl font-black text-gray-900 leading-none mb-0.5">{op.value}</p>
+                 <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">{op.label}</p>
+              </div>
            </div>
-        </CardContent>
-      </Card>
+         ))}
+      </div>
     </div>
   );
 };

@@ -774,6 +774,18 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async assignTechnician(id: number, technicianId: number): Promise<JobCard> {
+    const result = await this.retryRequest(() =>
+      this.api.post<JobCard>(`${API_ENDPOINTS.JOBCARDS}${id}/assign/`, { technician_id: technicianId })
+    );
+
+    // Invalidate related caches
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
+    
+    return result.data;
+  }
+
   async updateJobCardPaymentStatus(id: number, paymentStatus: string): Promise<JobCard> {
     const result = await this.retryRequest(() =>
       this.api.patch<JobCard>(`${API_ENDPOINTS.JOBCARDS}${id}/update_payment_status/`, { payment_status: paymentStatus })

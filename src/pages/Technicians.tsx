@@ -4,7 +4,6 @@ import {
   Search,
   Phone,
   User,
-  Trash2,
   Edit2,
   XCircle,
   Hash,
@@ -108,16 +107,7 @@ const Technicians: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this technician?')) {
-      try {
-        await enhancedApiService.deleteTechnician(id);
-        fetchTechnicians();
-      } catch (error) {
-        console.error('Failed to delete technician:', error);
-      }
-    }
-  };
+
 
   const filteredTechs = technicians.filter(tech =>
     tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -214,9 +204,7 @@ const Technicians: React.FC = () => {
                       <button onClick={() => handleEdit(tech)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
                         <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
                       </button>
-                      <button onClick={() => handleDelete(tech.id)} className="p-1.5 bg-gray-100 hover:bg-red-100 rounded transition-all group">
-                        <Trash2 className="h-3 w-3 text-gray-400 group-hover:text-red-600" />
-                      </button>
+
                     </div>
                   </td>
                 </tr>

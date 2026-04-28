@@ -211,7 +211,7 @@ const Inquiries: React.FC = () => {
                   "hover:bg-gray-50/80 transition-colors divide-x divide-gray-100",
                   !inquiry.is_read && "bg-blue-50/30"
                 )}>
-                  <td className="px-3 py-2.5 font-bold text-gray-400 italic">#{inquiry.id}</td>
+                  <td className="px-3 py-2.5 font-bold text-gray-400 italic">{inquiry.id}</td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-gray-800 uppercase leading-tight truncate">{inquiry.name}</div>
                     <div className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</div>

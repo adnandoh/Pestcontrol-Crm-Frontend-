@@ -4,15 +4,17 @@ import {
   Plus,
   Edit,
   Search,
-  Zap,
-  Layout
+  Layout,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import {
   Button,
-  Pagination
+  Pagination,
+  ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
-import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
+import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import type { JobCard, PaginatedResponse } from '../types';
 
 const JobCards: React.FC = () => {
@@ -36,12 +38,15 @@ const JobCards: React.FC = () => {
     assigned_to: '',
     date_preset: '', // today, tomorrow, custom
     from: '',
-    to: ''
+    to: '',
+    commercial_type: ''
   });
   const [searchInput, setSearchInput] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [doneId, setDoneId] = useState<number | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -90,6 +95,11 @@ const JobCards: React.FC = () => {
       // Add technician filter
       if (currentFilters.assigned_to) {
         params.assigned_to = currentFilters.assigned_to;
+      }
+      
+      // Add commercial type filter
+      if (currentFilters.commercial_type) {
+        params.commercial_type = currentFilters.commercial_type;
       }
 
       // Add date filters
@@ -225,7 +235,8 @@ const JobCards: React.FC = () => {
       assigned_to: '',
       date_preset: '',
       from: '',
-      to: ''
+      to: '',
+      commercial_type: ''
     };
     setFilters(newFilters);
     setSearchInput('');
@@ -240,6 +251,27 @@ const JobCards: React.FC = () => {
     loadJobCards(page, filters);
   };
 
+  // Handle assignment
+  const handleOpenAssign = (job: JobCard) => {
+    setSelectedJobCard(job);
+    setShowAssignModal(true);
+  };
+
+  // Handle Mark as Done
+  const handleMarkAsDone = async () => {
+    if (!doneId) return;
+    try {
+      setLoading(true);
+      await enhancedApiService.updateJobCard(doneId, { status: 'Done' });
+      setDoneId(null);
+      loadJobCards(pagination.current, filters);
+    } catch (error) {
+      console.error('Failed to mark as done:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
 
@@ -252,7 +284,7 @@ const JobCards: React.FC = () => {
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
       {/* 1. View Booking Header */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 animate-fade-up">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Bookings</h1>
@@ -261,9 +293,6 @@ const JobCards: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => setShowInquiryModal(true)} className="bg-amber-500 hover:bg-amber-600 h-8 font-bold shadow-sm flex items-center gap-1">
-              <Zap className="h-3.5 w-3.5 fill-amber-100" /> Create Inquiry
-            </Button>
             <Button size="sm" onClick={() => navigate('/jobcards/create')} className="bg-blue-700 hover:bg-blue-800 h-8 font-bold shadow-sm">
               <Plus className="h-4 w-4 mr-1" /> Create Booking
             </Button>
@@ -298,7 +327,7 @@ const JobCards: React.FC = () => {
       </div>
 
       {/* 2. Filter Bar - High Density (Reference Style) */}
-      <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
+      <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded animate-fade-up delay-100">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
           <div className="relative">
@@ -336,6 +365,23 @@ const JobCards: React.FC = () => {
           </select>
         </div>
 
+        <div className="w-36">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Category</label>
+          <select
+            value={filters.commercial_type}
+            onChange={(e) => handleFilterChange('commercial_type', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            <option value="">All Categories</option>
+            <option value="home">Home</option>
+            <option value="hotel">Hotel</option>
+            <option value="society">Society</option>
+            <option value="villa">Villa</option>
+            <option value="office">Office</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
         <div className="w-36 text-gray-400">
            <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Select Date</label>
            <input
@@ -346,27 +392,31 @@ const JobCards: React.FC = () => {
            />
         </div>
 
-        <div className="flex gap-1 h-8">
-           <button onClick={clearFilters} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors">CLEAR</button>
-           <button onClick={handleSearchSubmit} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors">SEARCH</button>
+        <div className="flex gap-2 h-8">
+           <button onClick={clearFilters} className="px-4 border border-gray-300 hover:bg-gray-50 text-gray-500 text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
+           <button onClick={handleSearchSubmit} className="px-5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded shadow-sm transition-colors uppercase flex items-center gap-1.5">
+             <Search className="h-3 w-3" /> Search
+           </button>
         </div>
       </div>
 
       {/* 3. Table Results - Full Width Compact */}
-      <div className="bg-white border-x border-t border-gray-200 shadow-xs overflow-hidden">
+      <div className="bg-white border-x border-t border-gray-200 shadow-xs overflow-hidden animate-fade-up delay-200">
         <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
           <table className="w-full table-auto border-collapse text-[11px]">
-            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
-              <tr className="divide-x divide-gray-200">
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Booking Id</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Client Name</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Mobile Info</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Service Area</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Service</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Technician</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Schedule Date</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
+            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-500 uppercase">
+              <tr className="divide-x divide-gray-100">
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">ID</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Client Info</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Area</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Schedule</th>
+                {activeTab === 'upcoming_services' && (
+                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
+                )}
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
+                <th className="px-4 py-3 text-center font-extrabold tracking-tighter">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -383,81 +433,171 @@ const JobCards: React.FC = () => {
                        No Bookings Found In This Category
                     </td>
                  </tr>
-              ) : jobCards.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
-                  <td className="px-3 py-2.5 font-bold text-blue-600">{job.code}</td>
-                  <td className="px-3 py-2.5 font-semibold text-gray-800 uppercase">{job.client_name || '---'}</td>
-                  <td className="px-3 py-2.5 text-gray-600 font-bold">{job.client_mobile || '---'}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="max-w-[220px] truncate leading-tight font-medium" title={job.client_address}>{job.client_address || '---'}</div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase">{job.city}, {job.state}</div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-col group relative">
-                      <div className="font-bold text-gray-800 leading-tight max-w-[150px] truncate" title={job.service_type}>
-                        {job.service_type?.split(',')[0]}
-                        {(job.service_type?.split(',').length ?? 0) > 1 && (
-                          <span className="ml-1 text-[9px] text-blue-600 font-black cursor-help">
-                            +{job.service_type!.split(',').length - 1} more
+              ) : jobCards.map((job) => {
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+                const isToday = job.schedule_date === todayStr;
+                const isTomorrow = job.schedule_date === tomorrowStr;
+                
+                const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : '';
+                
+                return (
+                  <tr key={job.id} className={`${rowBg} hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group`}>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col gap-1.5">
+                        <button 
+                          onClick={() => handleOpenAssign(job)}
+                          className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-100 w-fit transition-colors shadow-xs"
+                        >
+                          {job.id}
+                        </button>
+                        {job.commercial_type && job.commercial_type !== 'home' && (
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter ${
+                            job.commercial_type === 'hotel' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                            job.commercial_type === 'society' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                            job.commercial_type === 'villa' ? 'bg-green-100 text-green-700 border border-green-200' :
+                            job.commercial_type === 'office' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                            'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                          }`}>
+                            {job.commercial_type.toUpperCase()}
                           </span>
                         )}
                       </div>
-                      <div className="text-[9px] text-blue-500 font-black uppercase">{job.service_category}</div>
-                      
-                      {/* Hover Tooltip - Positioned below to avoid being cut off by header */}
-                      {(job.service_type?.split(',').length ?? 0) > 1 && (
-                        <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 bg-blue-900 text-white text-[10px] p-2.5 rounded shadow-2xl w-56 border border-blue-800 pointer-events-none whitespace-normal leading-normal">
-                          <div className="font-extrabold border-b border-blue-800/50 pb-1.5 mb-1.5 text-blue-200 flex items-center gap-1.5 uppercase tracking-tighter">
-                            <Layout className="h-3 w-3" />
-                            All Selected Pests:
-                          </div>
-                          <div className="text-blue-50 font-medium">
-                            {job.service_type?.split(',').map((s, i) => (
-                              <div key={i} className="flex items-start gap-1 mb-0.5">
-                                <span className="text-blue-300">•</span>
-                                {s.trim()}
-                              </div>
-                            ))}
-                          </div>
-                          <div className="absolute -top-1 left-4 w-2 h-2 bg-blue-900 rotate-45 border-l border-t border-blue-800"></div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 font-bold text-indigo-600 uppercase italic tracking-tighter">
-                    {job.technician_name || job.assigned_to || '---'}
-                  </td>
-                  <td className="px-3 py-2.5 font-bold text-gray-600">
-                    {job.schedule_date ? (
+                    </td>
+                    <td className="px-4 py-4">
                       <div className="flex flex-col">
-                        <span>{new Date(job.schedule_date).toLocaleDateString('en-GB')}</span>
-                        <span className="text-[9px] text-gray-400">---</span>
+                        <span className="text-[13px] font-black text-gray-900 uppercase leading-none mb-1">{job.client_name || '---'}</span>
+                        <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
+                          {job.client_mobile || '---'}
+                        </span>
                       </div>
-                    ) : '---'}
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
-                      job.status === 'Done' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
-                      job.status === 'Pending' ? 'bg-orange-50 text-orange-700 ring-orange-600/20' :
-                      'bg-blue-50 text-blue-700 ring-blue-600/20'
-                    }`}>
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <button onClick={() => navigate(`/jobcards/edit/${job.id}`)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
-                      <Edit className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col group/address relative">
+                        <div className="max-w-[150px] leading-tight font-medium text-gray-600">
+                          {job.client_address ? (
+                            job.client_address.split(' ').length > 10 
+                              ? job.client_address.split(' ').slice(0, 10).join(' ') + '...'
+                              : job.client_address
+                          ) : '---'}
+                        </div>
+                        <div className="text-[9px] font-bold text-gray-400 uppercase mt-1">{job.city}, {job.state}</div>
+                        
+                        {/* Address Tooltip */}
+                        {job.client_address && (
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/address:block z-50 bg-white text-gray-800 text-[11px] px-3 py-2 rounded shadow-xl border border-gray-200 pointer-events-none whitespace-nowrap leading-none ring-1 ring-black/5">
+                            <span className="font-bold">{job.client_address}</span>
+                            <div className="absolute -bottom-1.5 left-4 w-2.5 h-2.5 bg-white rotate-45 border-r border-b border-gray-200"></div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col group/service relative">
+                        <div className="font-extrabold text-gray-800 leading-tight max-w-[140px] truncate flex items-center gap-1" title={job.service_type}>
+                          {job.service_type?.split(',')[0]}
+                          {(job.service_type?.split(',').length ?? 0) > 1 && (
+                            <span className="text-[9px] bg-blue-50 text-blue-600 px-1 rounded font-black">
+                              +{job.service_type!.split(',').length - 1}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
+                        
+                        {/* Service Tooltip */}
+                        {(job.service_type?.split(',').length ?? 0) > 1 && (
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/service:block z-50 bg-white text-gray-800 text-[11px] px-3 py-2 rounded shadow-xl border border-gray-200 pointer-events-none whitespace-nowrap leading-none ring-1 ring-black/5">
+                            <span className="font-bold text-blue-600">All Pests: </span>
+                            <span className="font-bold">{job.service_type}</span>
+                            <div className="absolute -bottom-1.5 left-4 w-2.5 h-2.5 bg-white rotate-45 border-r border-b border-gray-200"></div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      {job.technician_name || job.assigned_to ? (
+                        <button 
+                          onClick={() => handleOpenAssign(job)}
+                          className="font-bold text-indigo-700 hover:text-blue-600 uppercase italic tracking-tighter text-[11px] text-left hover:underline transition-all"
+                        >
+                          {job.technician_name || job.assigned_to}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleOpenAssign(job)}
+                          className="text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100 hover:bg-red-500 hover:text-white transition-all uppercase"
+                        >
+                          Not Assigned
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-700 text-[11px]">
+                          {job.schedule_date ? new Date(job.schedule_date).toLocaleDateString('en-GB') : '---'}
+                        </span>
+                        {isToday && (
+                          <span className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter">Today</span>
+                        )}
+                        {isTomorrow && (
+                          <span className="text-[9px] font-black text-yellow-700 uppercase tracking-tighter">Tomorrow</span>
+                        )}
+                      </div>
+                    </td>
+                    {activeTab === 'upcoming_services' && (
+                      <td className="px-4 py-4 bg-blue-50/30">
+                        <div className="flex flex-col">
+                          <span className="font-black text-blue-700 text-[11px]">
+                            {job.next_service_date ? new Date(job.next_service_date).toLocaleDateString('en-GB') : '---'}
+                          </span>
+                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Follow-up due</span>
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-4 py-4 text-center">
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border ${
+                        job.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                        job.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {activeTab === 'on_process' && (
+                          <button 
+                            onClick={() => setDoneId(job.id)} 
+                            className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
+                            title="Mark as Done"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
+                          className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
+                          title="Edit Booking"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* 4. Compact Pagination Footer */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] border border-gray-200">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] border border-gray-200 animate-fade-up delay-300">
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
            Viewing {jobCards.length} of {pagination.count} Total Bookings
         </span>
@@ -472,13 +612,23 @@ const JobCards: React.FC = () => {
            />
         </div>
       </div>
-      <CreateCRMInquiryModal 
-        isOpen={showInquiryModal}
-        onClose={() => setShowInquiryModal(false)}
+
+      <AssignTechnicianModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        jobCard={selectedJobCard}
         onSuccess={() => {
-           // Maybe navigate to inquiry page if needed, but for now just show success
-           console.log('Inquiry created successfully');
+           loadJobCards(pagination.current, filters);
         }}
+      />
+      <ConfirmationModal
+        isOpen={!!doneId}
+        onClose={() => setDoneId(null)}
+        onConfirm={handleMarkAsDone}
+        title="Complete Booking"
+        message="Are you sure you want to mark this booking as DONE? It will be moved to the Done tab."
+        confirmText="Yes, Done"
+        type="success"
       />
     </div>
   );

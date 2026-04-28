@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Edit,
-  Trash2,
   Phone,
   Mail,
   MapPin,
@@ -55,17 +54,7 @@ const ClientDetail: React.FC = () => {
     loadClient();
   }, [id]);
 
-  // Handle delete client
-  const handleDeleteClient = async () => {
-    if (!client || !confirm('Are you sure you want to deactivate this client?')) return;
 
-    try {
-      await enhancedApiService.deleteClient(client.id);
-      navigate('/clients');
-    } catch (err: any) {
-      alert('Failed to delete client: ' + err.message);
-    }
-  };
 
   // Handle edit client
   const handleEditClient = () => {
@@ -128,14 +117,6 @@ const ClientDetail: React.FC = () => {
           <Button variant="outline" onClick={handleEditClient}>
             <Edit className="h-4 w-4 mr-2" />
             Edit Client
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleDeleteClient}
-            className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Deactivate
           </Button>
         </div>
       </div>
@@ -331,7 +312,7 @@ const ClientDetail: React.FC = () => {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Client ID</label>
-                <p className="text-gray-900 font-mono">#{client.id}</p>
+                <p className="text-gray-900 font-mono">{client.id}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Created Date</label>

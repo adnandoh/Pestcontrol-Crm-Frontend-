@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Save,
   User,
   Phone,
   IndianRupee,
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react';
 
 import {
-  Card,
   Input,
   ClockTimePicker,
 } from '../components/ui';
@@ -44,6 +42,8 @@ const CreateJobCard: React.FC = () => {
       client_address: '',
       client_notes: '',
       job_type: 'Customer',
+      commercial_type: 'home',
+      is_price_estimated: false,
       service_category: 'One-Time Service',
       property_type: 'Home / Flat',
       bhk_size: '',
@@ -123,6 +123,8 @@ const CreateJobCard: React.FC = () => {
   // Technician data
   const [technicians, setTechnicians] = useState<Technician[]>([]);
 
+  const [isNextDateManual, setIsNextDateManual] = useState(false);
+
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -145,6 +147,36 @@ const CreateJobCard: React.FC = () => {
     fetchLocations();
     fetchTechs();
   }, []);
+
+  // Handle Next Service Date Auto-calculation
+  useEffect(() => {
+    const service = pricingService.toLowerCase();
+    const isCockroachAMC = service.includes('cockroach') && formData.service_category === 'AMC';
+    const isBedBug = service.includes('bedbug') || service.includes('bed bug');
+
+    if (isCockroachAMC || isBedBug) {
+      // Auto-calculate only if not manually edited and schedule_date exists
+      if (!isNextDateManual && formData.schedule_date) {
+        const scheduleDate = new Date(formData.schedule_date);
+        if (isNaN(scheduleDate.getTime())) return;
+
+        let nextDate = new Date(scheduleDate);
+        
+        if (isCockroachAMC) {
+          nextDate.setMonth(nextDate.getMonth() + 4);
+        } else if (isBedBug) {
+          nextDate.setDate(nextDate.getDate() + 15);
+        }
+        
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        setFormData(prev => ({ ...prev, next_service_date: nextDateStr }));
+      }
+    } else {
+      if (!isNextDateManual) {
+        setFormData(prev => ({ ...prev, next_service_date: '' }));
+      }
+    }
+  }, [pricingService, formData.service_category, formData.schedule_date, isNextDateManual]);
 
   const stateOptions = Object.keys(locations).map(state => ({ value: state, label: state }));
   const jobCityOptions = formData.state ? locations[formData.state]?.map(city => ({ value: city, label: city })) || [] : [];
@@ -268,80 +300,80 @@ const CreateJobCard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
-      {/* Header Area */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/jobcards')} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm">
-            <ArrowLeft className="h-4 w-4 text-gray-500" />
-          </button>
-          <h1 className="text-xl font-extrabold text-gray-800 tracking-tight uppercase italic">Booking Form</h1>
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full pb-10 relative">
+      {/* Page Title Area (Simplified) */}
+      <div className="flex items-center gap-3 px-4 py-4 -mx-4 sm:mx-0 mb-2">
+        <button type="button" onClick={() => navigate('/jobcards')} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm bg-white/50">
+          <ArrowLeft className="h-4 w-4 text-gray-500" />
+        </button>
+        <div className="flex flex-col">
+          <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none">New Booking</h1>
+          <span className="text-[11px] font-bold text-gray-500 mt-1">Fill out the details below</span>
         </div>
       </div>
 
       {/* Main Form Area */}
-      <Card className="border-gray-200 shadow-xs overflow-hidden">
-        <form onSubmit={handleSubmit} className="divide-y divide-gray-100">
+      <div className="max-w-6xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-5">
           
           {/* Section: Client & Location */}
-          <div className="p-4 bg-white/50">
-            <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <User className="h-3 w-3" /> Client & Service Location
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+              <User className="h-4 w-4" /> Client & Service Location
             </h4>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Mobile Number *</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Mobile Number *</label>
                 <div className="relative">
-                  <Phone className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     name="client_mobile"
                     type="tel"
                     value={formData.client_mobile}
                     onChange={(e) => handleMobileChange(e.target.value)}
                     placeholder="9999999999"
-                    className="pl-8 h-8 text-xs font-bold border-gray-300 rounded focus:border-blue-500"
+                    className="pl-10 h-10 text-sm font-medium border-gray-300 rounded-lg shadow-sm focus:border-blue-500"
                     required
                   />
                 </div>
-                {errors.client_mobile && <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase">{errors.client_mobile}</p>}
-                {clientCheckStatus === 'found' && <p className="text-[9px] text-green-600 font-bold mt-0.5 uppercase">Found: {foundClientName}</p>}
+                {errors.client_mobile && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.client_mobile}</p>}
+                {clientCheckStatus === 'found' && <p className="text-[10px] text-green-600 font-bold mt-1 uppercase">Found: {foundClientName}</p>}
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Client Name *</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Client Name *</label>
                 <Input
                   name="client_name"
                   type="text"
                   value={formData.client_name}
                   onChange={(e) => handleInputChange('client_name', e.target.value)}
                   placeholder="Enter Full Name"
-                  className="h-8 text-xs font-bold border-gray-300 rounded disabled:bg-gray-50 uppercase"
+                  className="h-10 text-sm font-medium border-gray-300 rounded-lg shadow-sm disabled:bg-gray-50 disabled:text-gray-500 uppercase"
                   disabled={clientCheckStatus === 'found'}
                   required
                 />
-                {errors.client_name && <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase">{errors.client_name}</p>}
+                {errors.client_name && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.client_name}</p>}
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Email Address</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Email Address</label>
                 <Input
                   name="client_email"
                   type="email"
                   value={formData.client_email}
                   onChange={(e) => handleInputChange('client_email', e.target.value)}
                   placeholder="example@mail.com"
-                  className="h-8 text-xs font-bold border-gray-300 rounded bg-white"
+                  className="h-10 text-sm font-medium border-gray-300 rounded-lg shadow-sm bg-white"
                 />
               </div>
 
-
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service State *</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
                 <select
                   value={formData.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none focus:border-blue-500 bg-white"
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                 >
                   <option value="">Select State</option>
                   {stateOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -349,11 +381,11 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Service City *</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
                 <select
                   value={formData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none focus:border-blue-500 bg-white"
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                   disabled={!formData.state}
                 >
                   <option value="">Select City</option>
@@ -361,26 +393,56 @@ const CreateJobCard: React.FC = () => {
                 </select>
               </div>
 
-              <div className="lg:col-span-2">
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Detailed Address *</label>
+              <div className="lg:col-span-1">
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
+                <select
+                  value={formData.commercial_type}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      commercial_type: val,
+                      is_price_estimated: val !== 'home',
+                      price: val !== 'home' ? '0.00' : prev.price
+                    }));
+                  }}
+                  className="w-full h-10 px-3 text-sm font-bold border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="home">Home (Residential)</option>
+                  <option value="hotel">Hotel</option>
+                  <option value="society">Society</option>
+                  <option value="villa">Villa</option>
+                  <option value="office">Office</option>
+                  <option value="other">Other Commercial</option>
+                </select>
+                {formData.commercial_type !== 'home' && (
+                  <p className="text-[10px] text-blue-600 font-bold mt-1 animate-fade-in flex items-center gap-1">
+                    👉 Final price will be decided after technician visit.
+                  </p>
+                )}
+              </div>
+
+              <div className="lg:col-span-3">
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
                 <Input
                   name="client_address"
                   value={formData.client_address}
                   onChange={(e) => handleInputChange('client_address', e.target.value)}
                   placeholder="Flat No, Building Name, Landmark, Area..."
-                  className="h-8 text-xs font-medium border-gray-300 rounded"
+                  className="h-10 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                   required
                 />
               </div>
             </div>
           </div>
 
-          {/* Section: Service Configuration & Pricing (Updated UI) */}
-          <div className="p-5 bg-white border-b">
-             <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+          {/* Section: Service Configuration & Pricing */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+             <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
+             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6">
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Service*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Service *</label>
                       <select
                         value={pricingService}
                         onChange={(e) => {
@@ -418,7 +480,7 @@ const CreateJobCard: React.FC = () => {
                             setSelectedServices([]);
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                         required
                       >
                         <option value="">Select Service</option>
@@ -426,7 +488,7 @@ const CreateJobCard: React.FC = () => {
                       </select>
                    </div>
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Area*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
                       <select
                         value={pricingArea}
                         onChange={(e) => {
@@ -437,7 +499,7 @@ const CreateJobCard: React.FC = () => {
                             handleInputChange('bhk_size', '');
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                         required
                       >
                         <option value="">Select Area</option>
@@ -454,7 +516,7 @@ const CreateJobCard: React.FC = () => {
                       </select>
                    </div>
                    <div>
-                      <label className="text-[10px] font-extrabold text-gray-400 mb-1.5 block uppercase tracking-wider">Select Type*</label>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
                       <select
                         value={pricingType}
                         onChange={(e) => {
@@ -467,7 +529,7 @@ const CreateJobCard: React.FC = () => {
                             handleInputChange('service_category', 'One-Time Service');
                           }
                         }}
-                        className="w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50/50"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
                         required
                         disabled={!pricingService}
                       >
@@ -477,43 +539,51 @@ const CreateJobCard: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="flex flex-col items-center lg:items-end justify-center min-w-[120px]">
-                   <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">Total Price</span>
-                   <div className="text-4xl font-black text-yellow-500 flex items-center">
-                      <span className="text-2xl mr-1 italic">₹</span>
-                      {formData.price}
-                   </div>
+                <div className="flex flex-col items-start lg:items-end justify-center min-w-[140px] pl-4 lg:border-l border-gray-200">
+                   <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                     {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
+                   </span>
+                   {formData.commercial_type === 'home' ? (
+                     <div className="text-4xl font-black text-gray-900 flex items-center">
+                        <span className="text-2xl mr-1 text-gray-400">₹</span>
+                        {formData.price}
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-start lg:items-end">
+                       <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-md tracking-tighter uppercase mb-1">To be decided</span>
+                       <span className="text-sm font-bold text-gray-400 italic leading-tight">After Visit</span>
+                     </div>
+                   )}
                 </div>
              </div>
              
-             {(pricingService === 'Hotel / Commercial' || (pricingService === 'Rodent' && pricingArea === 'Society Area')) && (
+             {formData.commercial_type !== 'home' && (
                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
                </div>
              )}
           </div>
 
-
           {/* Section: Schedule & Assignment */}
-          <div className="p-5 bg-gray-50/30">
-            <h4 className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5" /> Schedule & Assignment
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+              <Calendar className="h-4 w-4" /> Schedule & Assignment
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tight">Schedule Date *</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
                 <Input
                   type="date"
                   value={formData.schedule_date}
                   onChange={(e) => handleInputChange('schedule_date', e.target.value)}
-                  className="w-full h-10 px-3 text-xs font-bold border-gray-200 rounded-lg shadow-sm"
+                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-tighter">Available Time Slot</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
                 <ClockTimePicker
                   value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
@@ -522,99 +592,85 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase">Service Price Override</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     type="number"
                     value={formData.price}
                     onChange={(e) => handleInputChange('price', e.target.value)}
-                    className="w-full h-10 pl-9 pr-3 text-sm font-black border border-gray-200 rounded-lg outline-none text-blue-700 bg-white shadow-sm"
+                    className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm"
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase">Assigned Technician</label>
-                <select
-                  value={formData.technician || ''}
-                  onChange={(e) => {
-                    const techId = e.target.value;
-                    const tech = technicians.find(t => t.id.toString() === techId);
-                    handleInputChange('technician', techId ? parseInt(techId) : null);
-                    handleInputChange('assigned_to', tech ? tech.name : '');
-                  }}
-                  disabled={formData.status !== 'On Process'}
-                  className={`w-full h-10 px-3 text-xs font-bold border border-gray-200 rounded-lg outline-none shadow-sm uppercase ${formData.status !== 'On Process' ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'}`}
-                >
-                  <option value="">Select Technician</option>
-                  {technicians.map(tech => (
-                    <option key={tech.id} value={tech.id}>{tech.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Next Service Date Field */}
+              {(pricingService.toLowerCase().includes('cockroach') || pricingService.toLowerCase().includes('bed bug')) && (
+                <div className="animate-fade-in md:col-span-1">
+                  <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
+                  <Input
+                    type="date"
+                    value={formData.next_service_date}
+                    onChange={(e) => {
+                      handleInputChange('next_service_date', e.target.value);
+                      setIsNextDateManual(true);
+                    }}
+                    className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
+                    {pricingService.toLowerCase().includes('cockroach') ? 'Every 4 months for AMC' : 'After 15 days for Bed Bug'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          {/* Section: Additional Details */}
-          <div className="p-5 bg-white border-t">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase tracking-tighter">Payment Status</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Status</label>
                 <select
                   value={formData.payment_status}
                   onChange={(e) => handleInputChange('payment_status', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
                 >
                   {paymentStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Reference</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference</label>
                 <select
                   value={formData.reference}
                   onChange={(e) => handleInputChange('reference', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-bold border border-gray-300 rounded outline-none bg-white"
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
                 >
                   <option value="">None</option>
                   {referenceOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase text-rose-500">Booking Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full h-8 px-2 text-xs font-extrabold border border-gray-300 rounded outline-none bg-white text-rose-600 uppercase"
-                >
-                  {jobStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
             </div>
           </div>
 
           {/* Section: Notes */}
-          <div className="p-4">
-             <label className="text-[10px] font-extrabold text-gray-400 mb-2 block uppercase">Additional Internal Notes</label>
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+             <label className="text-[13px] font-bold text-gray-700 mb-2 block">Additional Internal Notes</label>
              <textarea
                value={formData.notes || ''}
                onChange={(e) => handleInputChange('notes', e.target.value)}
                rows={2}
-               className="w-full border border-gray-300 rounded p-2 text-xs font-medium outline-none focus:border-blue-500"
+               className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
                placeholder="Enter any special instructions or customer preferences here..."
              />
           </div>
 
-          {/* Footer Actions */}
-          <div className="p-4 bg-gray-50 flex items-center justify-between">
-             <div className="hidden sm:block">
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">All Starred (*) fields are mandatory. Data auto-saves.</p>
-             </div>
-             <div className="flex gap-2 w-full sm:w-auto">
-                <button type="button" onClick={() => navigate('/jobcards')} className="flex-1 sm:flex-none px-6 h-8 text-[11px] font-extrabold bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100 transition-all uppercase">Discard</button>
-                                <button
+          {/* Action Footer (Non-Sticky) */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden sm:block">All fields marked with * are required.</p>
+             <div className="flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto">
+               <button type="button" onClick={() => navigate('/jobcards')} className="flex-1 sm:flex-none h-10 px-5 text-[13px] font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">Discard</button>
+               
+               <button
                   type="button"
                   disabled={savingInquiry || submitting}
                   onClick={async () => {
@@ -643,19 +699,19 @@ const CreateJobCard: React.FC = () => {
                       setSavingInquiry(false);
                     }
                   }}
-                  className="flex-1 sm:flex-none px-5 h-8 text-[11px] font-extrabold bg-amber-500 text-white rounded hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  className="flex-1 sm:flex-none h-10 px-5 text-[13px] font-bold bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
                 >
-                  {savingInquiry ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /> : <MessageCircle className="h-3 w-3" />}
-                  Inquiry
+                  {savingInquiry ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-700" /> : <MessageCircle className="h-4 w-4" />}
+                  Save as Inquiry
                 </button>
-                 <button type="submit" disabled={submitting} className="flex-1 sm:flex-none px-8 h-8 text-[11px] font-extrabold bg-blue-700 text-white rounded hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all uppercase flex items-center justify-center gap-2">
-                  {submitting ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /> : <Save className="h-3 w-3" />}
-                  CREATE BOOKING
-                </button>
+
+               <button type="submit" disabled={submitting} className="flex-1 sm:flex-none h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all">
+                 {submitting ? 'Creating...' : 'Create Booking'}
+               </button>
              </div>
           </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 };

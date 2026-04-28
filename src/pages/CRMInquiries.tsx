@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  Phone, 
-  Trash2, 
   Calendar, 
   MapPin, 
   Zap,
@@ -46,7 +44,6 @@ const CRMInquiries: React.FC = () => {
   });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadInquiries = async (page = 1) => {
     try {
@@ -80,16 +77,7 @@ const CRMInquiries: React.FC = () => {
     loadInquiries(1);
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      await enhancedApiService.deleteCRMInquiry(deleteId);
-      loadInquiries(pagination.current);
-      setDeleteId(null);
-    } catch (err) {
-      console.error('Delete failed:', err);
-    }
-  };
+
 
   const handleStatusChange = async (id: number, newStatus: CRMInquiryStatus) => {
     try {
@@ -230,13 +218,13 @@ const CRMInquiries: React.FC = () => {
                 </tr>
               ) : inquiries.map((inq) => (
                 <tr key={inq.id} className="hover:bg-blue-50/20 transition-colors group">
-                  <td className="px-4 py-3 text-xs font-extrabold text-gray-400">#{inq.id}</td>
+                  <td className="px-4 py-3 text-xs font-extrabold text-gray-400">{inq.id}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className="text-xs font-extrabold text-gray-800 leading-tight uppercase tracking-tighter truncate">{inq.name}</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
-                          <Phone className="h-2.5 w-2.5" /> {inq.mobile}
+                          {inq.mobile}
                         </span>
                         <a 
                           href={`https://wa.me/91${inq.mobile}`} 
@@ -297,13 +285,7 @@ const CRMInquiries: React.FC = () => {
                           <Zap className="h-3.5 w-3.5 fill-emerald-50" />
                         </button>
                       )}
-                      <button 
-                        onClick={() => setDeleteId(inq.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                        title="Delete Lead"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+
                     </div>
                   </td>
                 </tr>
@@ -329,15 +311,7 @@ const CRMInquiries: React.FC = () => {
         onSuccess={() => loadInquiries(1)}
       />
 
-      <ConfirmationModal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
-        title="Delete Inquiry"
-        message="Are you sure you want to permanently delete this lead? This action cannot be undone."
-        confirmText="Yes, Delete"
-        type="danger"
-      />
+
     </div>
   );
 };

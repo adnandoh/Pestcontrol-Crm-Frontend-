@@ -379,7 +379,7 @@ const Renewals: React.FC = () => {
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2.5 font-bold text-blue-600">{renewal.jobcard_code}</td>
+                    <td className="px-3 py-2.5 font-bold text-blue-600">{renewal.jobcard}</td>
                     <td className="px-3 py-2.5 font-semibold text-gray-800 uppercase">{renewal.client_name}</td>
                     <td className="px-3 py-2.5 font-bold text-gray-600 uppercase">{renewal.renewal_type}</td>
                     <td className="px-3 py-2.5">
