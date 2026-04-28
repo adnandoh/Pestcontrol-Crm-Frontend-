@@ -4,9 +4,7 @@ import {
   Plus,
   Edit,
   Search,
-  Layout,
-  CheckCircle,
-  Clock
+  CheckCircle
 } from 'lucide-react';
 import {
   Button,
@@ -628,7 +626,7 @@ const JobCards: React.FC = () => {
         title="Complete Booking"
         message="Are you sure you want to mark this booking as DONE? It will be moved to the Done tab."
         confirmText="Yes, Done"
-        type="success"
+        type="info"
       />
     </div>
   );

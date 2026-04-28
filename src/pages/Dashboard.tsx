@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Users,
-  MessageSquare,
-  ClipboardList,
   RefreshCw,
   Clock,
-  CheckCircle2,
   ShieldCheck,
   MapPin,
   Home,
@@ -14,10 +10,9 @@ import {
   TrendingUp,
   DollarSign,
   Calendar,
-  ArrowRight,
   UserCheck
 } from 'lucide-react';
-import { Card, CardContent, Button, PageLoading } from '../components/ui';
+import { Card, CardContent, PageLoading } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { DashboardStatisticsResponse } from '../types';

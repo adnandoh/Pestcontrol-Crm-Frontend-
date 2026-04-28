@@ -26,8 +26,6 @@ const EditJobCard: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
-  
   // Pricing selector states
   const [pricingService, setPricingService] = useState('');
   const [pricingArea, setPricingArea] = useState('');
@@ -121,7 +119,6 @@ const EditJobCard: React.FC = () => {
         ]);
         
         setJobCard(jobData);
-        setTechnicians(techData || []);
         
         const initialForm = {
           client_name: jobData.client_name || '',

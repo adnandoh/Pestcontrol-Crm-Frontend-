@@ -120,9 +120,6 @@ const CreateJobCard: React.FC = () => {
   // Locations data
   const [locations, setLocations] = useState<Record<string, string[]>>({});
 
-  // Technician data
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
-
   const [isNextDateManual, setIsNextDateManual] = useState(false);
 
   useEffect(() => {
@@ -135,17 +132,7 @@ const CreateJobCard: React.FC = () => {
       }
     };
     
-    const fetchTechs = async () => {
-       try {
-         const data = await enhancedApiService.getActiveTechnicians();
-         setTechnicians(data || []);
-       } catch (err) {
-         console.error('Failed to fetch techs:', err);
-       }
-    };
-
     fetchLocations();
-    fetchTechs();
   }, []);
 
   // Handle Next Service Date Auto-calculation
@@ -184,12 +171,7 @@ const CreateJobCard: React.FC = () => {
 
 
 
-  // Job status options
-  const jobStatusOptions = [
-    'Pending',
-    'On Process',
-    'Done'
-  ];
+
 
   // Form validation
   const {

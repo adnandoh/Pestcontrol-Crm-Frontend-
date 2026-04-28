@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import { 
   Button, 
-  Pagination, 
-  ConfirmationModal
+  Pagination
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
