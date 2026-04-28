@@ -5,8 +5,7 @@ import {
   Edit,
   Search,
   CheckCircle,
-  Ban,
-  XCircle
+  Ban
 } from 'lucide-react';
 import {
   Button,
