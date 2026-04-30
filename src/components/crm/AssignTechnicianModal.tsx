@@ -155,7 +155,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                             {(tech.service_area || tech.city) && (
                               <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
                                 <MapPin className="h-3 w-3" />
-                                {tech.service_area || tech.city}
+                                {tech.service_area || ''}{tech.service_area && tech.city ? ' - ' : ''}{tech.city || ''}
                               </span>
                             )}
 
