@@ -303,7 +303,7 @@ export const jobCardValidationRules: ValidationRules = {
     }
   },
   removal_remarks: {
-    custom: (value, formData) => {
+    custom: (_value, _formData) => {
       // Logic: if status is Pending but it WAS On Process (this is hard to know here without previous status)
       // Actually, let's just make it mandatory if status is Pending and a technician IS selected?
       // No, that's not right. 
