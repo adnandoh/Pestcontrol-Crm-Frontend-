@@ -5,7 +5,9 @@ import {
   Edit,
   Search,
   CheckCircle,
-  Ban
+  Ban,
+  ChevronDown,
+  UserMinus
 } from 'lucide-react';
 import {
   Button,
@@ -46,7 +48,13 @@ const JobCards: React.FC = () => {
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [doneId, setDoneId] = useState<number | null>(null);
-  const [cancelId, setCancelId] = useState<number | null>(null);
+  const [removeTechId, setRemoveTechId] = useState<number | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelErrors, setCancelErrors] = useState<string[]>([]);
+  const [removeRemarks, setRemoveRemarks] = useState('');
+  const [removeErrors, setRemoveErrors] = useState<string[]>([]);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -273,13 +281,94 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Handle Cancel Booking
-  const handleCancelBooking = async () => {
-    if (!cancelId) return;
+  // Validate removal remarks
+  const validateRemoveRemarks = (remarks: string) => {
+    const errors: string[] = [];
+    if (!remarks.trim()) {
+      errors.push("Remarks are required");
+    } else {
+      if (remarks.trim().length < 4) {
+        errors.push("Remarks must be at least 4 characters");
+      }
+      if (!/^[a-zA-Z0-9\s]*$/.test(remarks)) {
+        errors.push("Special characters are not allowed");
+      }
+    }
+    return errors;
+  };
+
+  const handleRemoveRemarksChange = (value: string) => {
+    setRemoveRemarks(value);
+    setRemoveErrors(validateRemoveRemarks(value));
+  };
+
+  // Handle Remove Technician (Revert to Pending)
+  const handleRemoveTechnician = async () => {
+    if (!removeTechId) return;
+    
+    const errors = validateRemoveRemarks(removeRemarks);
+    if (errors.length > 0) {
+      setRemoveErrors(errors);
+      return;
+    }
+
     try {
       setLoading(true);
-      await enhancedApiService.updateJobCard(cancelId, { status: 'Cancelled' });
-      setCancelId(null);
+      await enhancedApiService.updateJobCard(removeTechId, { 
+        technician: null,
+        assigned_to: '',
+        status: 'Pending',
+        removal_remarks: removeRemarks.trim()
+      });
+      setRemoveTechId(null);
+      setRemoveRemarks('');
+      setRemoveErrors([]);
+      loadJobCards(pagination.current, filters);
+    } catch (error) {
+      console.error('Failed to remove technician:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Validate cancellation reason
+  const validateCancelReason = (reason: string) => {
+    const errors: string[] = [];
+    if (!reason.trim()) {
+      errors.push("Reason is required");
+    } else {
+      if (reason.trim().length < 4) {
+        errors.push("Reason must be at least 4 characters");
+      }
+      if (!/^[a-zA-Z0-9\s]*$/.test(reason)) {
+        errors.push("Special characters are not allowed");
+      }
+    }
+    return errors;
+  };
+
+  const handleCancelReasonChange = (value: string) => {
+    setCancelReason(value);
+    setCancelErrors(validateCancelReason(value));
+  };
+
+  // Handle Cancel Booking
+  const handleCancelBooking = async (id: number) => {
+    const errors = validateCancelReason(cancelReason);
+    if (errors.length > 0) {
+      setCancelErrors(errors);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await enhancedApiService.updateJobCard(id, { 
+        status: 'Cancelled',
+        cancellation_reason: cancelReason.trim()
+      });
+      setCancellingId(null);
+      setCancelReason('');
+      setCancelErrors([]);
       loadJobCards(pagination.current, filters);
     } catch (error) {
       console.error('Failed to cancel booking:', error);
@@ -321,9 +410,9 @@ const JobCards: React.FC = () => {
             { id: 'pending', label: 'Pending' },
             { id: 'on_process', label: 'On Process' },
             { id: 'done', label: 'Done' },
-            { id: 'cancelled', label: 'Cancelled' },
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
+            { id: 'cancelled', label: 'Cancelled' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -433,7 +522,7 @@ const JobCards: React.FC = () => {
                   <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
                 )}
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
-                <th className="px-4 py-3 text-center font-extrabold tracking-tighter">Action</th>
+                <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -464,15 +553,26 @@ const JobCards: React.FC = () => {
                 const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : '';
                 
                 return (
-                  <tr key={job.id} className={`${rowBg} hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group`}>
+                  <React.Fragment key={job.id}>
+                    <tr className={`${rowBg} hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group`}>
                     <td className="px-4 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <button 
-                          onClick={() => handleOpenAssign(job)}
-                          className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-100 w-fit transition-colors shadow-xs"
-                        >
-                          {job.id}
-                        </button>
+                      <div className="flex flex-col gap-1.5 relative">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              if (activeTab !== 'on_process') {
+                                handleOpenAssign(job);
+                              }
+                            }}
+                            className={`text-[10px] font-bold ${
+                              activeTab === 'on_process' 
+                                ? 'text-gray-500 bg-gray-100 cursor-default' 
+                                : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                            } px-1.5 py-0.5 rounded border border-blue-100 w-fit transition-colors shadow-xs`}
+                          >
+                            {job.id}
+                          </button>
+                        </div>
                         {job.commercial_type && job.commercial_type !== 'home' && (
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter ${
                             job.commercial_type === 'hotel' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
@@ -526,6 +626,14 @@ const JobCards: React.FC = () => {
                         </div>
                         <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
                         
+                        {(job.is_service_call || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
+                          <div className="mt-1">
+                            <span className="bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
+                              SERVICE CALL
+                            </span>
+                          </div>
+                        )}
+                        
                         {/* Service Tooltip */}
                         {(job.service_type?.split(',').length ?? 0) > 1 && (
                           <div className="absolute left-0 bottom-full mb-2 hidden group-hover/service:block z-50 bg-white text-gray-800 text-[11px] px-3 py-2 rounded shadow-xl border border-gray-200 pointer-events-none whitespace-nowrap leading-none ring-1 ring-black/5">
@@ -538,12 +646,18 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       {job.technician_name || job.assigned_to ? (
-                        <button 
-                          onClick={() => handleOpenAssign(job)}
-                          className="font-bold text-indigo-700 hover:text-blue-600 uppercase italic tracking-tighter text-[11px] text-left hover:underline transition-all"
-                        >
-                          {job.technician_name || job.assigned_to}
-                        </button>
+                        activeTab === 'on_process' ? (
+                          <span className="font-bold text-indigo-700 uppercase italic tracking-tighter text-[11px]">
+                            {job.technician_name || job.assigned_to}
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => handleOpenAssign(job)}
+                            className="font-bold text-indigo-700 hover:text-blue-600 uppercase italic tracking-tighter text-[11px] text-left hover:underline transition-all"
+                          >
+                            {job.technician_name || job.assigned_to}
+                          </button>
+                        )
                       ) : (
                         <button 
                           onClick={() => handleOpenAssign(job)}
@@ -577,49 +691,170 @@ const JobCards: React.FC = () => {
                       </td>
                     )}
                     <td className="px-4 py-4 text-center">
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border ${
-                        job.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
-                        job.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                        job.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-blue-50 text-blue-700 border-blue-200'
-                      }`}>
-                        {job.status}
-                      </span>
+                      <div className="flex flex-col gap-1.5 items-center">
+                        <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border ${
+                          job.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                          job.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          job.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          {job.status}
+                        </span>
+                        {job.status === 'Cancelled' && job.cancellation_reason && (
+                          <div className="max-w-[120px] text-[9px] font-bold text-red-600 bg-red-50/50 px-2 py-0.5 rounded border border-red-100 leading-tight">
+                            {job.cancellation_reason}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1.5">
-                        {(activeTab === 'pending' || activeTab === 'on_process') && (
-                          <>
-                            <button 
-                              onClick={() => setCancelId(job.id)} 
-                              className="p-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-xs border border-red-100 transition-all group/cancel"
-                              title="Cancel Booking"
-                            >
-                              <Ban className="h-3.5 w-3.5" />
-                            </button>
-                            {activeTab === 'on_process' && (
+                        {cancellingId === job.id ? (
+                          <div className="flex flex-col gap-2 min-w-[200px] animate-fade-in">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Enter reason (min 4 letters)..."
+                                value={cancelReason}
+                                onChange={(e) => handleCancelReasonChange(e.target.value)}
+                                className={`w-full px-2 py-1.5 text-[10px] border rounded outline-none font-bold ${
+                                  cancelErrors.length > 0 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                }`}
+                                autoFocus
+                              />
+                              {cancelErrors.length > 0 && (
+                                <div className="absolute left-0 top-full mt-1 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-lg z-50 animate-bounce-subtle">
+                                  {cancelErrors[0]}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
                               <button 
-                                onClick={() => setDoneId(job.id)} 
-                                className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
-                                title="Mark as Done"
+                                onClick={() => handleCancelBooking(job.id)}
+                                disabled={cancelErrors.length > 0 || !cancelReason.trim()}
+                                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white text-[9px] font-black py-1.5 rounded uppercase transition-colors shadow-sm"
                               >
-                                <CheckCircle className="h-3.5 w-3.5" />
+                                Confirm Cancel
                               </button>
+                              <button 
+                                onClick={() => {
+                                  setCancellingId(null);
+                                  setCancelReason('');
+                                  setCancelErrors([]);
+                                }}
+                                className="px-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[9px] font-bold py-1.5 rounded uppercase"
+                              >
+                                X
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {(activeTab === 'pending' || activeTab === 'on_process') && (
+                              <>
+                                <button 
+                                  onClick={() => {
+                                    setCancellingId(job.id);
+                                    setCancelReason('');
+                                    setCancelErrors([]);
+                                  }} 
+                                  className="p-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-xs border border-red-100 transition-all group/cancel"
+                                  title="Cancel Booking"
+                                >
+                                  <Ban className="h-3.5 w-3.5" />
+                                </button>
+                                {activeTab === 'on_process' && (
+                                  <>
+                                    <button 
+                                      onClick={() => setRemoveTechId(job.id)} 
+                                      className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white rounded shadow-xs border border-amber-100 transition-all group/remove"
+                                      title="Remove Technician (Back to Pending)"
+                                    >
+                                      <UserMinus className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => setDoneId(job.id)} 
+                                      className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
+                                      title="Mark as Done"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </>
                             )}
+                            <button 
+                              onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
+                              className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
+                              title="Edit Booking"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
                           </>
                         )}
-                        <button 
-                          onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
-                          className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
-                          title="Edit Booking"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </button>
                       </div>
                     </td>
+                    <td className="px-2 py-4">
+                      {(job.cancellation_reason || job.removal_remarks) && (
+                        <button
+                          onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
+                          className="p-1 hover:bg-gray-100 text-gray-400 rounded transition-all"
+                        >
+                          <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${expandedId === job.id ? 'rotate-180 text-blue-600' : ''}`} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
-                );
-              })}
+                  {expandedId === job.id && (
+                    <tr className="animate-fade-in bg-[#fcfdfe]">
+                      <td colSpan={activeTab === 'upcoming_services' ? 9 : 8} className="p-0">
+                        <div className="px-12 py-6 border-b border-gray-100">
+                          <div className="max-w-4xl border border-[#e2e8f0] rounded-sm overflow-hidden shadow-sm">
+                            {job.cancellation_reason && (
+                              <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 group/row">
+                                <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
+                                  Cancelled Reason
+                                </div>
+                                <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white italic">
+                                  "{job.cancellation_reason}"
+                                </div>
+                              </div>
+                            )}
+                            {job.removal_remarks && (
+                              <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 group/row">
+                                <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
+                                  Removal Remarks
+                                </div>
+                                <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white italic text-amber-700">
+                                  "{job.removal_remarks}"
+                                </div>
+                              </div>
+                            )}
+                            {/* Placeholders for future expanded data as per user's screenshot style */}
+                            <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 opacity-40">
+                              <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
+                                Technician Name
+                              </div>
+                              <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white">
+                                {job.technician_name || '-'}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 opacity-40">
+                              <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
+                                Assigned By
+                              </div>
+                              <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white">
+                                {job.assigned_to || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
             </tbody>
           </table>
         </div>
@@ -651,6 +886,43 @@ const JobCards: React.FC = () => {
         }}
       />
       <ConfirmationModal
+        isOpen={!!removeTechId}
+        onClose={() => {
+          setRemoveTechId(null);
+          setRemoveRemarks('');
+          setRemoveErrors([]);
+        }}
+        onConfirm={handleRemoveTechnician}
+        title="Remove Technician"
+        message="Are you sure you want to remove the technician from this booking? It will be moved back to the Pending tab."
+        confirmText="Yes, Remove"
+        type="danger"
+        isConfirmDisabled={!removeRemarks.trim() || removeErrors.length > 0}
+      >
+        <div className="mt-4 space-y-2">
+          <label className="text-[11px] font-black text-gray-700 uppercase tracking-widest block">
+            Removal Remarks *
+          </label>
+          <textarea
+            value={removeRemarks}
+            onChange={(e) => handleRemoveRemarksChange(e.target.value)}
+            placeholder="Why are you removing the technician? (min 4 chars)"
+            className={`w-full p-3 text-sm border rounded-lg outline-none transition-all ${
+              removeErrors.length > 0 
+                ? 'border-red-500 bg-red-50 focus:ring-1 focus:ring-red-200' 
+                : 'border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+            }`}
+            rows={3}
+            autoFocus
+          />
+          {removeErrors.length > 0 && (
+            <p className="text-[10px] font-black text-red-500 uppercase animate-fade-in">
+              {removeErrors[0]}
+            </p>
+          )}
+        </div>
+      </ConfirmationModal>
+      <ConfirmationModal
         isOpen={!!doneId}
         onClose={() => setDoneId(null)}
         onConfirm={handleMarkAsDone}
@@ -658,15 +930,6 @@ const JobCards: React.FC = () => {
         message="Are you sure you want to mark this booking as DONE? It will be moved to the Done tab."
         confirmText="Yes, Done"
         type="info"
-      />
-      <ConfirmationModal
-        isOpen={!!cancelId}
-        onClose={() => setCancelId(null)}
-        onConfirm={handleCancelBooking}
-        title="Cancel Booking"
-        message="Are you sure you want to cancel this booking? This action will move the booking to the Cancelled tab."
-        confirmText="Yes, Cancel"
-        type="danger"
       />
     </div>
   );

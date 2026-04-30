@@ -694,7 +694,9 @@ class EnhancedApiService {
       contract_duration: data.contract_duration || null,
       reference: data.reference || '',
       notes: data.notes || '',
-      extra_notes: data.extra_notes || ''
+      extra_notes: data.extra_notes || '',
+      cancellation_reason: data.cancellation_reason || '',
+      removal_remarks: data.removal_remarks || ''
     };
 
     // Explicitly ensure no 'id' is sent during creation
@@ -760,6 +762,8 @@ class EnhancedApiService {
     if (data.reference !== undefined) requestData.reference = data.reference;
     if (data.notes !== undefined) requestData.notes = data.notes;
     if (data.extra_notes !== undefined) requestData.extra_notes = data.extra_notes;
+    if (data.cancellation_reason !== undefined) requestData.cancellation_reason = data.cancellation_reason;
+    if (data.removal_remarks !== undefined) requestData.removal_remarks = data.removal_remarks;
 
 
 

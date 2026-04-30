@@ -26,7 +26,12 @@ const EditJobCard: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   
-  // Pricing selector states
+  const {
+    errors,
+    validateForm,
+    clearError,
+    scrollToFirstError,
+  } = useFormValidation(jobCardValidationRules);
   const [pricingService, setPricingService] = useState('');
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
@@ -59,16 +64,12 @@ const EditJobCard: React.FC = () => {
     contract_duration: '',
     notes: '',
     commercial_type: 'home',
-    is_price_estimated: false
+    is_price_estimated: false,
+    cancellation_reason: ''
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-  const {
-    validateForm,
-    clearError,
-    scrollToFirstError,
-  } = useFormValidation(jobCardValidationRules);
 
   // Handle pricing calculation
   useEffect(() => {
@@ -145,7 +146,8 @@ const EditJobCard: React.FC = () => {
           extra_notes: jobData.extra_notes || '',
           contract_duration: jobData.contract_duration || '',
           commercial_type: jobData.commercial_type || 'home',
-          is_price_estimated: jobData.is_price_estimated || false
+          is_price_estimated: jobData.is_price_estimated || false,
+          cancellation_reason: jobData.cancellation_reason || ''
         };
         
         setFormData(initialForm);
@@ -277,11 +279,11 @@ const EditJobCard: React.FC = () => {
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State</label>
-                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} error={errors.state} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City</label>
-                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} error={errors.city} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
@@ -295,8 +297,9 @@ const EditJobCard: React.FC = () => {
                       is_price_estimated: val !== 'home',
                       price: val !== 'home' ? '0.00' : prev.price
                     }));
+                    clearError('commercial_type');
                   }}
-                  className="w-full h-10 px-3 text-sm font-bold border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  className={`w-full h-10 px-3 text-sm font-bold border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.commercial_type ? 'border-red-500' : 'border-gray-300'}`}
                 >
                   <option value="home">Home (Residential)</option>
                   <option value="hotel">Hotel</option>
@@ -305,6 +308,7 @@ const EditJobCard: React.FC = () => {
                   <option value="office">Office</option>
                   <option value="other">Other Commercial</option>
                 </select>
+                {errors.commercial_type && <p className="mt-1 text-xs text-red-600">{errors.commercial_type}</p>}
                 {formData.commercial_type !== 'home' && (
                   <p className="text-[10px] text-blue-600 font-bold mt-1 animate-fade-in flex items-center gap-1">
                     👉 Final price will be decided after technician visit.
@@ -312,9 +316,51 @@ const EditJobCard: React.FC = () => {
                 )}
               </div>
 
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Status *</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className={`w-full h-10 px-3 text-sm font-bold border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.status ? 'border-red-500' : 'border-gray-300'}`}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="On Process">On Process</option>
+                  <option value="Done">Done</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+                {errors.status && <p className="mt-1 text-xs text-red-600">{errors.status}</p>}
+              </div>
+
+              {formData.status === 'Cancelled' && (
+                <div className="lg:col-span-2">
+                  <label className="text-[13px] font-bold text-red-700 mb-1.5 block">Cancellation Reason *</label>
+                  <Input 
+                    value={formData.cancellation_reason || ''} 
+                    onChange={(e) => handleInputChange('cancellation_reason', e.target.value)} 
+                    error={errors.cancellation_reason}
+                    className="h-10 text-sm font-medium text-gray-900 shadow-sm border-red-200 bg-red-50/30" 
+                    placeholder="Enter reason for cancellation (min 4 chars)"
+                    required 
+                  />
+                </div>
+              )}
+
+              {formData.status === 'Pending' && formData.removal_remarks && (
+                <div className="lg:col-span-2">
+                  <label className="text-[13px] font-bold text-amber-700 mb-1.5 block">Removal Remarks</label>
+                  <Input 
+                    value={formData.removal_remarks || ''} 
+                    onChange={(e) => handleInputChange('removal_remarks', e.target.value)} 
+                    error={errors.removal_remarks}
+                    className="h-10 text-sm font-medium text-gray-900 shadow-sm border-amber-200 bg-amber-50/30" 
+                    placeholder="Remarks for technician removal"
+                  />
+                </div>
+              )}
+
               <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
-                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
+                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
               </div>
             </div>
           </div>

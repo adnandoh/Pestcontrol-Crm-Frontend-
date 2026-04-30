@@ -7,7 +7,8 @@ import {
   Edit2,
   XCircle,
   Hash,
-  Contact2
+  Contact2,
+  MapPin
 } from 'lucide-react';
 import {
   Button,
@@ -32,6 +33,8 @@ const Technicians: React.FC = () => {
     mobile: '',
     age: '',
     alternative_mobile: '',
+    service_area: '',
+    city: '',
     is_active: true
   });
 
@@ -90,6 +93,8 @@ const Technicians: React.FC = () => {
       mobile: '',
       age: '',
       alternative_mobile: '',
+      service_area: '',
+      city: '',
       is_active: true
     });
     setEditingTech(null);
@@ -102,6 +107,8 @@ const Technicians: React.FC = () => {
       mobile: tech.mobile,
       age: tech.age?.toString() || '',
       alternative_mobile: tech.alternative_mobile || '',
+      service_area: tech.service_area || '',
+      city: tech.city || '',
       is_active: tech.is_active
     });
     setIsModalOpen(true);
@@ -185,7 +192,15 @@ const Technicians: React.FC = () => {
                       {tech.name.charAt(0).toUpperCase()}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 font-bold text-gray-800 uppercase">{tech.name}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="font-bold text-gray-800 uppercase">{tech.name}</div>
+                    {(tech.service_area || tech.city) && (
+                      <div className="text-[9px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
+                        <MapPin className="h-2.5 w-2.5" />
+                        {tech.service_area} {tech.city && `- ${tech.city}`}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-gray-600">{tech.mobile}</div>
                     {tech.alternative_mobile && <div className="text-[9px] font-bold text-gray-400 uppercase">Alt: {tech.alternative_mobile}</div>}
@@ -287,6 +302,35 @@ const Technicians: React.FC = () => {
                       placeholder="ENTER SECONDARY NUMBER"
                       className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">Service Area</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                      <Input
+                        name="service_area"
+                        value={formData.service_area}
+                        onChange={handleInputChange}
+                        placeholder="E.G. BANDRA"
+                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500 uppercase"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">City</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                      <Input
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        placeholder="E.G. MUMBAI"
+                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500 uppercase"
+                      />
+                    </div>
                   </div>
                 </div>
 

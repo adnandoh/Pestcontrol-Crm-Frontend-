@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import { Button } from '../ui';
@@ -143,13 +143,29 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                           {tech.name}
                         </h4>
                         <div className="flex items-center gap-2">
-                           <span className={cn(
-                             "text-[10px] font-bold flex items-center gap-1",
-                             workload > 0 ? "text-blue-600" : "text-gray-400"
-                           )}>
-                             <Briefcase className="h-3 w-3" /> 
-                             {workload} Active Jobs
-                           </span>
+                         <div className="flex flex-col gap-1.5">
+                            <span className={cn(
+                              "text-[10px] font-bold flex items-center gap-1",
+                              workload > 0 ? "text-blue-600" : "text-gray-400"
+                            )}>
+                              <Briefcase className="h-3 w-3" /> 
+                              {workload} Active Jobs
+                            </span>
+
+                            {(tech.service_area || tech.city) && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
+                                <MapPin className="h-3 w-3" />
+                                {tech.service_area || tech.city}
+                              </span>
+                            )}
+
+                            {tech.last_active && (
+                              <span className="text-[9px] font-bold text-gray-400 flex items-center gap-1 italic">
+                                <Clock className="h-3 w-3" />
+                                Active {new Date(tech.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                         </div>
                         </div>
 
                         {/* Detailed Active Jobs */}

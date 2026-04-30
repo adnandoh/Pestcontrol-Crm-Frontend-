@@ -12,6 +12,8 @@ interface ConfirmationModalProps {
   cancelText?: string;
   type?: 'warning' | 'danger' | 'info';
   isLoading?: boolean;
+  isConfirmDisabled?: boolean;
+  children?: React.ReactNode;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -23,7 +25,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   type = 'warning',
-  isLoading = false
+  isLoading = false,
+  isConfirmDisabled = false,
+  children
 }) => {
   if (!isOpen) return null;
 
@@ -79,6 +83,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               </p>
             </div>
 
+            {children && (
+              <div className="mb-6">
+                {children}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex items-center justify-end space-x-3">
               <Button
@@ -91,7 +101,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               <Button
                 variant={getConfirmButtonVariant() as any}
                 onClick={onConfirm}
-                disabled={isLoading}
+                disabled={isLoading || isConfirmDisabled}
                 className="flex items-center"
               >
                 {isLoading ? (

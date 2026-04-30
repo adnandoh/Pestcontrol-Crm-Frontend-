@@ -25,6 +25,9 @@ export interface Technician {
   age?: number;
   alternative_mobile?: string;
   is_active: boolean;
+  service_area?: string;
+  city?: string;
+  last_active?: string;
   active_jobs?: number;
   active_job_details?: {
     id: number;
@@ -98,6 +101,7 @@ export interface JobCard {
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
   contract_duration?: string;
   is_paused?: boolean;
+  is_service_call?: boolean;
   status: 'Pending' | 'On Process' | 'Done' | 'Cancelled';
   payment_status?: string;
   service_type: string;
@@ -117,6 +121,8 @@ export interface JobCard {
   parent_job?: number;
   notes?: string;
   extra_notes?: string;
+  cancellation_reason?: string;
+  removal_remarks?: string;
   created_at: string;
   updated_at: string;
 }
@@ -269,6 +275,8 @@ export interface JobCardFormData {
   reference?: string;
   notes?: string;
   extra_notes?: string;
+  cancellation_reason?: string;
+  removal_remarks?: string;
 }
 
 // Filter types

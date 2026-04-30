@@ -6,7 +6,7 @@ export interface ValidationRule {
   minLength?: number;
   maxLength?: number;
   pattern?: RegExp;
-  custom?: (value: any) => string | null;
+  custom?: (value: any, formData?: any) => string | null;
 }
 
 // Validation rules configuration
@@ -73,7 +73,8 @@ export const useFormValidation = (rules: ValidationRules): UseFormValidationRetu
 
     // Custom validation (takes precedence)
     if (rule.custom) {
-      const customError = rule.custom(value);
+      // Pass both value and full formData if provided
+      const customError = rule.custom(value, (rules as any).__formData);
       if (customError) return customError;
     }
 
@@ -102,11 +103,14 @@ export const useFormValidation = (rules: ValidationRules): UseFormValidationRetu
     const newErrors: ValidationErrors = {};
     
     Object.keys(rules).forEach(fieldName => {
+      // Temporarily attach formData to rules for custom validators
+      (rules as any).__formData = formData;
       const error = validateField(fieldName, formData[fieldName]);
       if (error) {
         newErrors[fieldName] = error;
       }
     });
+    delete (rules as any).__formData;
 
     setErrors(newErrors);
     errorFieldsRef.current = new Set(Object.keys(newErrors));
@@ -279,6 +283,42 @@ export const jobCardValidationRules: ValidationRules = {
     required: true,
     custom: (value) => {
       if (!value?.trim()) return 'Service type is required';
+      return null;
+    }
+  },
+  cancellation_reason: {
+    custom: (value, formData) => {
+      if (formData?.status === 'Cancelled') {
+        if (!value || !value.trim()) {
+          return 'Cancellation reason is required';
+        }
+        if (value.trim().length < 4) {
+          return 'Reason must be at least 4 characters';
+        }
+        if (!/^[a-zA-Z0-9\s]*$/.test(value)) {
+          return 'Special characters are not allowed';
+        }
+      }
+      return null;
+    }
+  },
+  removal_remarks: {
+    custom: (value, formData) => {
+      // Logic: if status is Pending but it WAS On Process (this is hard to know here without previous status)
+      // Actually, let's just make it mandatory if status is Pending and a technician IS selected?
+      // No, that's not right. 
+      // Let's just make it mandatory if status is Pending and removal_remarks is already present or being added.
+      
+      // Better: In EditJobCard, if status is Pending, we check if technician was assigned.
+      // But we don't have previous state easily here.
+      
+      // Let's just follow the same pattern as cancellation_reason but for Pending status.
+      // But only if we are MOVING to Pending from something else?
+      
+      // The backend handles the strict enforcement. In frontend, we'll just check if status is Pending.
+      // Wait, if I create a new job, status is Pending. I shouldn't require remarks.
+      
+      // So we'll only enforce it in JobCards.tsx for now, OR if we can detect the transition in EditJobCard.
       return null;
     }
   }
