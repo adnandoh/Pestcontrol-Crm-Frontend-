@@ -34,10 +34,14 @@ const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
 
   // Background ping to prevent Railway from sleeping (ISP/DNS issue mitigation)
+  const baseUrl = (import.meta.env.PROD || import.meta.env.VITE_IS_RAILWAY) 
+    ? 'https://api.vacationbna.site/api'
+    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
   useEffect(() => {
     const pingBackend = async () => {
       try {
-        await axios.get(`${apiConfig.baseUrl}${API_ENDPOINTS.HEALTH}`);
+        await axios.get(`${baseUrl}/v1/health/`);
         console.log('💓 Backend keep-alive ping successful');
       } catch (error) {
         console.warn('⚠️ Backend keep-alive ping failed (may be sleeping or network issue)');

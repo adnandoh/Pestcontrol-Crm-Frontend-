@@ -16,7 +16,7 @@ const isRailway = import.meta.env.VITE_RAILWAY_ENVIRONMENT === 'production';
 // API Configuration based on environment
 export const apiConfig: ApiConfig = {
   baseUrl: isProduction || isRailway 
-    ? 'https://pestcontrol-backend-production.up.railway.app/api'
+    ? 'https://api.vacationbna.site/api'
     : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
   timeout: 30000, // 30 seconds
   retryAttempts: 3,
