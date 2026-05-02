@@ -2,6 +2,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useEffect } from 'react';
+import axios from 'axios';
 import { Layout } from './components/layout';
 import { ProtectedRoute } from './components/auth';
 import Login from './pages/Login';
@@ -26,9 +28,6 @@ const queryClient = new QueryClient({
   },
 });
 
-import { useEffect } from 'react';
-import axios from 'axios';
-import { apiConfig, API_ENDPOINTS } from './config/api.config';
 
 const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
