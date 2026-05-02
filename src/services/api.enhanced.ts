@@ -80,6 +80,7 @@ class EnhancedApiService {
       timeout: apiConfig.timeout,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     });
 

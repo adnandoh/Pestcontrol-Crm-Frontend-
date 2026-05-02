@@ -26,8 +26,31 @@ const queryClient = new QueryClient({
   },
 });
 
+import { useEffect } from 'react';
+import axios from 'axios';
+import { apiConfig, API_ENDPOINTS } from './config/api.config';
+
 const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
+
+  // Background ping to prevent Railway from sleeping (ISP/DNS issue mitigation)
+  useEffect(() => {
+    const pingBackend = async () => {
+      try {
+        await axios.get(`${apiConfig.baseUrl}${API_ENDPOINTS.HEALTH}`);
+        console.log('💓 Backend keep-alive ping successful');
+      } catch (error) {
+        console.warn('⚠️ Backend keep-alive ping failed (may be sleeping or network issue)');
+      }
+    };
+
+    // Ping once on mount
+    pingBackend();
+
+    // Then ping every 4 minutes (Railway sleeps after ~5-10 mins of inactivity)
+    const interval = setInterval(pingBackend, 4 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Router>
