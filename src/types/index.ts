@@ -22,6 +22,7 @@ export interface Technician {
   id: number;
   name: string;
   mobile: string;
+  phone?: string;
   age?: number;
   alternative_mobile?: string;
   is_active: boolean;
