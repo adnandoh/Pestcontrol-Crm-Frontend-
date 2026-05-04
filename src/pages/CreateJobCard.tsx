@@ -588,7 +588,8 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               {/* Next Service Date Field */}
-              {(pricingService.toLowerCase().includes('cockroach') || pricingService.toLowerCase().includes('bed bug')) && (
+              {((pricingService.toLowerCase().includes('cockroach') && formData.service_category === 'AMC') || 
+                pricingService.toLowerCase().includes('bed bug')) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
                   <Input

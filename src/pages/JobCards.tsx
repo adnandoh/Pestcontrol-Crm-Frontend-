@@ -122,6 +122,12 @@ const JobCards: React.FC = () => {
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
         params.from = tomorrowStr;
         params.to = tomorrowStr;
+      } else if (currentFilters.date_preset === 'week') {
+        const today = new Date();
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        params.from = today.toISOString().split('T')[0];
+        params.to = nextWeek.toISOString().split('T')[0];
       } else if (currentFilters.date_preset === 'custom' && currentFilters.from && currentFilters.to) {
         params.from = currentFilters.from;
         params.to = currentFilters.to;
@@ -499,6 +505,30 @@ const JobCards: React.FC = () => {
         </div>
 
         <div className="flex gap-2 h-8">
+           <button 
+             onClick={() => handleFilterChange('date_preset', 'today')}
+             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
+               filters.date_preset === 'today' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+             }`}
+           >
+             Today
+           </button>
+           <button 
+             onClick={() => handleFilterChange('date_preset', 'tomorrow')}
+             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
+               filters.date_preset === 'tomorrow' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+             }`}
+           >
+             Tomorrow
+           </button>
+           <button 
+             onClick={() => handleFilterChange('date_preset', 'week')}
+             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
+               filters.date_preset === 'week' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+             }`}
+           >
+             Week
+           </button>
            <button onClick={clearFilters} className="px-4 border border-gray-300 hover:bg-gray-50 text-gray-500 text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
            <button onClick={handleSearchSubmit} className="px-5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded shadow-sm transition-colors uppercase flex items-center gap-1.5">
              <Search className="h-3 w-3" /> Search
@@ -518,6 +548,9 @@ const JobCards: React.FC = () => {
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Schedule</th>
+                {(activeTab === 'pending' || activeTab === 'on_process') && (
+                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created</th>
+                )}
                 {activeTab === 'upcoming_services' && (
                   <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
                 )}
@@ -680,6 +713,15 @@ const JobCards: React.FC = () => {
                         )}
                       </div>
                     </td>
+                    {(activeTab === 'pending' || activeTab === 'on_process') && (
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-500 text-[10px]">
+                            {job.created_at || '---'}
+                          </span>
+                        </div>
+                      </td>
+                    )}
                     {activeTab === 'upcoming_services' && (
                       <td className="px-4 py-4 bg-blue-50/30">
                         <div className="flex flex-col">

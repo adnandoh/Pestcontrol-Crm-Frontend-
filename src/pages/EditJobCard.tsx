@@ -161,7 +161,8 @@ const EditJobCard: React.FC = () => {
         if (jobData.bhk_size) setPricingArea(jobData.bhk_size);
         
         let inferredType = jobData.service_category || '';
-        if (inferredType === 'One-Time Service') inferredType = 'One-Time';
+        if (inferredType === 'One-Time Service') inferredType = 'One Time Service';
+        if (inferredType === 'AMC') inferredType = 'AMC 3 Services';
         setPricingType(inferredType);
         
         const services = jobData.service_type ? jobData.service_type.split(', ') : [];
@@ -518,7 +519,8 @@ const EditJobCard: React.FC = () => {
               </div>
 
               {/* Next Service Date Field */}
-              {(pricingService.toLowerCase().includes('cockroach') || pricingService.toLowerCase().includes('bed bug')) && (
+              {((pricingService.toLowerCase().includes('cockroach') && formData.service_category === 'AMC') || 
+                pricingService.toLowerCase().includes('bed bug')) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
                   <Input

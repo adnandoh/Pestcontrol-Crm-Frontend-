@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock } from 'lucide-react';
+import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import { Button } from '../ui';
@@ -150,6 +150,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                             )}>
                               <Briefcase className="h-3 w-3" /> 
                               {workload} Active Jobs
+                            </span>
+
+                            <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {tech.mobile || tech.phone || '---'}
                             </span>
 
                             {(tech.service_area || tech.city) && (
