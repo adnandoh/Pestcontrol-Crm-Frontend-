@@ -820,6 +820,17 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async deleteJobCard(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.JOBCARDS}${id}/`)
+    );
+
+    // Invalidate related caches
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
+    apiCache.deletePattern(CACHE_KEYS.DASHBOARD_STATS);
+  }
+
   async checkClientExists(mobile: string): Promise<{ exists: boolean; client?: Client }> {
     const response = await this.retryRequest(() =>
       this.api.get<{ exists: boolean; client?: Client }>(`${API_ENDPOINTS.DASHBOARD}check-client/`, {

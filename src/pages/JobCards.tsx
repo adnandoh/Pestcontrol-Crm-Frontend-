@@ -6,6 +6,7 @@ import {
   Search,
   CheckCircle,
   Ban,
+  Trash2,
   ChevronDown,
   UserMinus,
   CheckSquare
@@ -56,6 +57,7 @@ const JobCards: React.FC = () => {
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [doneId, setDoneId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [removeTechId, setRemoveTechId] = useState<number | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -326,6 +328,23 @@ const JobCards: React.FC = () => {
       loadJobCards(pagination.current, filters);
     } catch (error) {
       console.error('Failed to mark as done:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Delete
+  const handleDeleteJobCard = async () => {
+    if (!deleteId) return;
+    try {
+      setLoading(true);
+      await enhancedApiService.deleteJobCard(deleteId);
+      setDeleteId(null);
+      alert('Booking deleted successfully');
+      loadJobCards(pagination.current, filters);
+    } catch (error) {
+      console.error('Failed to delete booking:', error);
+      alert('Failed to delete booking');
     } finally {
       setLoading(false);
     }
@@ -886,26 +905,35 @@ const JobCards: React.FC = () => {
                                 >
                                   <Ban className="h-3.5 w-3.5" />
                                 </button>
+                                
+                                <button 
+                                  onClick={() => setDoneId(job.id)} 
+                                  className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
+                                  title="Mark as Done"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                </button>
+
                                 {activeTab === 'on_process' && (
-                                  <>
-                                    <button 
-                                      onClick={() => setRemoveTechId(job.id)} 
-                                      className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white rounded shadow-xs border border-amber-100 transition-all group/remove"
-                                      title="Remove Technician (Back to Pending)"
-                                    >
-                                      <UserMinus className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button 
-                                      onClick={() => setDoneId(job.id)} 
-                                      className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
-                                      title="Mark as Done"
-                                    >
-                                      <CheckCircle className="h-3.5 w-3.5" />
-                                    </button>
-                                  </>
+                                  <button 
+                                    onClick={() => setRemoveTechId(job.id)} 
+                                    className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white rounded shadow-xs border border-amber-100 transition-all group/remove"
+                                    title="Remove Technician (Back to Pending)"
+                                  >
+                                    <UserMinus className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
                               </>
                             )}
+                            
+                            <button 
+                              onClick={() => setDeleteId(job.id)} 
+                              className="p-2 bg-red-50 hover:bg-red-900 text-red-700 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
+                              title="Delete Permanently"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+
                             {activeTab === 'reminders' && (
                               <button 
                                 onClick={() => handleMarkReminderDone(job.id)}
@@ -1062,6 +1090,15 @@ const JobCards: React.FC = () => {
         message="Are you sure you want to mark this booking as DONE? It will be moved to the Done tab."
         confirmText="Yes, Done"
         type="info"
+      />
+      <ConfirmationModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDeleteJobCard}
+        title="Delete Booking Permanently"
+        message="Are you sure you want to DELETE this booking forever? This action cannot be undone and the record will be removed from all tabs."
+        confirmText="Yes, Delete Permanently"
+        type="danger"
       />
     </div>
   );
