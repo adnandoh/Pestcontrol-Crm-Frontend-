@@ -275,6 +275,9 @@ const CreateJobCard: React.FC = () => {
     e.preventDefault();
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
+      console.error('Validation errors:', validationErrors);
+      const errorFields = Object.keys(validationErrors).map(field => field.replace('_', ' ')).join(', ');
+      alert(`Please fix the following errors: ${errorFields}`);
       setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
@@ -288,6 +291,8 @@ const CreateJobCard: React.FC = () => {
       await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
       navigate('/jobcards');
     } catch (err: any) {
+      console.error('Submission error:', err);
+      alert(err.message || 'Failed to create booking. Please check all fields.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -365,26 +370,32 @@ const CreateJobCard: React.FC = () => {
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
                 <select
+                  id="state"
+                  name="state"
                   value={formData.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.state ? 'border-red-500' : 'border-gray-300'}`}
                 >
                   <option value="">Select State</option>
                   {stateOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+                {errors.state && <p className="mt-1 text-xs text-red-600">{errors.state}</p>}
               </div>
 
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
                 <select
+                  id="city"
+                  name="city"
                   value={formData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
                   disabled={!formData.state}
                 >
                   <option value="">Select City</option>
                   {jobCityOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+                {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city}</p>}
               </div>
 
               <div className="lg:col-span-1">
@@ -418,14 +429,7 @@ const CreateJobCard: React.FC = () => {
 
               <div className="lg:col-span-3">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
-                <Input
-                  name="client_address"
-                  value={formData.client_address}
-                  onChange={(e) => handleInputChange('client_address', e.target.value)}
-                  placeholder="Flat No, Building Name, Landmark, Area..."
-                  className="h-10 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
-                  required
-                />
+                <Input id="client_address" name="client_address" value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
               </div>
             </div>
           </div>
@@ -567,13 +571,7 @@ const CreateJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input
-                  type="date"
-                  value={formData.schedule_datetime}
-                  onChange={(e) => handleInputChange('schedule_datetime', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
-                  required
-                />
+                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
               </div>
 
               <div>
@@ -657,7 +655,7 @@ const CreateJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Date</label>
                 <Input
                   type="date"
-                  value={formData.reminder_date}
+                  value={formData.reminder_date || ''}
                   onChange={(e) => handleInputChange('reminder_date', e.target.value)}
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                 />

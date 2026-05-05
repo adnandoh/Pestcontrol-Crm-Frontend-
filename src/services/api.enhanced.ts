@@ -405,16 +405,25 @@ class EnhancedApiService {
   }
 
   async createCRMInquiry(data: CRMInquiryFormData): Promise<CRMInquiry> {
+    const requestData = {
+      ...data,
+      reminder_date: data.reminder_date || null,
+      reminder_note: data.reminder_note || null
+    };
     const result = await this.retryRequest(() =>
-      this.api.post<CRMInquiry>(API_ENDPOINTS.CRM_INQUIRIES, data)
+      this.api.post<CRMInquiry>(API_ENDPOINTS.CRM_INQUIRIES, requestData)
     );
     apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
     return result.data;
   }
 
   async updateCRMInquiry(id: number, data: Partial<CRMInquiryFormData>): Promise<CRMInquiry> {
+    const requestData = { ...data };
+    if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date || null;
+    if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note || null;
+
     const result = await this.retryRequest(() =>
-      this.api.patch<CRMInquiry>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`, data)
+      this.api.patch<CRMInquiry>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`, requestData)
     );
     apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
     apiCache.deletePattern(`${API_ENDPOINTS.CRM_INQUIRIES}${id}`);
@@ -572,8 +581,8 @@ class EnhancedApiService {
         is_paused: jobCardData.is_paused || false,
         service_type: jobCardData.service_type || '',
         schedule_datetime: jobCardData.schedule_datetime || '',
-        reminder_date: jobCardData.reminder_date || '',
-        reminder_note: jobCardData.reminder_note || '',
+        reminder_date: jobCardData.reminder_date || null,
+        reminder_note: jobCardData.reminder_note || null,
         status: jobCardData.status || 'Enquiry',
         payment_status: jobCardData.payment_status || 'Unpaid',
         price: (() => {
@@ -700,8 +709,8 @@ class EnhancedApiService {
       extra_notes: data.extra_notes || '',
       cancellation_reason: data.cancellation_reason || '',
       removal_remarks: data.removal_remarks || '',
-      reminder_date: data.reminder_date || '',
-      reminder_note: data.reminder_note || '',
+      reminder_date: data.reminder_date || null,
+      reminder_note: data.reminder_note || null,
       is_reminder_done: data.is_reminder_done || false
     };
 
@@ -770,8 +779,8 @@ class EnhancedApiService {
     if (data.extra_notes !== undefined) requestData.extra_notes = data.extra_notes;
     if (data.cancellation_reason !== undefined) requestData.cancellation_reason = data.cancellation_reason;
     if (data.removal_remarks !== undefined) requestData.removal_remarks = data.removal_remarks;
-    if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date;
-    if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note;
+    if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date || null;
+    if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note || null;
     if (data.is_reminder_done !== undefined) requestData.is_reminder_done = data.is_reminder_done;
 
 

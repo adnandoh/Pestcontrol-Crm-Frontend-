@@ -149,7 +149,7 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                    <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Date</label>
                    <Input
                      type="date"
-                     value={formData.reminder_date}
+                     value={formData.reminder_date || ''}
                      onChange={(e) => setFormData({ ...formData, reminder_date: e.target.value })}
                      className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
                    />
@@ -157,7 +157,7 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                  <div className="space-y-1">
                    <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Note</label>
                    <Input
-                     value={formData.reminder_note}
+                     value={formData.reminder_note || ''}
                      onChange={(e) => setFormData({ ...formData, reminder_note: e.target.value })}
                      placeholder="Call client on Friday..."
                      className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"

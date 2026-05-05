@@ -56,8 +56,8 @@ export interface Inquiry {
   area?: string;
   status: 'New' | 'Contacted' | 'Converted' | 'Closed';
   is_read?: boolean;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
   created_at: string;
   updated_at: string;
@@ -78,8 +78,8 @@ export interface CRMInquiry {
   status: CRMInquiryStatus;
   created_by?: number;
   created_by_name?: string;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
   created_at: string;
   updated_at: string;
@@ -130,8 +130,8 @@ export interface JobCard {
   extra_notes?: string;
   cancellation_reason?: string;
   removal_remarks?: string;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
   created_at: string;
   updated_at: string;
@@ -238,8 +238,8 @@ export interface InquiryFormData {
   building_name?: string;
   landmark?: string;
   area?: string;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
 }
 
@@ -252,8 +252,8 @@ export interface CRMInquiryFormData {
   inquiry_date: string;
   inquiry_time: string;
   status?: CRMInquiryStatus;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
 }
 
@@ -293,8 +293,8 @@ export interface JobCardFormData {
   extra_notes?: string;
   cancellation_reason?: string;
   removal_remarks?: string;
-  reminder_date?: string;
-  reminder_note?: string;
+  reminder_date?: string | null;
+  reminder_note?: string | null;
   is_reminder_done?: boolean;
 }
 

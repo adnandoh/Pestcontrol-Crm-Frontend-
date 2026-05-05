@@ -121,7 +121,8 @@ const Inquiries: React.FC = () => {
       alert(`Successfully converted to Job Card #${jobCard.code}`);
       loadInquiries(pagination.current);
     } catch (err: any) {
-      // Error handling
+      console.error('Conversion error:', err);
+      alert(err.message || 'Failed to convert inquiry to booking.');
     }
   };
 

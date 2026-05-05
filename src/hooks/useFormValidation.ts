@@ -208,7 +208,7 @@ const getFieldDisplayName = (fieldName: string): string => {
     client_email: 'Email',
     client_city: 'City',
     client_address: 'Address',
-    schedule_date: 'Schedule date',
+    schedule_datetime: 'Schedule date',
     service_type: 'Service type',
     price: 'Price',
     next_service_date: 'Next service date',
@@ -272,7 +272,7 @@ export const jobCardValidationRules: ValidationRules = {
       return null;
     }
   },
-  schedule_date: {
+  schedule_datetime: {
     required: true,
     custom: (value) => {
       if (!value) return 'Schedule date is required';

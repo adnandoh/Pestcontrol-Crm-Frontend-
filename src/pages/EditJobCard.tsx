@@ -244,6 +244,9 @@ const EditJobCard: React.FC = () => {
     if (!id) return;
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
+      console.error('Validation errors:', validationErrors);
+      const errorFields = Object.keys(validationErrors).map(field => field.replace('_', ' ')).join(', ');
+      alert(`Please fix the following errors: ${errorFields}`);
       setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
@@ -257,6 +260,8 @@ const EditJobCard: React.FC = () => {
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
     } catch (err: any) {
+      console.error('Update error:', err);
+      alert(err.message || 'Failed to update booking. Please check all fields.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -297,11 +302,11 @@ const EditJobCard: React.FC = () => {
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State</label>
-                <Input value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} error={errors.state} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <Input id="state" name="state" value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} error={errors.state} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City</label>
-                <Input value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} error={errors.city} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <Input id="city" name="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} error={errors.city} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
@@ -378,7 +383,7 @@ const EditJobCard: React.FC = () => {
 
               <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
-                <Input value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
+                <Input id="client_address" name="client_address" value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
               </div>
             </div>
           </div>
@@ -517,7 +522,7 @@ const EditJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
+                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
@@ -567,7 +572,7 @@ const EditJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Date</label>
                 <Input
                   type="date"
-                  value={formData.reminder_date}
+                  value={formData.reminder_date || ''}
                   onChange={(e) => handleInputChange('reminder_date', e.target.value)}
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                 />
@@ -601,7 +606,7 @@ const EditJobCard: React.FC = () => {
           {/* Action Footer (Non-Sticky) */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col sm:flex-row items-center justify-end gap-3">
              <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-10 px-6 text-[13px] font-bold text-gray-600 hover:bg-gray-50 border-gray-300">Discard Changes</Button>
-             <Button type="button" onClick={handleSubmit} disabled={submitting} className="h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+             <Button type="submit" disabled={submitting} className="h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                {submitting ? 'Saving...' : 'Update Booking'}
              </Button>
           </div>
