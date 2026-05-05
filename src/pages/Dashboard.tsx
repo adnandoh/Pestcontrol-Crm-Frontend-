@@ -8,7 +8,6 @@ import {
   Briefcase,
   TrendingUp,
   DollarSign,
-  Calendar,
   UserCheck
 } from 'lucide-react';
 import { Card, CardContent, PageLoading } from '../components/ui';

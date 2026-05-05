@@ -646,8 +646,6 @@ const CreateJobCard: React.FC = () => {
               </div>
             </div>
           </div>
-
-          </div>
           
           {/* Section: Reminders */}
           <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">

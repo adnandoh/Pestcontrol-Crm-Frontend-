@@ -22,6 +22,7 @@ import {
   ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
+import { cn } from '../utils/cn';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import type { JobCard, PaginatedResponse } from '../types';
 

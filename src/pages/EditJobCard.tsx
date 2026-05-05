@@ -165,20 +165,20 @@ const EditJobCard: React.FC = () => {
         });
         
         // If it already has a next service date, mark it as manual/respected
-        if (jobData.next_service_date) {
+        if (data.next_service_date) {
           setIsNextDateManual(true);
         }
         
         // Try to infer pricing states
-        if (jobData.bhk_size) setPricingArea(jobData.bhk_size);
+        if (data.bhk_size) setPricingArea(data.bhk_size);
         
-        let inferredType = jobData.service_category || '';
+        let inferredType = data.service_category || '';
         if (inferredType === 'One-Time Service') inferredType = 'One Time Service';
         if (inferredType === 'AMC') inferredType = 'AMC 3 Services';
         setPricingType(inferredType);
         
-        const services = jobData.service_type ? jobData.service_type.split(', ') : [];
-        setSelectedServices(services.filter(s => serviceTypeOptions.includes(s)));
+        const services = data.service_type ? data.service_type.split(', ') : [];
+        setSelectedServices(services.filter((s: string) => serviceTypeOptions.includes(s)));
         
         // Infer pricing service from first selected pest if possible
         if (services.length > 0) {
@@ -555,8 +555,6 @@ const EditJobCard: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
-
           </div>
           
           {/* Section: Reminders */}
