@@ -7,8 +7,15 @@ import {
   CheckCircle,
   Ban,
   ChevronDown,
-  UserMinus
+  UserMinus,
+  CheckSquare
 } from 'lucide-react';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   Button,
   Pagination,
@@ -111,23 +118,20 @@ const JobCards: React.FC = () => {
         params.commercial_type = currentFilters.commercial_type;
       }
 
-      // Add date filters
+      // Add date filters using dayjs for IST accuracy
       if (currentFilters.date_preset === 'today') {
-        const today = new Date().toISOString().split('T')[0];
+        const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
         params.from = today;
         params.to = today;
       } else if (currentFilters.date_preset === 'tomorrow') {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        params.from = tomorrowStr;
-        params.to = tomorrowStr;
+        const tomorrow = dayjs().tz("Asia/Kolkata").add(1, 'day').format("YYYY-MM-DD");
+        params.from = tomorrow;
+        params.to = tomorrow;
       } else if (currentFilters.date_preset === 'week') {
-        const today = new Date();
-        const nextWeek = new Date();
-        nextWeek.setDate(today.getDate() + 7);
-        params.from = today.toISOString().split('T')[0];
-        params.to = nextWeek.toISOString().split('T')[0];
+        const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
+        const nextWeek = dayjs().tz("Asia/Kolkata").add(7, 'day').format("YYYY-MM-DD");
+        params.from = today;
+        params.to = nextWeek;
       } else if (currentFilters.date_preset === 'custom' && currentFilters.from && currentFilters.to) {
         params.from = currentFilters.from;
         params.to = currentFilters.to;
@@ -135,10 +139,29 @@ const JobCards: React.FC = () => {
 
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params);
 
-      console.log('📊 Job Cards API Response:', response);
-      console.log('📊 Job Cards Data:', response.results);
-      
-      setJobCards(response.results);
+      // Custom sorting: Today -> Tomorrow -> Others
+      const sortedResults = [...response.results].sort((a, b) => {
+        const today = dayjs().tz("Asia/Kolkata").startOf('day');
+        const tomorrow = today.add(1, 'day');
+        
+        const dateA = dayjs(a.schedule_datetime).tz("Asia/Kolkata");
+        const dateB = dayjs(b.schedule_datetime).tz("Asia/Kolkata");
+
+        const getPriority = (d: dayjs.Dayjs) => {
+          if (d.isSame(today, 'day')) return 1;
+          if (d.isSame(tomorrow, 'day')) return 2;
+          if (d.isBefore(today, 'day')) return 0; // Past bookings might need attention too
+          return 3;
+        };
+
+        const pA = getPriority(dateA);
+        const pB = getPriority(dateB);
+
+        if (pA !== pB) return pA - pB;
+        return dateA.valueOf() - dateB.valueOf();
+      });
+
+      setJobCards(sortedResults);
       setPagination(prev => ({
         ...prev,
         count: response.count,
@@ -228,8 +251,13 @@ const JobCards: React.FC = () => {
 
   // Handle filter changes
   const handleFilterChange = (field: string, value: string) => {
-    const newFilters = { ...filters, [field]: value };
+    let newFilters = { ...filters, [field]: value };
     
+    // Automatically switch to custom if user selects a date
+    if ((field === 'from' || field === 'to') && value) {
+      newFilters.date_preset = 'custom';
+    }
+
     // Reset range if preset is not custom
     if (field === 'date_preset' && value !== 'custom') {
       newFilters.from = '';
@@ -264,6 +292,21 @@ const JobCards: React.FC = () => {
   // Handle pagination
   const handlePageChange = (page: number) => {
     loadJobCards(page, filters);
+  };
+
+  // Handle Mark Reminder Done
+  const handleMarkReminderDone = async (id: number) => {
+    try {
+      setLoading(true);
+      await enhancedApiService.updateJobCard(id, { 
+        is_reminder_done: true 
+      });
+      loadJobCards(pagination.current, filters);
+    } catch (error) {
+      console.error('Failed to mark reminder done:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle assignment
@@ -418,6 +461,7 @@ const JobCards: React.FC = () => {
             { id: 'done', label: 'Done' },
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
+            { id: 'reminders', label: 'Reminders' },
             { id: 'cancelled', label: 'Cancelled' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -494,14 +538,25 @@ const JobCards: React.FC = () => {
           </select>
         </div>
 
-        <div className="w-36 text-gray-400">
-           <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Select Date</label>
-           <input
-             type="date"
-             value={filters.from}
-             onChange={(e) => handleFilterChange('from', e.target.value)}
-             className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
-           />
+        <div className="flex items-center gap-1">
+           <div className="w-32 text-gray-400">
+              <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">From</label>
+              <input
+                type="date"
+                value={filters.from}
+                onChange={(e) => handleFilterChange('from', e.target.value)}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
+              />
+           </div>
+           <div className="w-32 text-gray-400">
+              <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">To</label>
+              <input
+                type="date"
+                value={filters.to}
+                onChange={(e) => handleFilterChange('to', e.target.value)}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
+              />
+           </div>
         </div>
 
         <div className="flex gap-2 h-8">
@@ -554,6 +609,9 @@ const JobCards: React.FC = () => {
                 {activeTab === 'upcoming_services' && (
                   <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
                 )}
+                {activeTab === 'reminders' && (
+                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-orange-700">Reminder Info</th>
+                )}
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
                 <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10"></th>
               </tr>
@@ -573,15 +631,12 @@ const JobCards: React.FC = () => {
                     </td>
                  </tr>
               ) : jobCards.map((job) => {
-                const today = new Date();
-                const todayStr = today.toISOString().split('T')[0];
-                
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                const today = dayjs().tz("Asia/Kolkata").startOf('day');
+                const tomorrow = today.add(1, 'day');
+                const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
 
-                const isToday = job.schedule_date === todayStr;
-                const isTomorrow = job.schedule_date === tomorrowStr;
+                const isToday = jobDate.isSame(today, 'day');
+                const isTomorrow = jobDate.isSame(tomorrow, 'day');
                 
                 const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : '';
                 
@@ -703,7 +758,10 @@ const JobCards: React.FC = () => {
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-700 text-[11px]">
-                          {job.schedule_date ? new Date(job.schedule_date).toLocaleDateString('en-GB') : '---'}
+                          {job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('DD/MM/YYYY') : '---'}
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''}
                         </span>
                         {isToday && (
                           <span className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter">Today</span>
@@ -729,6 +787,28 @@ const JobCards: React.FC = () => {
                             {job.next_service_date ? new Date(job.next_service_date).toLocaleDateString('en-GB') : '---'}
                           </span>
                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Follow-up due</span>
+                        </div>
+                      </td>
+                    )}
+                    {activeTab === 'reminders' && (
+                      <td className="px-4 py-4 bg-orange-50/20">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn(
+                              "text-[10px] font-black px-2 py-0.5 rounded shadow-xs border",
+                              dayjs(job.reminder_date).isSame(dayjs(), 'day') ? "bg-red-500 text-white border-red-600" :
+                              dayjs(job.reminder_date).isSame(dayjs().add(1, 'day'), 'day') ? "bg-yellow-500 text-white border-yellow-600" :
+                              "bg-orange-50 text-orange-700 border-orange-200"
+                            )}>
+                              {job.reminder_date ? dayjs(job.reminder_date).format('DD-MM-YYYY') : '---'}
+                            </span>
+                            {dayjs(job.reminder_date).isSame(dayjs(), 'day') && (
+                              <span className="text-[9px] font-black text-red-600 uppercase animate-pulse">Urgent</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-bold text-gray-600 italic line-clamp-2 max-w-[150px]">
+                            {job.reminder_note || 'No notes added'}
+                          </p>
                         </div>
                       </td>
                     )}
@@ -824,6 +904,15 @@ const JobCards: React.FC = () => {
                                   </>
                                 )}
                               </>
+                            )}
+                            {activeTab === 'reminders' && (
+                              <button 
+                                onClick={() => handleMarkReminderDone(job.id)}
+                                className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/reminder-done"
+                                title="Mark Reminder Done"
+                              >
+                                <CheckSquare className="h-3.5 w-3.5" />
+                              </button>
                             )}
                             <button 
                               onClick={() => navigate(`/jobcards/edit/${job.id}`)} 

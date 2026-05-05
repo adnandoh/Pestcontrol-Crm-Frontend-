@@ -6,6 +6,12 @@ import {
   IndianRupee,
   Calendar,
 } from 'lucide-react';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   Button,
   PageLoading,
@@ -49,7 +55,7 @@ const EditJobCard: React.FC = () => {
     bhk_size: '',
     is_paused: false,
     service_type: '',
-    schedule_date: '',
+    schedule_datetime: '',
     time_slot: '',
     state: '',
     city: '',
@@ -65,7 +71,10 @@ const EditJobCard: React.FC = () => {
     notes: '',
     commercial_type: 'home',
     is_price_estimated: false,
-    cancellation_reason: ''
+    cancellation_reason: '',
+    reminder_date: '',
+    reminder_note: '',
+    is_reminder_done: false
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
@@ -114,43 +123,46 @@ const EditJobCard: React.FC = () => {
       if (!id) return;
       try {
         setLoading(true);
-        const jobData = await enhancedApiService.getJobCard(parseInt(id));
+        const data = await enhancedApiService.getJobCard(parseInt(id));
         
-        setJobCard(jobData);
+        setJobCard(data);
         
-        const initialForm = {
-          client_name: jobData.client_name || '',
-          client_mobile: jobData.client_mobile || '',
-          client_email: jobData.client_email || '',
-          client_city: jobData.client_city || '',
-          client_address: jobData.client_address || '',
-          client_notes: jobData.client_notes || '',
-          job_type: jobData.job_type || 'Customer',
-          service_category: jobData.service_category || 'One-Time Service',
-          property_type: jobData.property_type || 'Home / Flat',
-          bhk_size: jobData.bhk_size || '',
-          is_paused: jobData.is_paused || false,
-          service_type: jobData.service_type || '',
-          schedule_date: jobData.schedule_date || '',
-          time_slot: jobData.time_slot || '',
-          state: jobData.state || 'Maharashtra',
-          city: jobData.city || 'Mumbai',
-          status: jobData.status || 'Pending',
-          payment_status: jobData.payment_status || 'Unpaid',
-          assigned_to: jobData.assigned_to || '',
-          technician: jobData.technician,
-          price: jobData.price || '0.00',
-          next_service_date: jobData.next_service_date || '',
-          reference: jobData.reference || '',
-          notes: jobData.notes || '',
-          extra_notes: jobData.extra_notes || '',
-          contract_duration: jobData.contract_duration || '',
-          commercial_type: jobData.commercial_type || 'home',
-          is_price_estimated: jobData.is_price_estimated || false,
-          cancellation_reason: jobData.cancellation_reason || ''
-        };
-        
-        setFormData(initialForm);
+        const formattedDate = data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('YYYY-MM-DD') : '';
+
+        setFormData({
+          client_name: data.client_name || '',
+          client_mobile: data.client_mobile || '',
+          client_email: data.client_email || '',
+          client_city: data.client_city || '',
+          client_address: data.client_address || '',
+          client_notes: data.client_notes || '',
+          job_type: data.job_type || 'Customer',
+          commercial_type: data.commercial_type || 'home',
+          is_price_estimated: data.is_price_estimated || false,
+          service_category: data.service_category || 'One-Time Service',
+          property_type: data.property_type || 'Home / Flat',
+          bhk_size: data.bhk_size || '',
+          is_paused: data.is_paused || false,
+          service_type: data.service_type || '',
+          schedule_datetime: formattedDate,
+          time_slot: data.time_slot || '',
+          state: data.state || 'Maharashtra',
+          city: data.city || 'Mumbai',
+          status: data.status || 'Pending',
+          payment_status: data.payment_status || 'Unpaid',
+          assigned_to: data.assigned_to || '',
+          technician: data.technician,
+          price: data.price?.toString() || '0.00',
+          next_service_date: data.next_service_date || '',
+          reference: data.reference || '',
+          notes: data.notes || '',
+          extra_notes: data.extra_notes || '',
+          contract_duration: data.contract_duration || '',
+          cancellation_reason: data.cancellation_reason || '',
+          reminder_date: data.reminder_date || '',
+          reminder_note: data.reminder_note || '',
+          is_reminder_done: data.is_reminder_done || false
+        });
         
         // If it already has a next service date, mark it as manual/respected
         if (jobData.next_service_date) {
@@ -189,14 +201,14 @@ const EditJobCard: React.FC = () => {
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {
-    if (loading || !formData.schedule_date || isNextDateManual) return;
+    if (loading || !formData.schedule_datetime || isNextDateManual) return;
 
     const service = pricingService.toLowerCase();
     const isCockroachAMC = service.includes('cockroach') && formData.service_category === 'AMC';
     const isBedBug = service.includes('bedbug') || service.includes('bed bug');
 
     if (isCockroachAMC || isBedBug) {
-        const scheduleDate = new Date(formData.schedule_date);
+        const scheduleDate = new Date(formData.schedule_datetime);
         if (isNaN(scheduleDate.getTime())) return;
 
         let nextDate = new Date(scheduleDate);
@@ -213,7 +225,7 @@ const EditJobCard: React.FC = () => {
             setFormData(prev => ({ ...prev, next_service_date: nextDateStr }));
         }
     }
-  }, [pricingService, formData.service_category, formData.schedule_date, isNextDateManual, loading]);
+  }, [pricingService, formData.service_category, formData.schedule_datetime, isNextDateManual, loading]);
 
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -237,7 +249,12 @@ const EditJobCard: React.FC = () => {
     }
     try {
       setSubmitting(true);
-      await enhancedApiService.updateJobCard(parseInt(id), formData);
+      // Ensure schedule_datetime is in ISO format
+      const submitData = { ...formData };
+      if (submitData.schedule_datetime) {
+        submitData.schedule_datetime = dayjs(submitData.schedule_datetime).toISOString();
+      }
+      await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
     } catch (err: any) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -500,7 +517,7 @@ const EditJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input type="date" value={formData.schedule_date} onChange={(e) => handleInputChange('schedule_date', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
+                <Input type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
@@ -537,6 +554,37 @@ const EditJobCard: React.FC = () => {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+
+          </div>
+          
+          {/* Section: Reminders */}
+          <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
+            <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
+              <Calendar className="h-4 w-4" /> Set Follow-up Reminder
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Date</label>
+                <Input
+                  type="date"
+                  value={formData.reminder_date}
+                  onChange={(e) => handleInputChange('reminder_date', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 italic">When should the system remind you to call?</p>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Note</label>
+                <textarea
+                  value={formData.reminder_note || ''}
+                  onChange={(e) => handleInputChange('reminder_note', e.target.value)}
+                  rows={1}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
+                  placeholder="e.g., Call client for feedback..."
+                />
+              </div>
             </div>
           </div>
 

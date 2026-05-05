@@ -8,6 +8,12 @@ import {
   Calendar,
   MessageCircle
 } from 'lucide-react';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 import {
   Input,
@@ -49,7 +55,7 @@ const CreateJobCard: React.FC = () => {
       bhk_size: '',
       is_paused: false,
       service_type: '',
-      schedule_date: '',
+      schedule_datetime: '',
       time_slot: '',
       state: 'Maharashtra',
       city: 'Mumbai',
@@ -62,7 +68,9 @@ const CreateJobCard: React.FC = () => {
       reference: '',
       contract_duration: '',
       notes: '',
-      extra_notes: ''
+      extra_notes: '',
+      reminder_date: '',
+      reminder_note: ''
     };
   };
 
@@ -143,8 +151,8 @@ const CreateJobCard: React.FC = () => {
 
     if (isCockroachAMC || isBedBug) {
       // Auto-calculate only if not manually edited and schedule_date exists
-      if (!isNextDateManual && formData.schedule_date) {
-        const scheduleDate = new Date(formData.schedule_date);
+      if (!isNextDateManual && formData.schedule_datetime) {
+        const scheduleDate = new Date(formData.schedule_datetime);
         if (isNaN(scheduleDate.getTime())) return;
 
         let nextDate = new Date(scheduleDate);
@@ -163,7 +171,7 @@ const CreateJobCard: React.FC = () => {
         setFormData(prev => ({ ...prev, next_service_date: '' }));
       }
     }
-  }, [pricingService, formData.service_category, formData.schedule_date, isNextDateManual]);
+  }, [pricingService, formData.service_category, formData.schedule_datetime, isNextDateManual]);
 
   const stateOptions = Object.keys(locations).map(state => ({ value: state, label: state }));
   const jobCityOptions = formData.state ? locations[formData.state]?.map(city => ({ value: city, label: city })) || [] : [];
@@ -272,7 +280,12 @@ const CreateJobCard: React.FC = () => {
     }
     try {
       setSubmitting(true);
-      await enhancedApiService.createJobCard(formData, clientCheckStatus === 'found');
+      // Ensure schedule_datetime is in ISO format
+      const submitData = { ...formData };
+      if (submitData.schedule_datetime) {
+        submitData.schedule_datetime = dayjs(submitData.schedule_datetime).toISOString();
+      }
+      await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
       navigate('/jobcards');
     } catch (err: any) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -294,7 +307,6 @@ const CreateJobCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Form Area */}
       <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-5">
           
@@ -557,8 +569,8 @@ const CreateJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
                 <Input
                   type="date"
-                  value={formData.schedule_date}
-                  onChange={(e) => handleInputChange('schedule_date', e.target.value)}
+                  value={formData.schedule_datetime}
+                  onChange={(e) => handleInputChange('schedule_datetime', e.target.value)}
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                   required
                 />
@@ -631,6 +643,37 @@ const CreateJobCard: React.FC = () => {
                   <option value="">None</option>
                   {referenceOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
+              </div>
+            </div>
+          </div>
+
+          </div>
+          
+          {/* Section: Reminders */}
+          <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
+            <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
+              <Calendar className="h-4 w-4" /> Set Follow-up Reminder
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Date</label>
+                <Input
+                  type="date"
+                  value={formData.reminder_date}
+                  onChange={(e) => handleInputChange('reminder_date', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 italic">When should the system remind you to call?</p>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Note</label>
+                <textarea
+                  value={formData.reminder_note || ''}
+                  onChange={(e) => handleInputChange('reminder_note', e.target.value)}
+                  rows={1}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
+                  placeholder="e.g., Call client for feedback..."
+                />
               </div>
             </div>
           </div>

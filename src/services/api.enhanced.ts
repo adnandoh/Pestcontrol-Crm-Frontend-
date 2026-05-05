@@ -571,7 +571,9 @@ class EnhancedApiService {
         job_type: jobCardData.job_type || 'Customer',
         is_paused: jobCardData.is_paused || false,
         service_type: jobCardData.service_type || '',
-        schedule_date: jobCardData.schedule_date || '',
+        schedule_datetime: jobCardData.schedule_datetime || '',
+        reminder_date: jobCardData.reminder_date || '',
+        reminder_note: jobCardData.reminder_note || '',
         status: jobCardData.status || 'Enquiry',
         payment_status: jobCardData.payment_status || 'Unpaid',
         price: (() => {
@@ -682,7 +684,7 @@ class EnhancedApiService {
       bhk_size: data.bhk_size || null,
       is_paused: data.is_paused || false,
       service_type: data.service_type,
-      schedule_date: data.schedule_date,
+      schedule_datetime: data.schedule_datetime,
       time_slot: data.time_slot || null,
       state: data.state || '',
       city: data.city || '',
@@ -697,7 +699,10 @@ class EnhancedApiService {
       notes: data.notes || '',
       extra_notes: data.extra_notes || '',
       cancellation_reason: data.cancellation_reason || '',
-      removal_remarks: data.removal_remarks || ''
+      removal_remarks: data.removal_remarks || '',
+      reminder_date: data.reminder_date || '',
+      reminder_note: data.reminder_note || '',
+      is_reminder_done: data.is_reminder_done || false
     };
 
     // Explicitly ensure no 'id' is sent during creation
@@ -743,7 +748,7 @@ class EnhancedApiService {
     if (data.bhk_size !== undefined) requestData.bhk_size = data.bhk_size;
     if (data.is_paused !== undefined) requestData.is_paused = data.is_paused;
     if (data.service_type !== undefined) requestData.service_type = data.service_type;
-    if (data.schedule_date !== undefined) requestData.schedule_date = data.schedule_date;
+    if (data.schedule_datetime !== undefined) requestData.schedule_datetime = data.schedule_datetime;
     if (data.time_slot !== undefined) requestData.time_slot = data.time_slot;
     if (data.state !== undefined) requestData.state = data.state;
     if (data.city !== undefined) requestData.city = data.city;
@@ -765,6 +770,9 @@ class EnhancedApiService {
     if (data.extra_notes !== undefined) requestData.extra_notes = data.extra_notes;
     if (data.cancellation_reason !== undefined) requestData.cancellation_reason = data.cancellation_reason;
     if (data.removal_remarks !== undefined) requestData.removal_remarks = data.removal_remarks;
+    if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date;
+    if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note;
+    if (data.is_reminder_done !== undefined) requestData.is_reminder_done = data.is_reminder_done;
 
 
 
@@ -980,15 +988,15 @@ class EnhancedApiService {
   }
 
   // Dashboard Statistics
-  async getDashboardStatistics(): Promise<DashboardStatisticsResponse> {
-    const cacheKey = CACHE_KEYS.DASHBOARD_STATS;
+  async getDashboardStatistics(params?: { from?: string; to?: string }): Promise<DashboardStatisticsResponse> {
+    const cacheKey = apiCache.generateKey(CACHE_KEYS.DASHBOARD_STATS, params);
     
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<DashboardStatisticsResponse>(API_ENDPOINTS.DASHBOARD_STATS)
+          () => this.api.get<DashboardStatisticsResponse>(API_ENDPOINTS.DASHBOARD_STATS, { params })
         )
       ),
       2 * 60 * 1000 // 2 minutes cache for dashboard stats

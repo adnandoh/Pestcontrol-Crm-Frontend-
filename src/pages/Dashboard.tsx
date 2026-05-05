@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   MapPin,
   Home,
-  LayoutGrid,
   Briefcase,
   TrendingUp,
   DollarSign,
@@ -20,10 +19,16 @@ import type { DashboardStatisticsResponse } from '../types';
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const fetchStats = async () => {
     try {
-      const dashboardStats = await enhancedApiService.getDashboardStatistics();
+      const params: any = {};
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo) params.to = dateTo;
+      
+      const dashboardStats = await enhancedApiService.getDashboardStatistics(params);
       setStats(dashboardStats);
     } catch (error: any) {
       console.error('Dashboard error:', error);
@@ -34,7 +39,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -79,11 +84,34 @@ const Dashboard: React.FC = () => {
         <div>
           <h1 className="text-xl font-black text-gray-900 tracking-tight">Dashboard</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-white border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
-            <Calendar className="h-3.5 w-3.5 text-gray-500 mr-2" />
-            <span className="text-[10px] font-bold text-gray-700">Today, {new Date().toLocaleDateString()}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">From</span>
+            <input 
+              type="date" 
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="text-[10px] font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
+            />
           </div>
+          <div className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">To</span>
+            <input 
+              type="date" 
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="text-[10px] font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button 
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-[9px] font-black text-red-500 uppercase hover:text-red-600 transition-colors px-1"
+            >
+              Clear
+            </button>
+          )}
+          <div className="h-4 w-px bg-gray-200 mx-1" />
           <button
             onClick={handleRefresh}
             className="p-1.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-blue-600 border border-gray-100 rounded-lg shadow-sm transition-all"
@@ -234,13 +262,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-xs font-black text-gray-900">{stats?.property_type_stats?.[0]?.property_type || 'HOME'}</span>
                </div>
-               <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                     <LayoutGrid className="h-3.5 w-3.5 text-gray-500" />
-                     <span className="text-[10px] font-bold text-gray-600 uppercase">Top Size</span>
-                  </div>
-                  <span className="text-xs font-black text-gray-900">{stats?.bhk_stats?.[0]?.bhk_size || '3 BHK'}</span>
-               </div>
+
             </div>
           </CardContent>
         </Card>

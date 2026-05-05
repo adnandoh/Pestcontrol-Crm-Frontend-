@@ -254,7 +254,19 @@ const CRMInquiries: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-[11px] text-gray-500 line-clamp-2 italic font-semibold leading-normal" title={inq.remark}>{inq.remark || '--'}</p>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[11px] text-gray-500 line-clamp-1 italic font-semibold leading-normal" title={inq.remark}>{inq.remark || '--'}</p>
+                      {inq.reminder_date && !inq.is_reminder_done && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className={cn(
+                            "text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs border uppercase",
+                            new Date(inq.reminder_date).toDateString() === new Date().toDateString() ? "bg-red-500 text-white border-red-600" : "bg-orange-50 text-orange-700 border-orange-200"
+                          )}>
+                            Follow-up: {new Date(inq.reminder_date).toLocaleDateString('en-GB')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <select

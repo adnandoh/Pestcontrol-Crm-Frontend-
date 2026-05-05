@@ -110,7 +110,7 @@ const Inquiries: React.FC = () => {
         area: inquiry.area || '',
         job_type: 'Customer' as const,
         service_type: inquiry.service_interest,
-        schedule_date: new Date().toISOString().split('T')[0],
+        schedule_datetime: new Date().toISOString(),
         status: 'Pending',
         payment_status: 'Unpaid',
         price: '',

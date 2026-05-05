@@ -23,7 +23,9 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
     remark: '',
     inquiry_date: new Date().toISOString().split('T')[0],
     inquiry_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-    status: 'New'
+    status: 'New',
+    reminder_date: '',
+    reminder_note: ''
   };
 
   const [formData, setFormData] = useState<CRMInquiryFormData>(initialData);
@@ -135,6 +137,33 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                   className="w-full min-h-[120px] p-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 resize-none transition-all placeholder:text-gray-400 shadow-sm"
                 />
               </div>
+            </div>
+            
+            {/* Reminder Section */}
+            <div className="md:col-span-2 pt-4 border-t border-gray-100">
+               <h4 className="text-[11px] font-black text-orange-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                 <Calendar className="h-3.5 w-3.5" /> Follow-up Reminder (Optional)
+               </h4>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                   <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Date</label>
+                   <Input
+                     type="date"
+                     value={formData.reminder_date}
+                     onChange={(e) => setFormData({ ...formData, reminder_date: e.target.value })}
+                     className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
+                   />
+                 </div>
+                 <div className="space-y-1">
+                   <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Note</label>
+                   <Input
+                     value={formData.reminder_note}
+                     onChange={(e) => setFormData({ ...formData, reminder_note: e.target.value })}
+                     placeholder="Call client on Friday..."
+                     className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
+                   />
+                 </div>
+               </div>
             </div>
             
             <div className="flex items-center gap-2 pt-2">
