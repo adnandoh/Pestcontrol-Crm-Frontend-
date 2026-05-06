@@ -12,6 +12,8 @@ import type {
   Renewal,
   Technician,
   PaginatedResponse,
+  Feedback,
+  TechnicianPerformance,
   ClientFilters,
   InquiryFilters,
   JobCardFilters,

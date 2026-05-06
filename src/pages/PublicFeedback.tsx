@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Star, CheckCircle, Smartphone, User, Calendar, ShieldCheck, MessageSquare } from 'lucide-react';
-import { Button } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import dayjs from 'dayjs';
 

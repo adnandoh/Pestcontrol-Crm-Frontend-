@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Search, Filter, User, Calendar, MessageSquare, TrendingUp } from 'lucide-react';
+import { Star, Search, User, TrendingUp } from 'lucide-react';
 import { Button, Pagination } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { Feedback, TechnicianPerformance, PaginatedResponse } from '../types';
+import type { Feedback, TechnicianPerformance } from '../types';
 import dayjs from 'dayjs';
 
 const Feedbacks: React.FC = () => {
@@ -224,6 +224,8 @@ const Feedbacks: React.FC = () => {
           <Pagination
             currentPage={pagination.current}
             totalPages={pagination.totalPages}
+            totalItems={pagination.count}
+            itemsPerPage={pagination.pageSize}
             onPageChange={loadData}
           />
         </div>

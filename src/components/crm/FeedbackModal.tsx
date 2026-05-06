@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, MessageSquare, UserCheck, Link as LinkIcon, Send, Copy, Check } from 'lucide-react';
+import { Star, MessageSquare, Link as LinkIcon, Send, Copy, Check } from 'lucide-react';
 import { Button, Modal } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard } from '../../types';
