@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Users,
   Zap,
+  Star,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
         { name: 'View Bookings', href: '/jobcards', icon: ClipboardList },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
+        { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]
     },
     {

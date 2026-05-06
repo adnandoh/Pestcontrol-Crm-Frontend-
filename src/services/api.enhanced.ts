@@ -1023,6 +1023,49 @@ class EnhancedApiService {
     );
   }
 
+  // Feedback methods
+  async getFeedbacks(params?: any): Promise<PaginatedResponse<Feedback>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.FEEDBACKS, params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<Feedback>>(API_ENDPOINTS.FEEDBACKS, { params })
+        )
+      ),
+      2 * 60 * 1000
+    );
+  }
+
+  async generateFeedbackLink(bookingId: number): Promise<{ booking_id: number; token: string; link: string; customer_name: string }> {
+    const response = await this.api.post(`${API_ENDPOINTS.FEEDBACKS}generate/`, { booking_id: bookingId });
+    return response.data;
+  }
+
+  async submitFeedback(data: { booking_id: number | string; token: string; rating: number; remark: string; technician_behavior: string }): Promise<{ message: string }> {
+    const response = await this.api.post(`${API_ENDPOINTS.FEEDBACKS}submit/`, data);
+    return response.data;
+  }
+
+  async getFeedbackBookingInfo(bookingId: string, token?: string): Promise<{ booking_id: string; service_name: string; service_date: string; technician_name: string; is_submitted: boolean }> {
+    const url = token ? `${API_ENDPOINTS.FEEDBACKS}booking-info/${bookingId}/?token=${token}` : `${API_ENDPOINTS.FEEDBACKS}booking-info/${bookingId}/`;
+    const response = await this.api.get(url);
+    return response.data;
+  }
+
+  async createManualFeedback(data: { booking: number; rating: number; remark: string; technician_behavior: string }): Promise<Feedback> {
+    const response = await this.api.post<Feedback>(API_ENDPOINTS.FEEDBACKS, data);
+    apiCache.deletePattern(CACHE_KEYS.FEEDBACKS);
+    return response.data;
+  }
+
+  async getTechnicianPerformance(): Promise<TechnicianPerformance[]> {
+    const response = await this.api.get<TechnicianPerformance[]>(`${API_ENDPOINTS.FEEDBACKS}performance/`);
+    return response.data;
+  }
+
   // Health check methods
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     const response = await this.retryRequest(() =>

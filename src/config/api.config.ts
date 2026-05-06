@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
   // Health Check
   HEALTH: '/v1/health/',
   FIREBASE_HEALTH: '/v1/firebase/health/',
+  FEEDBACKS: '/v1/feedbacks/',
 } as const;
 
 // Cache Keys
@@ -61,6 +62,7 @@ export const CACHE_KEYS = {
   DASHBOARD_STATS: 'dashboard_stats',
   TECHNICIANS: 'technicians',
   CRM_INQUIRIES: 'crm_inquiries',
+  FEEDBACKS: 'feedbacks',
 } as const;
 
 // Request timeout configurations for different operations

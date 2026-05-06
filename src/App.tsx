@@ -18,6 +18,8 @@ import Renewals from './pages/Renewals';
 import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
+import Feedbacks from './pages/Feedbacks';
+import PublicFeedback from './pages/PublicFeedback';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +61,7 @@ const AppContent: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/feedback/:id/:token" element={<PublicFeedback />} />
         <Route
           path="/*"
           element={
@@ -76,6 +79,7 @@ const AppContent: React.FC = () => {
                   <Route path="/references" element={<References />} />
                   <Route path="/technicians" element={<Technicians />} />
                   <Route path="/crm-inquiries" element={<CRMInquiries />} />
+                  <Route path="/feedbacks" element={<Feedbacks />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

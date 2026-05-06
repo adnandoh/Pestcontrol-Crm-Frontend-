@@ -9,7 +9,8 @@ import {
   Trash2,
   ChevronDown,
   UserMinus,
-  CheckSquare
+  CheckSquare,
+  Star
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -25,6 +26,7 @@ import {
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
+import FeedbackModal from '../components/crm/FeedbackModal';
 import type { JobCard, PaginatedResponse } from '../types';
 
 const JobCards: React.FC = () => {
@@ -65,6 +67,7 @@ const JobCards: React.FC = () => {
   const [removeRemarks, setRemoveRemarks] = useState('');
   const [removeErrors, setRemoveErrors] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Status options for dropdown
   const statusOptions = [
@@ -913,7 +916,7 @@ const JobCards: React.FC = () => {
                                 >
                                   <CheckCircle className="h-3.5 w-3.5" />
                                 </button>
-
+                                
                                 {activeTab === 'on_process' && (
                                   <button 
                                     onClick={() => setRemoveTechId(job.id)} 
@@ -924,6 +927,19 @@ const JobCards: React.FC = () => {
                                   </button>
                                 )}
                               </>
+                            )}
+
+                            {job.status === 'Done' && (
+                              <button 
+                                onClick={() => {
+                                  setSelectedJobCard(job);
+                                  setShowFeedbackModal(true);
+                                }} 
+                                className="p-2 bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white rounded shadow-xs border border-purple-100 transition-all group/feedback"
+                                title="Feedback"
+                              >
+                                <Star className="h-3.5 w-3.5" />
+                              </button>
                             )}
                             
                             <button 
@@ -1099,6 +1115,14 @@ const JobCards: React.FC = () => {
         message="Are you sure you want to DELETE this booking forever? This action cannot be undone and the record will be removed from all tabs."
         confirmText="Yes, Delete Permanently"
         type="danger"
+      />
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        jobCard={selectedJobCard}
+        onSuccess={() => {
+          loadJobCards(pagination.current, filters);
+        }}
       />
     </div>
   );

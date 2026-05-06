@@ -418,3 +418,26 @@ export interface DashboardStatisticsResponse {
   timestamp: string;
   cache_hit: boolean;
 }
+
+export interface Feedback {
+  id: number;
+  booking: number;
+  booking_code: string;
+  client_name: string;
+  technician_name: string;
+  service_name: string;
+  service_date: string;
+  rating: number;
+  remark?: string;
+  technician_behavior: 'excellent' | 'good' | 'average' | 'poor';
+  feedback_type: string;
+  token: string;
+  created_at: string;
+}
+
+export interface TechnicianPerformance {
+  technician_name: string;
+  technician_id: number;
+  average_rating: number;
+  total_feedbacks: number;
+}
