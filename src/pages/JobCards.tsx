@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -68,6 +68,9 @@ const JobCards: React.FC = () => {
   const [removeErrors, setRemoveErrors] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Abort controller for request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -87,21 +90,31 @@ const JobCards: React.FC = () => {
 
 
   // Load job cards
-  const loadJobCards = async (page = 1, currentFilters = filters) => {
+  const loadJobCards = useCallback(async (page = 1, currentFilters = filters) => {
+    // 1. Cancel previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // 2. Create new controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
-
+      // Optional: Clear jobCards if switching tabs to avoid stale flicker
+      // setJobCards([]); 
 
       const params: any = {
         page,
-        page_size: 10,
+        page_size: pagination.pageSize,
         ordering: '-created_at',
         booking_type: activeTab
       };
 
       // Add search filter if provided
       if (currentFilters.search.trim()) {
-        params.search = currentFilters.search.trim();
+        params.q = currentFilters.search.trim();
       }
 
       // Add status filter if provided
@@ -143,31 +156,10 @@ const JobCards: React.FC = () => {
         params.to = currentFilters.to;
       }
 
-      const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params);
+      const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params, controller.signal);
 
-      // Custom sorting: Today -> Tomorrow -> Others
-      const sortedResults = [...response.results].sort((a, b) => {
-        const today = dayjs().tz("Asia/Kolkata").startOf('day');
-        const tomorrow = today.add(1, 'day');
-        
-        const dateA = dayjs(a.schedule_datetime).tz("Asia/Kolkata");
-        const dateB = dayjs(b.schedule_datetime).tz("Asia/Kolkata");
-
-        const getPriority = (d: dayjs.Dayjs) => {
-          if (d.isSame(today, 'day')) return 1;
-          if (d.isSame(tomorrow, 'day')) return 2;
-          if (d.isBefore(today, 'day')) return 0; // Past bookings might need attention too
-          return 3;
-        };
-
-        const pA = getPriority(dateA);
-        const pB = getPriority(dateB);
-
-        if (pA !== pB) return pA - pB;
-        return dateA.valueOf() - dateB.valueOf();
-      });
-
-      setJobCards(sortedResults);
+      // Note: Backend now handles sorting priority for Pending/OnProcess
+      setJobCards(response.results);
       setPagination(prev => ({
         ...prev,
         count: response.count,
@@ -177,11 +169,18 @@ const JobCards: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || axios.isCancel(err)) {
+        console.log('Fetch cancelled');
+        return;
+      }
       console.error('Error loading job cards:', err);
     } finally {
-      setLoading(false);
+      // Only set loading to false if this is still the active request
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
-  };
+  }, [activeTab, filters, pagination.pageSize]);
 
   // Initial load
   useEffect(() => {
@@ -208,8 +207,11 @@ const JobCards: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [pagination.current, filters]);
+  }, [pagination.current, filters, loadJobCards]);
 
   // Cleanup search timeout on unmount
   useEffect(() => {
@@ -451,12 +453,24 @@ const JobCards: React.FC = () => {
 
 
 
-
-
-
-
-
-
+  // Skeleton Loader Component
+  const TableSkeleton = () => (
+    <>
+      {[...Array(5)].map((_, i) => (
+        <tr key={i} className="animate-pulse border-b border-gray-100 divide-x divide-gray-50">
+          <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded w-12"></div></td>
+          <td className="px-4 py-4"><div className="space-y-2"><div className="h-4 bg-gray-200 rounded w-24"></div><div className="h-3 bg-gray-200 rounded w-16"></div></div></td>
+          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+          <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded w-20"></div></td>
+          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+          {(activeTab === 'pending' || activeTab === 'on_process') && <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>}
+          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+          <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded w-10"></div></td>
+        </tr>
+      ))}
+    </>
+  );
 
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
@@ -641,15 +655,10 @@ const JobCards: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
-                 <tr>
-                    <td colSpan={9} className="py-20 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
-                    </td>
-                 </tr>
+                 <TableSkeleton />
               ) : jobCards.length === 0 ? (
                  <tr>
-                    <td colSpan={9} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                    <td colSpan={10} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                        No Bookings Found In This Category
                     </td>
                  </tr>

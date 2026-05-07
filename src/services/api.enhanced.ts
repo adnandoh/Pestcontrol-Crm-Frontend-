@@ -636,7 +636,7 @@ class EnhancedApiService {
   }
 
   // Job Card methods
-  async getJobCards(params?: JobCardFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<JobCard>> {
+  async getJobCards(params?: JobCardFilters & { page?: number; page_size?: number }, signal?: AbortSignal): Promise<PaginatedResponse<JobCard>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.JOBCARDS, params);
     
     return this.cachedRequest(
@@ -644,7 +644,7 @@ class EnhancedApiService {
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params })
+          () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params, signal })
         )
       ),
       3 * 60 * 1000 // 3 minutes cache
