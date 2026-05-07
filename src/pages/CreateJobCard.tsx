@@ -70,6 +70,7 @@ const CreateJobCard: React.FC = () => {
       notes: '',
       extra_notes: '',
       reminder_date: '',
+      reminder_time: '',
       reminder_note: ''
     };
   };
@@ -659,9 +660,17 @@ const CreateJobCard: React.FC = () => {
                   onChange={(e) => handleInputChange('reminder_date', e.target.value)}
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                 />
-                <p className="text-[10px] text-gray-400 mt-1 italic">When should the system remind you to call?</p>
               </div>
               <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Time</label>
+                <Input
+                  type="time"
+                  value={formData.reminder_time || ''}
+                  onChange={(e) => handleInputChange('reminder_time', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
+                />
+              </div>
+              <div className="md:col-span-2">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Note</label>
                 <textarea
                   value={formData.reminder_note || ''}
@@ -712,7 +721,10 @@ const CreateJobCard: React.FC = () => {
                         remark:       formData.notes          || formData.client_notes || '',
                         inquiry_date: today,
                         inquiry_time: now,
-                        status:       'New'
+                        status:       'New',
+                        reminder_date: formData.reminder_date || undefined,
+                        reminder_time: formData.reminder_time || undefined,
+                        reminder_note: formData.reminder_note || undefined
                       } as any);
                       navigate('/crm-inquiries');
                     } catch (err: any) {

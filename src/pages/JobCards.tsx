@@ -834,6 +834,7 @@ const JobCards: React.FC = () => {
                               "bg-orange-50 text-orange-700 border-orange-200"
                             )}>
                               {job.reminder_date ? dayjs(job.reminder_date).format('DD-MM-YYYY') : '---'}
+                              {job.reminder_time && ` @ ${job.reminder_time}`}
                             </span>
                             {dayjs(job.reminder_date).isSame(dayjs(), 'day') && (
                               <span className="text-[9px] font-black text-red-600 uppercase animate-pulse">Urgent</span>

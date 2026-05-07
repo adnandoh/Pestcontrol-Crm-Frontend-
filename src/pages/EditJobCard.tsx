@@ -73,6 +73,7 @@ const EditJobCard: React.FC = () => {
     is_price_estimated: false,
     cancellation_reason: '',
     reminder_date: '',
+    reminder_time: '',
     reminder_note: '',
     is_reminder_done: false
   });
@@ -160,6 +161,7 @@ const EditJobCard: React.FC = () => {
           contract_duration: data.contract_duration || '',
           cancellation_reason: data.cancellation_reason || '',
           reminder_date: data.reminder_date || '',
+          reminder_time: data.reminder_time || '',
           reminder_note: data.reminder_note || '',
           is_reminder_done: data.is_reminder_done || false
         });
@@ -576,9 +578,17 @@ const EditJobCard: React.FC = () => {
                   onChange={(e) => handleInputChange('reminder_date', e.target.value)}
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                 />
-                <p className="text-[10px] text-gray-400 mt-1 italic">When should the system remind you to call?</p>
               </div>
               <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Time</label>
+                <Input
+                  type="time"
+                  value={formData.reminder_time || ''}
+                  onChange={(e) => handleInputChange('reminder_time', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
+                />
+              </div>
+              <div className="md:col-span-2">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Note</label>
                 <textarea
                   value={formData.reminder_note || ''}

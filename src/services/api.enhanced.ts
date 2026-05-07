@@ -410,6 +410,7 @@ class EnhancedApiService {
     const requestData = {
       ...data,
       reminder_date: data.reminder_date || null,
+      reminder_time: data.reminder_time || null,
       reminder_note: data.reminder_note || null
     };
     const result = await this.retryRequest(() =>
@@ -422,6 +423,7 @@ class EnhancedApiService {
   async updateCRMInquiry(id: number, data: Partial<CRMInquiryFormData>): Promise<CRMInquiry> {
     const requestData = { ...data };
     if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date || null;
+    if (data.reminder_time !== undefined) requestData.reminder_time = data.reminder_time || null;
     if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note || null;
 
     const result = await this.retryRequest(() =>
@@ -584,6 +586,7 @@ class EnhancedApiService {
         service_type: jobCardData.service_type || '',
         schedule_datetime: jobCardData.schedule_datetime || '',
         reminder_date: jobCardData.reminder_date || null,
+        reminder_time: jobCardData.reminder_time || null,
         reminder_note: jobCardData.reminder_note || null,
         status: jobCardData.status || 'Enquiry',
         payment_status: jobCardData.payment_status || 'Unpaid',
@@ -712,6 +715,7 @@ class EnhancedApiService {
       cancellation_reason: data.cancellation_reason || '',
       removal_remarks: data.removal_remarks || '',
       reminder_date: data.reminder_date || null,
+      reminder_time: data.reminder_time || null,
       reminder_note: data.reminder_note || null,
       is_reminder_done: data.is_reminder_done || false
     };
@@ -782,6 +786,7 @@ class EnhancedApiService {
     if (data.cancellation_reason !== undefined) requestData.cancellation_reason = data.cancellation_reason;
     if (data.removal_remarks !== undefined) requestData.removal_remarks = data.removal_remarks;
     if (data.reminder_date !== undefined) requestData.reminder_date = data.reminder_date || null;
+    if (data.reminder_time !== undefined) requestData.reminder_time = data.reminder_time || null;
     if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note || null;
     if (data.is_reminder_done !== undefined) requestData.is_reminder_done = data.is_reminder_done;
 

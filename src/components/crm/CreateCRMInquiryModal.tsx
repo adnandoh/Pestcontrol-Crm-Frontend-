@@ -25,6 +25,7 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
     inquiry_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     status: 'New',
     reminder_date: '',
+    reminder_time: '',
     reminder_note: ''
   };
 
@@ -155,6 +156,15 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                    />
                  </div>
                  <div className="space-y-1">
+                   <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Time</label>
+                   <Input
+                     type="time"
+                     value={formData.reminder_time || ''}
+                     onChange={(e) => setFormData({ ...formData, reminder_time: e.target.value })}
+                     className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
+                   />
+                 </div>
+                 <div className="md:col-span-2 space-y-1">
                    <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Note</label>
                    <Input
                      value={formData.reminder_note || ''}
