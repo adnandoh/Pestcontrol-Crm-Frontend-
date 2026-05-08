@@ -451,6 +451,20 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async getCRMInquiryReminders(params?: { from?: string; to?: string }): Promise<{ count: number; results: CRMInquiry[] }> {
+    const result = await this.retryRequest(() =>
+      this.api.get<{ count: number; results: CRMInquiry[] }>(`${API_ENDPOINTS.CRM_INQUIRIES}reminders/`, { params })
+    );
+    return result.data;
+  }
+
+  async markCRMInquiryReminderDone(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.post(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/mark_reminder_done/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+  }
+
   // Client methods
   async getClients(params?: ClientFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Client>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.CLIENTS, params);
