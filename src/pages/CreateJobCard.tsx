@@ -287,7 +287,19 @@ const CreateJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
       if (submitData.schedule_datetime) {
-        submitData.schedule_datetime = dayjs(submitData.schedule_datetime).toISOString();
+        let combined = dayjs(submitData.schedule_datetime);
+        if (submitData.time_slot) {
+          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const ampm = timeMatch[3].toUpperCase();
+            if (ampm === 'PM' && hours < 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            combined = combined.hour(hours).minute(minutes).second(0);
+          }
+        }
+        submitData.schedule_datetime = combined.toISOString();
       }
       await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
       navigate('/jobcards');
@@ -572,16 +584,18 @@ const CreateJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
+                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`} required />
+                {errors.schedule_datetime && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>}
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot *</label>
                 <ClockTimePicker
                   value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
                   placeholder="Select Time"
                 />
+                {errors.time_slot && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>}
               </div>
 
               <div>

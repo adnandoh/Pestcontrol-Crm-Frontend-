@@ -5,7 +5,11 @@ import {
   User,
   IndianRupee,
   Calendar,
+  MessageCircle,
+  Send,
+  UserCheck
 } from 'lucide-react';
+import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -146,7 +150,7 @@ const EditJobCard: React.FC = () => {
           is_paused: data.is_paused || false,
           service_type: data.service_type || '',
           schedule_datetime: formattedDate,
-          time_slot: data.time_slot || '',
+          time_slot: data.time_slot || (data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''),
           state: data.state || 'Maharashtra',
           city: data.city || 'Mumbai',
           status: data.status || 'Pending',
@@ -257,7 +261,19 @@ const EditJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
       if (submitData.schedule_datetime) {
-        submitData.schedule_datetime = dayjs(submitData.schedule_datetime).toISOString();
+        let combined = dayjs(submitData.schedule_datetime);
+        if (submitData.time_slot) {
+          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const ampm = timeMatch[3].toUpperCase();
+            if (ampm === 'PM' && hours < 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            combined = combined.hour(hours).minute(minutes).second(0);
+          }
+        }
+        submitData.schedule_datetime = combined.toISOString();
       }
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
@@ -282,7 +298,66 @@ const EditJobCard: React.FC = () => {
         </button>
         <div className="flex flex-col">
           <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none">Edit Booking</h1>
-          <span className="text-[11px] font-bold text-gray-500 mt-1">{jobCard.id}</span>
+          <span className="text-[11px] font-bold text-gray-500 mt-1">{jobCard.code || jobCard.id}</span>
+        </div>
+
+        {/* WhatsApp Actions */}
+        <div className="flex items-center gap-2 ml-auto bg-white/50 p-1.5 rounded-lg border border-gray-200">
+          <button
+            onClick={() => openWhatsApp(formData.client_mobile, whatsAppTemplates.bookingConfirmation({
+              clientName: formData.client_name,
+              bookingId: jobCard.code || jobCard.id.toString(),
+              serviceType: formData.service_type,
+              area: formData.bhk_size || formData.property_type || '',
+              date: dayjs(formData.schedule_datetime).format('DD/MM/YYYY'),
+              time: formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A'),
+              amount: formData.price?.toString() || '0',
+              address: formData.client_address || ''
+            }))}
+            className="p-2 bg-green-50 hover:bg-green-600 text-green-600 hover:text-white rounded-md transition-all shadow-sm"
+            title="Send Confirmation"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </button>
+
+          {jobCard.technician_mobile && (
+            <>
+              <button
+                onClick={() => openWhatsApp(jobCard.technician_mobile!, whatsAppTemplates.technicianJobDetails({
+                  bookingId: jobCard.code || jobCard.id.toString(),
+                  clientName: formData.client_name,
+                  clientMobile: formData.client_mobile,
+                  serviceType: formData.service_type,
+                  area: formData.bhk_size || formData.property_type || '',
+                  amount: formData.price?.toString() || '0',
+                  address: formData.client_address || '',
+                  dateTime: `${dayjs(formData.schedule_datetime).format('DD/MM/YYYY')} @ ${formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A')}`,
+                  instructions: formData.notes || ''
+                }))}
+                className="p-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-md transition-all shadow-sm"
+                title="Send to Technician"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+
+              <button
+                onClick={() => openWhatsApp(formData.client_mobile, whatsAppTemplates.technicianAssigned({
+                  clientName: formData.client_name,
+                  bookingId: jobCard.code || jobCard.id.toString(),
+                  techName: jobCard.technician_name || jobCard.assigned_to || '',
+                  techContact: jobCard.technician_mobile || '',
+                  serviceType: formData.service_type,
+                  area: formData.bhk_size || formData.property_type || '',
+                  dateTime: `${dayjs(formData.schedule_datetime).format('DD/MM/YYYY')} @ ${formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A')}`,
+                  amount: formData.price?.toString() || '0'
+                }))}
+                className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-md transition-all shadow-sm"
+                title="Notify Client (Tech Assigned)"
+              >
+                <UserCheck className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -524,15 +599,17 @@ const EditJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm" required />
+                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`} required />
+                {errors.schedule_datetime && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>}
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot *</label>
                 <ClockTimePicker
                   value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
                   placeholder="Select Time"
                 />
+                {errors.time_slot && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>}
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>

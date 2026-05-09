@@ -279,6 +279,13 @@ export const jobCardValidationRules: ValidationRules = {
       return null;
     }
   },
+  time_slot: {
+    required: true,
+    custom: (value) => {
+      if (!value) return 'Time slot is required';
+      return null;
+    }
+  },
   service_type: {
     required: true,
     custom: (value) => {

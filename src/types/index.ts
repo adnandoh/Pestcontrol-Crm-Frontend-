@@ -122,6 +122,7 @@ export interface JobCard {
   assigned_to?: string;
   technician?: number | null;
   technician_name?: string;
+  technician_mobile?: string;
   reference?: string;
   customer_type?: string;
   next_service_date?: string;

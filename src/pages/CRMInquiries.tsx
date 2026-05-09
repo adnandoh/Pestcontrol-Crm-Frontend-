@@ -15,6 +15,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
+import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 
 const CRMInquiries: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -225,14 +226,13 @@ const CRMInquiries: React.FC = () => {
                         <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
                           {inq.mobile}
                         </span>
-                        <a 
-                          href={`https://wa.me/91${inq.mobile}`} 
-                          target="_blank" 
-                          rel="noreferrer"
+                        <button 
+                          onClick={() => openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))}
                           className="hover:scale-110 transition-transform"
+                          title="Send Service Details"
                         >
                           <MessageCircle className="h-3 w-3 text-green-500 fill-green-50" />
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </td>

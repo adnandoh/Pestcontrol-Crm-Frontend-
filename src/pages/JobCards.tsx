@@ -11,8 +11,13 @@ import {
   ChevronDown,
   UserMinus,
   CheckSquare,
-  Star
+  Star,
+  MessageCircle,
+  Send,
+  UserCheck,
+  UserPlus
 } from 'lucide-react';
+import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -949,7 +954,7 @@ const JobCards: React.FC = () => {
                           {isCRM ? (job.inquiry_date ? dayjs(job.inquiry_date).format('DD/MM/YYYY') : '---') : (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('DD/MM/YYYY') : '---')}
                         </span>
                         <span className="text-[10px] text-gray-500 font-medium">
-                          {isCRM ? job.inquiry_time : (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : '')}
+                          {isCRM ? job.inquiry_time : (job.time_slot || (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''))}
                         </span>
                         {!isCRM && isToday && (
                           <span className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter">Today</span>
@@ -1092,6 +1097,69 @@ const JobCards: React.FC = () => {
                                     <UserMinus className="h-3.5 w-3.5" />
                                   </button>
                                 )}
+
+                                {/* WhatsApp Actions */}
+                                <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-200">
+                                  {/* 1. Confirmation to Client */}
+                                  <button
+                                    onClick={() => openWhatsApp(job.client_mobile, whatsAppTemplates.bookingConfirmation({
+                                      clientName: job.client_name,
+                                      bookingId: job.code || job.id.toString(),
+                                      serviceType: job.service_type,
+                                      area: job.bhk_size || job.property_type || '',
+                                      date: dayjs(job.schedule_datetime).format('DD/MM/YYYY'),
+                                      time: job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A'),
+                                      amount: job.price,
+                                      address: job.client_address
+                                    }))}
+                                    className="p-2 bg-green-50 hover:bg-green-600 text-green-600 hover:text-white rounded shadow-xs border border-green-100 transition-all"
+                                    title="Send Confirmation to Client"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* 2. Job Details to Technician (only if assigned) */}
+                                  {job.technician_mobile && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          openWhatsApp(job.technician_mobile!, whatsAppTemplates.technicianJobDetails({
+                                            bookingId: job.code || job.id.toString(),
+                                            clientName: job.client_name,
+                                            clientMobile: job.client_mobile,
+                                            serviceType: job.service_type,
+                                            area: job.bhk_size || job.property_type || '',
+                                            amount: job.price?.toString() || '0',
+                                            address: job.client_address || '',
+                                            dateTime: `${dayjs(job.schedule_datetime).format('DD/MM/YYYY')} @ ${job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A')}`,
+                                            instructions: job.notes || ''
+                                          }));
+                                        }}
+                                        className="p-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded shadow-xs border border-blue-100 transition-all"
+                                        title="Send Details to Technician"
+                                      >
+                                        <Send className="h-3.5 w-3.5" />
+                                      </button>
+
+                                      <button
+                                        onClick={() => openWhatsApp(job.client_mobile, whatsAppTemplates.technicianAssigned({
+                                          clientName: job.client_name,
+                                          bookingId: job.code || job.id.toString(),
+                                          techName: job.technician_name || job.assigned_to || '',
+                                          techContact: job.technician_mobile || '',
+                                          serviceType: job.service_type,
+                                          area: job.bhk_size || job.property_type || '',
+                                          dateTime: `${dayjs(job.schedule_datetime).format('DD/MM/YYYY')} @ ${job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A')}`,
+                                          amount: job.price?.toString() || '0'
+                                        }))}
+                                        className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded shadow-xs border border-indigo-100 transition-all"
+                                        title="Notify Client about Technician"
+                                      >
+                                        <UserCheck className="h-3.5 w-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </>
                             )}
 
