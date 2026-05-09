@@ -14,8 +14,7 @@ import {
   Star,
   MessageCircle,
   Send,
-  UserCheck,
-  UserPlus
+  UserCheck
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
