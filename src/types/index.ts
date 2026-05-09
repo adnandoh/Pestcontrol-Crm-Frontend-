@@ -395,7 +395,10 @@ export interface DashboardStatisticsResponse {
   total_crm_inquiries?: number;
   total_job_cards: number;
   total_clients: number;
+  total_technicians?: number;
   renewals: number;
+  today_revenue?: number;
+  month_revenue?: number;
   category_stats?: {
     one_time: number;
     amc: number;
@@ -443,8 +446,20 @@ export interface Feedback {
 }
 
 export interface TechnicianPerformance {
-  technician_name: string;
-  technician_id: number;
-  average_rating: number;
-  total_feedbacks: number;
+  id: number;
+  name: string;
+  mobile: string;
+  is_active: boolean;
+  service_area?: string;
+  city?: string;
+  last_active?: string;
+  assigned_count: number;
+  completed_count: number;
+  pending_count: number;
+  on_process_count: number;
+  service_calls_count: number;
+  total_revenue: number;
+  avg_rating: number;
+  feedback_count: number;
+  completion_rate: number;
 }

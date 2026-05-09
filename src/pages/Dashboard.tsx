@@ -102,21 +102,12 @@ const Dashboard: React.FC = () => {
               className="text-[10px] font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
             />
           </div>
-          {(dateFrom || dateTo) && (
-            <button 
-              onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="text-[9px] font-black text-red-500 uppercase hover:text-red-600 transition-colors px-1"
-            >
-              Clear
-            </button>
-          )}
           <div className="h-4 w-px bg-gray-200 mx-1" />
           <button
             onClick={handleRefresh}
             className="p-1.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-blue-600 border border-gray-100 rounded-lg shadow-sm transition-all"
-            title="Reload Stats"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-blue-600")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
           </button>
         </div>
       </div>
@@ -127,12 +118,12 @@ const Dashboard: React.FC = () => {
           { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-blue-500', bg: 'bg-blue-50/40' },
           { label: 'Active Jobs', value: stats?.status_stats?.on_process || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
           { label: 'Pending Jobs', value: stats?.status_stats?.pending || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
-          { label: 'Today\'s Jobs', value: stats?.status_stats?.confirmed || 0, color: 'border-emerald-500', bg: 'bg-emerald-50/40' },
+          { label: 'Total Revenue', value: `₹${Math.round(stats?.month_revenue || 0).toLocaleString()}`, color: 'border-emerald-500', bg: 'bg-emerald-50/40' },
         ].map((stat, i) => (
-          <div key={i} className={cn("relative p-4 h-28 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white flex flex-col justify-center", stat.color)}>
+          <div key={i} className={cn("relative p-4 h-24 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white flex flex-col justify-center", stat.color)}>
              <div className={cn("absolute inset-0 opacity-50 group-hover:opacity-70 transition-opacity", stat.bg)} />
              <div className="relative">
-                <p className="text-3xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
+                <p className="text-2xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
                 <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{stat.label}</p>
              </div>
           </div>
@@ -145,15 +136,15 @@ const Dashboard: React.FC = () => {
            <Clock className="h-4 w-4 text-orange-500" />
            <h2 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Today Focus</h2>
         </div>
-        <div className="flex flex-1 justify-around px-4">
+        <div className="flex flex-1 justify-start gap-12 px-8">
            {[
              { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
              { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
              { label: 'Completed', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
            ].map((item, i) => (
-             <div key={i} className="flex items-baseline gap-2">
-                <span className={cn("text-lg font-black", item.color)}>{item.value}</span>
-                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">{item.label}</span>
+             <div key={i} className="flex items-center gap-2">
+                <span className={cn("text-xl font-black", item.color)}>{item.value}</span>
+                <span className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{item.label}</span>
              </div>
            ))}
         </div>
@@ -162,45 +153,45 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-fade-up delay-300">
         {/* 📊 4. PERFORMANCE SECTION - TIGHTER */}
         <Card className="lg:col-span-2 border-gray-100 shadow-sm rounded-xl overflow-hidden bg-white">
-          <CardContent className="p-4 px-6">
-            <div className="flex items-center gap-2 mb-4">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-6">
                <TrendingUp className="h-4 w-4 text-blue-600" />
                <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Performance Insights</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex items-center justify-center gap-8 bg-gray-50/50 p-4 rounded-xl h-32">
+               <div className="flex items-center justify-between px-6 bg-gray-50/50 p-4 rounded-xl h-28">
                   <DonutChart 
                     value={stats?.category_stats?.amc || 0} 
                     total={(stats?.category_stats?.amc || 0) + (stats?.category_stats?.one_time || 0)} 
                     label="AMC" 
                     color="#3b82f6" 
                   />
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-right">
                      <div>
                         <p className="text-[9px] font-bold text-gray-600 uppercase">One-Time</p>
-                        <p className="text-base font-black text-gray-900">{stats?.category_stats?.one_time || 0}</p>
+                        <p className="text-lg font-black text-gray-900">{stats?.category_stats?.one_time || 0}</p>
                      </div>
                      <div>
                         <p className="text-[9px] font-bold text-blue-600 uppercase">AMC</p>
-                        <p className="text-base font-black text-gray-900">{stats?.category_stats?.amc || 0}</p>
+                        <p className="text-lg font-black text-gray-900">{stats?.category_stats?.amc || 0}</p>
                      </div>
                   </div>
                </div>
-               <div className="flex items-center justify-center gap-8 bg-gray-50/50 p-4 rounded-xl h-32">
+               <div className="flex items-center justify-between px-6 bg-gray-50/50 p-4 rounded-xl h-28">
                   <DonutChart 
                     value={stats?.job_type_stats?.society || 0} 
                     total={(stats?.job_type_stats?.individual || 0) + (stats?.job_type_stats?.society || 0)} 
                     label="Corporate" 
                     color="#6366f1" 
                   />
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-right">
                      <div>
                         <p className="text-[9px] font-bold text-gray-600 uppercase">Retail</p>
-                        <p className="text-base font-black text-gray-900">{stats?.job_type_stats?.individual || 0}</p>
+                        <p className="text-lg font-black text-gray-900">{stats?.job_type_stats?.individual || 0}</p>
                      </div>
                      <div>
                         <p className="text-[9px] font-bold text-indigo-600 uppercase">Corporate</p>
-                        <p className="text-base font-black text-gray-900">{stats?.job_type_stats?.society || 0}</p>
+                        <p className="text-lg font-black text-gray-900">{stats?.job_type_stats?.society || 0}</p>
                      </div>
                   </div>
                </div>
@@ -208,31 +199,72 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 💰 5. BUSINESS INSIGHTS - TIGHTER */}
-        <Card className="border-gray-100 shadow-sm rounded-xl overflow-hidden bg-gray-900 text-white">
-          <CardContent className="p-5 flex flex-col justify-center h-full">
-            <div className="flex items-center gap-2 mb-4">
-               <DollarSign className="h-4 w-4 text-emerald-400" />
-               <h2 className="text-[11px] font-black uppercase tracking-widest text-emerald-400">Business</h2>
+        {/* 💰 5. BUSINESS INSIGHTS - PREMIUM CIRCULAR TARGET */}
+        <Card className="border-gray-100 shadow-sm rounded-xl overflow-hidden bg-[#0f172a] text-white">
+          <CardContent className="p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-emerald-400" />
+                </div>
+                <h2 className="text-[12px] font-black uppercase tracking-widest text-white">Revenue Target</h2>
+              </div>
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                Month: {new Date().toLocaleString('default', { month: 'long' })}
+              </div>
             </div>
-            <div className="space-y-5">
-               <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Today Revenue</p>
-                  <p className="text-3xl font-black tracking-tighter leading-none">₹ {((stats?.total_job_cards || 0) * 1200).toLocaleString()}</p>
-                  <p className="text-[9px] font-bold text-emerald-400 mt-1 uppercase flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> +12% from yesterday
-                  </p>
-               </div>
-               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-800">
-                  <div>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-0.5">Monthly</p>
-                    <p className="text-lg font-black tracking-tight">₹ {((stats?.total_job_cards || 0) * 25000).toLocaleString()}</p>
+
+            <div className="flex-1 flex flex-col md:flex-row items-center gap-8">
+              {/* Circular Target Chart */}
+              <div className="relative w-40 h-40 flex flex-col items-center justify-center">
+                <svg viewBox="0 0 42 42" className="w-40 h-40 transform -rotate-90">
+                  <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+                  <circle
+                    cx="21" cy="21" r="15.9155" fill="transparent"
+                    stroke="#10b981" strokeWidth="3"
+                    strokeDasharray={`${2 * Math.PI * 15.9155} ${2 * Math.PI * 15.9155}`}
+                    strokeDashoffset={2 * Math.PI * 15.9155 - (Math.min(Math.round(((stats?.month_revenue || 0) / 500000) * 100), 100) / 100) * (2 * Math.PI * 15.9155)}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-black text-white leading-none">
+                    {Math.min(Math.round(((stats?.month_revenue || 0) / 500000) * 100), 100)}%
+                  </span>
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mt-1">Achieved</span>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="flex-1 grid grid-cols-1 gap-4 w-full">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Today Revenue</p>
+                  <p className="text-2xl font-black text-emerald-400">₹ {Math.round(stats?.today_revenue || 0).toLocaleString()}</p>
+                </div>
+                
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Current Month</p>
+                  <div className="flex items-baseline justify-between">
+                    <p className="text-xl font-black text-white">₹ {Math.round(stats?.month_revenue || 0).toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-gray-400">/ 5,00,000</p>
                   </div>
-                  <div>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-0.5">Avg Value</p>
-                    <p className="text-lg font-black tracking-tight">₹ 3,450</p>
-                  </div>
-               </div>
+                </div>
+
+                <div className="flex items-center justify-between px-1">
+                   <div className="space-y-0.5">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Avg Ticket</p>
+                      <p className="text-sm font-black text-white">
+                        ₹ {stats?.status_stats?.done ? Math.round((stats?.month_revenue || 0) / stats.status_stats.done).toLocaleString() : '0'}
+                      </p>
+                   </div>
+                   <div className="h-8 w-px bg-white/10" />
+                   <div className="text-right space-y-0.5">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Jobs Done</p>
+                      <p className="text-sm font-black text-white">{stats?.status_stats?.done || 0}</p>
+                   </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -256,13 +288,12 @@ const Dashboard: React.FC = () => {
                </div>
                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                     <Home className="h-3.5 w-3.5 text-gray-500" />
-                     <span className="text-[10px] font-bold text-gray-600 uppercase">Top Property</span>
+                     <Home className="h-3.5 w-3.5 text-gray-400" />
+                     <span className="text-[11px] font-bold text-gray-600 uppercase">Top Property</span>
                   </div>
                   <span className="text-xs font-black text-gray-900">{stats?.property_type_stats?.[0]?.property_type || 'HOME'}</span>
-               </div>
-
-            </div>
+                </div>
+             </div>
           </CardContent>
         </Card>
 
@@ -297,7 +328,7 @@ const Dashboard: React.FC = () => {
       {/* ⚙️ 8. OPERATIONS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-up delay-500">
          {[
-           { label: 'Technicians Active', value: stats?.total_clients ? Math.round(stats.total_clients / 3) : 0, icon: UserCheck, color: 'text-blue-500' },
+           { label: 'Technicians Active', value: stats?.total_technicians || 0, icon: UserCheck, color: 'text-blue-500' },
            { label: 'Jobs Assigned', value: stats?.status_stats?.on_process || 0, icon: Briefcase, color: 'text-indigo-500' },
            { label: 'Pending Assignments', value: stats?.status_stats?.pending || 0, icon: Clock, color: 'text-orange-500' },
          ].map((op, i) => (

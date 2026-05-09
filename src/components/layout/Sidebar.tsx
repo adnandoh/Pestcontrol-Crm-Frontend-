@@ -9,6 +9,7 @@ import {
   Users,
   Zap,
   Star,
+  BarChart3,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -36,6 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       items: [
         { name: 'Client Directory', href: '/clients', icon: Users },
         { name: 'Technicians', href: '/technicians', icon: Users },
+        { name: 'Technician Reports', href: '/technician-reports', icon: BarChart3 },
       ]
     },
     {

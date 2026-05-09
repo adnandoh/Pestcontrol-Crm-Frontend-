@@ -19,6 +19,7 @@ import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
 import Feedbacks from './pages/Feedbacks';
+import TechnicianReports from './pages/TechnicianReports';
 import PublicFeedback from './pages/PublicFeedback';
 
 const queryClient = new QueryClient({
@@ -80,6 +81,7 @@ const AppContent: React.FC = () => {
                   <Route path="/technicians" element={<Technicians />} />
                   <Route path="/crm-inquiries" element={<CRMInquiries />} />
                   <Route path="/feedbacks" element={<Feedbacks />} />
+                  <Route path="/technician-reports" element={<TechnicianReports />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

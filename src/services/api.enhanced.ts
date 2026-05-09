@@ -376,6 +376,36 @@ class EnhancedApiService {
     apiCache.clear();
   }
 
+  async getTechnicianPerformance(params?: { from?: string; to?: string; service_type?: string }): Promise<{ stats: any; technicians: TechnicianPerformance[] }> {
+    const cacheKey = apiCache.generateKey(`${API_ENDPOINTS.TECHNICIANS}performance/`, params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<{ stats: any; technicians: TechnicianPerformance[] }>(`${API_ENDPOINTS.TECHNICIANS}performance/`, { params })
+        )
+      ),
+      2 * 60 * 1000 // 2 minutes cache
+    );
+  }
+
+  async getTechnicianPerformanceDetail(id: number): Promise<any> {
+    const cacheKey = `/technicians/${id}/performance_detail/`;
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<any>(`/technicians/${id}/performance_detail/`)
+        )
+      ),
+      5 * 60 * 1000 // 5 minutes cache
+    );
+  }
+
   // CRM Inquiry methods
   async getCRMInquiries(params?: CRMInquiryFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<CRMInquiry>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.CRM_INQUIRIES, params);
@@ -1082,10 +1112,7 @@ class EnhancedApiService {
     return response.data;
   }
 
-  async getTechnicianPerformance(): Promise<TechnicianPerformance[]> {
-    const response = await this.api.get<TechnicianPerformance[]>(`${API_ENDPOINTS.FEEDBACKS}performance/`);
-    return response.data;
-  }
+
 
   // Health check methods
   async healthCheck(): Promise<{ status: string; timestamp: string }> {

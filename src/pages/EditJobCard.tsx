@@ -42,6 +42,8 @@ const EditJobCard: React.FC = () => {
     clearError,
     scrollToFirstError,
   } = useFormValidation(jobCardValidationRules);
+  const isInitialLoad = React.useRef(true);
+  const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
   const [pricingService, setPricingService] = useState('');
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
@@ -84,9 +86,13 @@ const EditJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-
   // Handle pricing calculation
   useEffect(() => {
+    // 1. Skip if still loading from API
+    // 2. Skip if it's the very first render cycle where states are being initialized
+    // 3. Skip if the user has manually overridden the price in this session
+    if (loading || isInitialLoad.current || isPriceManuallyEdited) return;
+
     if (pricingService && pricingArea && pricingType) {
       const serviceData = PRICING_DATA[pricingService];
       if (serviceData && serviceData[pricingType]) {
@@ -97,14 +103,11 @@ const EditJobCard: React.FC = () => {
              setFormData(prev => ({ ...prev, price: price.toString() }));
           }
         } else if (typeof typeData === 'number') {
-           setFormData(prev => ({ ...prev, price: typeData.toString() }));
+            setFormData(prev => ({ ...prev, price: typeData.toString() }));
         }
       }
-    } else {
-      // Reset price if selection is incomplete
-      setFormData(prev => ({ ...prev, price: '0.00' }));
     }
-  }, [pricingService, pricingArea, pricingType]);
+  }, [pricingService, pricingArea, pricingType, loading, isPriceManuallyEdited]);
 
   const serviceTypeCategories = [
     {
@@ -197,9 +200,14 @@ const EditJobCard: React.FC = () => {
         }
         
       } catch (err: any) {
-        // Error handling
+        console.error("Error fetching job card:", err);
       } finally {
         setLoading(false);
+        // After states are set and loading is false, allow future pricing updates
+        // but only after this specific execution block finishes
+        setTimeout(() => {
+          isInitialLoad.current = false;
+        }, 100);
       }
     };
     fetchData();
@@ -261,15 +269,22 @@ const EditJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
       if (submitData.schedule_datetime) {
+        // Create a dayjs object from the date part (local time)
         let combined = dayjs(submitData.schedule_datetime);
+        
         if (submitData.time_slot) {
-          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          // Robust regex to find the first time (HH:MM) and AM/PM anywhere in the slot
+          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)/);
+          const ampmMatch = submitData.time_slot.match(/(AM|PM)/i);
+          
           if (timeMatch) {
             let hours = parseInt(timeMatch[1]);
             const minutes = parseInt(timeMatch[2]);
-            const ampm = timeMatch[3].toUpperCase();
+            const ampm = ampmMatch ? ampmMatch[0].toUpperCase() : 'AM';
+            
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
+            
             combined = combined.hour(hours).minute(minutes).second(0);
           }
         }
@@ -615,7 +630,16 @@ const EditJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input type="number" value={formData.price} onChange={(e) => handleInputChange('price', e.target.value)} className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm" required />
+                  <Input 
+                    type="number" 
+                    value={formData.price} 
+                    onChange={(e) => {
+                      handleInputChange('price', e.target.value);
+                      setIsPriceManuallyEdited(true);
+                    }} 
+                    className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm" 
+                    required 
+                  />
                 </div>
               </div>
 

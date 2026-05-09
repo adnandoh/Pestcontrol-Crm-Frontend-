@@ -287,15 +287,22 @@ const CreateJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
       if (submitData.schedule_datetime) {
+        // Create a dayjs object from the date part (local time)
         let combined = dayjs(submitData.schedule_datetime);
+        
         if (submitData.time_slot) {
-          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          // Robust regex to find the first time (HH:MM) and AM/PM anywhere in the slot
+          const timeMatch = submitData.time_slot.match(/(\d+):(\d+)/);
+          const ampmMatch = submitData.time_slot.match(/(AM|PM)/i);
+          
           if (timeMatch) {
             let hours = parseInt(timeMatch[1]);
             const minutes = parseInt(timeMatch[2]);
-            const ampm = timeMatch[3].toUpperCase();
+            const ampm = ampmMatch ? ampmMatch[0].toUpperCase() : 'AM';
+            
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
+            
             combined = combined.hour(hours).minute(minutes).second(0);
           }
         }
