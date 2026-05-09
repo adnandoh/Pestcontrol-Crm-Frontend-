@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, 
   CheckCircle, 
   IndianRupee, 
   Star, 
@@ -12,9 +11,7 @@ import {
   TrendingUp, 
   Award,
   ChevronRight,
-  ArrowUpRight,
-  Calendar,
-  ChevronDown
+  Calendar
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { enhancedApiService } from '../services/api.enhanced';

@@ -37,7 +37,7 @@ const Feedbacks: React.FC = () => {
       ]);
 
       setFeedbacks(feedbackRes.results);
-      setPerformance(perfRes);
+      setPerformance(perfRes.technicians || []);
       setPagination(prev => ({
         ...prev,
         count: feedbackRes.count,
@@ -66,28 +66,27 @@ const Feedbacks: React.FC = () => {
         </div>
       </div>
 
-      {/* Technician Performance Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {performance.map((tech) => (
-          <div key={tech.technician_id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
+          <div key={tech.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-center justify-between mb-3">
               <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors text-blue-600">
                 <User className="h-5 w-5" />
               </div>
               <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full">
                 <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-                <span className="text-xs font-black text-yellow-700">{tech.average_rating}</span>
+                <span className="text-xs font-black text-yellow-700">{tech.avg_rating}</span>
               </div>
             </div>
-            <h3 className="text-sm font-black text-gray-900 uppercase truncate">{tech.technician_name}</h3>
+            <h3 className="text-sm font-black text-gray-900 uppercase truncate">{tech.name}</h3>
             <div className="flex items-center justify-between mt-2">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Reviews</span>
-              <span className="text-xs font-black text-gray-700">{tech.total_feedbacks}</span>
+              <span className="text-xs font-black text-gray-700">{tech.feedback_count}</span>
             </div>
             <div className="mt-3 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full" 
-                style={{ width: `${(tech.average_rating / 5) * 100}%` }}
+                style={{ width: `${(tech.avg_rating / 5) * 100}%` }}
               />
             </div>
           </div>
