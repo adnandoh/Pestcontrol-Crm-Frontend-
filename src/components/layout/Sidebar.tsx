@@ -10,17 +10,21 @@ import {
   Zap,
   Star,
   BarChart3,
+  Shield,
+  History
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
+import type { AuthUser } from '../../types';
 
 interface SidebarProps {
   className?: string;
   isOpen?: boolean;
   onClose?: () => void;
+  user?: AuthUser | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, user }) => {
   const location = useLocation();
 
   const navigationGroups = [
@@ -44,6 +48,12 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
       items: [
         { name: 'Renewals', href: '/renewals', icon: RefreshCw },
         { name: 'References', href: '/references', icon: FileText },
+      ]
+    },
+    {
+      items: [
+        { name: 'Staff Management', href: '/staff', icon: Shield },
+        { name: 'Activity Logs', href: '/activity-logs', icon: History },
       ]
     }
   ];
@@ -76,41 +86,48 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose }) 
 
 
           <nav className="flex-1 space-y-6 overflow-y-auto custom-scrollbar">
-            {navigationGroups.map((group, gIdx) => (
-              <div key={gIdx} className="space-y-1">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.href);
-                  
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={cn(
-                        'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
-                        active 
-                          ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-                      )}
-                    >
-                      <div className={cn(
-                        'flex items-center justify-center transition-colors',
-                        active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
-                      )}>
-                        <Icon className="h-[18px] w-[18px]" />
-                      </div>
+            {navigationGroups.map((group, gIdx) => {
+              // Hide the last group (Administration) if user is not a superuser
+              if (gIdx === navigationGroups.length - 1 && !user?.is_superuser) {
+                return null;
+              }
+              
+              return (
+                <div key={gIdx} className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className={cn(
+                          'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+                          active 
+                            ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                        )}
+                      >
+                        <div className={cn(
+                          'flex items-center justify-center transition-colors',
+                          active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
+                        )}>
+                          <Icon className="h-[18px] w-[18px]" />
+                        </div>
 
-                      <span className={cn(
-                        'flex-1 text-[14px] font-semibold transition-colors',
-                        active ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
-                      )}>
-                        {item.name}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+                        <span className={cn(
+                          'flex-1 text-[14px] font-semibold transition-colors',
+                          active ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
+                        )}>
+                          {item.name}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </nav>
 
 

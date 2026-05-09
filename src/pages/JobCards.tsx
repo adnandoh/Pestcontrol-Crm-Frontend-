@@ -32,6 +32,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
+import CompleteJobModal from '../components/crm/CompleteJobModal';
 import type { JobCard, PaginatedResponse, CRMInquiry } from '../types';
 
 const JobCards: React.FC = () => {
@@ -461,11 +462,15 @@ const JobCards: React.FC = () => {
   };
 
   // Handle Mark as Done
-  const handleMarkAsDone = async () => {
+  const handleMarkAsDone = async (paymentMode: 'Cash' | 'Online') => {
     if (!doneId) return;
     try {
       setLoading(true);
-      await enhancedApiService.updateJobCard(doneId, { status: 'Done' });
+      await enhancedApiService.updateJobCard(doneId, { 
+        status: 'Done',
+        payment_mode: paymentMode,
+        payment_status: 'Paid'
+      });
       setDoneId(null);
       loadJobCards(pagination.current, filters);
     } catch (error) {
@@ -619,6 +624,11 @@ const JobCards: React.FC = () => {
             <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
               Total {pagination.count} Records
             </span>
+            {activeTab === 'upcoming_services' && (
+              <span className="text-[10px] font-black bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-0.5 rounded-full shadow-xs animate-pulse tracking-tight uppercase">
+                Showing next 7 days services
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => navigate('/jobcards/create')} className="bg-blue-700 hover:bg-blue-800 h-8 font-bold shadow-sm">
@@ -636,6 +646,7 @@ const JobCards: React.FC = () => {
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
             { id: 'reminders', label: 'Reminders' },
+            { id: 'complaint_calls', label: 'Complaint Calls' },
             { id: 'cancelled', label: 'Cancelled' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -660,15 +671,15 @@ const JobCards: React.FC = () => {
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded animate-fade-up delay-100">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <div className="relative group">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
             <input
               type="text"
               placeholder="Search ID, Name, Mobile..."
               value={searchInput}
               onChange={(e) => handleSearchInputChange(e.target.value)}
               onKeyDown={handleSearchKeyPress}
-              className="w-full pl-8 pr-8 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+              className="w-full pl-8 pr-8 py-1.5 text-[11px] font-black border border-gray-200 rounded outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white shadow-sm hover:border-gray-300 h-8"
             />
           </div>
         </div>
@@ -787,6 +798,7 @@ const JobCards: React.FC = () => {
                   <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-orange-700">Reminder Info</th>
                 )}
                 <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
+                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Info</th>
                 <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10"></th>
               </tr>
             </thead>
@@ -795,7 +807,7 @@ const JobCards: React.FC = () => {
                  <TableSkeleton />
               ) : (activeTab === 'reminders' ? unifiedReminders : (jobCards || [])).length === 0 ? (
                  <tr>
-                    <td colSpan={10} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                    <td colSpan={12} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                        No {activeTab === 'reminders' ? 'Reminders' : 'Bookings'} Found In This Category
                     </td>
                  </tr>
@@ -816,7 +828,11 @@ const JobCards: React.FC = () => {
                 
                 return (
                   <React.Fragment key={isCRM ? `crm-${job.id}` : `jc-${job.id}`}>
-                    <tr className={`${rowBg} hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group`}>
+                    <tr className={cn(
+                      rowBg, 
+                      "hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group",
+                      !isCRM && job.is_complaint_call && "bg-red-50/50"
+                    )}>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1.5 relative">
                         <div className="flex items-center gap-2">
@@ -836,6 +852,9 @@ const JobCards: React.FC = () => {
                           >
                             {isCRM ? `INQ-${job.id}` : job.id}
                           </button>
+                          {!isCRM && job.is_complaint_call && (
+                             <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-sm font-black uppercase tracking-tighter">Complaint</span>
+                          )}
                         </div>
                         {!isCRM && job.commercial_type && job.commercial_type !== 'home' && (
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter ${
@@ -1040,6 +1059,20 @@ const JobCards: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
+                      {!isCRM && job.is_complaint_call ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={job.priority === 'High' ? 'destructive' : job.priority === 'Medium' ? 'warning' : 'secondary'} size="sm">
+                            {job.priority}
+                          </Badge>
+                          <span className="text-[10px] text-red-600 font-bold truncate max-w-[100px]" title={job.complaint_note}>
+                            {job.complaint_type}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-[10px]">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1.5">
                         {(!isCRM && cancellingId === job.id) ? (
                           <div className="flex flex-col gap-2 min-w-[200px] animate-fade-in">
@@ -1097,7 +1130,10 @@ const JobCards: React.FC = () => {
                                 </button>
                                 
                                 <button 
-                                  onClick={() => setDoneId(job.id)} 
+                                  onClick={() => {
+                                    setSelectedJobCard(job);
+                                    setDoneId(job.id);
+                                  }} 
                                   className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
                                   title="Mark as Done"
                                 >
@@ -1354,14 +1390,12 @@ const JobCards: React.FC = () => {
           )}
         </div>
       </ConfirmationModal>
-      <ConfirmationModal
+      <CompleteJobModal
         isOpen={!!doneId}
         onClose={() => setDoneId(null)}
         onConfirm={handleMarkAsDone}
-        title="Complete Booking"
-        message="Are you sure you want to mark this booking as DONE? It will be moved to the Done tab."
-        confirmText="Yes, Done"
-        type="info"
+        jobCard={selectedJobCard}
+        isLoading={loading}
       />
       <ConfirmationModal
         isOpen={!!deleteId}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '../ui';
+import { GlobalSearch } from './GlobalSearch';
 import type { AuthUser } from '../../types';
 
 interface HeaderProps {
@@ -8,9 +9,10 @@ interface HeaderProps {
   onLogout: () => void;
   onMenuToggle?: () => void;
   isMenuOpen?: boolean;
+  onSelectClient?: (clientId: number) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpen = false }) => {
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpen = false, onSelectClient }) => {
   const [showUserMenu, setShowUserMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -78,6 +80,11 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
             />
           </div>
         </div>
+
+        {/* Global Search */}
+        {onSelectClient && (
+          <GlobalSearch onSelectClient={onSelectClient} />
+        )}
 
         {/* Right side - User Profile */}
         <div className="relative" ref={menuRef}>

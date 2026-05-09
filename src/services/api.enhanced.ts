@@ -18,6 +18,8 @@ import type {
   InquiryFilters,
   JobCardFilters,
   RenewalFilters,
+  StaffUser,
+  ActivityLog,
   ClientFormData,
   InquiryFormData,
   JobCardFormData,
@@ -25,6 +27,8 @@ import type {
   CRMInquiry,
   CRMInquiryFormData,
   CRMInquiryFilters,
+  GlobalSearchResult,
+  CustomerHistory,
 } from '../types';
 
 // Enhanced API Error class
@@ -1123,7 +1127,31 @@ class EnhancedApiService {
     return response.data;
   }
 
+  // Global Search methods
+  async getGlobalSearch(query: string): Promise<GlobalSearchResult[]> {
+    if (!query || query.length < 2) return [];
+    
+    // We don't cache global search results heavily as they change frequently
+    const response = await this.api.get<GlobalSearchResult[]>('/global-search/', {
+      params: { q: query }
+    });
+    return response.data;
+  }
 
+  async getCustomerHistory(clientId: number): Promise<CustomerHistory> {
+    const cacheKey = `/customer-history/${clientId}/`;
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<CustomerHistory>(`/customer-history/${clientId}/`)
+        )
+      ),
+      2 * 60 * 1000 // 2 minutes cache
+    );
+  }
 
   // Health check methods
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
@@ -1149,10 +1177,49 @@ class EnhancedApiService {
     return apiCache.getStats();
   }
 
+  // Complaint methods
+  async getComplaints(params?: any): Promise<PaginatedResponse<JobCard>> {
+    const cacheKey = apiCache.generateKey('/complaints/', params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<JobCard>>('/complaints/', { params })
+        )
+      ),
+      2 * 60 * 1000 // 2 minutes cache
+    );
+  }
+
+  async createComplaint(data: {
+    parent_booking_id: number;
+    complaint_type: string;
+    complaint_note?: string;
+    priority?: string;
+    revisit_date?: string;
+    technician_id?: number | null;
+  }): Promise<JobCard> {
+    const response = await this.api.post<JobCard>('/complaints/create_complaint/', data);
+    apiCache.deletePattern('/complaints/');
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    return response.data;
+  }
+
+  async getCustomerComplaints(clientId: number): Promise<JobCard[]> {
+    const response = await this.api.get<JobCard[]>(`/complaints/?client=${clientId}`);
+    return response.data;
+  }
+
+  async getComplaintStats(): Promise<any> {
+    const response = await this.api.get('/complaints/stats/');
+    return response.data;
+  }
+
   // Location methods
   async getLocations(): Promise<Record<string, string[]>> {
     const cacheKey = 'location_data';
-    
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
@@ -1162,6 +1229,52 @@ class EnhancedApiService {
         )
       ),
       24 * 60 * 60 * 1000 // 24 hours cache (static data)
+    );
+  }
+
+  // Staff Management methods
+  async getStaff(params?: any): Promise<PaginatedResponse<StaffUser>> {
+    const cacheKey = apiCache.generateKey('/staff/', params);
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(cacheKey, () => this.api.get<PaginatedResponse<StaffUser>>('/staff/', { params }))
+      ),
+      5 * 60 * 1000 // 5 minutes cache
+    );
+  }
+
+  async createStaff(data: Partial<StaffUser>): Promise<StaffUser> {
+    const response = await this.api.post<StaffUser>('/staff/', data);
+    apiCache.deletePattern('/staff/');
+    return response.data;
+  }
+
+  async updateStaff(id: number, data: Partial<StaffUser>): Promise<StaffUser> {
+    const response = await this.api.patch<StaffUser>(`/staff/${id}/`, data);
+    apiCache.deletePattern('/staff/');
+    return response.data;
+  }
+
+  async deleteStaff(id: number): Promise<void> {
+    await this.api.delete(`/staff/${id}/`);
+    apiCache.deletePattern('/staff/');
+  }
+
+  async resetStaffPassword(id: number, password: string): Promise<any> {
+    const response = await this.api.post(`/staff/${id}/reset_password/`, { password });
+    return response.data;
+  }
+
+  // Activity Log methods
+  async getActivityLogs(params?: any): Promise<PaginatedResponse<ActivityLog>> {
+    const cacheKey = apiCache.generateKey('/activity-logs/', params);
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(cacheKey, () => this.api.get<PaginatedResponse<ActivityLog>>('/activity-logs/', { params }))
+      ),
+      1 * 60 * 1000 // 1 minute cache
     );
   }
 }

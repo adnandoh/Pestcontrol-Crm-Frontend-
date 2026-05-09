@@ -86,13 +86,13 @@ const Login: React.FC = () => {
               )}
 
               <Input
-                label="Username"
+                label="Mobile Number"
                 name="username"
                 type="text"
                 required
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="Enter your username"
+                placeholder="Enter your mobile number"
               />
 
               <div className="relative">

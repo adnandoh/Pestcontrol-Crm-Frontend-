@@ -654,6 +654,19 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Mode</label>
+                <select
+                  value={formData.payment_mode || ''}
+                  onChange={(e) => handleInputChange('payment_mode', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
+                >
+                  <option value="">Select Mode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Online">Online</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference</label>
                 <select
                   value={formData.reference}

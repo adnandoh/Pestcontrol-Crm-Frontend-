@@ -11,6 +11,7 @@ export { Select } from './Select';
 export { Checkbox } from './Checkbox';
 export { DatePicker } from './DatePicker';
 export { Toggle } from './Toggle';
+export * from './Drawer';
 export { ConfirmationModal } from './ConfirmationModal';
 export { ClientCheckStatus } from './ClientCheckStatus';
 export { FieldError } from './FieldError';

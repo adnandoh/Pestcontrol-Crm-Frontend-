@@ -113,6 +113,7 @@ export interface JobCard {
   is_service_call?: boolean;
   status: 'Pending' | 'On Process' | 'Done' | 'Cancelled';
   payment_status?: string;
+  payment_mode?: 'Cash' | 'Online';
   service_type: string;
   schedule_datetime: string;
   time_slot?: string;
@@ -166,6 +167,27 @@ export interface User {
   is_staff: boolean;
   is_active: boolean;
   date_joined: string;
+}
+
+export interface StaffUser {
+  id: number;
+  name: string;
+  mobile: string;
+  role: 'Super Admin' | 'Staff';
+  role_display: 'Super Admin' | 'Staff';
+  password?: string;
+  is_active: boolean;
+  date_joined: string;
+}
+
+export interface ActivityLog {
+  id: number;
+  user: number;
+  staff_name: string;
+  action: string;
+  booking_id?: string;
+  details?: string;
+  created_at: string;
 }
 
 // API Response types
@@ -286,6 +308,7 @@ export interface JobCardFormData {
   city?: string;
   status: string;
   payment_status: string;
+  payment_mode?: 'Cash' | 'Online';
   assigned_to?: string;
   technician?: number | null;
   price: number | string;
@@ -462,4 +485,37 @@ export interface TechnicianPerformance {
   avg_rating: number;
   feedback_count: number;
   completion_rate: number;
+}
+
+export interface GlobalSearchResult {
+  id: number;
+  title: string;
+  subtitle: string;
+  type: 'Customer' | 'Booking' | 'Inquiry';
+  link: string;
+  client_id?: number;
+}
+
+export interface CustomerHistory {
+  client: Client;
+  stats: {
+    total_bookings: number;
+    total_revenue: number;
+    amc_revenue: number;
+    paid_services: number;
+    first_booking: string | null;
+    last_service: string | null;
+  };
+  bookings: JobCard[];
+  feedbacks: Feedback[];
+  reminders: {
+    id: number;
+    type: string;
+    date: string;
+    time: string | null;
+    note: string | null;
+    status: string;
+  }[];
+  technicians: string[];
+  upcoming: JobCard[];
 }

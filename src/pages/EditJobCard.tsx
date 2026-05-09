@@ -668,6 +668,62 @@ const EditJobCard: React.FC = () => {
             </div>
           </div>
           
+          {/* Section: Payment & Reference */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Status</label>
+                <select
+                  value={formData.payment_status}
+                  onChange={(e) => handleInputChange('payment_status', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="Paid">Paid</option>
+                  <option value="Unpaid">Unpaid</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Mode</label>
+                <select
+                  value={formData.payment_mode || ''}
+                  onChange={(e) => handleInputChange('payment_mode', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="">Select Mode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Online">Online</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference</label>
+                <select
+                  value={formData.reference}
+                  onChange={(e) => handleInputChange('reference', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="">None</option>
+                  <option value="Website">Website</option>
+                  <option value="Play Store">Play Store</option>
+                  <option value="Previous Client">Previous Client</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="YouTube">YouTube</option>
+                  <option value="LinkedIn">LinkedIn</option>
+                  <option value="SMS">SMS</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Justdial">Justdial</option>
+                  <option value="Poster">Poster</option>
+                  <option value="Friend Reference">Friend Reference</option>
+                  <option value="No Parking Board">No Parking Board</option>
+                  <option value="Holding">Holding</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Section: Reminders */}
           <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
             <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
