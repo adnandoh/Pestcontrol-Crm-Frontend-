@@ -1,7 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, Wallet, CreditCard, AlertCircle } from 'lucide-react';
-import { Button } from '../ui';
-import { cn } from '../../utils/cn';
+import { X, CheckCircle, Wallet, CreditCard } from 'lucide-react';
 import type { JobCard } from '../../types';
 
 interface CompleteJobModalProps {

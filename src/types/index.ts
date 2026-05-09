@@ -138,6 +138,12 @@ export interface JobCard {
   reminder_time?: string | null;
   reminder_note?: string | null;
   is_reminder_done?: boolean;
+  is_complaint_call?: boolean;
+  complaint_type?: string;
+  complaint_note?: string;
+  complaint_status?: string;
+  complaint_parent_booking?: number;
+  priority?: 'Low' | 'Medium' | 'High';
   created_at: string;
   updated_at: string;
 }

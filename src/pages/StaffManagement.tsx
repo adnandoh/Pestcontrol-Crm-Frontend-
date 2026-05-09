@@ -3,7 +3,6 @@ import {
   Users, 
   UserPlus, 
   Search, 
-  MoreVertical, 
   Key, 
   Edit2, 
   Trash2, 
@@ -12,8 +11,6 @@ import {
   Smartphone,
   CheckCircle2,
   XCircle,
-  Plus,
-  RefreshCw
 } from 'lucide-react';
 import { 
   Card, 
@@ -27,7 +24,7 @@ import {
 } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
-import { StaffUser } from '../types';
+import type { StaffUser } from '../types';
 import { cn } from '../utils/cn';
 
 const StaffManagement: React.FC = () => {
@@ -506,7 +503,7 @@ const StaffManagement: React.FC = () => {
         onConfirm={handleDelete}
         title="DELETE STAFF MEMBER?"
         message={`ARE YOU SURE YOU WANT TO REMOVE ${selectedStaff?.name}? THIS ACTION WILL PERMANENTLY REVOKE THEIR CRM ACCESS.`}
-        variant="destructive"
+        type="danger"
       />
     </div>
   );

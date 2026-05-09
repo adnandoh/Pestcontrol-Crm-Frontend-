@@ -3,13 +3,10 @@ import {
   History, 
   Search, 
   Calendar, 
-  User, 
-  Activity, 
   ExternalLink,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Filter,
   FileText,
   AlertCircle
 } from 'lucide-react';
@@ -24,7 +21,7 @@ import {
 } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
-import { ActivityLog } from '../types';
+import type { ActivityLog } from '../types';
 import { cn } from '../utils/cn';
 
 const ActivityLogs: React.FC = () => {
@@ -35,6 +32,14 @@ const ActivityLogs: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filterAction, setFilterAction] = useState('');
+
+  const actionOptions = [
+    { value: 'Created Booking', label: 'BOOKINGS' },
+    { value: 'Created Inquiry', label: 'INQUIRIES' },
+    { value: 'Created Complaint', label: 'COMPLAINTS' },
+    { value: 'Updated Booking', label: 'UPDATES' },
+    { value: 'Reset password', label: 'PASSWORD RESETS' },
+  ];
 
   const fetchLogs = async () => {
     try {
@@ -130,16 +135,11 @@ const ActivityLogs: React.FC = () => {
             <div className="w-full md:w-48">
                <Select
                 value={filterAction}
-                onChange={(e) => setFilterAction(e.target.value)}
+                onChange={(val) => setFilterAction(val)}
+                options={actionOptions}
+                placeholder="ALL ACTIONS"
                 className="h-10 rounded-xl border-gray-200 uppercase text-[10px] font-black tracking-widest"
-              >
-                <option value="">ALL ACTIONS</option>
-                <option value="Created Booking">BOOKINGS</option>
-                <option value="Created Inquiry">INQUIRIES</option>
-                <option value="Created Complaint">COMPLAINTS</option>
-                <option value="Updated Booking">UPDATES</option>
-                <option value="Reset password">PASSWORD RESETS</option>
-              </Select>
+              />
             </div>
           </div>
         </CardContent>
@@ -234,7 +234,7 @@ const ActivityLogs: React.FC = () => {
                   return (
                     <Button
                       key={p}
-                      variant={page === p ? "default" : "ghost"}
+                      variant={page === p ? "primary" : "ghost"}
                       size="sm"
                       onClick={() => setPage(p)}
                       className={cn("h-8 w-8 p-0 rounded-lg text-[10px] font-black", page === p ? "bg-indigo-600" : "")}

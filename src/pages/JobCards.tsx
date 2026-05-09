@@ -26,6 +26,7 @@ dayjs.extend(timezone);
 import {
   Button,
   Pagination,
+  Badge,
   ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';

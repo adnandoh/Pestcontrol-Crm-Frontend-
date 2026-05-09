@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Calendar, MessageSquare, User, ShieldAlert } from 'lucide-react';
-import { Modal, Button, Select, Input, Textarea, Loading } from '../ui';
+import { Modal, Button, Input, Textarea, Loading } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import dayjs from 'dayjs';
@@ -83,8 +83,8 @@ const ComplaintModal: React.FC<ComplaintModalProps> = ({ isOpen, onClose, bookin
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
       title="Create Complaint Call"
     >
       <form onSubmit={handleSubmit} className="space-y-6 p-1">
