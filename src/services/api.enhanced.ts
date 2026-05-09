@@ -182,21 +182,29 @@ class EnhancedApiService {
   // Request deduplication
   private async makeRequest<T>(
     key: string,
-    requestFn: () => Promise<AxiosResponse<T>>
+    requestFn: () => Promise<AxiosResponse<T>>,
+    bypassQueue: boolean = false
   ): Promise<T> {
-    if (this.requestQueue.has(key)) {
+    if (!bypassQueue && this.requestQueue.has(key)) {
       return this.requestQueue.get(key);
     }
 
     const promise = requestFn().then(response => response.data);
-    this.requestQueue.set(key, promise);
+    
+    if (!bypassQueue) {
+      this.requestQueue.set(key, promise);
+    }
 
     try {
       const result = await promise;
-      this.requestQueue.delete(key);
+      if (!bypassQueue) {
+        this.requestQueue.delete(key);
+      }
       return result;
     } catch (error) {
-      this.requestQueue.delete(key);
+      if (!bypassQueue) {
+        this.requestQueue.delete(key);
+      }
       throw error;
     }
   }
@@ -686,12 +694,15 @@ class EnhancedApiService {
   async getJobCards(params?: JobCardFilters & { page?: number; page_size?: number }, signal?: AbortSignal): Promise<PaginatedResponse<JobCard>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.JOBCARDS, params);
     
+    // If we have an abort signal, we bypass the request deduplication queue 
+    // to avoid conflicts between different controllers aborting the same promise.
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params, signal })
+          () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params, signal }),
+          !!signal // bypass queue if signal exists
         )
       ),
       3 * 60 * 1000 // 3 minutes cache

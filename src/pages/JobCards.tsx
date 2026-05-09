@@ -222,7 +222,15 @@ const JobCards: React.FC = () => {
         totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
       }));
     } catch (err: any) {
-      if (err.name === 'CanceledError' || err.name === 'AbortError' || axios.isCancel(err)) {
+      // Properly identify and ignore canceled requests
+      const isCanceled = 
+        err.name === 'CanceledError' || 
+        err.name === 'AbortError' || 
+        axios.isCancel(err) || 
+        err.message === 'canceled' ||
+        (err.details && err.details.message === 'canceled');
+
+      if (isCanceled) {
         console.log('Fetch cancelled');
         return;
       }
@@ -296,9 +304,15 @@ const JobCards: React.FC = () => {
   }, [activeTab]);
 
   // Refetch data when page becomes visible (after returning from edit page)
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    // Set a small timeout to allow initial mount logic to finish
+    const timer = setTimeout(() => {
+      isInitialMount.current = false;
+    }, 1000);
+
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && !isInitialMount.current) {
         console.log('🔄 Page visible - refreshing job cards data');
         loadJobCards(pagination.current, filters);
         if (activeTab === 'reminders') {
@@ -308,10 +322,12 @@ const JobCards: React.FC = () => {
     };
 
     const handleFocus = () => {
-      console.log('🔄 Window focused - refreshing job cards data');
-      loadJobCards(pagination.current, filters);
-      if (activeTab === 'reminders') {
-        loadCRMReminders(filters);
+      if (!isInitialMount.current) {
+        console.log('🔄 Window focused - refreshing job cards data');
+        loadJobCards(pagination.current, filters);
+        if (activeTab === 'reminders') {
+          loadCRMReminders(filters);
+        }
       }
     };
 
@@ -319,6 +335,7 @@ const JobCards: React.FC = () => {
     window.addEventListener('focus', handleFocus);
 
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       if (abortControllerRef.current) {

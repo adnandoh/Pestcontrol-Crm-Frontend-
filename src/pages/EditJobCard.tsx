@@ -269,11 +269,10 @@ const EditJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
       if (submitData.schedule_datetime) {
-        // Create a dayjs object from the date part (local time)
-        let combined = dayjs(submitData.schedule_datetime);
+        // Create a dayjs object from the date part in IST
+        let combined = dayjs.tz(submitData.schedule_datetime, "Asia/Kolkata");
         
         if (submitData.time_slot) {
-          // Robust regex to find the first time (HH:MM) and AM/PM anywhere in the slot
           const timeMatch = submitData.time_slot.match(/(\d+):(\d+)/);
           const ampmMatch = submitData.time_slot.match(/(AM|PM)/i);
           
@@ -287,6 +286,10 @@ const EditJobCard: React.FC = () => {
             
             combined = combined.hour(hours).minute(minutes).second(0);
           }
+        } else {
+          // If no time slot is selected, default to a reasonable time (e.g., 10 AM)
+          // or keep existing time if available. For now, let's keep midnight if not specified.
+          combined = combined.hour(10).minute(0).second(0);
         }
         submitData.schedule_datetime = combined.toISOString();
       }
