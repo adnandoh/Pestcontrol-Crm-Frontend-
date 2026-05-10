@@ -11,6 +11,8 @@ import {
   Smartphone,
   CheckCircle2,
   XCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { 
   Card, 
@@ -44,6 +46,8 @@ const StaffManagement: React.FC = () => {
     is_active: true
   });
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   const fetchStaff = async () => {
     try {
@@ -81,8 +85,12 @@ const StaffManagement: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchStaff();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving staff:', error);
+      const errorData = error.details || error.response?.data;
+      const validationError = errorData?.mobile?.[0] || errorData?.name?.[0] || errorData?.password?.[0];
+      const errorMessage = validationError || errorData?.error || errorData?.detail || error.message || 'FAILED TO SAVE STAFF MEMBER';
+      alert(errorMessage.toUpperCase());
     }
   };
 
@@ -93,8 +101,11 @@ const StaffManagement: React.FC = () => {
       await enhancedApiService.resetStaffPassword(selectedStaff.id, newPassword);
       setIsResetModalOpen(false);
       setNewPassword('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting password:', error);
+      const errorData = error.details || error.response?.data;
+      const errorMessage = errorData?.error || errorData?.detail || error.message || 'FAILED TO RESET PASSWORD';
+      alert(errorMessage.toUpperCase());
     }
   };
 
@@ -118,11 +129,13 @@ const StaffManagement: React.FC = () => {
       role: member.role_display,
       is_active: member.is_active
     });
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
   const openResetModal = (member: StaffUser) => {
     setSelectedStaff(member);
+    setShowResetPassword(false);
     setIsResetModalOpen(true);
   };
 
@@ -159,6 +172,7 @@ const StaffManagement: React.FC = () => {
           onClick={() => {
             setSelectedStaff(null);
             setFormData({ name: '', mobile: '', password: '', role: 'Staff', is_active: true });
+            setShowPassword(false);
             setIsModalOpen(true);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
@@ -373,14 +387,23 @@ const StaffManagement: React.FC = () => {
           {!selectedStaff && (
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Login Password</label>
-              <Input 
-                required
-                type="password"
-                placeholder="CREATE A SECURE PASSWORD..."
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="rounded-xl border-gray-200"
-              />
+              <div className="relative">
+                <Input 
+                  required
+                  type={showPassword ? "text" : "password"}
+                  placeholder="CREATE A SECURE PASSWORD..."
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="rounded-xl border-gray-200 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -477,15 +500,24 @@ const StaffManagement: React.FC = () => {
             </p>
           </div>
           
-          <Input 
-            required
-            type="password"
-            placeholder="NEW PASSWORD..."
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="rounded-xl border-gray-200 mt-4 text-center"
-            autoFocus
-          />
+          <div className="relative mt-4">
+            <Input 
+              required
+              type={showResetPassword ? "text" : "password"}
+              placeholder="NEW PASSWORD..."
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="rounded-xl border-gray-200 text-center pr-10"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setShowResetPassword(!showResetPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
 
           <div className="flex gap-3 pt-4">
             <Button variant="ghost" type="button" onClick={() => setIsResetModalOpen(false)} className="flex-1 uppercase text-[10px] font-black">CANCEL</Button>
