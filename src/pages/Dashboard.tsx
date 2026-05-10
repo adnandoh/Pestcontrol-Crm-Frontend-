@@ -138,12 +138,12 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* ⚡ 3. TODAY FOCUS - COMPACT ROW */}
-      <div className="bg-white p-2.5 px-5 rounded-xl shadow-sm border border-gray-100 flex items-center animate-fade-up delay-200">
-        <div className="flex items-center gap-2 pr-6 border-r border-gray-100">
+      <div className="bg-white p-4 sm:p-2.5 px-5 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4 sm:gap-0 animate-fade-up delay-200">
+        <div className="flex items-center gap-2 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-100 w-full sm:w-auto pb-2 sm:pb-0">
            <Clock className="h-4 w-4 text-orange-500" />
            <h2 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Today Focus</h2>
         </div>
-        <div className="flex flex-1 justify-start gap-12 px-8">
+        <div className="flex flex-1 justify-between sm:justify-start gap-4 sm:gap-12 px-2 sm:px-8 w-full sm:w-auto">
            {[
              { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
              { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
@@ -221,10 +221,10 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1 flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-6 xl:gap-8">
               {/* Circular Target Chart */}
-              <div className="relative w-40 h-40 flex flex-col items-center justify-center">
-                <svg viewBox="0 0 42 42" className="w-40 h-40 transform -rotate-90">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex flex-col items-center justify-center shrink-0">
+                <svg viewBox="0 0 42 42" className="w-32 h-32 sm:w-40 sm:h-40 transform -rotate-90">
                   <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
                   <circle
                     cx="21" cy="21" r="15.9155" fill="transparent"
@@ -236,39 +236,39 @@ const Dashboard: React.FC = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-white leading-none">
+                  <span className="text-2xl sm:text-3xl font-black text-white leading-none">
                     {Math.min(Math.round(((stats?.month_revenue || 0) / 500000) * 100), 100)}%
                   </span>
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mt-1">Achieved</span>
+                  <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-tighter mt-1">Achieved</span>
                 </div>
               </div>
 
               {/* Stats Grid */}
-              <div className="flex-1 grid grid-cols-1 gap-4 w-full">
+              <div className="flex-1 grid grid-cols-1 gap-3 w-full">
                 <div className="bg-white/5 p-3 rounded-xl border border-white/5">
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Today Revenue</p>
-                  <p className="text-2xl font-black text-emerald-400">₹ {Math.round(stats?.today_revenue || 0).toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-black text-emerald-400">₹ {Math.round(stats?.today_revenue || 0).toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-white/5 p-3 rounded-xl border border-white/5">
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Current Month</p>
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-xl font-black text-white">₹ {Math.round(stats?.month_revenue || 0).toLocaleString()}</p>
-                    <p className="text-[10px] font-bold text-gray-400">/ 5,00,000</p>
+                  <div className="flex flex-wrap items-baseline justify-between gap-1">
+                    <p className="text-lg sm:text-xl font-black text-white whitespace-nowrap">₹ {Math.round(stats?.month_revenue || 0).toLocaleString()}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 whitespace-nowrap">/ 5,00,000</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between px-1">
                    <div className="space-y-0.5">
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Avg Ticket</p>
-                      <p className="text-sm font-black text-white">
+                      <p className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Avg Ticket</p>
+                      <p className="text-xs sm:text-sm font-black text-white">
                         ₹ {stats?.status_stats?.done ? Math.round((stats?.month_revenue || 0) / stats.status_stats.done).toLocaleString() : '0'}
                       </p>
                    </div>
-                   <div className="h-8 w-px bg-white/10" />
+                   <div className="h-8 w-px bg-white/10 mx-2" />
                    <div className="text-right space-y-0.5">
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Jobs Done</p>
-                      <p className="text-sm font-black text-white">{stats?.status_stats?.done || 0}</p>
+                      <p className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Jobs Done</p>
+                      <p className="text-xs sm:text-sm font-black text-white">{stats?.status_stats?.done || 0}</p>
                    </div>
                 </div>
               </div>

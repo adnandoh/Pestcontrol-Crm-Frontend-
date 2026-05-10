@@ -56,6 +56,12 @@ export interface Inquiry {
   area?: string;
   status: 'New' | 'Contacted' | 'Converted' | 'Closed';
   is_read?: boolean;
+  premise_type?: string;
+  premise_size?: string;
+  pest_problems?: string;
+  estimated_price?: number | string;
+  is_inspection_required?: boolean;
+  service_frequency?: string;
   reminder_date?: string | null;
   reminder_time?: string | null;
   reminder_note?: string | null;

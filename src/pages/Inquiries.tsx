@@ -113,7 +113,10 @@ const Inquiries: React.FC = () => {
         schedule_datetime: new Date().toISOString(),
         status: 'Pending',
         payment_status: 'Unpaid',
-        price: '',
+        price: inquiry.estimated_price || '',
+        commercial_type: inquiry.premise_type === 'commercial' ? 'office' : 'home',
+        bhk_size: inquiry.premise_size || '',
+        service_category: inquiry.service_frequency === 'amc' ? 'AMC' : 'One-Time Service',
         next_service_date: ''
       };
 
@@ -188,11 +191,12 @@ const Inquiries: React.FC = () => {
               <tr className="divide-x divide-gray-200">
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-12">ID</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-44">Lead Profile</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-44">Service Area</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Prop Details</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Price/Plan</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Interest</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Received</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-24">Action</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Received</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-20">Status</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-20">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -218,12 +222,18 @@ const Inquiries: React.FC = () => {
                     <div className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="font-bold text-gray-600 uppercase italic truncate">{inquiry.city || '---'}</div>
-                    <div className="text-[9px] font-bold text-gray-400 truncate uppercase">{inquiry.area || inquiry.building_name || 'No Addr'}</div>
+                    <div className="font-bold text-gray-700 uppercase italic truncate">{inquiry.premise_type || 'Residential'}</div>
+                    <div className="text-[9px] font-bold text-indigo-600 uppercase italic tracking-tighter">{inquiry.premise_size || 'N/A'}</div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="font-bold text-green-700 uppercase leading-tight">
+                       {inquiry.estimated_price ? `₹${inquiry.estimated_price}` : inquiry.is_inspection_required ? 'Inspection' : '---'}
+                    </div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase italic tracking-widest">{inquiry.service_frequency || 'One-time'}</div>
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-indigo-700 uppercase tracking-tighter truncate">{inquiry.service_interest}</div>
-                    <div className="text-[9px] font-bold text-gray-400 line-clamp-1 italic">"{inquiry.message}"</div>
+                    <div className="text-[9px] font-bold text-gray-400 line-clamp-1 italic">{inquiry.pest_problems || inquiry.message}</div>
                   </td>
                   <td className="px-3 py-2.5 font-bold text-gray-500 uppercase italic tabular-nums">
                     {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
