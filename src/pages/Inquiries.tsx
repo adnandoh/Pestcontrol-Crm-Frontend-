@@ -113,8 +113,8 @@ const Inquiries: React.FC = () => {
         schedule_datetime: new Date().toISOString(),
         status: 'Pending',
         payment_status: 'Unpaid',
-        price: inquiry.estimated_price || '',
-        commercial_type: inquiry.premise_type === 'commercial' ? 'office' : 'home',
+        price: inquiry.estimated_price?.toString() || '',
+        commercial_type: (inquiry.premise_type === 'commercial' ? 'office' : 'home') as 'office' | 'home',
         bhk_size: inquiry.premise_size || '',
         service_category: inquiry.service_frequency === 'amc' ? 'AMC' : 'One-Time Service',
         next_service_date: ''
