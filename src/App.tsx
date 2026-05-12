@@ -20,6 +20,7 @@ import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
 import Feedbacks from './pages/Feedbacks';
 import TechnicianReports from './pages/TechnicianReports';
+import StaffPerformance from './pages/StaffPerformance';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
 import ActivityLogs from './pages/ActivityLogs';
@@ -84,6 +85,7 @@ const AppContent: React.FC = () => {
                   <Route path="/crm-inquiries" element={<CRMInquiries />} />
                   <Route path="/feedbacks" element={<Feedbacks />} />
                   <Route path="/technician-reports" element={<TechnicianReports />} />
+                  <Route path="/staff-performance" element={<StaffPerformance />} />
                   <Route path="/staff" element={<StaffManagement />} />
                   <Route path="/activity-logs" element={<ActivityLogs />} />
                 </Routes>

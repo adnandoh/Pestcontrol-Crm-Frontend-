@@ -213,7 +213,8 @@ const getFieldDisplayName = (fieldName: string): string => {
     price: 'Price',
     next_service_date: 'Next service date',
     payment_status: 'Payment status',
-    status: 'Status'
+    status: 'Status',
+    reference: 'Reference'
   };
 
   return displayNames[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -290,6 +291,13 @@ export const jobCardValidationRules: ValidationRules = {
     required: true,
     custom: (value) => {
       if (!value?.trim()) return 'Service type is required';
+      return null;
+    }
+  },
+  reference: {
+    required: true,
+    custom: (value) => {
+      if (!value || !value.trim()) return 'Reference is required';
       return null;
     }
   },

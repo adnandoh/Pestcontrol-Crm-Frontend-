@@ -3,6 +3,10 @@ import {
   CheckCircle,
   ArrowRight,
   Search,
+  Edit,
+  Check,
+  X,
+  Bell,
 } from 'lucide-react';
 import { 
   PageLoading,
@@ -11,10 +15,13 @@ import {
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { Inquiry, PaginatedResponse } from '../types';
+import { useDashboardCounts } from '../hooks/useDashboardCounts';
+import ReminderModal from '../components/crm/ReminderModal';
 
 const Inquiries: React.FC = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { refreshCounts } = useDashboardCounts();
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -27,7 +34,15 @@ const Inquiries: React.FC = () => {
     status: '',
     search: ''
   });
+  const [activeTab, setActiveTab] = useState('All');
   const [searchInput, setSearchInput] = useState('');
+  const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
+  const [tempRemark, setTempRemark] = useState('');
+  const [updatingRemark, setUpdatingRemark] = useState<number | null>(null);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
+
+  const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
   // Load inquiries
   const loadInquiries = async (page = 1) => {
@@ -61,10 +76,28 @@ const Inquiries: React.FC = () => {
     }
   };
 
+  const handleRemarkUpdate = async (id: number) => {
+    try {
+      setUpdatingRemark(id);
+      await enhancedApiService.updateInquiry(id, { remark: tempRemark });
+      setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, remark: tempRemark } : inq));
+      setEditingRemarkId(null);
+    } catch (err: any) {
+      alert('Failed to update remark: ' + err.message);
+    } finally {
+      setUpdatingRemark(null);
+    }
+  };
+
   // Initial load and filter changes
   useEffect(() => {
     loadInquiries(1);
-  }, [filters]);
+  }, [filters, activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setFilters(prev => ({ ...prev, status: tab === 'All' ? '' : tab }));
+  };
 
 
 
@@ -84,6 +117,7 @@ const Inquiries: React.FC = () => {
     try {
       await enhancedApiService.markInquiryAsRead(id);
       loadInquiries(pagination.current);
+      refreshCounts();
     } catch (err: any) {
       alert('Failed to mark inquiry as read: ' + err.message);
     }
@@ -117,12 +151,14 @@ const Inquiries: React.FC = () => {
         commercial_type: (inquiry.premise_type === 'commercial' ? 'office' : 'home') as 'office' | 'home',
         bhk_size: inquiry.premise_size || '',
         service_category: inquiry.service_frequency === 'amc' ? 'AMC' : 'One-Time Service',
-        next_service_date: ''
+        next_service_date: '',
+        extra_notes: inquiry.remark || ''
       };
 
       const jobCard = await enhancedApiService.convertInquiry(inquiry.id, jobCardData);
       alert(`Successfully converted to Job Card #${jobCard.code}`);
       loadInquiries(pagination.current);
+      refreshCounts();
     } catch (err: any) {
       console.error('Conversion error:', err);
       alert(err.message || 'Failed to convert inquiry to booking.');
@@ -143,6 +179,24 @@ const Inquiries: React.FC = () => {
             Total {pagination.count} Inquiries
           </span>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-gray-200">
+        {tabs.map(tab => (
+          <button
+            key={tab}
+            onClick={() => handleTabChange(tab)}
+            className={cn(
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2",
+              activeTab === tab 
+                ? "border-blue-600 text-blue-600 bg-blue-50/50" 
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            )}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
       {/* 2. Filter Bar - High Density */}
@@ -195,6 +249,7 @@ const Inquiries: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Price/Plan</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Interest</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Received</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-20">Status</th>
                 <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-20">Action</th>
               </tr>
@@ -202,23 +257,30 @@ const Inquiries: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                   <td colSpan={7} className="py-20 text-center">
+                   <td colSpan={9} className="py-20 text-center">
                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
                      <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                    </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                   <td colSpan={7} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
+                   <td colSpan={9} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
                 </tr>
               ) : inquiries.map((inquiry) => (
-                <tr key={inquiry.id} className={cn(
-                  "hover:bg-gray-50/80 transition-colors divide-x divide-gray-100",
-                  !inquiry.is_read && "bg-blue-50/30"
-                )}>
+                <tr 
+                  key={inquiry.id} 
+                  onClick={() => !inquiry.is_read && handleMarkAsRead(inquiry.id)}
+                  className={cn(
+                    "hover:bg-gray-50/80 transition-colors divide-x divide-gray-100 cursor-pointer",
+                    !inquiry.is_read && "bg-blue-50/40 border-l-2 border-l-blue-600"
+                  )}
+                >
                   <td className="px-3 py-2.5 font-bold text-gray-400 italic">{inquiry.id}</td>
                   <td className="px-3 py-2.5">
-                    <div className="font-bold text-gray-800 uppercase leading-tight truncate">{inquiry.name}</div>
+                    <div className="flex items-center gap-2">
+                      {!inquiry.is_read && <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />}
+                      <div className="font-bold text-gray-800 uppercase leading-tight truncate">{inquiry.name}</div>
+                    </div>
                     <div className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</div>
                   </td>
                   <td className="px-3 py-2.5">
@@ -238,16 +300,77 @@ const Inquiries: React.FC = () => {
                   <td className="px-3 py-2.5 font-bold text-gray-500 uppercase italic tabular-nums">
                     {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
                   </td>
+                  <td className="px-3 py-2.5 group/remark" onClick={(e) => e.stopPropagation()}>
+                    {editingRemarkId === inquiry.id ? (
+                      <div className="flex items-center gap-1">
+                        <textarea
+                          value={tempRemark}
+                          onChange={(e) => setTempRemark(e.target.value)}
+                          className="w-full p-1 text-[10px] border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none min-h-[40px] font-semibold"
+                          placeholder="Add remark..."
+                          autoFocus
+                        />
+                        <div className="flex flex-col gap-1">
+                          <button 
+                            onClick={() => handleRemarkUpdate(inquiry.id)}
+                            disabled={updatingRemark === inquiry.id}
+                            className="p-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                          >
+                            <Check className="h-3 w-3" />
+                          </button>
+                          <button 
+                            onClick={() => setEditingRemarkId(null)}
+                            className="p-1 bg-gray-400 text-white rounded hover:bg-gray-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative pr-6">
+                        <p className="text-[10px] font-bold text-gray-600 italic line-clamp-2 leading-tight">
+                          {inquiry.remark || <span className="text-gray-300">No remark...</span>}
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setEditingRemarkId(inquiry.id);
+                            setTempRemark(inquiry.remark || '');
+                          }}
+                          className="absolute right-0 top-0 p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                          title="Edit Remark"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ring-1 ring-inset ${
                       inquiry.status === 'Converted' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
-                      inquiry.status === 'New' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' : 'bg-gray-50 text-gray-700 ring-gray-600/20'
+                      inquiry.status === 'New' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' : 
+                      inquiry.status === 'Contacted' ? 'bg-orange-50 text-orange-700 ring-orange-600/20' :
+                      'bg-gray-50 text-gray-700 ring-gray-600/20'
                     }`}>
                       {inquiry.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
+                       <button 
+                         onClick={() => {
+                           setSelectedInquiry({
+                             id: inquiry.id,
+                             type: 'website',
+                             name: inquiry.name,
+                             mobile: inquiry.mobile
+                           });
+                           setShowReminderModal(true);
+                         }}
+                         className="p-1.5 bg-gray-100 hover:bg-orange-100 rounded transition-all group" 
+                         title="Add Reminder"
+                       >
+                         <Bell className="h-3 w-3 text-gray-400 group-hover:text-orange-600" />
+                       </button>
                        {!inquiry.is_read && (
                          <button onClick={() => handleMarkAsRead(inquiry.id)} className="p-1.5 bg-gray-100 hover:bg-green-100 rounded transition-all group" title="Mark Read">
                            <CheckCircle className="h-3 w-3 text-gray-400 group-hover:text-green-600" />
@@ -277,6 +400,13 @@ const Inquiries: React.FC = () => {
         onPageSizeChange={handlePageSizeChange}
         showPageSizeSelector={false}
         showGoToPage={true}
+      />
+
+      <ReminderModal
+        isOpen={showReminderModal}
+        onClose={() => setShowReminderModal(false)}
+        onSuccess={() => loadInquiries(pagination.current)}
+        inquiryData={selectedInquiry}
       />
     </div>
   );

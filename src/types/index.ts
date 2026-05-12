@@ -62,10 +62,15 @@ export interface Inquiry {
   estimated_price?: number | string;
   is_inspection_required?: boolean;
   service_frequency?: string;
+  remark?: string;
   reminder_date?: string | null;
   reminder_time?: string | null;
   reminder_note?: string | null;
   is_reminder_done?: boolean;
+  created_by?: number;
+  created_by_name?: string;
+  converted_by?: number;
+  converted_by_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +91,8 @@ export interface CRMInquiry {
   status: CRMInquiryStatus;
   created_by?: number;
   created_by_name?: string;
+  converted_by?: number;
+  converted_by_name?: string;
   reminder_date?: string | null;
   reminder_time?: string | null;
   reminder_note?: string | null;
@@ -151,6 +158,12 @@ export interface JobCard {
   complaint_status?: string;
   complaint_parent_booking?: number;
   priority?: 'Low' | 'Medium' | 'High';
+  created_by?: number;
+  created_by_name?: string;
+  on_process_by?: number;
+  on_process_by_name?: string;
+  done_by?: number;
+  done_by_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -167,6 +180,8 @@ export interface Renewal {
   urgency_level: 'High' | 'Medium' | 'Normal';
   urgency_color: string;
   remarks?: string;
+  created_by?: number;
+  created_by_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -200,6 +215,21 @@ export interface ActivityLog {
   action: string;
   booking_id?: string;
   details?: string;
+  created_at: string;
+}
+
+export interface Reminder {
+  id: number;
+  inquiry_type: 'crm' | 'website';
+  inquiry_id: number;
+  customer_name: string;
+  mobile_number: string;
+  reminder_date: string;
+  reminder_time?: string;
+  note: string;
+  created_by?: number;
+  created_by_name?: string;
+  status: 'pending' | 'completed';
   created_at: string;
 }
 
@@ -277,6 +307,7 @@ export interface InquiryFormData {
   building_name?: string;
   landmark?: string;
   area?: string;
+  remark?: string;
   reminder_date?: string | null;
   reminder_time?: string | null;
   reminder_note?: string | null;
@@ -297,6 +328,17 @@ export interface CRMInquiryFormData {
   reminder_time?: string | null;
   reminder_note?: string | null;
   is_reminder_done?: boolean;
+}
+
+export interface ReminderFormData {
+  inquiry_type: 'crm' | 'website';
+  inquiry_id: number;
+  customer_name: string;
+  mobile_number: string;
+  reminder_date: string;
+  reminder_time?: string;
+  note: string;
+  status?: 'pending' | 'completed';
 }
 
 export interface JobCardFormData {
@@ -367,6 +409,13 @@ export interface CRMInquiryFilters {
   inquiry_date?: string;
   from?: string;
   to?: string;
+  ordering?: string;
+}
+
+export interface ReminderFilters {
+  search?: string;
+  status?: string;
+  inquiry_type?: string;
   ordering?: string;
 }
 
@@ -464,6 +513,27 @@ export interface DashboardStatisticsResponse {
   status: string;
   timestamp: string;
   cache_hit: boolean;
+}
+
+export interface DashboardCounts {
+  website_leads_unread: number;
+  complaint_calls: number;
+  reminders: number;
+  feedbacks: number;
+}
+
+export interface StaffPerformance {
+  staff_id: number;
+  staff_name: string;
+  total_inquiries_created: number;
+  website_inquiries_converted: number;
+  crm_inquiries_converted: number;
+  total_bookings_created: number;
+  total_on_process_updates: number;
+  total_done_updates: number;
+  total_complaint_calls_created: number;
+  total_reminders_created: number;
+  conversion_rate: number;
 }
 
 export interface Feedback {

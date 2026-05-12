@@ -4,6 +4,7 @@ import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { CRMInquiryFormData, PestType } from '../../types';
 import { PEST_TYPES } from '../../constants/pestTypes';
+import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 
 interface CreateCRMInquiryModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface CreateCRMInquiryModalProps {
 const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { refreshCounts } = useDashboardCounts();
 
   const initialData: CRMInquiryFormData = {
     name: '',
@@ -44,6 +46,7 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
       setError(null);
       await enhancedApiService.createCRMInquiry(formData);
       onSuccess();
+      refreshCounts();
       setFormData(initialData);
       onClose();
     } catch (err: any) {

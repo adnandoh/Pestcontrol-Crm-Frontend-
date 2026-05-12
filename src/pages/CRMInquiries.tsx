@@ -5,7 +5,11 @@ import {
   Calendar, 
   MapPin, 
   Zap,
-  MessageCircle
+  MessageCircle,
+  Edit,
+  Check,
+  X,
+  Bell
 } from 'lucide-react';
 import { 
   Button, 
@@ -15,12 +19,20 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
+import ReminderModal from '../components/crm/ReminderModal';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import { useDashboardCounts } from '../hooks/useDashboardCounts';
 
 const CRMInquiries: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [inquiries, setInquiries] = useState<CRMInquiry[]>([]);
+  const { refreshCounts } = useDashboardCounts();
+  
+  // Remark editing state
+  const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
+  const [tempRemark, setTempRemark] = useState('');
+  const [updatingRemark, setUpdatingRemark] = useState(false);
   
   const pestTypesList = [
     'Cockroach', 'Ants', 'Mosquito', 'Spiders', 'Flies', 'Silverfish', 
@@ -44,6 +56,8 @@ const CRMInquiries: React.FC = () => {
   });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
 
   const loadInquiries = async (page = 1) => {
     try {
@@ -84,10 +98,25 @@ const CRMInquiries: React.FC = () => {
       setSubmitting(id);
       await enhancedApiService.updateCRMInquiry(id, { status: newStatus });
       setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, status: newStatus } : inq));
+      refreshCounts();
     } catch (err) {
       console.error('Status update failed:', err);
     } finally {
       setSubmitting(null);
+    }
+  };
+
+  const handleRemarkUpdate = async (id: number) => {
+    try {
+      setUpdatingRemark(true);
+      await enhancedApiService.updateCRMInquiry(id, { remark: tempRemark });
+      setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, remark: tempRemark } : inq));
+      setEditingRemarkId(null);
+    } catch (err) {
+      console.error('Remark update failed:', err);
+      alert('Failed to update remark. Please try again.');
+    } finally {
+      setUpdatingRemark(false);
     }
   };
 
@@ -99,6 +128,7 @@ const CRMInquiries: React.FC = () => {
       const result = await enhancedApiService.convertInquiryToBooking(id);
       alert(`Successfully converted! Code: ${result.job_card_code}`);
       loadInquiries(pagination.current);
+      refreshCounts();
     } catch (err: any) {
       alert(err.message || 'Conversion failed');
     } finally {
@@ -203,19 +233,19 @@ const CRMInquiries: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Pest Type</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-28">Action</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-44">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto" />
                   </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center text-gray-400 font-semibold uppercase italic text-sm tracking-tight opacity-70">No inquiries found. Create your first lead now!</td>
+                  <td colSpan={8} className="py-20 text-center text-gray-400 font-semibold uppercase italic text-sm tracking-tight opacity-70">No inquiries found. Create your first lead now!</td>
                 </tr>
               ) : inquiries.map((inq) => (
                 <tr key={inq.id} className="hover:bg-blue-50/20 transition-colors group">
@@ -260,8 +290,60 @@ const CRMInquiries: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      <p className="text-[11px] text-gray-500 line-clamp-1 italic font-semibold leading-normal" title={inq.remark}>{inq.remark || '--'}</p>
+                    <div className="flex flex-col gap-1 min-w-[160px]">
+                      {editingRemarkId === inq.id ? (
+                        <div className="flex items-center gap-1 animate-fade-in">
+                          <textarea
+                            value={tempRemark}
+                            onChange={(e) => setTempRemark(e.target.value)}
+                            className="w-full text-[11px] p-1.5 border border-blue-300 rounded-md outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50/30 font-semibold italic"
+                            rows={2}
+                            autoFocus
+                            placeholder="Enter remark..."
+                          />
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => handleRemarkUpdate(inq.id)}
+                              disabled={updatingRemark}
+                              className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                              title="Save Remark"
+                            >
+                              <Check className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => setEditingRemarkId(null)}
+                              disabled={updatingRemark}
+                              className="p-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors shadow-sm disabled:opacity-50"
+                              title="Cancel"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between group/remark">
+                          <p 
+                            className="text-[11px] text-gray-500 line-clamp-2 italic font-semibold leading-normal cursor-pointer hover:text-blue-600 transition-colors flex-1" 
+                            title={inq.remark}
+                            onClick={() => {
+                              setEditingRemarkId(inq.id);
+                              setTempRemark(inq.remark || '');
+                            }}
+                          >
+                            {inq.remark || <span className="text-gray-300">Add remark...</span>}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setEditingRemarkId(inq.id);
+                              setTempRemark(inq.remark || '');
+                            }}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-all"
+                            title="Edit Remark"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -281,18 +363,37 @@ const CRMInquiries: React.FC = () => {
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {inq.status !== 'Converted' && (
+                    <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setSelectedInquiry({
+                            id: inq.id,
+                            type: 'crm',
+                            name: inq.name,
+                            mobile: inq.mobile
+                          });
+                          setShowReminderModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95"
+                        title="Add Reminder"
+                      >
+                        <Bell className="h-3 w-3 fill-white" />
+                        <span>Reminder</span>
+                      </button>
+
+                      {inq.status !== 'Converted' ? (
                         <button 
                           onClick={() => handleConvert(inq.id)}
                           disabled={submitting === inq.id}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
                           title="Convert to Booking"
                         >
-                          <Zap className="h-3.5 w-3.5 fill-emerald-50" />
+                          <Zap className="h-3 w-3 fill-white" />
+                          <span>Convert</span>
                         </button>
+                      ) : (
+                        <span className="text-[10px] font-bold text-gray-400 uppercase italic">Converted</span>
                       )}
-
                     </div>
                   </td>
                 </tr>
@@ -316,6 +417,13 @@ const CRMInquiries: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => loadInquiries(1)}
+      />
+
+      <ReminderModal
+        isOpen={showReminderModal}
+        onClose={() => setShowReminderModal(false)}
+        onSuccess={() => loadInquiries(pagination.current)}
+        inquiryData={selectedInquiry}
       />
 
 

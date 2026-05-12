@@ -27,8 +27,13 @@ import type {
   CRMInquiry,
   CRMInquiryFormData,
   CRMInquiryFilters,
+  DashboardCounts,
+  StaffPerformance,
   GlobalSearchResult,
   CustomerHistory,
+  Reminder,
+  ReminderFormData,
+  ReminderFilters,
 } from '../types';
 
 // Enhanced API Error class
@@ -694,6 +699,52 @@ class EnhancedApiService {
     apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
   }
 
+  // Reminder methods
+  async getReminders(params?: ReminderFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Reminder>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.REMINDERS, params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<Reminder>>(API_ENDPOINTS.REMINDERS, { params })
+        )
+      ),
+      1 * 60 * 1000 // 1 minute cache
+    );
+  }
+
+  async createReminder(data: ReminderFormData): Promise<Reminder> {
+    const result = await this.retryRequest(() =>
+      this.api.post<Reminder>(API_ENDPOINTS.REMINDERS, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.REMINDERS);
+    return result.data;
+  }
+
+  async updateReminder(id: number, data: Partial<ReminderFormData>): Promise<Reminder> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<Reminder>(`${API_ENDPOINTS.REMINDERS}${id}/`, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.REMINDERS);
+    return result.data;
+  }
+
+  async deleteReminder(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.REMINDERS}${id}/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.REMINDERS);
+  }
+
+  async markReminderComplete(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.post(`${API_ENDPOINTS.REMINDERS}${id}/mark_complete/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.REMINDERS);
+  }
+
   // Job Card methods
   async getJobCards(params?: JobCardFilters & { page?: number; page_size?: number }, signal?: AbortSignal): Promise<PaginatedResponse<JobCard>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.JOBCARDS, params);
@@ -1087,6 +1138,19 @@ class EnhancedApiService {
       ),
       2 * 60 * 1000 // 2 minutes cache for dashboard stats
     );
+  }
+
+  // Dashboard methods
+  async getDashboardCounts(): Promise<DashboardCounts> {
+    const response = await this.api.get<DashboardCounts>(`${API_ENDPOINTS.DASHBOARD}counts/`);
+    return response.data;
+  }
+
+  async getStaffPerformance(period: string = 'today'): Promise<StaffPerformance[]> {
+    const response = await this.api.get<StaffPerformance[]>(`${API_ENDPOINTS.DASHBOARD}performance/`, {
+      params: { period }
+    });
+    return response.data;
   }
 
   // Feedback methods

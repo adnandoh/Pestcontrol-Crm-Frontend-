@@ -16,6 +16,7 @@ import {
 
 import { cn } from '../../utils/cn';
 import type { AuthUser } from '../../types';
+import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 
 interface SidebarProps {
   className?: string;
@@ -26,6 +27,24 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, user }) => {
   const location = useLocation();
+  const { counts } = useDashboardCounts();
+
+  const getBadgeCount = (name: string) => {
+    switch (name) {
+      case 'Website Leads':
+        return counts.website_leads_unread;
+      case 'CRM Inquiries':
+        // Now using the unified reminders count for CRM inquiries badge too
+        return counts.reminders;
+      case 'View Bookings':
+        // Show count for pending reminders + complaint calls
+        return counts.reminders + counts.complaint_calls;
+      case 'Feedbacks':
+        return counts.feedbacks;
+      default:
+        return 0;
+    }
+  };
 
   const navigationGroups = [
     {
@@ -42,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Client Directory', href: '/clients', icon: Users },
         { name: 'Technicians', href: '/technicians', icon: Users },
         { name: 'Technician Reports', href: '/technician-reports', icon: BarChart3 },
+        { name: 'Staff Performance', href: '/staff-performance', icon: BarChart3 },
       ]
     },
     {
@@ -122,6 +142,18 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                         )}>
                           {item.name}
                         </span>
+
+                        {getBadgeCount(item.name) > 0 && (
+                          <span className={cn(
+                            "flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white shadow-sm",
+                            item.name === 'Website Leads' ? "bg-red-600" : 
+                            item.name === 'CRM Inquiries' ? "bg-orange-500" : 
+                            item.name === 'View Bookings' ? "bg-blue-600" :
+                            "bg-green-600"
+                          )}>
+                            {getBadgeCount(item.name) > 10 ? '10+' : getBadgeCount(item.name)}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

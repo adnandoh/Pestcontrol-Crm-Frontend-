@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,7 +14,9 @@ import {
   Star,
   MessageCircle,
   Send,
-  UserCheck
+  UserCheck,
+  ArrowRight,
+  Bell
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
@@ -31,13 +33,30 @@ import {
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
+import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
 import CompleteJobModal from '../components/crm/CompleteJobModal';
-import type { JobCard, PaginatedResponse, CRMInquiry } from '../types';
+import ReminderModal from '../components/crm/ReminderModal';
+import type { JobCard, PaginatedResponse, Reminder } from '../types';
+
+const TableSkeleton: React.FC = () => (
+  <>
+    {[...Array(5)].map((_, i) => (
+      <tr key={i} className="animate-pulse divide-x divide-gray-50">
+        {[...Array(11)].map((_, j) => (
+          <td key={j} className="px-4 py-4">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+          </td>
+        ))}
+      </tr>
+    ))}
+  </>
+);
 
 const JobCards: React.FC = () => {
   const navigate = useNavigate();
+  const { counts, refreshCounts } = useDashboardCounts();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -76,56 +95,14 @@ const JobCards: React.FC = () => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
-  // CRM Inquiry Reminders state
-  const [crmReminders, setCrmReminders] = useState<CRMInquiry[]>([]);
-  const [crmRemindersLoading, setCrmRemindersLoading] = useState(false);
+  // Unified Reminders state
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+  const [showEditReminderModal, setShowEditReminderModal] = useState(false);
+  const [editReminderData, setEditReminderData] = useState<Reminder | null>(null);
   
   // Abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Unified Reminders logic
-  const unifiedReminders = useMemo(() => {
-    if (activeTab !== 'reminders') return [];
-    
-    const jcItems = (jobCards || []).map(jc => ({
-      ...jc,
-      _unifiedType: 'jobcard' as const,
-      _displayId: `JC-${jc.id}`,
-      _displayName: jc.client_name,
-      _displayMobile: jc.client_mobile,
-      _displayLocation: jc.client_address || '',
-      _displayService: jc.service_type,
-      _displayStatus: jc.status,
-      _reminderDate: jc.reminder_date,
-      _reminderTime: jc.reminder_time,
-      _reminderNote: jc.reminder_note,
-      _original: jc
-    }));
-    
-    const crmItems = (crmReminders || []).map(crm => ({
-      ...crm,
-      _unifiedType: 'crminquiry' as const,
-      _displayId: `INQ-${crm.id}`,
-      _displayName: crm.name,
-      _displayMobile: crm.mobile,
-      _displayLocation: crm.location || '',
-      _displayService: crm.pest_type,
-      _displayStatus: crm.status,
-      _reminderDate: crm.reminder_date,
-      _reminderTime: crm.reminder_time,
-      _reminderNote: crm.reminder_note,
-      _original: crm
-    }));
-    
-    return [...jcItems, ...crmItems].sort((a, b) => {
-      const dateA = a._reminderDate || '9999-99-99';
-      const dateB = b._reminderDate || '9999-99-99';
-      if (dateA !== dateB) return dateA.localeCompare(dateB);
-      const timeA = a._reminderTime || '23:59';
-      const timeB = b._reminderTime || '23:59';
-      return timeA.localeCompare(timeB);
-    });
-  }, [jobCards, crmReminders, activeTab]);
 
   // Status options for dropdown
   const statusOptions = [
@@ -136,13 +113,12 @@ const JobCards: React.FC = () => {
     { value: 'Cancelled', label: 'Cancelled' }
   ];
 
+  // Service category options
   const serviceCategoryOptions = [
     { value: '', label: 'All Service Types' },
     { value: 'One-Time Service', label: 'One-Time Service' },
-    { value: 'AMC', label: 'AMC (Annual Maintenance Contract)' }
+    { value: 'AMC', label: 'AMC' }
   ];
-
-
 
   // Load job cards
   const loadJobCards = useCallback(async (page = 1, currentFilters = filters) => {
@@ -157,8 +133,6 @@ const JobCards: React.FC = () => {
 
     try {
       setLoading(true);
-      // Optional: Clear jobCards if switching tabs to avoid stale flicker
-      // setJobCards([]); 
 
       const params: any = {
         page,
@@ -213,7 +187,6 @@ const JobCards: React.FC = () => {
 
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params, controller.signal);
 
-      // Note: Backend now handles sorting priority for Pending/OnProcess
       setJobCards(response.results);
       setPagination(prev => ({
         ...prev,
@@ -245,90 +218,60 @@ const JobCards: React.FC = () => {
     }
   }, [activeTab, filters, pagination.pageSize]);
 
-  // Load CRM inquiry reminders when on reminders tab
-  const loadCRMReminders = useCallback(async (currentFilters = filters) => {
+  // Load unified reminders
+  const loadReminders = useCallback(async (currentFilters = filters) => {
     try {
-      setCrmRemindersLoading(true);
-      const params: any = {};
+      setRemindersLoading(true);
+      const params: any = {
+        ordering: 'reminder_date,reminder_time',
+        status: 'pending' // Only show pending reminders by default
+      };
       
-      // Add date filters
-      if (currentFilters.date_preset === 'today') {
-        const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
-        params.from = today;
-        params.to = today;
-      } else if (currentFilters.date_preset === 'tomorrow') {
-        const tomorrow = dayjs().tz("Asia/Kolkata").add(1, 'day').format("YYYY-MM-DD");
-        params.from = tomorrow;
-        params.to = tomorrow;
-      } else if (currentFilters.date_preset === 'week') {
-        const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
-        const nextWeek = dayjs().tz("Asia/Kolkata").add(7, 'day').format("YYYY-MM-DD");
-        params.from = today;
-        params.to = nextWeek;
-      } else if (currentFilters.date_preset === 'custom' && currentFilters.from && currentFilters.to) {
-        params.from = currentFilters.from;
-        params.to = currentFilters.to;
+      if (currentFilters.search.trim()) {
+        params.search = currentFilters.search.trim();
       }
-      // If no date preset, backend defaults to today+tomorrow
 
-      const response = await enhancedApiService.getCRMInquiryReminders(params);
-      if (response && response.results) {
-        setCrmReminders(response.results);
-      } else {
-        setCrmReminders([]);
-      }
+      const response = await enhancedApiService.getReminders(params);
+      setReminders(response.results);
     } catch (err) {
-      console.error('Failed to load CRM inquiry reminders:', err);
-      setCrmReminders([]);
+      console.error('Failed to load reminders:', err);
     } finally {
-      setCrmRemindersLoading(false);
+      setRemindersLoading(false);
     }
   }, [filters]);
 
-  // Handle Mark CRM Inquiry Reminder Done
-  const handleMarkCRMReminderDone = async (id: number) => {
-    try {
-      await enhancedApiService.markCRMInquiryReminderDone(id);
-      setCrmReminders(prev => prev.filter(r => r.id !== id));
-    } catch (error) {
-      console.error('Failed to mark CRM reminder done:', error);
-    }
-  };
-
   // Initial load
   useEffect(() => {
-    loadJobCards(1);
     if (activeTab === 'reminders') {
-      loadCRMReminders();
+      loadReminders();
     } else {
-      setCrmReminders([]);
+      loadJobCards(1);
     }
-  }, [activeTab]);
+  }, [activeTab, loadReminders, loadJobCards]);
 
-  // Refetch data when page becomes visible (after returning from edit page)
+  // Refetch data when page becomes visible
   const isInitialMount = useRef(true);
   useEffect(() => {
-    // Set a small timeout to allow initial mount logic to finish
     const timer = setTimeout(() => {
       isInitialMount.current = false;
     }, 1000);
 
     const handleVisibilityChange = () => {
       if (!document.hidden && !isInitialMount.current) {
-        console.log('🔄 Page visible - refreshing job cards data');
-        loadJobCards(pagination.current, filters);
         if (activeTab === 'reminders') {
-          loadCRMReminders(filters);
+          loadReminders(filters);
+        } else {
+          loadJobCards(pagination.current, filters);
         }
       }
     };
 
     const handleFocus = () => {
       if (!isInitialMount.current) {
-        console.log('🔄 Window focused - refreshing job cards data');
-        loadJobCards(pagination.current, filters);
         if (activeTab === 'reminders') {
-          loadCRMReminders(filters);
+          loadReminders(filters);
+        } else {
+          loadJobCards(pagination.current, filters);
         }
       }
     };
@@ -344,62 +287,54 @@ const JobCards: React.FC = () => {
         abortControllerRef.current.abort();
       }
     };
-  }, [pagination.current, filters, loadJobCards, activeTab, loadCRMReminders]);
-
-  // Cleanup search timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
-  }, [searchTimeout]);
+  }, [pagination.current, filters, loadJobCards, activeTab, loadReminders]);
 
   // Handle search input change with debouncing
   const handleSearchInputChange = (value: string) => {
     setSearchInput(value);
     
-    // Clear existing timeout
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }
     
-    // Set new timeout for debounced search
     const newTimeout = setTimeout(() => {
       const newFilters = { ...filters, search: value };
       setFilters(newFilters);
       setPagination(prev => ({ ...prev, current: 1 }));
-      loadJobCards(1, newFilters);
-    }, 500); // 500ms delay
+      if (activeTab === 'reminders') {
+        loadReminders(newFilters);
+      } else {
+        loadJobCards(1, newFilters);
+      }
+    }, 500);
     
     setSearchTimeout(newTimeout);
   };
 
-  // Handle search submit (Enter key or search button)
   const handleSearchSubmit = () => {
     const newFilters = { ...filters, search: searchInput };
     setFilters(newFilters);
     setPagination(prev => ({ ...prev, current: 1 }));
-    loadJobCards(1, newFilters);
+    if (activeTab === 'reminders') {
+      loadReminders(newFilters);
+    } else {
+      loadJobCards(1, newFilters);
+    }
   };
 
-  // Handle Enter key in search input
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearchSubmit();
     }
   };
 
-  // Handle filter changes
   const handleFilterChange = (field: string, value: string) => {
     let newFilters = { ...filters, [field]: value };
     
-    // Automatically switch to custom if user selects a date
     if ((field === 'from' || field === 'to') && value) {
       newFilters.date_preset = 'custom';
     }
 
-    // Reset range if preset is not custom
     if (field === 'date_preset' && value !== 'custom') {
       newFilters.from = '';
       newFilters.to = '';
@@ -407,13 +342,13 @@ const JobCards: React.FC = () => {
 
     setFilters(newFilters);
     setPagination(prev => ({ ...prev, current: 1 }));
-    loadJobCards(1, newFilters);
     if (activeTab === 'reminders') {
-      loadCRMReminders(newFilters);
+      loadReminders(newFilters);
+    } else {
+      loadJobCards(1, newFilters);
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
     const newFilters = { 
       search: '', 
@@ -428,27 +363,36 @@ const JobCards: React.FC = () => {
     setFilters(newFilters);
     setSearchInput('');
     setPagination(prev => ({ ...prev, current: 1 }));
-    loadJobCards(1, newFilters);
     if (activeTab === 'reminders') {
-      loadCRMReminders(newFilters);
+      loadReminders(newFilters);
+    } else {
+      loadJobCards(1, newFilters);
     }
   };
 
-
-
-  // Handle pagination
   const handlePageChange = (page: number) => {
-    loadJobCards(page, filters);
+    if (activeTab === 'reminders') {
+      loadReminders(filters);
+    } else {
+      loadJobCards(page, filters);
+    }
   };
 
-  // Handle Mark Reminder Done
+  const handlePageSizeChange = (pageSize: number) => {
+    setPagination(prev => ({ ...prev, pageSize, current: 1 }));
+    if (activeTab === 'reminders') {
+      loadReminders(filters);
+    } else {
+      loadJobCards(1, filters);
+    }
+  };
+
   const handleMarkReminderDone = async (id: number) => {
     try {
       setLoading(true);
-      await enhancedApiService.updateJobCard(id, { 
-        is_reminder_done: true 
-      });
-      loadJobCards(pagination.current, filters);
+      await enhancedApiService.markReminderComplete(id);
+      loadReminders(filters);
+      refreshCounts();
     } catch (error) {
       console.error('Failed to mark reminder done:', error);
     } finally {
@@ -456,13 +400,25 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Handle assignment
+  const handleDeleteReminder = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this reminder?')) return;
+    try {
+      setLoading(true);
+      await enhancedApiService.deleteReminder(id);
+      loadReminders(filters);
+      refreshCounts();
+    } catch (error) {
+      console.error('Failed to delete reminder:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenAssign = (job: JobCard) => {
     setSelectedJobCard(job);
     setShowAssignModal(true);
   };
 
-  // Handle Mark as Done
   const handleMarkAsDone = async (paymentMode: 'Cash' | 'Online') => {
     if (!doneId) return;
     try {
@@ -474,6 +430,7 @@ const JobCards: React.FC = () => {
       });
       setDoneId(null);
       loadJobCards(pagination.current, filters);
+      refreshCounts();
     } catch (error) {
       console.error('Failed to mark as done:', error);
     } finally {
@@ -481,7 +438,6 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Handle Delete
   const handleDeleteJobCard = async () => {
     if (!deleteId) return;
     try {
@@ -490,6 +446,7 @@ const JobCards: React.FC = () => {
       setDeleteId(null);
       alert('Booking deleted successfully');
       loadJobCards(pagination.current, filters);
+      refreshCounts();
     } catch (error) {
       console.error('Failed to delete booking:', error);
       alert('Failed to delete booking');
@@ -498,7 +455,6 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Validate removal remarks
   const validateRemoveRemarks = (remarks: string) => {
     const errors: string[] = [];
     if (!remarks.trim()) {
@@ -519,7 +475,6 @@ const JobCards: React.FC = () => {
     setRemoveErrors(validateRemoveRemarks(value));
   };
 
-  // Handle Remove Technician (Revert to Pending)
   const handleRemoveTechnician = async () => {
     if (!removeTechId) return;
     
@@ -541,6 +496,7 @@ const JobCards: React.FC = () => {
       setRemoveRemarks('');
       setRemoveErrors([]);
       loadJobCards(pagination.current, filters);
+      refreshCounts();
     } catch (error) {
       console.error('Failed to remove technician:', error);
     } finally {
@@ -548,7 +504,6 @@ const JobCards: React.FC = () => {
     }
   };
 
-  // Validate cancellation reason
   const validateCancelReason = (reason: string) => {
     const errors: string[] = [];
     if (!reason.trim()) {
@@ -569,7 +524,6 @@ const JobCards: React.FC = () => {
     setCancelErrors(validateCancelReason(value));
   };
 
-  // Handle Cancel Booking
   const handleCancelBooking = async (id: number) => {
     const errors = validateCancelReason(cancelReason);
     if (errors.length > 0) {
@@ -587,6 +541,7 @@ const JobCards: React.FC = () => {
       setCancelReason('');
       setCancelErrors([]);
       loadJobCards(pagination.current, filters);
+      refreshCounts();
     } catch (error) {
       console.error('Failed to cancel booking:', error);
     } finally {
@@ -594,42 +549,16 @@ const JobCards: React.FC = () => {
     }
   };
 
-
-
-  // Skeleton Loader Component
-  const TableSkeleton = () => (
-    <>
-      {[...Array(5)].map((_, i) => (
-        <tr key={i} className="animate-pulse border-b border-gray-100 divide-x divide-gray-50">
-          <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded w-12"></div></td>
-          <td className="px-4 py-4"><div className="space-y-2"><div className="h-4 bg-gray-200 rounded w-24"></div><div className="h-3 bg-gray-200 rounded w-16"></div></div></td>
-          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-          <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded w-20"></div></td>
-          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-          {(activeTab === 'pending' || activeTab === 'on_process') && <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>}
-          <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
-          <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded w-10"></div></td>
-        </tr>
-      ))}
-    </>
-  );
-
   return (
-    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
-      {/* 1. View Booking Header */}
-      <div className="flex flex-col gap-3 animate-fade-up">
+    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
+      {/* 1. Header Area */}
+      <div className="bg-white p-3 border border-gray-200 shadow-xs rounded-sm space-y-3 animate-fade-in">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Bookings</h1>
             <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
               Total {pagination.count} Records
             </span>
-            {activeTab === 'upcoming_services' && (
-              <span className="text-[10px] font-black bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-0.5 rounded-full shadow-xs animate-pulse tracking-tight uppercase">
-                Showing next 7 days services
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => navigate('/jobcards/create')} className="bg-blue-700 hover:bg-blue-800 h-8 font-bold shadow-sm">
@@ -638,7 +567,7 @@ const JobCards: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Selection Row (Reference Style) */}
+        {/* Tab Selection Row */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none border-b border-gray-100">
           {[
             { id: 'pending', label: 'Pending' },
@@ -646,8 +575,8 @@ const JobCards: React.FC = () => {
             { id: 'done', label: 'Done' },
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
-            { id: 'reminders', label: 'Reminders' },
-            { id: 'complaint_calls', label: 'Complaint Calls' },
+            { id: 'reminders', label: 'Reminders', badge: counts.reminders },
+            { id: 'complaint_calls', label: 'Complaint Calls', badge: counts.complaint_calls },
             { id: 'cancelled', label: 'Cancelled' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -655,20 +584,28 @@ const JobCards: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap px-4 py-1 text-[11px] font-bold rounded shadow-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-4 py-1 text-[11px] font-bold rounded shadow-sm transition-all duration-200 border flex items-center gap-1.5 ${
                   isActive 
                     ? 'bg-red-500 text-white border-red-600' 
                     : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
                 }`}
               >
                 {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className={cn(
+                    "px-1.5 py-0.5 rounded-full text-[9px] font-black min-w-[18px] text-center",
+                    isActive ? "bg-white text-red-600" : "bg-red-600 text-white"
+                  )}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 2. Filter Bar - High Density (Reference Style) */}
+      {/* 2. Filter Bar */}
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded animate-fade-up delay-100">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
@@ -724,140 +661,220 @@ const JobCards: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-1">
-           <div className="w-32 text-gray-400">
-              <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">From</label>
-              <input
-                type="date"
-                value={filters.from}
-                onChange={(e) => handleFilterChange('from', e.target.value)}
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
-              />
-           </div>
-           <div className="w-32 text-gray-400">
-              <label className="text-[10px] font-bold text-gray-400 mb-1 block uppercase">To</label>
-              <input
-                type="date"
-                value={filters.to}
-                onChange={(e) => handleFilterChange('to', e.target.value)}
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white text-gray-800"
-              />
-           </div>
-        </div>
-
-        <div className="flex gap-2 h-8">
-           <button 
-             onClick={() => handleFilterChange('date_preset', 'today')}
-             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
-               filters.date_preset === 'today' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-             }`}
-           >
-             Today
-           </button>
-           <button 
-             onClick={() => handleFilterChange('date_preset', 'tomorrow')}
-             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
-               filters.date_preset === 'tomorrow' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-             }`}
-           >
-             Tomorrow
-           </button>
-           <button 
-             onClick={() => handleFilterChange('date_preset', 'week')}
-             className={`px-3 text-[10px] font-black rounded border transition-all uppercase ${
-               filters.date_preset === 'week' ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-             }`}
-           >
-             Week
-           </button>
-           <button onClick={clearFilters} className="px-4 border border-gray-300 hover:bg-gray-50 text-gray-500 text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
-           <button onClick={handleSearchSubmit} className="px-5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded shadow-sm transition-colors uppercase flex items-center gap-1.5">
+        <div className="flex gap-1 h-8">
+           <button onClick={clearFilters} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-black rounded transition-colors uppercase shadow-sm">Clear</button>
+           <button onClick={handleSearchSubmit} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-black rounded transition-colors uppercase shadow-sm flex items-center gap-1">
              <Search className="h-3 w-3" /> Search
            </button>
         </div>
       </div>
 
-      {/* 3. Table Results - Full Width Compact */}
+      {/* 3. Table Results */}
       <div className="bg-white border-x border-t border-gray-200 shadow-xs overflow-hidden animate-fade-up delay-200">
         <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
           <table className="w-full table-auto border-collapse text-[11px]">
             <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-500 uppercase">
               <tr className="divide-x divide-gray-100">
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">ID</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Client Info</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Area</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Schedule</th>
-                {(activeTab === 'pending' || activeTab === 'on_process') && (
-                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created</th>
+                {activeTab === 'reminders' ? (
+                  <>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Date & Time</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Customer Name</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Mobile Number</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Inquiry Source</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Note</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
+                    <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10">Action</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">ID</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Client Info</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Area</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Schedule</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
+                    {activeTab === 'upcoming_services' && (
+                      <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
+                    )}
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
+                    <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10">Action</th>
+                    <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-8"></th>
+                  </>
                 )}
-                {activeTab === 'upcoming_services' && (
-                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
-                )}
-                {activeTab === 'reminders' && (
-                  <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-orange-700">Reminder Info</th>
-                )}
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
-                <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Info</th>
-                <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {loading || crmRemindersLoading ? (
+              {loading || remindersLoading ? (
                  <TableSkeleton />
-              ) : (activeTab === 'reminders' ? unifiedReminders : (jobCards || [])).length === 0 ? (
+              ) : (activeTab === 'reminders' ? reminders : (jobCards || [])).length === 0 ? (
                  <tr>
-                    <td colSpan={12} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                    <td colSpan={activeTab === 'reminders' ? 8 : 11} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                        No {activeTab === 'reminders' ? 'Reminders' : 'Bookings'} Found In This Category
                     </td>
                  </tr>
-              ) : (activeTab === 'reminders' ? unifiedReminders : (jobCards || [])).map((item: any) => {
-                const isCRM = item && item._unifiedType === 'crminquiry';
-                const job = item;
-                
-                if (!job) return null;
-                
+              ) : activeTab === 'reminders' ? (
+                reminders.map((reminder) => {
+                  const today = dayjs().tz("Asia/Kolkata").startOf('day');
+                  const reminderDate = dayjs(reminder.reminder_date).tz("Asia/Kolkata");
+                  const isToday = reminderDate.isSame(today, 'day');
+                  
+                  return (
+                    <tr key={reminder.id} className={cn(
+                      "hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group",
+                      isToday ? "bg-red-50/50" : "bg-white"
+                    )}>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className={cn(
+                            "text-[11px] font-black px-2 py-0.5 rounded shadow-xs border w-fit",
+                            isToday ? "bg-red-500 text-white border-red-600 animate-pulse" : "bg-orange-50 text-orange-700 border-orange-200"
+                          )}>
+                            {dayjs(reminder.reminder_date).format('DD/MM/YYYY')}
+                            {reminder.reminder_time && ` @ ${reminder.reminder_time}`}
+                          </span>
+                          {isToday && (
+                            <span className="text-[9px] font-black text-red-600 uppercase mt-1">FOLLOW-UP TODAY</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-[13px] font-black text-gray-900 uppercase leading-none">
+                          {reminder.customer_name}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-blue-600">
+                            {reminder.mobile_number}
+                          </span>
+                          <a 
+                            href={`https://wa.me/91${reminder.mobile_number}`} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 hover:bg-green-600 hover:text-white transition-all uppercase"
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={cn(
+                          "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest border",
+                          reminder.inquiry_type === 'crm' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        )}>
+                          {reminder.inquiry_type === 'crm' ? 'CRM Inquiry' : 'Website'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-[11px] font-bold text-gray-600 italic line-clamp-2 max-w-[200px]">
+                          {reminder.note}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-black text-gray-700 text-[11px] uppercase">
+                            {reminder.created_by_name || 'System'}
+                          </span>
+                          <span className="text-[9px] text-gray-400 font-bold italic">
+                            {reminder.created_at}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border",
+                          reminder.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-orange-50 text-orange-700 border-orange-200"
+                        )}>
+                          {reminder.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {reminder.status === 'pending' && (
+                            <button 
+                              onClick={() => handleMarkReminderDone(reminder.id)}
+                              className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/reminder-done"
+                              title="Mark Reminder Done"
+                            >
+                              <CheckSquare className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => {
+                              if (reminder.inquiry_type === 'crm') {
+                                navigate(`/crm-inquiries`);
+                              } else {
+                                navigate(`/inquiries`);
+                              }
+                            }}
+                            className="p-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded shadow-xs border border-blue-100 transition-all group/convert"
+                            title="Go to Inquiry to Convert"
+                          >
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setEditReminderData(reminder);
+                              setShowEditReminderModal(true);
+                            }}
+                            className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
+                            title="Edit Reminder"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteReminder(reminder.id)}
+                            className="p-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
+                            title="Delete Reminder"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (jobCards || []).map((job: JobCard) => {
                 const today = dayjs().tz("Asia/Kolkata").startOf('day');
                 const tomorrow = today.add(1, 'day');
-                const jobDate = !isCRM ? dayjs(job.schedule_datetime).tz("Asia/Kolkata") : null;
+                const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
 
-                const isToday = jobDate ? jobDate.isSame(today, 'day') : false;
-                const isTomorrow = jobDate ? jobDate.isSame(tomorrow, 'day') : false;
+                const isToday = jobDate.isSame(today, 'day');
+                const isTomorrow = jobDate.isSame(tomorrow, 'day');
                 
-                const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : (isCRM ? 'bg-orange-50/30' : '');
+                const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : '';
                 
                 return (
-                  <React.Fragment key={isCRM ? `crm-${job.id}` : `jc-${job.id}`}>
+                  <React.Fragment key={`jc-${job.id}`}>
                     <tr className={cn(
                       rowBg, 
                       "hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group",
-                      !isCRM && job.is_complaint_call && "bg-red-50/50"
+                      job.is_complaint_call && "bg-red-50/50"
                     )}>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1.5 relative">
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => {
-                              if (!isCRM && activeTab !== 'on_process') {
+                              if (activeTab !== 'on_process') {
                                 handleOpenAssign(job);
                               }
                             }}
                             className={`text-[10px] font-bold ${
-                              isCRM 
-                                ? 'text-orange-600 bg-orange-50 border-orange-100'
-                                : activeTab === 'on_process' 
-                                  ? 'text-gray-500 bg-gray-100 cursor-default' 
-                                  : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                              activeTab === 'on_process' 
+                                ? 'text-gray-500 bg-gray-100 cursor-default' 
+                                : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
                             } px-1.5 py-0.5 rounded border border-blue-100 w-fit transition-colors shadow-xs`}
                           >
-                            {isCRM ? `INQ-${job.id}` : job.id}
+                            {job.id}
                           </button>
-                          {!isCRM && job.is_complaint_call && (
+                          {job.is_complaint_call && (
                              <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-sm font-black uppercase tracking-tighter">Complaint</span>
                           )}
                         </div>
-                        {!isCRM && job.commercial_type && job.commercial_type !== 'home' && (
+                        {job.commercial_type && job.commercial_type !== 'home' && (
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter ${
                             job.commercial_type === 'hotel' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
                             job.commercial_type === 'society' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
@@ -868,60 +885,35 @@ const JobCards: React.FC = () => {
                             {job.commercial_type.toUpperCase()}
                           </span>
                         )}
-                        {isCRM && (
-                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter bg-orange-100 text-orange-700 border border-orange-200 uppercase">
-                            Inquiry
-                          </span>
-                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="text-[13px] font-black text-gray-900 uppercase leading-none mb-1">
-                          {isCRM ? job.name : (job.client_name || '---')}
+                          {job.client_name || '---'}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] font-bold text-blue-600">
-                            {isCRM ? job.mobile : (job.client_mobile || '---')}
+                            {job.client_mobile || '---'}
                           </span>
-                          {isCRM && (
-                            <a 
-                              href={`https://wa.me/91${job.mobile}`} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 hover:bg-green-600 hover:text-white transition-all uppercase"
-                            >
-                              WhatsApp
-                            </a>
-                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col group/address relative">
                         <div className="max-w-[150px] leading-tight font-medium text-gray-600">
-                          {isCRM ? (
-                            job.location ? (
-                              job.location.split(' ').length > 10 
-                                ? job.location.split(' ').slice(0, 10).join(' ') + '...'
-                                : job.location
-                            ) : '---'
-                          ) : (
-                            job.client_address ? (
-                              job.client_address.split(' ').length > 10 
-                                ? job.client_address.split(' ').slice(0, 10).join(' ') + '...'
-                                : job.client_address
-                            ) : '---'
-                          )}
+                          {job.client_address ? (
+                            job.client_address.split(' ').length > 10 
+                              ? job.client_address.split(' ').slice(0, 10).join(' ') + '...'
+                              : job.client_address
+                          ) : '---'}
                         </div>
-                        {!isCRM && (
-                          <div className="text-[9px] font-bold text-gray-400 uppercase mt-1">{job.city}, {job.state}</div>
-                        )}
+                        <div className="text-[9px] font-bold text-gray-400 uppercase mt-1">{job.city}, {job.state}</div>
                         
                         {/* Address Tooltip */}
-                        {((isCRM ? job.location : job.client_address)) && (
+                        {job.client_address && (
                           <div className="absolute left-0 bottom-full mb-2 hidden group-hover/address:block z-50 bg-white text-gray-800 text-[11px] px-3 py-2 rounded shadow-xl border border-gray-200 pointer-events-none whitespace-nowrap leading-none ring-1 ring-black/5">
-                            <span className="font-bold">{(isCRM ? job.location : job.client_address)}</span>
+                            <span className="font-bold">{job.client_address}</span>
                             <div className="absolute -bottom-1.5 left-4 w-2.5 h-2.5 bg-white rotate-45 border-r border-b border-gray-200"></div>
                           </div>
                         )}
@@ -929,19 +921,17 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col group/service relative">
-                        <div className="font-extrabold text-gray-800 leading-tight max-w-[140px] truncate flex items-center gap-1" title={isCRM ? job.pest_type : job.service_type}>
-                          {isCRM ? job.pest_type : (job.service_type?.split(',')[0])}
-                          {!isCRM && (job.service_type?.split(',').length ?? 0) > 1 && (
+                        <div className="font-extrabold text-gray-800 leading-tight max-w-[140px] truncate flex items-center gap-1" title={job.service_type}>
+                          {job.service_type?.split(',')[0]}
+                          {(job.service_type?.split(',').length ?? 0) > 1 && (
                             <span className="text-[9px] bg-blue-50 text-blue-600 px-1 rounded font-black">
                               +{job.service_type!.split(',').length - 1}
                             </span>
                           )}
                         </div>
-                        {!isCRM && (
-                          <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
-                        )}
+                        <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
                         
-                        {!isCRM && (job.is_service_call || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
+                        {(job.is_service_call || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
                           <div className="mt-1">
                             <span className="bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
                               SERVICE CALL
@@ -950,7 +940,7 @@ const JobCards: React.FC = () => {
                         )}
                         
                         {/* Service Tooltip */}
-                        {!isCRM && (job.service_type?.split(',').length ?? 0) > 1 && (
+                        {(job.service_type?.split(',').length ?? 0) > 1 && (
                           <div className="absolute left-0 bottom-full mb-2 hidden group-hover/service:block z-50 bg-white text-gray-800 text-[11px] px-3 py-2 rounded shadow-xl border border-gray-200 pointer-events-none whitespace-nowrap leading-none ring-1 ring-black/5">
                             <span className="font-bold text-blue-600">All Pests: </span>
                             <span className="font-bold">{job.service_type}</span>
@@ -960,9 +950,7 @@ const JobCards: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      {isCRM ? (
-                        <span className="text-[10px] font-bold text-gray-400 italic">No Tech Assigned</span>
-                      ) : (job.technician_name || job.assigned_to ? (
+                      {job.technician_name || job.assigned_to ? (
                         activeTab === 'on_process' ? (
                           <span className="font-bold text-indigo-700 uppercase italic tracking-tighter text-[11px]">
                             {job.technician_name || job.assigned_to}
@@ -982,33 +970,39 @@ const JobCards: React.FC = () => {
                         >
                           Not Assigned
                         </button>
-                      ))}
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-gray-700 text-[11px]">
-                          {isCRM ? (job.inquiry_date ? dayjs(job.inquiry_date).format('DD/MM/YYYY') : '---') : (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('DD/MM/YYYY') : '---')}
+                          {job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('DD/MM/YYYY') : '---'}
                         </span>
                         <span className="text-[10px] text-gray-500 font-medium">
-                          {isCRM ? job.inquiry_time : (job.time_slot || (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''))}
+                          {job.time_slot || (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : '')}
                         </span>
-                        {!isCRM && isToday && (
+                        {isToday && (
                           <span className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter">Today</span>
                         )}
-                        {!isCRM && isTomorrow && (
+                        {isTomorrow && (
                           <span className="text-[9px] font-black text-yellow-700 uppercase tracking-tighter">Tomorrow</span>
                         )}
                       </div>
                     </td>
-                    {(activeTab === 'pending' || activeTab === 'on_process') && (
-                      <td className="px-4 py-4">
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-black text-gray-700 text-[11px] uppercase">
+                          {job.created_by_name || 'System'}
+                        </span>
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-500 text-[10px]">
+                          <span className="text-[9px] text-gray-400 font-bold italic">
                             {job.created_at || '---'}
                           </span>
+                          <span className="text-[9px] font-black text-blue-600 uppercase tracking-tighter mt-0.5">
+                            {job.reference || 'Other'}
+                          </span>
                         </div>
-                      </td>
-                    )}
+                      </div>
+                    </td>
                     {activeTab === 'upcoming_services' && (
                       <td className="px-4 py-4 bg-blue-50/30">
                         <div className="flex flex-col">
@@ -1016,29 +1010,6 @@ const JobCards: React.FC = () => {
                             {job.next_service_date ? new Date(job.next_service_date).toLocaleDateString('en-GB') : '---'}
                           </span>
                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Follow-up due</span>
-                        </div>
-                      </td>
-                    )}
-                    {activeTab === 'reminders' && (
-                      <td className="px-4 py-4 bg-orange-50/20">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn(
-                              "text-[10px] font-black px-2 py-0.5 rounded shadow-xs border",
-                              dayjs(job.reminder_date).isSame(dayjs(), 'day') ? "bg-red-500 text-white border-red-600" :
-                              dayjs(job.reminder_date).isSame(dayjs().add(1, 'day'), 'day') ? "bg-yellow-500 text-white border-yellow-600" :
-                              "bg-orange-50 text-orange-700 border-orange-200"
-                            )}>
-                              {job.reminder_date ? dayjs(job.reminder_date).format('DD-MM-YYYY') : '---'}
-                              {job.reminder_time && ` @ ${job.reminder_time}`}
-                            </span>
-                            {dayjs(job.reminder_date).isSame(dayjs(), 'day') && (
-                              <span className="text-[9px] font-black text-red-600 uppercase animate-pulse">Urgent</span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-bold text-gray-600 italic line-clamp-2 max-w-[150px]">
-                            {job.reminder_note || (isCRM ? job.remark : 'No notes added')}
-                          </p>
                         </div>
                       </td>
                     )}
@@ -1052,7 +1023,7 @@ const JobCards: React.FC = () => {
                         }`}>
                           {job.status}
                         </span>
-                        {!isCRM && job.status === 'Cancelled' && job.cancellation_reason && (
+                        {job.status === 'Cancelled' && job.cancellation_reason && (
                           <div className="max-w-[120px] text-[9px] font-bold text-red-600 bg-red-50/50 px-2 py-0.5 rounded border border-red-100 leading-tight">
                             {job.cancellation_reason}
                           </div>
@@ -1060,22 +1031,8 @@ const JobCards: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      {!isCRM && job.is_complaint_call ? (
-                        <div className="flex flex-col gap-1">
-                          <Badge variant={job.priority === 'High' ? 'destructive' : job.priority === 'Medium' ? 'warning' : 'secondary'} size="sm">
-                            {job.priority}
-                          </Badge>
-                          <span className="text-[10px] text-red-600 font-bold truncate max-w-[100px]" title={job.complaint_note}>
-                            {job.complaint_type}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-[10px]">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1.5">
-                        {(!isCRM && cancellingId === job.id) ? (
+                        {cancellingId === job.id ? (
                           <div className="flex flex-col gap-2 min-w-[200px] animate-fade-in">
                             <div className="relative">
                               <input
@@ -1116,7 +1073,7 @@ const JobCards: React.FC = () => {
                           </div>
                         ) : (
                           <>
-                            {!isCRM && (activeTab === 'pending' || activeTab === 'on_process') && (
+                            {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
                                 <button 
                                   onClick={() => {
@@ -1216,7 +1173,7 @@ const JobCards: React.FC = () => {
                               </>
                             )}
 
-                            {!isCRM && job.status === 'Done' && (
+                            {job.status === 'Done' && (
                               <button 
                                 onClick={() => {
                                   setSelectedJobCard(job);
@@ -1229,41 +1186,27 @@ const JobCards: React.FC = () => {
                               </button>
                             )}
                             
-                            {!isCRM && (
-                              <button 
-                                onClick={() => setDeleteId(job.id)} 
-                                className="p-2 bg-red-50 hover:bg-red-900 text-red-700 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
-                                title="Delete Permanently"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
+                            <button 
+                              onClick={() => setDeleteId(job.id)} 
+                              className="p-2 bg-red-50 hover:bg-red-900 text-red-700 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
+                              title="Delete Permanently"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
 
-                            {activeTab === 'reminders' && (
-                              <button 
-                                onClick={() => isCRM ? handleMarkCRMReminderDone(job.id) : handleMarkReminderDone(job.id)}
-                                className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/reminder-done"
-                                title="Mark Reminder Done"
-                              >
-                                <CheckSquare className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            
-                            {!isCRM && (
-                              <button 
-                                onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
-                                className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
-                                title="Edit Booking"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </button>
-                            )}
+                            <button 
+                              onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
+                              className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
+                              title="Edit Booking"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
                           </>
                         )}
                       </div>
                     </td>
                     <td className="px-2 py-4">
-                      {!isCRM && (job.cancellation_reason || job.removal_remarks) && (
+                      {(job.cancellation_reason || job.removal_remarks) && (
                         <button
                           onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
                           className="p-1 hover:bg-gray-100 text-gray-400 rounded transition-all"
@@ -1273,9 +1216,9 @@ const JobCards: React.FC = () => {
                       )}
                     </td>
                   </tr>
-                  {!isCRM && expandedId === job.id && (
+                  {expandedId === job.id && (
                     <tr className="animate-fade-in bg-[#fcfdfe]">
-                      <td colSpan={activeTab === 'upcoming_services' ? 9 : 8} className="p-0">
+                      <td colSpan={activeTab === 'upcoming_services' ? 10 : 9} className="p-0">
                         <div className="px-12 py-6 border-b border-gray-100">
                           <div className="max-w-4xl border border-[#e2e8f0] rounded-sm overflow-hidden shadow-sm">
                             {job.cancellation_reason && (
@@ -1298,41 +1241,22 @@ const JobCards: React.FC = () => {
                                 </div>
                               </div>
                             )}
-                            {/* Placeholders for future expanded data as per user's screenshot style */}
-                            <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 opacity-40">
-                              <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
-                                Technician Name
-                              </div>
-                              <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white">
-                                {job.technician_name || '-'}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-[180px_1fr] border-b border-[#e2e8f0] last:border-b-0 opacity-40">
-                              <div className="bg-[#f8fafc] px-6 py-3 text-[11px] font-black text-gray-500 border-r border-[#e2e8f0] uppercase tracking-wider">
-                                Assigned By
-                              </div>
-                              <div className="px-6 py-3 text-[12px] font-bold text-gray-700 bg-white">
-                                {job.assigned_to || '-'}
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
-              );
-            })}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* CRM Inquiry Reminders Section removed - now unified in main table */}
-
       <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] border border-gray-200 animate-fade-up delay-300">
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-           Viewing {activeTab === 'reminders' ? unifiedReminders.length : jobCards.length} of {activeTab === 'reminders' ? (pagination.count + crmReminders.length) : pagination.count} Total {activeTab === 'reminders' ? 'Reminders' : 'Bookings'}
+           Viewing {activeTab === 'reminders' ? reminders.length : jobCards.length} of {pagination.count} Total {activeTab === 'reminders' ? 'Reminders' : 'Bookings'}
         </span>
         <div className="flex items-center gap-1">
            <Pagination
@@ -1341,7 +1265,9 @@ const JobCards: React.FC = () => {
              totalItems={pagination.count}
              itemsPerPage={pagination.pageSize}
              onPageChange={handlePageChange}
+             onPageSizeChange={handlePageSizeChange}
              showPageSizeSelector={false}
+             showGoToPage={true}
            />
         </div>
       </div>
@@ -1414,6 +1340,18 @@ const JobCards: React.FC = () => {
         onSuccess={() => {
           loadJobCards(pagination.current, filters);
         }}
+      />
+
+      <ReminderModal
+        isOpen={showEditReminderModal}
+        onClose={() => {
+          setShowEditReminderModal(false);
+          setEditReminderData(null);
+        }}
+        onSuccess={() => {
+          loadReminders(filters);
+        }}
+        editData={editReminderData}
       />
     </div>
   );

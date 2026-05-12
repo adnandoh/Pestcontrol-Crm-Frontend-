@@ -697,13 +697,14 @@ const EditJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
                 <select
                   value={formData.reference}
                   onChange={(e) => handleInputChange('reference', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none bg-white ${errors.reference ? 'border-red-500' : 'border-gray-300'}`}
+                  required
                 >
-                  <option value="">None</option>
+                  <option value="">Select Reference</option>
                   <option value="Website">Website</option>
                   <option value="Play Store">Play Store</option>
                   <option value="Previous Client">Previous Client</option>
@@ -720,6 +721,7 @@ const EditJobCard: React.FC = () => {
                   <option value="Holding">Holding</option>
                   <option value="Other">Other</option>
                 </select>
+                {errors.reference && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>}
               </div>
             </div>
           </div>
