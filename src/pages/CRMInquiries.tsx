@@ -199,6 +199,7 @@ const CRMInquiries: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-12">ID</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-48">Customer Info</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-64">Location</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Plan</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Pest Type</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Status</th>
@@ -243,6 +244,11 @@ const CRMInquiries: React.FC = () => {
                         <span className="text-[11px] font-semibold text-gray-600 leading-tight line-clamp-2">{inq.location || 'No location provided'}</span>
                         <span className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">Pune, MAHARASHTRA</span>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase italic tracking-widest">{inq.service_frequency || 'one-time'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">

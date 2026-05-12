@@ -21,6 +21,7 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
     location: '',
     pest_type: 'Other',
     remark: '',
+    service_frequency: 'one-time',
     inquiry_date: new Date().toISOString().split('T')[0],
     inquiry_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     status: 'New',
@@ -126,6 +127,19 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                   {PEST_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
+                </select>
+              </div>
+
+              {/* Service Frequency */}
+              <div className="space-y-1">
+                <select
+                  required
+                  value={formData.service_frequency}
+                  onChange={(e) => setFormData({ ...formData, service_frequency: e.target.value })}
+                  className="w-full h-11 px-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 bg-white text-gray-600"
+                >
+                  <option value="one-time">One-Time Service</option>
+                  <option value="amc">AMC Service</option>
                 </select>
               </div>
 

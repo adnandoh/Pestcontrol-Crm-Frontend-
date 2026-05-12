@@ -80,6 +80,7 @@ export interface CRMInquiry {
   location?: string;
   pest_type: PestType;
   remark?: string;
+  service_frequency?: string;
   inquiry_date: string;
   inquiry_time: string;
   status: CRMInquiryStatus;
@@ -288,6 +289,7 @@ export interface CRMInquiryFormData {
   location?: string;
   pest_type: PestType;
   remark?: string;
+  service_frequency?: string;
   inquiry_date: string;
   inquiry_time: string;
   status?: CRMInquiryStatus;
