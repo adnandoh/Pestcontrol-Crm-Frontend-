@@ -2,16 +2,14 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Users, 
   TrendingUp, 
-  Calendar, 
   RefreshCw, 
   Search,
   CheckCircle2,
   Clock,
   FileText,
-  AlertCircle,
   Bell
 } from 'lucide-react';
-import { Card, CardContent, PageLoading } from '../components/ui';
+import { Card, CardContent } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { StaffPerformance } from '../types';

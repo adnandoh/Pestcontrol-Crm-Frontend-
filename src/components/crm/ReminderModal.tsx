@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Bell, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Bell } from 'lucide-react';
 import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { ReminderFormData, Reminder } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
-import { cn } from '../../utils/cn';
 
 interface ReminderModalProps {
   isOpen: boolean;

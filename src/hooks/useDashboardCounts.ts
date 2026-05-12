@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
-import { DashboardCounts } from '../types';
+import type { DashboardCounts } from '../types';
 
 export const useDashboardCounts = () => {
   const [counts, setCounts] = useState<DashboardCounts>({

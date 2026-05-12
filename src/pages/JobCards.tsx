@@ -15,8 +15,7 @@ import {
   MessageCircle,
   Send,
   UserCheck,
-  ArrowRight,
-  Bell
+  ArrowRight
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
@@ -28,7 +27,6 @@ dayjs.extend(timezone);
 import {
   Button,
   Pagination,
-  Badge,
   ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -1017,7 +1015,7 @@ const JobCards: React.FC = () => {
                       <div className="flex flex-col gap-1.5 items-center">
                         <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border ${
                           job.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
-                          job.status === 'Pending' || job.status === 'New' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          job.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                           job.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
                           'bg-blue-50 text-blue-700 border-blue-200'
                         }`}>
@@ -1119,8 +1117,8 @@ const JobCards: React.FC = () => {
                                       area: job.bhk_size || job.property_type || '',
                                       date: dayjs(job.schedule_datetime).format('DD/MM/YYYY'),
                                       time: job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A'),
-                                      amount: job.price,
-                                      address: job.client_address
+                                      amount: job.price?.toString() || '0',
+                                      address: job.client_address || ''
                                     }))}
                                     className="p-2 bg-green-50 hover:bg-green-600 text-green-600 hover:text-white rounded shadow-xs border border-green-100 transition-all"
                                     title="Send Confirmation to Client"
