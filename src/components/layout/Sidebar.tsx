@@ -151,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                             item.name === 'View Bookings' ? "bg-blue-600" :
                             "bg-green-600"
                           )}>
-                            {getBadgeCount(item.name) > 10 ? '10+' : getBadgeCount(item.name)}
+                            {getBadgeCount(item.name)}
                           </span>
                         )}
                       </Link>

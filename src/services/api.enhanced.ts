@@ -1169,6 +1169,11 @@ class EnhancedApiService {
     );
   }
 
+  async markFeedbacksAsRead(): Promise<void> {
+    await this.api.post(`${API_ENDPOINTS.FEEDBACKS}mark-all-read/`);
+    apiCache.deletePattern(CACHE_KEYS.FEEDBACKS);
+  }
+
   async generateFeedbackLink(bookingId: number): Promise<{ booking_id: number; token: string; link: string; customer_name: string }> {
     const response = await this.api.post(`${API_ENDPOINTS.FEEDBACKS}generate/`, { booking_id: bookingId });
     return response.data;

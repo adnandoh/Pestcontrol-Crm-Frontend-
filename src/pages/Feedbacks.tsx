@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Star, Search, User, TrendingUp } from 'lucide-react';
 import { Button, Pagination } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
+import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import type { Feedback, TechnicianPerformance } from '../types';
 import dayjs from 'dayjs';
 
 const Feedbacks: React.FC = () => {
+  const { refreshCounts } = useDashboardCounts();
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [performance, setPerformance] = useState<TechnicianPerformance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,13 @@ const Feedbacks: React.FC = () => {
   const loadData = async (page = 1) => {
     try {
       setLoading(true);
+      
+      // Mark all as read when loading the first page
+      if (page === 1) {
+        await enhancedApiService.markFeedbacksAsRead();
+        refreshCounts();
+      }
+
       const [feedbackRes, perfRes] = await Promise.all([
         enhancedApiService.getFeedbacks({ 
           page, 
