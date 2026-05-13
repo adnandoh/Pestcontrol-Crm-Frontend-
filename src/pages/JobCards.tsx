@@ -929,11 +929,36 @@ const JobCards: React.FC = () => {
                         </div>
                         <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
                         
-                        {(job.is_service_call || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
-                          <div className="mt-1">
-                            <span className="bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
-                              SERVICE CALL
-                            </span>
+                        <div className="mt-1 flex flex-col gap-0.5">
+                          <span className={cn(
+                            "text-[10px] font-black px-1.5 py-0.5 rounded w-fit shadow-xs border",
+                            job.included_in_amc || job.price === "0" || job.price === 0
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          )}>
+                            {job.included_in_amc || job.price === "0" || job.price === 0 
+                              ? "Included in AMC" 
+                              : `₹${job.price}`}
+                          </span>
+                        </div>
+
+                        {(job.is_service_call || job.is_followup_visit || job.included_in_amc || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {job.included_in_amc && (
+                              <span className="bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
+                                AMC FOLLOW-UP
+                              </span>
+                            )}
+                            {!job.included_in_amc && (job.is_service_call || job.is_followup_visit) && (
+                              <span className="bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
+                                SERVICE CALL
+                              </span>
+                            )}
+                            {job.is_complaint_call && (
+                              <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
+                                COMPLAINT
+                              </span>
+                            )}
                           </div>
                         )}
                         

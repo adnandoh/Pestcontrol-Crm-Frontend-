@@ -125,6 +125,9 @@ export interface JobCard {
   contract_duration?: string;
   is_paused?: boolean;
   is_service_call?: boolean;
+  is_amc_main_booking?: boolean;
+  is_followup_visit?: boolean;
+  included_in_amc?: boolean;
   status: 'Pending' | 'On Process' | 'Done' | 'Cancelled';
   payment_status?: string;
   payment_mode?: 'Cash' | 'Online';
@@ -382,6 +385,9 @@ export interface JobCardFormData {
   reminder_time?: string | null;
   reminder_note?: string | null;
   is_reminder_done?: boolean;
+  is_amc_main_booking?: boolean;
+  is_followup_visit?: boolean;
+  included_in_amc?: boolean;
 }
 
 // Filter types

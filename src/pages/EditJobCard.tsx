@@ -81,7 +81,10 @@ const EditJobCard: React.FC = () => {
     reminder_date: '',
     reminder_time: '',
     reminder_note: '',
-    is_reminder_done: false
+    is_reminder_done: false,
+    is_amc_main_booking: false,
+    is_followup_visit: false,
+    included_in_amc: false
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
@@ -170,7 +173,10 @@ const EditJobCard: React.FC = () => {
           reminder_date: data.reminder_date || '',
           reminder_time: data.reminder_time || '',
           reminder_note: data.reminder_note || '',
-          is_reminder_done: data.is_reminder_done || false
+          is_reminder_done: data.is_reminder_done || false,
+          is_amc_main_booking: data.is_amc_main_booking || false,
+          is_followup_visit: data.is_followup_visit || false,
+          included_in_amc: data.included_in_amc || false
         });
         
         // If it already has a next service date, mark it as manual/respected
@@ -615,6 +621,61 @@ const EditJobCard: React.FC = () => {
               <Calendar className="h-4 w-4" /> Schedule & Assignment
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Type *</label>
+                <select
+                  value={formData.is_amc_main_booking ? 'amc_main' : formData.is_followup_visit ? 'amc_followup' : formData.is_complaint_call ? 'complaint' : 'new'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'amc_main') {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        is_amc_main_booking: true, 
+                        is_followup_visit: false, 
+                        included_in_amc: false,
+                        is_complaint_call: false,
+                        service_category: 'AMC'
+                      }));
+                    } else if (val === 'amc_followup') {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        is_amc_main_booking: false, 
+                        is_followup_visit: true, 
+                        included_in_amc: true,
+                        is_complaint_call: false,
+                        price: '0',
+                        payment_status: 'Paid',
+                        service_category: 'AMC'
+                      }));
+                    } else if (val === 'complaint') {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        is_amc_main_booking: false, 
+                        is_followup_visit: false, 
+                        included_in_amc: false,
+                        is_complaint_call: true,
+                        price: '0',
+                        payment_status: 'Paid'
+                      }));
+                    } else {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        is_amc_main_booking: false, 
+                        is_followup_visit: false, 
+                        included_in_amc: false,
+                        is_complaint_call: false
+                      }));
+                    }
+                  }}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  required
+                >
+                  <option value="new">New Booking</option>
+                  <option value="amc_main">AMC Main Booking</option>
+                  <option value="amc_followup">AMC Follow-up</option>
+                  <option value="complaint">Complaint Call</option>
+                </select>
+              </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
                 <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`} required />
