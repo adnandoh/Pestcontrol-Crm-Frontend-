@@ -218,7 +218,7 @@ const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId,
                           {job.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900">₹{job.price}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900">{job.price_display || `₹${job.price}`}</td>
                       <td className="px-4 py-3 text-right">
                         {job.status === 'Done' && !job.is_complaint_call && (
                           <Button 

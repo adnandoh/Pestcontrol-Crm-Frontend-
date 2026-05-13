@@ -137,6 +137,8 @@ export interface JobCard {
   state?: string;
   city?: string;
   price?: number | string;
+  price_display?: string;
+  booking_type?: string;
   assigned_to?: string;
   technician?: number | null;
   technician_name?: string;
