@@ -49,6 +49,11 @@ const Inquiries: React.FC = () => {
     try {
       setLoading(true);
 
+      // Mark all as read when loading the first page
+      if (page === 1) {
+        await enhancedApiService.markInquiriesAsRead();
+        refreshCounts();
+      }
 
       const params = {
         page,

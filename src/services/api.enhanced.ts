@@ -689,6 +689,11 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async markInquiriesAsRead(): Promise<void> {
+    await this.api.post(`${API_ENDPOINTS.INQUIRIES}mark-all-read/`);
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+  }
+
   async deleteInquiry(id: number): Promise<void> {
     await this.retryRequest(() =>
       this.api.delete(`${API_ENDPOINTS.INQUIRIES}${id}/`)
