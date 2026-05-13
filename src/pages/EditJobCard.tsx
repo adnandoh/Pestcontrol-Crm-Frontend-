@@ -84,7 +84,8 @@ const EditJobCard: React.FC = () => {
     is_reminder_done: false,
     is_amc_main_booking: false,
     is_followup_visit: false,
-    included_in_amc: false
+    included_in_amc: false,
+    is_complaint_call: false
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
@@ -176,7 +177,8 @@ const EditJobCard: React.FC = () => {
           is_reminder_done: data.is_reminder_done || false,
           is_amc_main_booking: data.is_amc_main_booking || false,
           is_followup_visit: data.is_followup_visit || false,
-          included_in_amc: data.included_in_amc || false
+          included_in_amc: data.included_in_amc || false,
+          is_complaint_call: data.is_complaint_call || false
         });
         
         // If it already has a next service date, mark it as manual/respected

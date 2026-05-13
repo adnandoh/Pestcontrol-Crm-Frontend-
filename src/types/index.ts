@@ -388,6 +388,7 @@ export interface JobCardFormData {
   is_amc_main_booking?: boolean;
   is_followup_visit?: boolean;
   included_in_amc?: boolean;
+  is_complaint_call?: boolean;
 }
 
 // Filter types

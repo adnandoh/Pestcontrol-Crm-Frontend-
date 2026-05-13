@@ -74,7 +74,8 @@ const CreateJobCard: React.FC = () => {
       reminder_note: '',
       is_amc_main_booking: false,
       is_followup_visit: false,
-      included_in_amc: false
+      included_in_amc: false,
+      is_complaint_call: false
     };
   };
 
