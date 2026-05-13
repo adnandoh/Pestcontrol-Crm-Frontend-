@@ -22,7 +22,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData } from '../types';
+import type { JobCardFormData, Country, State, City, Location as MasterLocation } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
@@ -130,23 +130,74 @@ const CreateJobCard: React.FC = () => {
   const [foundClientName, setFoundClientName] = useState<string>('');
   const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
 
-  // Locations data
+  // Locations data (legacy)
   const [locations, setLocations] = useState<Record<string, string[]>>({});
+
+  // Master Location States
+  const [masterCountries, setMasterCountries] = useState<Country[]>([]);
+  const [masterStates, setMasterStates] = useState<State[]>([]);
+  const [masterCities, setMasterCities] = useState<City[]>([]);
+  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
 
   const [isNextDateManual, setIsNextDateManual] = useState(false);
 
+  // Fetch legacy locations and master countries/states
   useEffect(() => {
-    const fetchLocations = async () => {
+    const fetchInitialData = async () => {
       try {
-        const data = await enhancedApiService.getLocations();
-        setLocations(data);
+        const [locData, countriesRes, statesRes] = await Promise.all([
+          enhancedApiService.getLocations(),
+          enhancedApiService.getCountries(),
+          enhancedApiService.getStates()
+        ]);
+        setLocations(locData);
+        setMasterCountries(countriesRes.results);
+        setMasterStates(statesRes.results);
+
+        // Auto-select India and Maharashtra if available
+        const india = countriesRes.results.find(c => c.name === 'India');
+        const maharashtra = statesRes.results.find(s => s.name === 'Maharashtra');
+        
+        if (india && maharashtra) {
+          setFormData(prev => ({
+            ...prev,
+            master_country: india.id,
+            master_state: maharashtra.id
+          }));
+        }
       } catch (err) {
-        console.error('Failed to fetch locations:', err);
+        console.error('Failed to fetch initial location data:', err);
       }
     };
     
-    fetchLocations();
+    fetchInitialData();
   }, []);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (formData.master_state) {
+      enhancedApiService.getCities({ state: formData.master_state })
+        .then(res => setMasterCities(res.results))
+        .catch(err => console.error('Error fetching cities:', err));
+    } else {
+      setMasterCities([]);
+    }
+    // Reset city and location when state changes
+    setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
+  }, [formData.master_state]);
+
+  // Fetch locations when city changes
+  useEffect(() => {
+    if (formData.master_city) {
+      enhancedApiService.getMasterLocations({ city: formData.master_city })
+        .then(res => setMasterLocations(res.results))
+        .catch(err => console.error('Error fetching locations:', err));
+    } else {
+      setMasterLocations([]);
+    }
+    // Reset location when city changes
+    setFormData(prev => ({ ...prev, master_location: undefined }));
+  }, [formData.master_city]);
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {
@@ -379,7 +430,7 @@ const CreateJobCard: React.FC = () => {
                 {errors.client_name && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.client_name}</p>}
               </div>
 
-              <div>
+              <div className="lg:col-span-2">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Email Address</label>
                 <Input
                   name="client_email"
@@ -394,35 +445,45 @@ const CreateJobCard: React.FC = () => {
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
                 <select
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.state ? 'border-red-500' : 'border-gray-300'}`}
+                  value={formData.master_state || ''}
+                  onChange={(e) => handleInputChange('master_state', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  required
                 >
                   <option value="">Select State</option>
-                  {stateOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  {masterStates.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                {errors.state && <p className="mt-1 text-xs text-red-600">{errors.state}</p>}
               </div>
 
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
                 <select
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
-                  disabled={!formData.state}
+                  value={formData.master_city || ''}
+                  onChange={(e) => handleInputChange('master_city', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  disabled={!formData.master_state}
+                  required
                 >
                   <option value="">Select City</option>
-                  {jobCityOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  {masterCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city}</p>}
               </div>
 
-              <div className="lg:col-span-1">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
+                <select
+                  value={formData.master_location || ''}
+                  onChange={(e) => handleInputChange('master_location', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  disabled={!formData.master_city}
+                  required
+                >
+                  <option value="">Select Location</option>
+                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+
+              <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
                 <select
                   value={formData.commercial_type}
@@ -444,14 +505,9 @@ const CreateJobCard: React.FC = () => {
                   <option value="office">Office</option>
                   <option value="other">Other Commercial</option>
                 </select>
-                {formData.commercial_type !== 'home' && (
-                  <p className="text-[10px] text-blue-600 font-bold mt-1 animate-fade-in flex items-center gap-1">
-                    👉 Final price will be decided after technician visit.
-                  </p>
-                )}
               </div>
 
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
                 <Input id="client_address" name="client_address" value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
               </div>

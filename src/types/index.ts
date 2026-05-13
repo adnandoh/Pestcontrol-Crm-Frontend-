@@ -136,6 +136,15 @@ export interface JobCard {
   time_slot?: string;
   state?: string;
   city?: string;
+  master_country?: number;
+  master_country_name?: string;
+  master_state?: number;
+  master_state_name?: string;
+  master_city?: number;
+  master_city_name?: string;
+  master_location?: number;
+  master_location_name?: string;
+  full_address?: string;
   price?: number | string;
   price_display?: string;
   booking_type?: string;
@@ -367,6 +376,11 @@ export interface JobCardFormData {
   time_slot?: string;
   state?: string;
   city?: string;
+  master_country?: number;
+  master_state?: number;
+  master_city?: number;
+  master_location?: number;
+  full_address?: string;
   status: string;
   payment_status: string;
   payment_mode?: 'Cash' | 'Online';
@@ -611,4 +625,34 @@ export interface CustomerHistory {
   }[];
   technicians: string[];
   upcoming: JobCard[];
+}
+
+export interface Country {
+  id: number;
+  name: string;
+  is_active: boolean;
+}
+
+export interface State {
+  id: number;
+  country: number;
+  country_name: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface City {
+  id: number;
+  state: number;
+  state_name: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface Location {
+  id: number;
+  city: number;
+  city_name: string;
+  name: string;
+  is_active: boolean;
 }

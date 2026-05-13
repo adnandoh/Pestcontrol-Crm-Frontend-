@@ -25,7 +25,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, JobCard } from '../types';
+import type { JobCardFormData, JobCard, Country, State, City, Location as MasterLocation } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
@@ -130,14 +130,26 @@ const EditJobCard: React.FC = () => {
 
   const [isNextDateManual, setIsNextDateManual] = useState(false);
 
+  // Master Location States
+  const [masterCountries, setMasterCountries] = useState<Country[]>([]);
+  const [masterStates, setMasterStates] = useState<State[]>([]);
+  const [masterCities, setMasterCities] = useState<City[]>([]);
+  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       try {
         setLoading(true);
-        const data = await enhancedApiService.getJobCard(parseInt(id));
+        const [data, countriesRes, statesRes] = await Promise.all([
+          enhancedApiService.getJobCard(parseInt(id)),
+          enhancedApiService.getCountries(),
+          enhancedApiService.getStates()
+        ]);
         
         setJobCard(data);
+        setMasterCountries(countriesRes.results);
+        setMasterStates(statesRes.results);
         
         const formattedDate = data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('YYYY-MM-DD') : '';
 
@@ -160,6 +172,11 @@ const EditJobCard: React.FC = () => {
           time_slot: data.time_slot || (data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''),
           state: data.state || 'Maharashtra',
           city: data.city || 'Mumbai',
+          master_country: data.master_country,
+          master_state: data.master_state,
+          master_city: data.master_city,
+          master_location: data.master_location,
+          full_address: data.full_address,
           status: data.status || 'Pending',
           payment_status: data.payment_status || 'Unpaid',
           assigned_to: data.assigned_to || '',
@@ -220,6 +237,50 @@ const EditJobCard: React.FC = () => {
     };
     fetchData();
   }, [id]);
+
+  // Master Location Dynamic Loading
+  const isFirstCityLoad = React.useRef(true);
+  const isFirstLocationLoad = React.useRef(true);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (loading) return;
+    if (formData.master_state) {
+      enhancedApiService.getCities({ state: formData.master_state })
+        .then(res => {
+          setMasterCities(res.results);
+          if (isFirstCityLoad.current) {
+            isFirstCityLoad.current = false;
+          } else {
+            // Only reset if it's a user change, not initial load
+            setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
+          }
+        })
+        .catch(err => console.error('Error fetching cities:', err));
+    } else {
+      setMasterCities([]);
+    }
+  }, [formData.master_state, loading]);
+
+  // Fetch locations when city changes
+  useEffect(() => {
+    if (loading) return;
+    if (formData.master_city) {
+      enhancedApiService.getMasterLocations({ city: formData.master_city })
+        .then(res => {
+          setMasterLocations(res.results);
+          if (isFirstLocationLoad.current) {
+            isFirstLocationLoad.current = false;
+          } else {
+            // Only reset if it's a user change, not initial load
+            setFormData(prev => ({ ...prev, master_location: undefined }));
+          }
+        })
+        .catch(err => console.error('Error fetching locations:', err));
+    } else {
+      setMasterLocations([]);
+    }
+  }, [formData.master_city, loading]);
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {
@@ -404,13 +465,46 @@ const EditJobCard: React.FC = () => {
                 <Input value={formData.client_name} readOnly disabled className="h-10 text-sm font-medium bg-gray-50 text-gray-500 shadow-sm uppercase" />
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State</label>
-                <Input id="state" name="state" value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} error={errors.state} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
+                <select
+                  value={formData.master_state || ''}
+                  onChange={(e) => handleInputChange('master_state', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  required
+                >
+                  <option value="">Select State</option>
+                  {masterStates.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
+
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City</label>
-                <Input id="city" name="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} error={errors.city} className="h-10 text-sm font-medium text-gray-900 shadow-sm" />
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
+                <select
+                  value={formData.master_city || ''}
+                  onChange={(e) => handleInputChange('master_city', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  disabled={!formData.master_state}
+                  required
+                >
+                  <option value="">Select City</option>
+                  {masterCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
+
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
+                <select
+                  value={formData.master_location || ''}
+                  onChange={(e) => handleInputChange('master_location', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  disabled={!formData.master_city}
+                  required
+                >
+                  <option value="">Select Location</option>
+                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
                 <select
@@ -434,12 +528,6 @@ const EditJobCard: React.FC = () => {
                   <option value="office">Office</option>
                   <option value="other">Other Commercial</option>
                 </select>
-                {errors.commercial_type && <p className="mt-1 text-xs text-red-600">{errors.commercial_type}</p>}
-                {formData.commercial_type !== 'home' && (
-                  <p className="text-[10px] text-blue-600 font-bold mt-1 animate-fade-in flex items-center gap-1">
-                    👉 Final price will be decided after technician visit.
-                  </p>
-                )}
               </div>
 
               <div>
@@ -454,7 +542,6 @@ const EditJobCard: React.FC = () => {
                   <option value="Done">Done</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
-                {errors.status && <p className="mt-1 text-xs text-red-600">{errors.status}</p>}
               </div>
 
               {formData.status === 'Cancelled' && (

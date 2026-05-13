@@ -11,7 +11,8 @@ import {
   Star,
   BarChart3,
   Shield,
-  History
+  History,
+  MapPin
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -74,6 +75,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Staff Management', href: '/staff', icon: Shield },
         { name: 'Activity Logs', href: '/activity-logs', icon: History },
+        { name: 'Master Cities', href: '/master/cities', icon: MapPin },
+        { name: 'Master Locations', href: '/master/locations', icon: MapPin },
       ]
     }
   ];

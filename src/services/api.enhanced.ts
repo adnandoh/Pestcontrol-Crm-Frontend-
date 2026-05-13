@@ -18,6 +18,7 @@ import type {
   InquiryFilters,
   JobCardFilters,
   RenewalFilters,
+  ReminderFilters,
   StaffUser,
   ActivityLog,
   ClientFormData,
@@ -34,6 +35,10 @@ import type {
   Reminder,
   ReminderFormData,
   ReminderFilters,
+  Country,
+  State,
+  City,
+  Location as MasterLocation,
 } from '../types';
 
 // Enhanced API Error class
@@ -1350,6 +1355,47 @@ class EnhancedApiService {
       ),
       1 * 60 * 1000 // 1 minute cache
     );
+  }
+
+  // Master Location methods
+  async getCountries(params?: any): Promise<PaginatedResponse<Country>> {
+    return this.api.get<PaginatedResponse<Country>>('/countries/', { params }).then(r => r.data);
+  }
+
+  async getStates(params?: any): Promise<PaginatedResponse<State>> {
+    return this.api.get<PaginatedResponse<State>>('/states/', { params }).then(r => r.data);
+  }
+
+  async getCities(params?: any): Promise<PaginatedResponse<City>> {
+    return this.api.get<PaginatedResponse<City>>('/cities/', { params }).then(r => r.data);
+  }
+
+  async createCity(data: any): Promise<City> {
+    return this.api.post<City>('/cities/', data).then(r => r.data);
+  }
+
+  async updateCity(id: number, data: any): Promise<City> {
+    return this.api.patch<City>(`/cities/${id}/`, data).then(r => r.data);
+  }
+
+  async deleteCity(id: number): Promise<void> {
+    await this.api.delete(`/cities/${id}/`);
+  }
+
+  async getMasterLocations(params?: any): Promise<PaginatedResponse<MasterLocation>> {
+    return this.api.get<PaginatedResponse<MasterLocation>>('/locations/', { params }).then(r => r.data);
+  }
+
+  async createMasterLocation(data: any): Promise<MasterLocation> {
+    return this.api.post<MasterLocation>('/locations/', data).then(r => r.data);
+  }
+
+  async updateMasterLocation(id: number, data: any): Promise<MasterLocation> {
+    return this.api.patch<MasterLocation>(`/locations/${id}/`, data).then(r => r.data);
+  }
+
+  async deleteMasterLocation(id: number): Promise<void> {
+    await this.api.delete(`/locations/${id}/`);
   }
 }
 
