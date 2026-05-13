@@ -34,7 +34,6 @@ import type {
   CustomerHistory,
   Reminder,
   ReminderFormData,
-  ReminderFilters,
   Country,
   State,
   City,

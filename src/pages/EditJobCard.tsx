@@ -25,7 +25,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, JobCard, Country, State, City, Location as MasterLocation } from '../types';
+import type { JobCardFormData, JobCard, State, City, Location as MasterLocation } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
@@ -131,7 +131,6 @@ const EditJobCard: React.FC = () => {
   const [isNextDateManual, setIsNextDateManual] = useState(false);
 
   // Master Location States
-  const [masterCountries, setMasterCountries] = useState<Country[]>([]);
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
   const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
@@ -141,14 +140,12 @@ const EditJobCard: React.FC = () => {
       if (!id) return;
       try {
         setLoading(true);
-        const [data, countriesRes, statesRes] = await Promise.all([
+        const [data, statesRes] = await Promise.all([
           enhancedApiService.getJobCard(parseInt(id)),
-          enhancedApiService.getCountries(),
           enhancedApiService.getStates()
         ]);
         
         setJobCard(data);
-        setMasterCountries(countriesRes.results);
         setMasterStates(statesRes.results);
         
         const formattedDate = data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('YYYY-MM-DD') : '';

@@ -22,7 +22,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, Country, State, City, Location as MasterLocation } from '../types';
+import type { JobCardFormData, State, City, Location as MasterLocation } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 
@@ -134,7 +134,6 @@ const CreateJobCard: React.FC = () => {
   const [locations, setLocations] = useState<Record<string, string[]>>({});
 
   // Master Location States
-  const [masterCountries, setMasterCountries] = useState<Country[]>([]);
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
   const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
@@ -145,23 +144,17 @@ const CreateJobCard: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [locData, countriesRes, statesRes] = await Promise.all([
+        const [locData, statesRes] = await Promise.all([
           enhancedApiService.getLocations(),
-          enhancedApiService.getCountries(),
           enhancedApiService.getStates()
         ]);
         setLocations(locData);
-        setMasterCountries(countriesRes.results);
         setMasterStates(statesRes.results);
-
-        // Auto-select India and Maharashtra if available
-        const india = countriesRes.results.find(c => c.name === 'India');
         const maharashtra = statesRes.results.find(s => s.name === 'Maharashtra');
         
-        if (india && maharashtra) {
+        if (maharashtra) {
           setFormData(prev => ({
             ...prev,
-            master_country: india.id,
             master_state: maharashtra.id
           }));
         }
@@ -229,8 +222,7 @@ const CreateJobCard: React.FC = () => {
     }
   }, [pricingService, formData.service_category, formData.schedule_datetime, isNextDateManual]);
 
-  const stateOptions = Object.keys(locations).map(state => ({ value: state, label: state }));
-  const jobCityOptions = formData.state ? locations[formData.state]?.map(city => ({ value: city, label: city })) || [] : [];
+
 
 
 

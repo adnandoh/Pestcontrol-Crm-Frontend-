@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { 
   Card, 
-  CardContent, 
   Button, 
   Input, 
   Badge, 
