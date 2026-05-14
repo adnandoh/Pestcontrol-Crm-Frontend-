@@ -46,8 +46,8 @@ const MasterLocations: React.FC = () => {
     try {
       setLoading(true);
       const [locationsRes, citiesRes] = await Promise.all([
-        enhancedApiService.getMasterLocations({ search: searchQuery }),
-        enhancedApiService.getCities()
+        enhancedApiService.getMasterLocations({ search: searchQuery, page_size: 1000 }),
+        enhancedApiService.getCities({ page_size: 500 })
       ]);
       setLocations(locationsRes.results);
       setCities(citiesRes.results);
@@ -87,10 +87,36 @@ const MasterLocations: React.FC = () => {
       let data: any[] = [];
       
       if (bulkMode === 'json') {
-        data = JSON.parse(bulkJson);
-        if (!Array.isArray(data)) {
-          alert('JSON DATA MUST BE AN ARRAY');
+        let parsed: any;
+        try {
+          parsed = JSON.parse(bulkJson);
+        } catch {
+          alert('INVALID JSON FORMAT. PLEASE CHECK YOUR INPUT.');
           return;
+        }
+        if (!Array.isArray(parsed)) {
+          alert('JSON DATA MUST BE AN ARRAY. USE [ ... ]');
+          return;
+        }
+
+        // Auto-detect: if array of strings, convert to objects
+        if (parsed.length > 0 && typeof parsed[0] === 'string') {
+          if (!defaultCityId) {
+            alert('YOU PASTED A LIST OF NAMES. PLEASE SELECT A DEFAULT CITY FIRST.');
+            return;
+          }
+          data = parsed
+            .map((s: any) => (typeof s === 'string' ? s.trim() : null))
+            .filter(Boolean)
+            .map((name: string) => ({ name, city: parseInt(defaultCityId), is_active: true }));
+        } else {
+          // Validate each item is an object
+          const invalidItems = parsed.filter((item: any) => typeof item !== 'object' || item === null || Array.isArray(item));
+          if (invalidItems.length > 0) {
+            alert(`${invalidItems.length} ITEMS ARE NOT VALID OBJECTS. EACH ITEM MUST BE {"name": "...", "city": 1}`);
+            return;
+          }
+          data = parsed;
         }
       } else {
         // Simple mode: split by lines
@@ -110,10 +136,8 @@ const MasterLocations: React.FC = () => {
         }));
       }
 
-      // Check if any items are not objects
-      const invalidItems = data.filter(item => typeof item !== 'object' || item === null);
-      if (invalidItems.length > 0) {
-        alert(`ERROR: ${invalidItems.length} ITEMS IN THE LIST ARE NOT VALID OBJECTS. PLEASE CHECK THE FORMAT.`);
+      if (data.length === 0) {
+        alert('NO VALID LOCATIONS TO ADD.');
         return;
       }
 
@@ -124,7 +148,8 @@ const MasterLocations: React.FC = () => {
       alert(`SUCCESSFULLY ADDED ${data.length} LOCATIONS`);
     } catch (error: any) {
       console.error('Error bulk adding locations:', error);
-      alert('BULK ADD FAILED: ' + (error.message || 'PLEASE CHECK YOUR DATA FORMAT'));
+      const msg = error?.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : error.message;
+      alert('BULK ADD FAILED: ' + (msg || 'PLEASE CHECK YOUR DATA'));
     }
   };
 
@@ -371,31 +396,32 @@ const MasterLocations: React.FC = () => {
             </button>
           </div>
 
-          {bulkMode === 'simple' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Default City (FOR ALL LOCATIONS)</label>
-              <select
-                required
-                value={defaultCityId}
-                onChange={(e) => setDefaultCityId(e.target.value)}
-                className="w-full rounded-xl border-gray-200 h-10 px-3 uppercase text-xs font-bold tracking-tight bg-white border"
-              >
-                <option value="">SELECT CITY</option>
-                {cities.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.state_name})</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Show city selector in both modes */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+              {bulkMode === 'simple' ? 'Default City (FOR ALL LOCATIONS)' : 'Default City (USED IF PASTING NAMES LIST)'}
+            </label>
+            <select
+              value={defaultCityId}
+              onChange={(e) => setDefaultCityId(e.target.value)}
+              required={bulkMode === 'simple'}
+              className="w-full rounded-xl border-gray-200 h-10 px-3 uppercase text-xs font-bold tracking-tight bg-white border"
+            >
+              <option value="">SELECT CITY</option>
+              {cities.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.state_name})</option>
+              ))}
+            </select>
+          </div>
 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-              {bulkMode === 'simple' ? 'Location Names (ONE PER LINE)' : 'JSON DATA (ARRAY OF OBJECTS)'}
+              {bulkMode === 'simple' ? 'Location Names (ONE PER LINE)' : 'JSON DATA — Array of objects OR just paste names (one per line)'}
             </label>
             <p className="text-[9px] text-blue-600 font-bold uppercase tracking-tight">
               {bulkMode === 'simple' 
-                ? 'Just paste names like: Vasant Vihar [Enter] Hiranandani [Enter] Majiwada' 
-                : 'Format: [{"name": "Area Name", "city": 1, "is_active": true}]'
+                ? 'Paste names — one per line. e.g. Vasant Vihar [Enter] Hiranandani' 
+                : 'Supports: [{"name":"X","city":1}] or just "Name1" "Name2" (select city above)'
               }
             </p>
             <textarea
