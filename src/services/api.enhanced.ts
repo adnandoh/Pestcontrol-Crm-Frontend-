@@ -1450,6 +1450,10 @@ class EnhancedApiService {
     return this.api.post<MasterLocation[]>('/locations/bulk-create/', data).then(r => r.data);
   }
 
+  async searchLocations(q: string): Promise<any[]> {
+    return this.api.get<any[]>('/locations/search/', { params: { q } }).then(r => r.data);
+  }
+
   // Quotation methods
   async getQuotations(params?: QuotationFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Quotation>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.QUOTATIONS, params);

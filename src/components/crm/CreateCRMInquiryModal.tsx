@@ -6,6 +6,7 @@ import type { CRMInquiryFormData, PestType, State, City, Location as MasterLocat
 import { PEST_TYPES } from '../../constants/pestTypes';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 import { useEffect } from 'react';
+import LocationSearchSelect from '../forms/LocationSearchSelect';
 
 interface CreateCRMInquiryModalProps {
   isOpen: boolean;
@@ -216,16 +217,17 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
 
               {/* Location */}
               <div className="space-y-1">
-                <select
-                  required
-                  value={formData.master_location || ''}
-                  onChange={(e) => setFormData({ ...formData, master_location: Number(e.target.value) })}
-                  className="w-full h-11 px-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 bg-white text-gray-600"
-                  disabled={!formData.master_city}
-                >
-                  <option value="">Select Location *</option>
-                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+                <LocationSearchSelect
+                  value={formData.master_location}
+                  onChange={(locationId, cityId, stateId) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      master_location: locationId,
+                      master_city: cityId || prev.master_city,
+                      master_state: stateId || prev.master_state
+                    }));
+                  }}
+                />
               </div>
 
               {/* Detailed Address */}

@@ -17,6 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
+import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import type { QuotationItem, QuotationFormData, State, City, Location as MasterLocation } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
@@ -357,16 +358,22 @@ const CreateQuotation: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Location</Label>
-                <select
-                  value={formData.master_location || ''}
-                  onChange={(e) => handleInputChange('master_location', Number(e.target.value))}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-gray-50/50"
-                  disabled={!formData.master_city}
-                  required
-                >
-                  <option value="">Select Location</option>
-                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+                <LocationSearchSelect
+                  value={formData.master_location}
+                  onChange={(locationId, cityId, stateId) => {
+                    const state = masterStates.find(s => s.id === stateId);
+                    // Find city from masterCities or wait for effect? 
+                    // Better to just set the IDs and let the effects handle fetching if needed, 
+                    // but we also need the names for legacy sync.
+                    setFormData(prev => ({
+                      ...prev,
+                      master_location: locationId,
+                      master_city: cityId || prev.master_city,
+                      master_state: stateId || prev.master_state,
+                      state: state ? state.name : prev.state
+                    }));
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Pincode</Label>
