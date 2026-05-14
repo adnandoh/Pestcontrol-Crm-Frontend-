@@ -256,7 +256,7 @@ const Inquiries: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Received</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-20">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-20">Action</th>
+                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-44">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -360,7 +360,7 @@ const Inquiries: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-2">
                        <button 
                          onClick={() => {
                            setSelectedInquiry({
@@ -371,19 +371,31 @@ const Inquiries: React.FC = () => {
                            });
                            setShowReminderModal(true);
                          }}
-                         className="p-1.5 bg-gray-100 hover:bg-orange-100 rounded transition-all group" 
+                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95"
                          title="Add Reminder"
                        >
-                         <Bell className="h-3 w-3 text-gray-400 group-hover:text-orange-600" />
+                         <Bell className="h-3 w-3 fill-white" />
+                         <span>Reminder</span>
                        </button>
-                       {!inquiry.is_read && (
-                         <button onClick={() => handleMarkAsRead(inquiry.id)} className="p-1.5 bg-gray-100 hover:bg-green-100 rounded transition-all group" title="Mark Read">
-                           <CheckCircle className="h-3 w-3 text-gray-400 group-hover:text-green-600" />
+
+                       {inquiry.status === 'New' && (
+                         <button 
+                           onClick={() => handleConvertToJobCard(inquiry)} 
+                           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95" 
+                           title="Convert to Booking"
+                         >
+                           <ArrowRight className="h-3 w-3" />
+                           <span>Convert</span>
                          </button>
                        )}
-                       {inquiry.status === 'New' && (
-                         <button onClick={() => handleConvertToJobCard(inquiry)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group" title="Convert">
-                           <ArrowRight className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
+                       
+                       {!inquiry.is_read && (
+                         <button 
+                           onClick={() => handleMarkAsRead(inquiry.id)} 
+                           className="p-1.5 bg-gray-100 hover:bg-green-100 rounded transition-all group" 
+                           title="Mark Read"
+                         >
+                           <CheckCircle className="h-3 w-3 text-gray-400 group-hover:text-green-600" />
                          </button>
                        )}
                     </div>
