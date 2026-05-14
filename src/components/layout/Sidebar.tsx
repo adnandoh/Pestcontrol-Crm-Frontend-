@@ -178,30 +178,39 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
               );
             })}
 
-            {/* Main Master Collapsible Group */}
+            {/* Master Collapsible Group */}
             {user?.is_superuser && (
-              <div className="space-y-1">
+              <div className="space-y-1 mt-4">
                 <button
                   onClick={() => setIsMasterOpen(!isMasterOpen)}
                   className={cn(
-                    'w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-left',
-                    location.pathname.startsWith('/master/') 
-                      ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                    'w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left border',
+                    isMasterOpen || location.pathname.startsWith('/master/')
+                      ? 'bg-white shadow-[0_2px_10px_rgba(37,99,235,0.1)] text-blue-800 border-blue-100'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50 border-transparent'
                   )}
                 >
                   <div className={cn(
                     'flex items-center justify-center transition-colors',
-                    location.pathname.startsWith('/master/') ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
+                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-800' : 'text-gray-400 group-hover:text-gray-600'
                   )}>
-                    <Database className="h-[18px] w-[18px]" />
+                    <Database className={cn("h-5 w-5 fill-current opacity-20", (isMasterOpen || location.pathname.startsWith('/master/')) && "opacity-100")} />
                   </div>
-                  <span className="flex-1 text-[14px] font-semibold">Main Master</span>
-                  {isMasterOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <span className={cn(
+                    "flex-1 text-[14px] font-bold tracking-tight",
+                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-900' : 'text-gray-700'
+                  )}>
+                    Master
+                  </span>
+                  {isMasterOpen ? (
+                    <ChevronDown className="h-4 w-4 text-blue-900 rotate-180 transition-transform duration-200" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  )}
                 </button>
                 
                 {isMasterOpen && (
-                  <div className="ml-9 space-y-1 animate-in slide-in-from-top-1 duration-200">
+                  <div className="mt-2 space-y-1.5 animate-in slide-in-from-top-1 duration-200">
                     {masterItems.map((item) => {
                       const active = location.pathname === item.href;
                       return (
@@ -209,13 +218,19 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                           key={item.name}
                           to={item.href}
                           className={cn(
-                            'block px-3 py-2 rounded-md text-[13px] font-medium transition-colors',
+                            'group flex items-center gap-3 px-10 py-1.5 rounded-lg text-[13px] font-bold transition-all',
                             active 
-                              ? 'text-blue-600 bg-blue-50/50' 
-                              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                              ? 'text-blue-700' 
+                              : 'text-blue-600/80 hover:text-blue-800'
                           )}
                         >
-                          {item.name}
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full border border-blue-600/30",
+                            active ? "bg-blue-600" : "bg-transparent group-hover:bg-blue-400"
+                          )} />
+                          <span className="truncate">
+                            {item.name.replace('Master ', '')}
+                          </span>
                         </Link>
                       );
                     })}

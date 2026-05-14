@@ -9,8 +9,16 @@ import {
   TrendingUp,
   DollarSign,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  RotateCcw
 } from 'lucide-react';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { Card, CardContent, PageLoading, Badge } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -20,8 +28,8 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
   const [complaintStats, setComplaintStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>(dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD"));
+  const [dateTo, setDateTo] = useState<string>(dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD"));
 
   const fetchStats = async () => {
     try {
@@ -50,6 +58,12 @@ const Dashboard: React.FC = () => {
   const handleRefresh = async () => {
     setIsLoading(true);
     await fetchStats();
+  };
+
+  const handleResetFilter = () => {
+    const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
+    setDateFrom(today);
+    setDateTo(today);
   };
 
   if (isLoading && !stats) {
@@ -88,7 +102,10 @@ const Dashboard: React.FC = () => {
       {/* 🧭 1. Dashboard Header */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-2 animate-fade-up">
         <div>
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">Dashboard</h1>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+            Dashboard 
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">Live</span>
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
@@ -109,6 +126,13 @@ const Dashboard: React.FC = () => {
               className="text-[10px] font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
             />
           </div>
+          <button
+            onClick={handleResetFilter}
+            className="p-1.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-red-600 border border-gray-100 rounded-lg shadow-sm transition-all"
+            title="Reset to Today"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
           <div className="h-4 w-px bg-gray-200 mx-1" />
           <button
             onClick={handleRefresh}
@@ -120,18 +144,20 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* 🚀 2. PRIMARY KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-up delay-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 animate-fade-up delay-100">
         {[
-          { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-blue-500', bg: 'bg-blue-50/40' },
-          { label: 'Active Jobs', value: stats?.status_stats?.on_process || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
-          { label: 'Pending Jobs', value: stats?.status_stats?.pending || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
-          { label: 'Total Revenue', value: `₹${Math.round(stats?.month_revenue || 0).toLocaleString()}`, color: 'border-emerald-500', bg: 'bg-emerald-50/40' },
+          { label: 'Range Revenue', value: `₹${Math.round(stats?.range_revenue || 0).toLocaleString()}`, color: 'border-emerald-600', bg: 'bg-emerald-50/60' },
+          { label: 'Today Revenue', value: `₹${Math.round(stats?.today_revenue || 0).toLocaleString()}`, color: 'border-blue-600', bg: 'bg-blue-50/60' },
+          { label: 'Yesterday Revenue', value: `₹${Math.round(stats?.yesterday_revenue || 0).toLocaleString()}`, color: 'border-gray-400', bg: 'bg-gray-50/60' },
+          { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
+          { label: 'CRM Inquiries', value: stats?.total_crm_inquiries || 0, color: 'border-purple-500', bg: 'bg-purple-50/40' },
+          { label: 'Website Leads', value: stats?.total_web_inquiries || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
         ].map((stat, i) => (
           <div key={i} className={cn("relative p-4 h-24 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white flex flex-col justify-center", stat.color)}>
              <div className={cn("absolute inset-0 opacity-50 group-hover:opacity-70 transition-opacity", stat.bg)} />
              <div className="relative">
-                <p className="text-2xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
-                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{stat.label}</p>
+                <p className="text-xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
+                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{stat.label}</p>
              </div>
           </div>
         ))}
@@ -237,7 +263,7 @@ const Dashboard: React.FC = () => {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-2xl sm:text-3xl font-black text-white leading-none">
-                    {Math.min(Math.round(((stats?.month_revenue || 0) / 500000) * 100), 100)}%
+                    {Math.min(Math.round(((stats?.range_revenue || 0) / 500000) * 100), 100)}%
                   </span>
                   <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-tighter mt-1">Achieved</span>
                 </div>
@@ -251,9 +277,9 @@ const Dashboard: React.FC = () => {
                 </div>
                 
                 <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Current Month</p>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Selected Range</p>
                   <div className="flex flex-wrap items-baseline justify-between gap-1">
-                    <p className="text-lg sm:text-xl font-black text-white whitespace-nowrap">₹ {Math.round(stats?.month_revenue || 0).toLocaleString()}</p>
+                    <p className="text-lg sm:text-xl font-black text-white whitespace-nowrap">₹ {Math.round(stats?.range_revenue || 0).toLocaleString()}</p>
                     <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 whitespace-nowrap">/ 5,00,000</p>
                   </div>
                 </div>
@@ -262,7 +288,7 @@ const Dashboard: React.FC = () => {
                    <div className="space-y-0.5">
                       <p className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Avg Ticket</p>
                       <p className="text-xs sm:text-sm font-black text-white">
-                        ₹ {stats?.status_stats?.done ? Math.round((stats?.month_revenue || 0) / stats.status_stats.done).toLocaleString() : '0'}
+                        ₹ {stats?.status_stats?.done ? Math.round((stats?.range_revenue || 0) / stats.status_stats.done).toLocaleString() : '0'}
                       </p>
                    </div>
                    <div className="h-8 w-px bg-white/10 mx-2" />

@@ -81,85 +81,59 @@ const CreateQuotation: React.FC = () => {
     }
   }, [existingQuotation]);
 
-  // Initial geographic data
+  // 1. Initial State Fetch
   useEffect(() => {
-    if (!isEdit) {
-      const fetchInitialData = async () => {
-        try {
-          const statesRes = await enhancedApiService.getStates();
-          setMasterStates(statesRes.results);
-          const maharashtra = statesRes.results.find(s => s.name.toLowerCase() === 'maharashtra');
-          
+    enhancedApiService.getStates()
+      .then(res => {
+        setMasterStates(res.results);
+        if (!isEdit) {
+          const maharashtra = res.results.find(s => s.name.toLowerCase() === 'maharashtra');
           if (maharashtra) {
-            setFormData(prev => ({
-              ...prev,
-              master_state: maharashtra.id,
-              state: maharashtra.name
-            }));
-
-            // Fetch cities for Maharashtra to find Mumbai
-            const citiesRes = await enhancedApiService.getCities({ state: maharashtra.id });
-            setMasterCities(citiesRes.results);
-            const mumbai = citiesRes.results.find(c => c.name.toLowerCase() === 'mumbai');
-            if (mumbai) {
-              setFormData(prev => ({
-                ...prev,
-                master_city: mumbai.id,
-                city: mumbai.name
-              }));
-
-              // Fetch locations for Mumbai
-              const locationsRes = await enhancedApiService.getMasterLocations({ city: mumbai.id });
-              setMasterLocations(locationsRes.results);
-            }
+            setFormData(prev => ({ ...prev, master_state: maharashtra.id, state: maharashtra.name }));
           }
-        } catch (err) {
-          console.error('Failed to fetch initial location data:', err);
         }
-      };
-      fetchInitialData();
-    } else {
-      enhancedApiService.getStates()
-        .then(res => setMasterStates(res.results))
-        .catch(err => console.error('Error fetching states:', err));
-    }
+      })
+      .catch(err => console.error('Error fetching states:', err));
   }, [isEdit]);
 
-  // Fetch cities when state changes
+  // 2. Fetch Cities when State changes + Auto-select Mumbai
   useEffect(() => {
     if (formData.master_state) {
-      enhancedApiService.getCities({ state: formData.master_state })
+      enhancedApiService.getCities({ state: formData.master_state, page_size: 1000 })
         .then(res => {
           setMasterCities(res.results);
-          // Only reset if current city not in results
+          
+          if (!isEdit) {
+            const state = masterStates.find(s => s.id === formData.master_state);
+            if (state?.name.toLowerCase() === 'maharashtra' && !formData.master_city) {
+              const mumbai = res.results.find(c => c.name.toLowerCase() === 'mumbai');
+              if (mumbai) {
+                setFormData(prev => ({ ...prev, master_city: mumbai.id, city: mumbai.name }));
+              }
+            }
+          }
+
           setFormData(prev => {
             if (prev.master_city && res.results.some(c => c.id === prev.master_city)) return prev;
-            return { ...prev, master_city: undefined, master_location: undefined };
+            return prev;
           });
         })
         .catch(err => console.error('Error fetching cities:', err));
     } else {
       setMasterCities([]);
-      setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
     }
-  }, [formData.master_state]);
+  }, [formData.master_state, masterStates.length, isEdit]);
 
-  // Fetch locations when city changes
+  // 3. Fetch Locations when City changes
   useEffect(() => {
     if (formData.master_city) {
-      enhancedApiService.getMasterLocations({ city: formData.master_city })
+      enhancedApiService.getMasterLocations({ city: formData.master_city, page_size: 1000 })
         .then(res => {
           setMasterLocations(res.results);
-          // Only reset if current location not in results
-          setFormData(prev => {
-            if (prev.master_location && res.results.some(l => l.id === prev.master_location)) return prev;
-            return { ...prev, master_location: undefined };
-          });
         })
         .catch(err => console.error('Error fetching locations:', err));
     } else {
       setMasterLocations([]);
-      setFormData(prev => ({ ...prev, master_location: undefined }));
     }
   }, [formData.master_city]);
 

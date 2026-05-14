@@ -296,6 +296,9 @@ const JobCards: React.FC = () => {
     }
     
     const newTimeout = setTimeout(() => {
+      // Only trigger search if 2+ characters or empty (reset)
+      if (value.length > 0 && value.length < 2) return;
+      
       const newFilters = { ...filters, search: value };
       setFilters(newFilters);
       setPagination(prev => ({ ...prev, current: 1 }));
@@ -304,7 +307,7 @@ const JobCards: React.FC = () => {
       } else {
         loadJobCards(1, newFilters);
       }
-    }, 500);
+    }, 300);
     
     setSearchTimeout(newTimeout);
   };
@@ -834,7 +837,7 @@ const JobCards: React.FC = () => {
                     </tr>
                   );
                 })
-              ) : (jobCards || []).map((job: JobCard) => {
+              ) : (jobCards || []).map((job: JobCard, index: number) => {
                 const today = dayjs().tz("Asia/Kolkata").startOf('day');
                 const tomorrow = today.add(1, 'day');
                 const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
@@ -842,14 +845,33 @@ const JobCards: React.FC = () => {
                 const isToday = jobDate.isSame(today, 'day');
                 const isTomorrow = jobDate.isSame(tomorrow, 'day');
                 
-                const rowBg = isToday ? 'bg-emerald-100/60' : isTomorrow ? 'bg-yellow-100/60' : '';
+                // Priority labels logic
+                const prevJob = index > 0 ? jobCards[index-1] : null;
+                const prevPriority = prevJob?.booking_priority;
+                const currentPriority = job.booking_priority;
+                const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority || 0);
+
+                const rowBg = currentPriority === 1 
+                  ? 'bg-emerald-800 text-white' 
+                  : currentPriority === 2 
+                    ? 'bg-amber-400 text-amber-950' 
+                    : job.is_complaint_call 
+                      ? 'bg-red-50/50' 
+                      : '';
                 
                 return (
                   <React.Fragment key={`jc-${job.id}`}>
+                    {showPriorityHeader && (
+                      <tr>
+                        <td colSpan={11} className="bg-gray-900 py-1.5 px-4 text-[11px] font-black text-white uppercase tracking-[0.2em] text-center italic">
+                          --- {currentPriority === 1 ? 'TODAY WORK' : 'TOMORROW WORK'} ---
+                        </td>
+                      </tr>
+                    )}
                     <tr className={cn(
                       rowBg, 
                       "hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group",
-                      job.is_complaint_call && "bg-red-50/50"
+                      !(currentPriority === 1 || currentPriority === 2) && "hover:bg-blue-50/50"
                     )}>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1.5 relative">
@@ -887,11 +909,17 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
-                        <span className="text-[13px] font-black text-gray-900 uppercase leading-none mb-1">
+                        <span className={cn(
+                          "text-[13px] font-black uppercase leading-none mb-1",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-gray-900"
+                        )}>
                           {job.client_name || '---'}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-blue-600">
+                          <span className={cn(
+                            "text-[11px] font-bold",
+                            (currentPriority === 1 || currentPriority === 2) ? "text-inherit opacity-90" : "text-blue-600"
+                          )}>
                             {job.client_mobile || '---'}
                           </span>
                         </div>
@@ -899,7 +927,10 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col group/address relative">
-                        <div className="max-w-[150px] leading-tight font-medium text-gray-600">
+                        <div className={cn(
+                          "max-w-[150px] leading-tight font-medium",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-gray-600"
+                        )}>
                           {job.client_address ? (
                             job.client_address.split(' ').length > 10 
                               ? job.client_address.split(' ').slice(0, 10).join(' ') + '...'
@@ -924,7 +955,10 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col group/service relative">
-                        <div className="font-extrabold text-gray-800 leading-tight max-w-[140px] truncate flex items-center gap-1" title={job.service_type}>
+                        <div className={cn(
+                          "font-extrabold leading-tight max-w-[140px] truncate flex items-center gap-1",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-gray-800"
+                        )} title={job.service_type}>
                           {job.service_type?.split(',')[0]}
                           {(job.service_type?.split(',').length ?? 0) > 1 && (
                             <span className="text-[9px] bg-blue-50 text-blue-600 px-1 rounded font-black">
@@ -932,7 +966,10 @@ const JobCards: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="text-[9px] text-blue-600 font-black uppercase mt-0.5 tracking-tighter opacity-80">{job.service_category}</div>
+                        <div className={cn(
+                          "text-[9px] font-black uppercase mt-0.5 tracking-tighter opacity-80",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-blue-600"
+                        )}>{job.service_category}</div>
                         
                         <div className="mt-1 flex flex-col gap-0.5">
                           <span className={cn(
@@ -1002,10 +1039,16 @@ const JobCards: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-700 text-[11px]">
+                        <span className={cn(
+                          "font-bold text-[11px]",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-gray-700"
+                        )}>
                           {job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('DD/MM/YYYY') : '---'}
                         </span>
-                        <span className="text-[10px] text-gray-500 font-medium">
+                        <span className={cn(
+                          "text-[10px] font-medium",
+                          (currentPriority === 1 || currentPriority === 2) ? "text-inherit opacity-80" : "text-gray-500"
+                        )}>
                           {job.time_slot || (job.schedule_datetime ? dayjs(job.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : '')}
                         </span>
                         {isToday && (

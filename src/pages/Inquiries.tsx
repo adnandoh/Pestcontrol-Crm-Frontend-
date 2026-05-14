@@ -94,10 +94,19 @@ const Inquiries: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only trigger if 2+ characters or empty (reset)
+      if (searchInput.length > 0 && searchInput.length < 2) return;
+      setFilters(prev => ({ ...prev, search: searchInput }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   // Initial load and filter changes
   useEffect(() => {
     loadInquiries(1);
-  }, [filters, activeTab]);
+  }, [filters.status, filters.search, activeTab]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);

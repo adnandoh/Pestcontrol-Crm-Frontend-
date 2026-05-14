@@ -49,11 +49,10 @@ const CRMInquiries: React.FC = () => {
   });
 
   const [filters, setFilters] = useState({
-    search: '',
-    status: '',
     pest_type: '',
     date: ''
   });
+  const [searchInput, setSearchInput] = useState('');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -83,8 +82,17 @@ const CRMInquiries: React.FC = () => {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only trigger if 2+ characters or empty (reset)
+      if (searchInput.length > 0 && searchInput.length < 2) return;
+      setFilters(prev => ({ ...prev, search: searchInput }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
     loadInquiries(1);
-  }, [filters.status, filters.pest_type, filters.date]);
+  }, [filters]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,8 +178,8 @@ const CRMInquiries: React.FC = () => {
             <input
               type="text"
               placeholder="Search Name, Phone, Location..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
             />
           </div>

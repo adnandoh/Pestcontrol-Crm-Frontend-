@@ -141,6 +141,8 @@ export interface JobCard {
   payment_mode?: 'Cash' | 'Online';
   service_type: string;
   schedule_datetime: string;
+  completed_at?: string;
+  booking_priority?: number;
   time_slot?: string;
   state?: string;
   city?: string;
@@ -517,9 +519,12 @@ export interface DashboardStatisticsResponse {
   total_job_cards: number;
   total_clients: number;
   total_technicians?: number;
-  renewals: number;
+  total_quotations?: number;
+  approved_quotations?: number;
+  converted_quotations?: number;
   today_revenue?: number;
-  month_revenue?: number;
+  yesterday_revenue?: number;
+  range_revenue?: number;
   category_stats?: {
     one_time: number;
     amc: number;
