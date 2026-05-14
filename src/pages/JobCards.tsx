@@ -854,7 +854,7 @@ const JobCards: React.FC = () => {
                 const rowBg = currentPriority === 1 
                   ? 'bg-emerald-800 text-white' 
                   : currentPriority === 2 
-                    ? 'bg-amber-400 text-amber-950' 
+                    ? 'bg-amber-600 text-white' 
                     : job.is_complaint_call 
                       ? 'bg-red-50/50' 
                       : '';
