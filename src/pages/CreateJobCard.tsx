@@ -470,29 +470,6 @@ const CreateJobCard: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
-                <select
-                  value={formData.commercial_type}
-                  onChange={(e) => {
-                    const val = e.target.value as any;
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      commercial_type: val,
-                      is_price_estimated: val !== 'home',
-                      price: val !== 'home' ? '0.00' : prev.price
-                    }));
-                  }}
-                  className="w-full h-10 px-3 text-sm font-bold border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
-                >
-                  <option value="home">Home (Residential)</option>
-                  <option value="hotel">Hotel</option>
-                  <option value="society">Society</option>
-                  <option value="villa">Villa</option>
-                  <option value="office">Office</option>
-                  <option value="other">Other Commercial</option>
-                </select>
-              </div>
 
               <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
@@ -505,7 +482,30 @@ const CreateJobCard: React.FC = () => {
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                   <div>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
+                      <select
+                        value={formData.commercial_type}
+                        onChange={(e) => {
+                          const val = e.target.value as any;
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            commercial_type: val,
+                            is_price_estimated: val !== 'home',
+                            price: val !== 'home' ? '0.00' : prev.price
+                          }));
+                        }}
+                        className="w-full h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                      >
+                        <option value="home">Home (Residential)</option>
+                        <option value="hotel">Hotel</option>
+                        <option value="society">Society</option>
+                        <option value="villa">Villa</option>
+                        <option value="office">Office</option>
+                        <option value="other">Other Commercial</option>
+                      </select>
+                   </div>
                    <div>
                       <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Service *</label>
                       <select

@@ -1374,8 +1374,40 @@ class EnhancedApiService {
     return this.api.get<PaginatedResponse<Country>>('/countries/', { params }).then(r => r.data);
   }
 
+  async createCountry(data: any): Promise<Country> {
+    return this.api.post<Country>('/countries/', data).then(r => r.data);
+  }
+
+  async updateCountry(id: number, data: any): Promise<Country> {
+    return this.api.patch<Country>(`/countries/${id}/`, data).then(r => r.data);
+  }
+
+  async deleteCountry(id: number): Promise<void> {
+    await this.api.delete(`/countries/${id}/`);
+  }
+
+  async bulkCreateCountries(data: any[]): Promise<Country[]> {
+    return this.api.post<Country[]>('/countries/bulk-create/', data).then(r => r.data);
+  }
+
   async getStates(params?: any): Promise<PaginatedResponse<State>> {
     return this.api.get<PaginatedResponse<State>>('/states/', { params }).then(r => r.data);
+  }
+
+  async createState(data: any): Promise<State> {
+    return this.api.post<State>('/states/', data).then(r => r.data);
+  }
+
+  async updateState(id: number, data: any): Promise<State> {
+    return this.api.patch<State>(`/states/${id}/`, data).then(r => r.data);
+  }
+
+  async deleteState(id: number): Promise<void> {
+    await this.api.delete(`/states/${id}/`);
+  }
+
+  async bulkCreateStates(data: any[]): Promise<State[]> {
+    return this.api.post<State[]>('/states/bulk-create/', data).then(r => r.data);
   }
 
   async getCities(params?: any): Promise<PaginatedResponse<City>> {

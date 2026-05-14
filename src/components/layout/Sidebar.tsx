@@ -78,6 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Staff Management', href: '/staff', icon: Shield },
         { name: 'Activity Logs', href: '/activity-logs', icon: History },
+        { name: 'Master States', href: '/master/states', icon: MapPin },
         { name: 'Master Cities', href: '/master/cities', icon: MapPin },
         { name: 'Master Locations', href: '/master/locations', icon: MapPin },
       ]
