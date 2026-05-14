@@ -631,6 +631,7 @@ export interface CustomerHistory {
 export interface Country {
   id: number;
   name: string;
+  code?: string;
   is_active: boolean;
 }
 
