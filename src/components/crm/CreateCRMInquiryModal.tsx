@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { X, Save, Calendar } from 'lucide-react';
 import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
-import type { CRMInquiryFormData, PestType } from '../../types';
+import type { CRMInquiryFormData, PestType, State, City, Location as MasterLocation } from '../../types';
 import { PEST_TYPES } from '../../constants/pestTypes';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
+import { useEffect } from 'react';
 
 interface CreateCRMInquiryModalProps {
   isOpen: boolean;
@@ -33,6 +34,40 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
   };
 
   const [formData, setFormData] = useState<CRMInquiryFormData>(initialData);
+  const [masterStates, setMasterStates] = useState<State[]>([]);
+  const [masterCities, setMasterCities] = useState<City[]>([]);
+  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
+
+  // Initial geographic data
+  useEffect(() => {
+    if (isOpen) {
+      enhancedApiService.getStates()
+        .then(res => setMasterStates(res.results))
+        .catch(err => console.error('Error fetching states:', err));
+    }
+  }, [isOpen]);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (formData.master_state) {
+      enhancedApiService.getCities({ state: formData.master_state })
+        .then(res => setMasterCities(res.results))
+        .catch(err => console.error('Error fetching cities:', err));
+    } else {
+      setMasterCities([]);
+    }
+  }, [formData.master_state]);
+
+  // Fetch locations when city changes
+  useEffect(() => {
+    if (formData.master_city) {
+      enhancedApiService.getMasterLocations({ city: formData.master_city })
+        .then(res => setMasterLocations(res.results))
+        .catch(err => console.error('Error fetching locations:', err));
+    } else {
+      setMasterLocations([]);
+    }
+  }, [formData.master_city]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,13 +142,53 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                 />
               </div>
 
+              {/* State */}
+              <div className="space-y-1">
+                <select
+                  required
+                  value={formData.master_state || ''}
+                  onChange={(e) => setFormData({ ...formData, master_state: Number(e.target.value), master_city: undefined, master_location: undefined })}
+                  className="w-full h-11 px-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 bg-white text-gray-600"
+                >
+                  <option value="">Select State *</option>
+                  {masterStates.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+
+              {/* City */}
+              <div className="space-y-1">
+                <select
+                  required
+                  value={formData.master_city || ''}
+                  onChange={(e) => setFormData({ ...formData, master_city: Number(e.target.value), master_location: undefined })}
+                  className="w-full h-11 px-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 bg-white text-gray-600"
+                  disabled={!formData.master_state}
+                >
+                  <option value="">Select City *</option>
+                  {masterCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
               {/* Location */}
               <div className="space-y-1">
-                <Input
+                <select
                   required
+                  value={formData.master_location || ''}
+                  onChange={(e) => setFormData({ ...formData, master_location: Number(e.target.value) })}
+                  className="w-full h-11 px-3 text-sm border border-gray-300 rounded outline-none focus:border-blue-600 bg-white text-gray-600"
+                  disabled={!formData.master_city}
+                >
+                  <option value="">Select Location *</option>
+                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+
+              {/* Detailed Address */}
+              <div className="space-y-1">
+                <Input
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Service Location *"
+                  placeholder="Detailed Address (Optional)"
                   className="h-11 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
                 />
               </div>
