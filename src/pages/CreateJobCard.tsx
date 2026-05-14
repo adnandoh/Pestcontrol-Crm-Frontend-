@@ -145,13 +145,28 @@ const CreateJobCard: React.FC = () => {
       try {
         const statesRes = await enhancedApiService.getStates();
         setMasterStates(statesRes.results);
-        const maharashtra = statesRes.results.find(s => s.name === 'Maharashtra');
+        const maharashtra = statesRes.results.find(s => s.name.toLowerCase() === 'maharashtra');
         
         if (maharashtra) {
           setFormData(prev => ({
             ...prev,
             master_state: maharashtra.id
           }));
+
+          // Fetch cities for Maharashtra to find Mumbai
+          const citiesRes = await enhancedApiService.getCities({ state: maharashtra.id });
+          setMasterCities(citiesRes.results);
+          const mumbai = citiesRes.results.find(c => c.name.toLowerCase() === 'mumbai');
+          if (mumbai) {
+            setFormData(prev => ({
+              ...prev,
+              master_city: mumbai.id
+            }));
+
+            // Fetch locations for Mumbai
+            const locationsRes = await enhancedApiService.getMasterLocations({ city: mumbai.id });
+            setMasterLocations(locationsRes.results);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch initial location data:', err);
@@ -165,26 +180,43 @@ const CreateJobCard: React.FC = () => {
   useEffect(() => {
     if (formData.master_state) {
       enhancedApiService.getCities({ state: formData.master_state })
-        .then(res => setMasterCities(res.results))
+        .then(res => {
+          setMasterCities(res.results);
+          // Only reset city if the current city is not in the new cities list
+          // This prevents resetting on initial load when Mumbai is pre-selected
+          setFormData(prev => {
+            if (prev.master_city && res.results.some(c => c.id === prev.master_city)) {
+              return prev;
+            }
+            return { ...prev, master_city: undefined, master_location: undefined };
+          });
+        })
         .catch(err => console.error('Error fetching cities:', err));
     } else {
       setMasterCities([]);
+      setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
     }
-    // Reset city and location when state changes
-    setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
   }, [formData.master_state]);
 
   // Fetch locations when city changes
   useEffect(() => {
     if (formData.master_city) {
       enhancedApiService.getMasterLocations({ city: formData.master_city })
-        .then(res => setMasterLocations(res.results))
+        .then(res => {
+          setMasterLocations(res.results);
+          // Only reset location if current location not in results
+          setFormData(prev => {
+            if (prev.master_location && res.results.some(l => l.id === prev.master_location)) {
+              return prev;
+            }
+            return { ...prev, master_location: undefined };
+          });
+        })
         .catch(err => console.error('Error fetching locations:', err));
     } else {
       setMasterLocations([]);
+      setFormData(prev => ({ ...prev, master_location: undefined }));
     }
-    // Reset location when city changes
-    setFormData(prev => ({ ...prev, master_location: undefined }));
   }, [formData.master_city]);
 
   // Handle Next Service Date Auto-calculation
