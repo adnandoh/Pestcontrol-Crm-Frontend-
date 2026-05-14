@@ -7,7 +7,8 @@ import {
   Trash2, 
   CheckCircle2,
   XCircle,
-  Shield
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   Card, 
@@ -41,6 +42,8 @@ const MasterLocations: React.FC = () => {
   });
   const [bulkMode, setBulkMode] = useState<'json' | 'simple'>('simple');
   const [defaultCityId, setDefaultCityId] = useState('');
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [suggestions, setSuggestions] = useState<MasterLocation[]>([]);
 
   const fetchData = async () => {
     try {
@@ -64,6 +67,45 @@ const MasterLocations: React.FC = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Duplicate check & suggestions logic
+  useEffect(() => {
+    if (!formData.name || !formData.city || isBulkModalOpen) {
+      setIsDuplicate(false);
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const normalized = formData.name.replace(/\s+/g, '').toLowerCase();
+        
+        // Find existing with same normalized name and city
+        const exactMatch = locations.find(loc => 
+          loc.city.toString() === formData.city && 
+          loc.name.replace(/\s+/g, '').toLowerCase() === normalized &&
+          (!selectedLocation || loc.id !== selectedLocation.id)
+        );
+
+        setIsDuplicate(!!exactMatch);
+
+        // Suggestions: simple partial match
+        if (formData.name.length >= 2) {
+          const filtered = locations.filter(loc => 
+            loc.name.toLowerCase().includes(formData.name.toLowerCase()) &&
+            (!selectedLocation || loc.id !== selectedLocation.id)
+          ).slice(0, 5);
+          setSuggestions(filtered);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (error) {
+        console.error('Error checking duplicates:', error);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.name, formData.city, locations, selectedLocation, isBulkModalOpen]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,11 +348,32 @@ const MasterLocations: React.FC = () => {
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Location Name</label>
             <Input 
               required
+              list="location-suggestions"
               placeholder="ENTER LOCATION NAME..."
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="rounded-xl border-gray-200 uppercase text-xs font-bold tracking-tight"
+              className={cn(
+                "rounded-xl border-gray-200 uppercase text-xs font-bold tracking-tight",
+                isDuplicate && "border-red-500 bg-red-50 focus:ring-red-500"
+              )}
             />
+            <datalist id="location-suggestions">
+              {suggestions.map(s => (
+                <option key={s.id} value={s.name} />
+              ))}
+            </datalist>
+            
+            {isDuplicate && (
+              <p className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 mt-1 uppercase animate-in fade-in slide-in-from-top-1">
+                <AlertTriangle className="h-3 w-3" />
+                ⚠️ Location already exists in this city
+              </p>
+            )}
+            {!isDuplicate && suggestions.length > 0 && formData.name.length > 2 && (
+              <p className="text-[9px] font-bold text-blue-600 mt-1 uppercase italic">
+                Tip: Check if one of these matches your need first
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">City</label>
@@ -359,7 +422,16 @@ const MasterLocations: React.FC = () => {
           </div>
           <div className="pt-4 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)} className="uppercase text-[10px] font-black">Cancel</Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 shadow-lg shadow-blue-100 uppercase text-[10px] font-black">
+            <Button 
+              type="submit" 
+              disabled={isDuplicate}
+              className={cn(
+                "px-8 shadow-lg uppercase text-[10px] font-black",
+                isDuplicate 
+                  ? "bg-gray-400 cursor-not-allowed shadow-none" 
+                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100"
+              )}
+            >
               {selectedLocation ? 'Update Location' : 'Create Location'}
             </Button>
           </div>
