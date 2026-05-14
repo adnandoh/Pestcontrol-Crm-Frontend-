@@ -10,7 +10,6 @@ import {
   DollarSign,
   UserCheck,
   AlertCircle,
-  Calendar,
   RotateCcw
 } from 'lucide-react';
 import dayjs from 'dayjs';

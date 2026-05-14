@@ -37,7 +37,6 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
   const [formData, setFormData] = useState<CRMInquiryFormData>(initialData);
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
-  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
 
   // Initial geographic data
   useEffect(() => {

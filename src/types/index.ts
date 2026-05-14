@@ -522,8 +522,9 @@ export interface DashboardStatisticsResponse {
   total_quotations?: number;
   approved_quotations?: number;
   converted_quotations?: number;
-  today_revenue?: number;
+   today_revenue?: number;
   yesterday_revenue?: number;
+  month_revenue?: number;
   range_revenue?: number;
   category_stats?: {
     one_time: number;

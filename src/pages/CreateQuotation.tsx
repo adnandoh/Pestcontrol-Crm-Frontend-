@@ -65,7 +65,6 @@ const CreateQuotation: React.FC = () => {
 
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
-  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
 
   const { data: existingQuotation, isLoading: isFetching } = useQuery({
     queryKey: ['quotation', id],

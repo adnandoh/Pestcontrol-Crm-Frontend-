@@ -134,7 +134,6 @@ const EditJobCard: React.FC = () => {
   // Master Location States
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
-  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {

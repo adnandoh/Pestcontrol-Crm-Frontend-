@@ -2,7 +2,7 @@ import React from 'react';
 import AsyncSelect from 'react-select/async';
 import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 interface LocationSearchSelectProps {
   value?: number;
@@ -13,7 +13,6 @@ interface LocationSearchSelectProps {
 }
 
 const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
-  value,
   onChange,
   placeholder = "Search location (e.g. Khopoli, Thane)...",
   className,

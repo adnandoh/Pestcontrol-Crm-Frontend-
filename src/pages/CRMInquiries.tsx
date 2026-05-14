@@ -48,9 +48,11 @@ const CRMInquiries: React.FC = () => {
     pageSize: 10
   });
 
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{pest_type: string, date: string, search: string, status: string}>({
     pest_type: '',
-    date: ''
+    date: '',
+    search: '',
+    status: ''
   });
   const [searchInput, setSearchInput] = useState('');
 
