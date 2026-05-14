@@ -22,7 +22,7 @@ import {
 
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { JobCardFormData, State, City, Location as MasterLocation } from '../types';
+import type { JobCardFormData, State, City } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
@@ -181,19 +181,6 @@ const CreateJobCard: React.FC = () => {
       setMasterCities([]);
     }
   }, [formData.master_state, masterStates.length]); // Added masterStates.length to ensure it runs after states are loaded
-
-  // 3. Fetch Locations when City changes
-  useEffect(() => {
-    if (formData.master_city) {
-      enhancedApiService.getMasterLocations({ city: formData.master_city, page_size: 1000 })
-        .then(res => {
-          setMasterLocations(res.results);
-        })
-        .catch(err => console.error('Error fetching locations:', err));
-    } else {
-      setMasterLocations([]);
-    }
-  }, [formData.master_city]);
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {

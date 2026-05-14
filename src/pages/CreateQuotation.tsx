@@ -18,7 +18,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
-import type { QuotationItem, QuotationFormData, State, City, Location as MasterLocation } from '../types';
+import type { QuotationItem, QuotationFormData, State, City } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
 
@@ -122,19 +122,6 @@ const CreateQuotation: React.FC = () => {
       setMasterCities([]);
     }
   }, [formData.master_state, masterStates.length, isEdit]);
-
-  // 3. Fetch Locations when City changes
-  useEffect(() => {
-    if (formData.master_city) {
-      enhancedApiService.getMasterLocations({ city: formData.master_city, page_size: 1000 })
-        .then(res => {
-          setMasterLocations(res.results);
-        })
-        .catch(err => console.error('Error fetching locations:', err));
-    } else {
-      setMasterLocations([]);
-    }
-  }, [formData.master_city]);
 
   const handleInputChange = (field: keyof QuotationFormData, value: any) => {
     let updatedFormData = { ...formData, [field]: value };

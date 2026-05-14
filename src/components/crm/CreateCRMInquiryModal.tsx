@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Save, Calendar } from 'lucide-react';
 import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
-import type { CRMInquiryFormData, PestType, State, City, Location as MasterLocation } from '../../types';
+import type { CRMInquiryFormData, PestType, State, City } from '../../types';
 import { PEST_TYPES } from '../../constants/pestTypes';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 import { useEffect } from 'react';
@@ -62,10 +62,6 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                 ...prev,
                 master_city: mumbai.id
               }));
-
-              // Fetch locations for Mumbai
-              const locationsRes = await enhancedApiService.getMasterLocations({ city: mumbai.id });
-              setMasterLocations(locationsRes.results);
             }
           }
         } catch (err) {
@@ -95,21 +91,8 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
     }
   }, [formData.master_state]);
 
-  // Fetch locations when city changes
   useEffect(() => {
-    if (formData.master_city) {
-      enhancedApiService.getMasterLocations({ city: formData.master_city })
-        .then(res => {
-          setMasterLocations(res.results);
-          // Only reset if current location not in results
-          setFormData(prev => {
-            if (prev.master_location && res.results.some(l => l.id === prev.master_location)) return prev;
-            return { ...prev, master_location: undefined };
-          });
-        })
-        .catch(err => console.error('Error fetching locations:', err));
-    } else {
-      setMasterLocations([]);
+    if (!formData.master_city) {
       setFormData(prev => ({ ...prev, master_location: undefined }));
     }
   }, [formData.master_city]);
