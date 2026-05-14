@@ -27,6 +27,7 @@ import StaffPerformance from './pages/StaffPerformance';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
 import ActivityLogs from './pages/ActivityLogs';
+import MasterCountries from './pages/MasterCountries';
 import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
 import MasterLocations from './pages/MasterLocations';
@@ -98,6 +99,7 @@ const AppContent: React.FC = () => {
                   <Route path="/staff-performance" element={<StaffPerformance />} />
                   <Route path="/staff" element={<StaffManagement />} />
                   <Route path="/activity-logs" element={<ActivityLogs />} />
+                  <Route path="/master/countries" element={<MasterCountries />} />
                   <Route path="/master/states" element={<MasterStates />} />
                   <Route path="/master/cities" element={<MasterCities />} />
                   <Route path="/master/locations" element={<MasterLocations />} />
