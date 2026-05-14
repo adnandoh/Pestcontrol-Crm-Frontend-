@@ -12,7 +12,10 @@ import {
   BarChart3,
   Shield,
   History,
-  MapPin
+  MapPin,
+  ChevronDown,
+  ChevronRight,
+  Database
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -29,6 +32,9 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, user }) => {
   const location = useLocation();
   const { counts } = useDashboardCounts();
+  const [isMasterOpen, setIsMasterOpen] = React.useState(() => {
+    return location.pathname.startsWith('/master/');
+  });
 
   const getBadgeCount = (name: string) => {
     switch (name) {
@@ -78,12 +84,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Staff Management', href: '/staff', icon: Shield },
         { name: 'Activity Logs', href: '/activity-logs', icon: History },
-        { name: 'Master Countries', href: '/master/countries', icon: MapPin },
-        { name: 'Master States', href: '/master/states', icon: MapPin },
-        { name: 'Master Cities', href: '/master/cities', icon: MapPin },
-        { name: 'Master Locations', href: '/master/locations', icon: MapPin },
       ]
     }
+  ];
+
+  const masterItems = [
+    { name: 'Master Countries', href: '/master/countries' },
+    { name: 'Master States', href: '/master/states' },
+    { name: 'Master Cities', href: '/master/cities' },
+    { name: 'Master Locations', href: '/master/locations' },
   ];
 
   const isActive = (href: string) => {
@@ -169,6 +178,52 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                 </div>
               );
             })}
+
+            {/* Main Master Collapsible Group */}
+            {user?.is_superuser && (
+              <div className="space-y-1">
+                <button
+                  onClick={() => setIsMasterOpen(!isMasterOpen)}
+                  className={cn(
+                    'w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-left',
+                    location.pathname.startsWith('/master/') 
+                      ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                  )}
+                >
+                  <div className={cn(
+                    'flex items-center justify-center transition-colors',
+                    location.pathname.startsWith('/master/') ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
+                  )}>
+                    <Database className="h-[18px] w-[18px]" />
+                  </div>
+                  <span className="flex-1 text-[14px] font-semibold">Main Master</span>
+                  {isMasterOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                
+                {isMasterOpen && (
+                  <div className="ml-9 space-y-1 animate-in slide-in-from-top-1 duration-200">
+                    {masterItems.map((item) => {
+                      const active = location.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={cn(
+                            'block px-3 py-2 rounded-md text-[13px] font-medium transition-colors',
+                            active 
+                              ? 'text-blue-600 bg-blue-50/50' 
+                              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                          )}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
 
