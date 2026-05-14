@@ -237,7 +237,6 @@ const EditJobCard: React.FC = () => {
 
   // Master Location Dynamic Loading
   const isFirstCityLoad = React.useRef(true);
-  const isFirstLocationLoad = React.useRef(true);
 
   // Fetch cities when state changes
   useEffect(() => {
