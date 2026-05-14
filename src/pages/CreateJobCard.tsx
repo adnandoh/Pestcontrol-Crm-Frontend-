@@ -247,6 +247,19 @@ const CreateJobCard: React.FC = () => {
       [field]: value
     };
 
+    // Sync legacy fields if master fields are updated
+    if (field === 'master_state') {
+      const state = masterStates.find(s => s.id === value);
+      if (state) {
+        updatedFormData.state = state.name;
+      }
+    } else if (field === 'master_city') {
+      const city = masterCities.find(c => c.id === value);
+      if (city) {
+        updatedFormData.city = city.name;
+      }
+    }
+
     setFormData(updatedFormData);
     clearError(field);
     

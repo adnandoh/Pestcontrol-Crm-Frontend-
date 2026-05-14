@@ -906,7 +906,12 @@ const JobCards: React.FC = () => {
                               : job.client_address
                           ) : '---'}
                         </div>
-                        <div className="text-[9px] font-bold text-gray-400 uppercase mt-1">{job.city}, {job.state}</div>
+                        <div className="text-[9px] font-bold text-gray-400 uppercase mt-1">
+                          {job.master_location_name ? (
+                            <span className="text-blue-600/80">{job.master_location_name}, </span>
+                          ) : null}
+                          {job.city || job.master_city_name}, {job.state || job.master_state_name}
+                        </div>
                         
                         {/* Address Tooltip */}
                         {job.client_address && (

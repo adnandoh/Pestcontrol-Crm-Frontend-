@@ -17,7 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
-import type { QuotationItem, QuotationFormData } from '../types';
+import type { QuotationItem, QuotationFormData, State, City, Location as MasterLocation } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
 
@@ -49,6 +49,9 @@ const CreateQuotation: React.FC = () => {
     license_number: LICENSE_NUMBER,
     notes: '',
     terms_and_conditions: '1. Quotation is valid for 30 days.\n2. Payment: 100% advance or as agreed.\n3. The treatment will be as per the standards.',
+    master_state: undefined,
+    master_city: undefined,
+    master_location: undefined,
     items: [{ service_name: '', frequency: 'One Time', quantity: 1, rate: 0, total: 0 }],
     scopes: [
       { title: 'General Pest Control', content: 'Treatment for cockroaches, ants, spiders, etc.' },
@@ -58,6 +61,10 @@ const CreateQuotation: React.FC = () => {
       { term: 'Immediate', description: 'Payment to be made on same day of service.' }
     ]
   });
+
+  const [masterStates, setMasterStates] = useState<State[]>([]);
+  const [masterCities, setMasterCities] = useState<City[]>([]);
+  const [masterLocations, setMasterLocations] = useState<MasterLocation[]>([]);
 
   const { data: existingQuotation, isLoading: isFetching } = useQuery({
     queryKey: ['quotation', id],
@@ -69,10 +76,56 @@ const CreateQuotation: React.FC = () => {
     if (existingQuotation) {
       setFormData({
         ...existingQuotation,
-        // Ensure nested objects are handled if needed
       } as QuotationFormData);
     }
   }, [existingQuotation]);
+
+  // Initial geographic data
+  useEffect(() => {
+    enhancedApiService.getStates()
+      .then(res => setMasterStates(res.results))
+      .catch(err => console.error('Error fetching states:', err));
+  }, []);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (formData.master_state) {
+      enhancedApiService.getCities({ state: formData.master_state })
+        .then(res => setMasterCities(res.results))
+        .catch(err => console.error('Error fetching cities:', err));
+    } else {
+      setMasterCities([]);
+    }
+  }, [formData.master_state]);
+
+  // Fetch locations when city changes
+  useEffect(() => {
+    if (formData.master_city) {
+      enhancedApiService.getMasterLocations({ city: formData.master_city })
+        .then(res => setMasterLocations(res.results))
+        .catch(err => console.error('Error fetching locations:', err));
+    } else {
+      setMasterLocations([]);
+    }
+  }, [formData.master_city]);
+
+  const handleInputChange = (field: keyof QuotationFormData, value: any) => {
+    let updatedFormData = { ...formData, [field]: value };
+    
+    // Sync legacy fields
+    if (field === 'master_state') {
+      const state = masterStates.find(s => s.id === value);
+      if (state) updatedFormData.state = state.name;
+      updatedFormData.master_city = undefined;
+      updatedFormData.master_location = undefined;
+    } else if (field === 'master_city') {
+      const city = masterCities.find(c => c.id === value);
+      if (city) updatedFormData.city = city.name;
+      updatedFormData.master_location = undefined;
+    }
+    
+    setFormData(updatedFormData);
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: QuotationFormData) => enhancedApiService.createQuotation(data),
@@ -225,22 +278,49 @@ const CreateQuotation: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">City</Label>
-                <Input 
+                <Label className="text-xs font-bold uppercase text-gray-500">State</Label>
+                <select
+                  value={formData.master_state || ''}
+                  onChange={(e) => handleInputChange('master_state', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-gray-50/50"
                   required
-                  placeholder="e.g. Mumbai"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="bg-gray-50/50 border-gray-200"
-                />
+                >
+                  <option value="">Select State</option>
+                  {masterStates.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">State</Label>
-                <Input 
+                <Label className="text-xs font-bold uppercase text-gray-500">City</Label>
+                <select
+                  value={formData.master_city || ''}
+                  onChange={(e) => handleInputChange('master_city', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-gray-50/50"
+                  disabled={!formData.master_state}
                   required
-                  placeholder="e.g. Maharashtra"
-                  value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                >
+                  <option value="">Select City</option>
+                  {masterCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Location</Label>
+                <select
+                  value={formData.master_location || ''}
+                  onChange={(e) => handleInputChange('master_location', Number(e.target.value))}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-gray-50/50"
+                  disabled={!formData.master_city}
+                  required
+                >
+                  <option value="">Select Location</option>
+                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Pincode</Label>
+                <Input 
+                  placeholder="e.g. 400001"
+                  value={formData.pincode}
+                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
                   className="bg-gray-50/50 border-gray-200"
                 />
               </div>

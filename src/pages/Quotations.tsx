@@ -234,7 +234,12 @@ const Quotations: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">{q.customer_name}</span>
-                        <span className="text-xs text-gray-500">{q.mobile}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">{q.mobile}</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">
+                            • {q.master_location_name || q.city || q.master_city_name}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">

@@ -106,7 +106,7 @@ const MasterCities: React.FC = () => {
           }
           data = parsed
             .map((s: any) => (typeof s === 'string' ? s.trim() : null))
-            .filter(Boolean)
+            .filter((s: any): s is string => s !== null && s.length > 0)
             .map((name: string) => ({ name, state: parseInt(defaultStateId), is_active: true }));
         } else {
           const invalidItems = parsed.filter((item: any) => typeof item !== 'object' || item === null || Array.isArray(item));

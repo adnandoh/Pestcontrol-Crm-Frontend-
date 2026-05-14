@@ -149,7 +149,7 @@ const MasterLocations: React.FC = () => {
           }
           data = parsed
             .map((s: any) => (typeof s === 'string' ? s.trim() : null))
-            .filter(Boolean)
+            .filter((s: any): s is string => s !== null && s.length > 0)
             .map((name: string) => ({ name, city: parseInt(defaultCityId), is_active: true }));
         } else {
           // Validate each item is an object
