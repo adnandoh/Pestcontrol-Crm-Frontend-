@@ -17,7 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
-import type { QuotationItem, QuotationFormData } from '../types';
+import type { QuotationItem, QuotationFormData, State } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
 
@@ -32,7 +32,7 @@ const CreateQuotation: React.FC = () => {
     mobile: '',
     email: '',
     address: '',
-    city: '',
+    city: 'Mumbai',
     state: 'Maharashtra',
     pincode: '',
     company_name: '',
@@ -46,12 +46,6 @@ const CreateQuotation: React.FC = () => {
     discount: 0,
     tax_amount: 0,
     grand_total: 0,
-    customer_name: '',
-    mobile: '',
-    email: '',
-    company_name: '',
-    city: 'Mumbai',
-    state: 'Maharashtra',
     license_number: LICENSE_NUMBER,
     notes: '',
     terms_and_conditions: '1. Quotation is valid for 30 days.\n2. Payment: 100% advance or as agreed.\n3. The treatment will be as per the standards.',

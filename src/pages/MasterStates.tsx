@@ -25,7 +25,6 @@ import { cn } from '../utils/cn';
 
 const MasterStates: React.FC = () => {
   const [states, setStates] = useState<State[]>([]);
-  const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,12 +44,8 @@ const MasterStates: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [statesRes, countriesRes] = await Promise.all([
-        enhancedApiService.getStates({ search: searchQuery }),
-        enhancedApiService.getCountries()
-      ]);
+      const statesRes = await enhancedApiService.getStates({ search: searchQuery });
       setStates(statesRes.results);
-      setCountries(countriesRes.results);
       // Country is fixed to India (ID 1)
       setDefaultCountryId('1');
     } catch (error) {
