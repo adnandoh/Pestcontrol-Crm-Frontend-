@@ -7,12 +7,8 @@ import {
   Save, 
   ArrowLeft, 
   Calculator, 
-  FileText,
   Info,
-  ChevronDown,
-  ChevronUp,
   User,
-  MapPin,
   Briefcase
 } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -21,7 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
-import type { Quotation, QuotationItem, QuotationFormData } from '../types';
+import type { QuotationItem, QuotationFormData } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
 
@@ -410,7 +406,7 @@ const CreateQuotation: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between text-sm opacity-80">
                 <span>Subtotal</span>
-                <span>₹{formData.total_amount.toLocaleString()}</span>
+                <span>₹{(formData.total_amount ?? 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-sm opacity-80">
                 <span>Discount</span>
@@ -427,13 +423,13 @@ const CreateQuotation: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm opacity-80">
                 <span>Tax (18% GST)</span>
-                <span>₹{formData.tax_amount.toLocaleString()}</span>
+                <span>₹{(formData.tax_amount ?? 0).toLocaleString()}</span>
               </div>
               
               <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
                   <span className="text-xs font-bold uppercase opacity-60">Grand Total</span>
-                  <span className="text-3xl font-black tracking-tighter">₹{formData.grand_total.toLocaleString()}</span>
+                  <span className="text-3xl font-black tracking-tighter">₹{(formData.grand_total ?? 0).toLocaleString()}</span>
                 </div>
               </div>
             </div>

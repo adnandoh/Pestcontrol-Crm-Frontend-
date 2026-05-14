@@ -1,28 +1,19 @@
 import React, { useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
-  Download, 
   Printer, 
   Share2, 
-  Send, 
-  CheckCircle,
-  FileText,
-  Clock,
-  User,
-  MapPin,
-  Calendar,
-  ShieldCheck,
-  Zap
+  FileText, 
+  ShieldCheck, 
+  Zap 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import { cn } from '../utils/cn';
-import type { Quotation } from '../types';
 
 const QuotationPreview: React.FC = () => {
   const { id } = useParams();

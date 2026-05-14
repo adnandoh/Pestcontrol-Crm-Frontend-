@@ -7,12 +7,8 @@ import {
   FileText, 
   Eye, 
   Edit2, 
-  Trash2, 
   Share2, 
   CheckCircle,
-  MoreVertical,
-  Download,
-  Send,
   RefreshCw,
   Clock,
   ArrowRight
@@ -23,7 +19,6 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { cn } from '../utils/cn';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
 
 const Quotations: React.FC = () => {
@@ -272,7 +267,7 @@ const Quotations: React.FC = () => {
                         )}
                         {q.status === 'Approved' && (
                           <Button 
-                            variant="default" 
+                            variant="primary" 
                             size="sm" 
                             className="h-8 bg-green-600 hover:bg-green-700 text-white rounded-lg gap-1.5 px-3"
                             onClick={() => handleConvert(q.id)}
