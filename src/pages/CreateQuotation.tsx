@@ -17,7 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../utils/cn';
-import type { QuotationItem, QuotationFormData, State } from '../types';
+import type { QuotationItem, QuotationFormData } from '../types';
 
 const LICENSE_NUMBER = "LAID020185";
 

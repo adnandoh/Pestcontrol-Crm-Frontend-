@@ -20,7 +20,7 @@ import {
 } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { State, Country } from '../types';
+import type { State } from '../types';
 import { cn } from '../utils/cn';
 
 const MasterStates: React.FC = () => {
