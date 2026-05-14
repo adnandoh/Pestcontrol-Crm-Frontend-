@@ -1394,6 +1394,10 @@ class EnhancedApiService {
     await this.api.delete(`/cities/${id}/`);
   }
 
+  async bulkCreateCities(data: any[]): Promise<City[]> {
+    return this.api.post<City[]>('/cities/bulk-create/', data).then(r => r.data);
+  }
+
   async getMasterLocations(params?: any): Promise<PaginatedResponse<MasterLocation>> {
     return this.api.get<PaginatedResponse<MasterLocation>>('/locations/', { params }).then(r => r.data);
   }
@@ -1408,6 +1412,10 @@ class EnhancedApiService {
 
   async deleteMasterLocation(id: number): Promise<void> {
     await this.api.delete(`/locations/${id}/`);
+  }
+
+  async bulkCreateMasterLocations(data: any[]): Promise<MasterLocation[]> {
+    return this.api.post<MasterLocation[]>('/locations/bulk-create/', data).then(r => r.data);
   }
 
   // Quotation methods

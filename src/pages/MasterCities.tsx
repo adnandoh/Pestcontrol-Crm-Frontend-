@@ -29,8 +29,10 @@ const MasterCities: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [bulkJson, setBulkJson] = useState('');
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
@@ -74,6 +76,25 @@ const MasterCities: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving city:', error);
       alert('FAILED TO SAVE CITY');
+    }
+  };
+
+  const handleBulkAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(bulkJson);
+      if (!Array.isArray(data)) {
+        alert('DATA MUST BE AN ARRAY OF OBJECTS');
+        return;
+      }
+      await enhancedApiService.bulkCreateCities(data);
+      setIsBulkModalOpen(false);
+      setBulkJson('');
+      fetchData();
+      alert('BULK CITIES ADDED SUCCESSFULLY');
+    } catch (error: any) {
+      console.error('Error bulk adding cities:', error);
+      alert('INVALID JSON OR API ERROR: ' + (error.message || 'CHECK CONSOLE'));
     }
   };
 
@@ -126,17 +147,26 @@ const MasterCities: React.FC = () => {
             Manage cities for the booking system
           </p>
         </div>
-        <Button 
-          onClick={() => {
-            setSelectedCity(null);
-            setFormData({ name: '', state: states[0]?.id.toString() || '', is_active: true });
-            setIsModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          ADD NEW CITY
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={() => setIsBulkModalOpen(true)}
+            variant="outline"
+            className="border-blue-200 text-blue-600 hover:bg-blue-50 uppercase text-[10px] font-black"
+          >
+            BULK ADD
+          </Button>
+          <Button 
+            onClick={() => {
+              setSelectedCity(null);
+              setFormData({ name: '', state: states[0]?.id.toString() || '', is_active: true });
+              setIsModalOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 uppercase text-[10px] font-black"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD NEW CITY
+          </Button>
+        </div>
       </div>
 
       <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden">
@@ -276,6 +306,33 @@ const MasterCities: React.FC = () => {
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)} className="uppercase text-[10px] font-black">Cancel</Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 shadow-lg shadow-blue-100 uppercase text-[10px] font-black">
               {selectedCity ? 'Update City' : 'Create City'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+      
+      <Modal
+        open={isBulkModalOpen}
+        onOpenChange={setIsBulkModalOpen}
+        title="BULK ADD CITIES"
+        size="lg"
+      >
+        <form onSubmit={handleBulkAdd} className="space-y-4 p-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">JSON DATA (ARRAY OF OBJECTS)</label>
+            <p className="text-[9px] text-blue-600 font-bold uppercase tracking-tight">Format: [{"name": "City Name", "state": 1, "is_active": true}]</p>
+            <textarea
+              required
+              placeholder='[{"name": "Thane", "state": 1, "is_active": true}]'
+              value={bulkJson}
+              onChange={(e) => setBulkJson(e.target.value)}
+              className="w-full h-64 p-4 rounded-xl border border-gray-200 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+            />
+          </div>
+          <div className="pt-2 flex justify-end gap-3">
+            <Button variant="ghost" type="button" onClick={() => setIsBulkModalOpen(false)} className="uppercase text-[10px] font-black">Cancel</Button>
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 shadow-lg shadow-blue-100 uppercase text-[10px] font-black">
+              Process Bulk Upload
             </Button>
           </div>
         </form>
