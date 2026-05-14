@@ -38,6 +38,9 @@ import type {
   State,
   City,
   Location as MasterLocation,
+  Quotation,
+  QuotationFormData,
+  QuotationFilters,
 } from '../types';
 
 // Enhanced API Error class
@@ -1405,6 +1408,76 @@ class EnhancedApiService {
 
   async deleteMasterLocation(id: number): Promise<void> {
     await this.api.delete(`/locations/${id}/`);
+  }
+
+  // Quotation methods
+  async getQuotations(params?: QuotationFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Quotation>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.QUOTATIONS, params);
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<Quotation>>(API_ENDPOINTS.QUOTATIONS, { params })
+        )
+      ),
+      2 * 60 * 1000 // 2 minutes cache
+    );
+  }
+
+  async getQuotation(id: number): Promise<Quotation> {
+    const cacheKey = `${API_ENDPOINTS.QUOTATIONS}${id}`;
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<Quotation>(`${API_ENDPOINTS.QUOTATIONS}${id}/`)
+        )
+      )
+    );
+  }
+
+  async createQuotation(data: QuotationFormData): Promise<Quotation> {
+    const result = await this.retryRequest(() =>
+      this.api.post<Quotation>(API_ENDPOINTS.QUOTATIONS, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
+    return result.data;
+  }
+
+  async updateQuotation(id: number, data: Partial<QuotationFormData>): Promise<Quotation> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<Quotation>(`${API_ENDPOINTS.QUOTATIONS}${id}/`, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
+    apiCache.deletePattern(`${API_ENDPOINTS.QUOTATIONS}${id}`);
+    return result.data;
+  }
+
+  async deleteQuotation(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.QUOTATIONS}${id}/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
+  }
+
+  async convertQuotationToBooking(id: number): Promise<{ booking_id: number; booking_code: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ booking_id: number; booking_code: string }>(`${API_ENDPOINTS.QUOTATIONS}${id}/convert_to_booking/`)
+    );
+    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    return result.data;
+  }
+
+  async getQuotationStats(): Promise<{ total: number; pending: number; approved: number; converted: number; revenue: number }> {
+    const result = await this.retryRequest(() =>
+      this.api.get<{ total: number; pending: number; approved: number; converted: number; revenue: number }>(`${API_ENDPOINTS.QUOTATIONS}stats/`)
+    );
+    return result.data;
   }
 }
 

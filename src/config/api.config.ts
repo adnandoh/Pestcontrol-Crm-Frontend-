@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
   FIREBASE_HEALTH: '/v1/firebase/health/',
   FEEDBACKS: '/v1/feedbacks/',
   REMINDERS: '/v1/reminders/',
+  QUOTATIONS: '/v1/quotations/',
 } as const;
 
 // Cache Keys
@@ -66,6 +67,7 @@ export const CACHE_KEYS = {
   FEEDBACKS: 'feedbacks',
   REMINDERS: 'reminders',
   DASHBOARD_COUNTS: 'dashboard_counts',
+  QUOTATIONS: 'quotations',
 } as const;
 
 // Request timeout configurations for different operations

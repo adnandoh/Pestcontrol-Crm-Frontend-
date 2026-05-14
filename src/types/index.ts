@@ -543,6 +543,7 @@ export interface DashboardCounts {
   complaint_calls: number;
   reminders: number;
   feedbacks: number;
+  pending_quotations: number;
 }
 
 export interface StaffPerformance {
@@ -655,4 +656,78 @@ export interface Location {
   city_name: string;
   name: string;
   is_active: boolean;
+}
+
+// Quotation Types
+export type QuotationStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected' | 'Converted' | 'Expired';
+export type QuotationType = 'Residential' | 'Commercial' | 'Society' | 'Office' | 'Restaurant' | 'Clinic/Hospital' | 'AMC Package' | 'One Time Service';
+
+export interface QuotationItem {
+  id?: number;
+  service_name: string;
+  frequency: string;
+  quantity: number;
+  rate: number;
+  total: number;
+  description?: string;
+}
+
+export interface QuotationScope {
+  id?: number;
+  title: string;
+  content: string;
+}
+
+export interface QuotationPaymentTerm {
+  id?: number;
+  term: string;
+  description?: string;
+}
+
+export interface Quotation {
+  id: number;
+  quotation_no: string;
+  invoice_no?: string;
+  reference_no?: string;
+  customer_name: string;
+  mobile: string;
+  email?: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  contact_person?: string;
+  company_name?: string;
+  quotation_type: QuotationType;
+  status: QuotationStatus;
+  total_amount: number;
+  discount: number;
+  tax_amount: number;
+  grand_total: number;
+  is_amc: boolean;
+  visit_count: number;
+  contract_amount: number;
+  expiry_date?: string;
+  created_by?: number;
+  created_by_name?: string;
+  license_number: string;
+  notes?: string;
+  terms_and_conditions?: string;
+  items: QuotationItem[];
+  scopes: QuotationScope[];
+  payment_terms: QuotationPaymentTerm[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuotationFilters {
+  search?: string;
+  status?: string;
+  quotation_type?: string;
+  is_amc?: boolean;
+  ordering?: string;
+}
+
+export interface QuotationFormData extends Partial<Omit<Quotation, 'id' | 'quotation_no' | 'created_at' | 'updated_at' | 'created_by_name'>> {
+  items: QuotationItem[];
 }

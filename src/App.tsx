@@ -19,6 +19,9 @@ import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
 import Feedbacks from './pages/Feedbacks';
+import Quotations from './pages/Quotations';
+import CreateQuotation from './pages/CreateQuotation';
+import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
 import StaffPerformance from './pages/StaffPerformance';
 import PublicFeedback from './pages/PublicFeedback';
@@ -85,6 +88,10 @@ const AppContent: React.FC = () => {
                   <Route path="/references" element={<References />} />
                   <Route path="/technicians" element={<Technicians />} />
                   <Route path="/crm-inquiries" element={<CRMInquiries />} />
+                  <Route path="/quotations" element={<Quotations />} />
+                  <Route path="/quotations/create" element={<CreateQuotation />} />
+                  <Route path="/quotations/edit/:id" element={<CreateQuotation />} />
+                  <Route path="/quotations/preview/:id" element={<QuotationPreview />} />
                   <Route path="/feedbacks" element={<Feedbacks />} />
                   <Route path="/technician-reports" element={<TechnicianReports />} />
                   <Route path="/staff-performance" element={<StaffPerformance />} />

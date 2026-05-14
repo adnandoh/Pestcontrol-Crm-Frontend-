@@ -42,6 +42,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         return counts.reminders + counts.complaint_calls;
       case 'Feedbacks':
         return counts.feedbacks;
+      case 'Quotations':
+        return counts.pending_quotations;
       default:
         return 0;
     }
@@ -52,6 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
         { name: 'View Bookings', href: '/jobcards', icon: ClipboardList },
+        { name: 'Quotations', href: '/quotations', icon: FileText },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
@@ -152,6 +155,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                             item.name === 'Website Leads' ? "bg-red-600" : 
                             item.name === 'CRM Inquiries' ? "bg-orange-500" : 
                             item.name === 'View Bookings' ? "bg-blue-600" :
+                            item.name === 'Quotations' ? "bg-amber-500" :
                             "bg-green-600"
                           )}>
                             {getBadgeCount(item.name)}
