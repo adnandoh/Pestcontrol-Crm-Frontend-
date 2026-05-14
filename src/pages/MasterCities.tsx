@@ -320,7 +320,7 @@ const MasterCities: React.FC = () => {
         <form onSubmit={handleBulkAdd} className="space-y-4 p-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">JSON DATA (ARRAY OF OBJECTS)</label>
-            <p className="text-[9px] text-blue-600 font-bold uppercase tracking-tight">Format: [{"name": "City Name", "state": 1, "is_active": true}]</p>
+            <p className="text-[9px] text-blue-600 font-bold uppercase tracking-tight">Format: {'[{"name": "City Name", "state": 1, "is_active": true}]'}</p>
             <textarea
               required
               placeholder='[{"name": "Thane", "state": 1, "is_active": true}]'
