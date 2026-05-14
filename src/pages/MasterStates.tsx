@@ -34,11 +34,11 @@ const MasterStates: React.FC = () => {
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [bulkJson, setBulkJson] = useState('');
   const [bulkMode, setBulkMode] = useState<'json' | 'simple'>('simple');
-  const [defaultCountryId, setDefaultCountryId] = useState('');
+  const [defaultCountryId, setDefaultCountryId] = useState('1');
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    country: '',
+    country: '1',
     is_active: true
   });
 
@@ -51,9 +51,8 @@ const MasterStates: React.FC = () => {
       ]);
       setStates(statesRes.results);
       setCountries(countriesRes.results);
-      if (countriesRes.results.length > 0 && !defaultCountryId) {
-        setDefaultCountryId(countriesRes.results[0].id.toString());
-      }
+      // Country is fixed to India (ID 1)
+      setDefaultCountryId('1');
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -178,12 +177,15 @@ const MasterStates: React.FC = () => {
             MASTER STATES
           </h1>
           <p className="text-sm text-gray-500 font-medium mt-1 uppercase tracking-wider">
-            Manage states for the geographic system
+            Manage states within India
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button 
-            onClick={() => setIsBulkModalOpen(true)}
+            onClick={() => {
+              setIsBulkModalOpen(true);
+              setDefaultCountryId('1');
+            }}
             variant="outline"
             className="border-blue-200 text-blue-600 hover:bg-blue-50 uppercase text-[10px] font-black"
           >
@@ -192,7 +194,7 @@ const MasterStates: React.FC = () => {
           <Button 
             onClick={() => {
               setSelectedState(null);
-              setFormData({ name: '', country: countries[0]?.id.toString() || '', is_active: true });
+              setFormData({ name: '', country: '1', is_active: true });
               setIsModalOpen(true);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 uppercase text-[10px] font-black"
@@ -221,7 +223,6 @@ const MasterStates: React.FC = () => {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">State Name</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Country</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
               </tr>
@@ -237,7 +238,6 @@ const MasterStates: React.FC = () => {
                 states.map((state) => (
                   <tr key={state.id} className="hover:bg-blue-50/30 transition-colors group">
                     <td className="px-6 py-4 font-black text-gray-900 uppercase tracking-tight">{state.name}</td>
-                    <td className="px-6 py-4 font-bold text-gray-600 uppercase tracking-tighter">{state.country_name}</td>
                     <td className="px-6 py-4">
                       <Badge variant={state.is_active ? 'success' : 'secondary'} className="uppercase text-[9px] font-black">
                         {state.is_active ? 'Active' : 'Inactive'}
@@ -290,20 +290,6 @@ const MasterStates: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="rounded-xl border-gray-200 uppercase text-xs font-bold tracking-tight"
             />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Country</label>
-            <select
-              required
-              value={formData.country}
-              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-              className="w-full rounded-xl border-gray-200 h-10 px-3 uppercase text-xs font-bold tracking-tight bg-white border"
-            >
-              <option value="">SELECT COUNTRY</option>
-              {countries.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</label>
@@ -374,23 +360,6 @@ const MasterStates: React.FC = () => {
               JSON Expert
             </button>
           </div>
-
-          {bulkMode === 'simple' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Default Country (FOR ALL STATES)</label>
-              <select
-                required
-                value={defaultCountryId}
-                onChange={(e) => setDefaultCountryId(e.target.value)}
-                className="w-full rounded-xl border-gray-200 h-10 px-3 uppercase text-xs font-bold tracking-tight bg-white border"
-              >
-                <option value="">SELECT COUNTRY</option>
-                {countries.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
