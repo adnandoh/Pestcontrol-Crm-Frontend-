@@ -12,7 +12,6 @@ import {
   BarChart3,
   Shield,
   History,
-  MapPin,
   ChevronDown,
   ChevronRight,
   Database
