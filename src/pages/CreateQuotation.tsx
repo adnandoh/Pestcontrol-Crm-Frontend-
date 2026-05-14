@@ -37,7 +37,7 @@ const CreateQuotation: React.FC = () => {
     email: '',
     address: '',
     city: '',
-    state: '',
+    state: 'Maharashtra',
     pincode: '',
     company_name: '',
     contact_person: '',
@@ -225,6 +225,26 @@ const CreateQuotation: React.FC = () => {
                   placeholder="e.g. Acme Corp"
                   value={formData.company_name}
                   onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                  className="bg-gray-50/50 border-gray-200"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">City</Label>
+                <Input 
+                  required
+                  placeholder="e.g. Mumbai"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="bg-gray-50/50 border-gray-200"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">State</Label>
+                <Input 
+                  required
+                  placeholder="e.g. Maharashtra"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   className="bg-gray-50/50 border-gray-200"
                 />
               </div>
