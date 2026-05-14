@@ -28,6 +28,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City, Location as MasterLocation } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -490,16 +491,17 @@ const EditJobCard: React.FC = () => {
 
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
-                <select
-                  value={formData.master_location || ''}
-                  onChange={(e) => handleInputChange('master_location', Number(e.target.value))}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
-                  disabled={!formData.master_city}
-                  required
-                >
-                  <option value="">Select Location</option>
-                  {masterLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+                <LocationSearchSelect
+                  value={formData.master_location}
+                  onChange={(locationId, cityId, stateId) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      master_location: locationId,
+                      master_city: cityId || prev.master_city,
+                      master_state: stateId || prev.master_state
+                    }));
+                  }}
+                />
               </div>
 
               <div>
