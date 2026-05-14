@@ -65,6 +65,7 @@ export const CACHE_KEYS = {
   CRM_INQUIRIES: 'crm_inquiries',
   FEEDBACKS: 'feedbacks',
   REMINDERS: 'reminders',
+  DASHBOARD_COUNTS: 'dashboard_counts',
 } as const;
 
 // Request timeout configurations for different operations

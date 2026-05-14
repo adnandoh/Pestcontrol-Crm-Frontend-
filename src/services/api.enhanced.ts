@@ -1151,8 +1151,18 @@ class EnhancedApiService {
 
   // Dashboard methods
   async getDashboardCounts(): Promise<DashboardCounts> {
-    const response = await this.api.get<DashboardCounts>(`${API_ENDPOINTS.DASHBOARD}counts/`);
-    return response.data;
+    const cacheKey = CACHE_KEYS.DASHBOARD_COUNTS;
+    
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<DashboardCounts>(`${API_ENDPOINTS.DASHBOARD}counts/`)
+        )
+      ),
+      1 * 60 * 1000 // 1 minute cache for counts
+    );
   }
 
   async getStaffPerformance(period: string = 'today'): Promise<StaffPerformance[]> {

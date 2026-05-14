@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useEffect } from 'react';
-import axios from 'axios';
+import { enhancedApiService } from './services/api.enhanced';
 import { Layout } from './components/layout';
 import { ProtectedRoute } from './components/auth';
 import Login from './pages/Login';
@@ -40,26 +40,26 @@ const queryClient = new QueryClient({
 const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
 
-  // Background ping to prevent Railway from sleeping (ISP/DNS issue mitigation)
-  const baseUrl = (import.meta.env.PROD || import.meta.env.VITE_IS_RAILWAY) 
-    ? 'https://api.vacationbna.site/api'
-    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
 
   useEffect(() => {
     const pingBackend = async () => {
+      // Only ping if the tab is visible to save resources
+      if (document.visibilityState !== 'visible') return;
+      
       try {
-        await axios.get(`${baseUrl}/v1/health/`);
+        await enhancedApiService.healthCheck();
         console.log('💓 Backend keep-alive ping successful');
       } catch (error) {
-        console.warn('⚠️ Backend keep-alive ping failed (may be sleeping or network issue)');
+        console.warn('⚠️ Backend keep-alive ping failed');
       }
     };
 
     // Ping once on mount
     pingBackend();
 
-    // Then ping every 4 minutes (Railway sleeps after ~5-10 mins of inactivity)
-    const interval = setInterval(pingBackend, 4 * 60 * 1000);
+    // Then ping every 5 minutes (Railway sleeps after ~30 mins, but keeping it active)
+    const interval = setInterval(pingBackend, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
