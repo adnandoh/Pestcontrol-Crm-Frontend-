@@ -272,7 +272,12 @@ const CRMInquiries: React.FC = () => {
                       <MapPin className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
                       <div className="flex flex-col">
                         <span className="text-[11px] font-semibold text-gray-600 leading-tight line-clamp-2">{inq.location || 'No location provided'}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">Pune, MAHARASHTRA</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">
+                          {inq.master_location_name ? (
+                            <span className="text-blue-600/80">{inq.master_location_name}, </span>
+                          ) : null}
+                          {inq.master_city_name || '---'}, {inq.master_state_name || '---'}
+                        </span>
                       </div>
                     </div>
                   </td>
