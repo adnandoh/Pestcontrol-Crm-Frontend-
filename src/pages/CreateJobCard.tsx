@@ -130,8 +130,7 @@ const CreateJobCard: React.FC = () => {
   const [foundClientName, setFoundClientName] = useState<string>('');
   const [lastCheckedMobile, setLastCheckedMobile] = useState<string>('');
 
-  // Locations data (legacy)
-  const [locations, setLocations] = useState<Record<string, string[]>>({});
+
 
   // Master Location States
   const [masterStates, setMasterStates] = useState<State[]>([]);
@@ -144,11 +143,7 @@ const CreateJobCard: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [locData, statesRes] = await Promise.all([
-          enhancedApiService.getLocations(),
-          enhancedApiService.getStates()
-        ]);
-        setLocations(locData);
+        const statesRes = await enhancedApiService.getStates();
         setMasterStates(statesRes.results);
         const maharashtra = statesRes.results.find(s => s.name === 'Maharashtra');
         
