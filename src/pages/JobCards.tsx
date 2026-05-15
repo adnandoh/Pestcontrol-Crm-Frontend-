@@ -185,7 +185,31 @@ const JobCards: React.FC = () => {
 
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params, controller.signal);
 
-      setJobCards(response.results);
+      // Process and sort jobs based on priority rules
+      // 1. Today's bookings (priority 1) - Latest first
+      // 2. Tomorrow's bookings (priority 2) - Latest first
+      // 3. Others (priority 3) - Default sorting
+      const today = dayjs().tz("Asia/Kolkata").startOf('day');
+      const tomorrow = today.add(1, 'day');
+      
+      const processedResults = response.results.map((job: any) => {
+        const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
+        let priority = 3;
+        if (jobDate.isSame(today, 'day')) priority = 1;
+        else if (jobDate.isSame(tomorrow, 'day')) priority = 2;
+        return { ...job, booking_priority: priority };
+      }).sort((a: any, b: any) => {
+        // First sort by priority
+        if (a.booking_priority !== b.booking_priority) {
+          return a.booking_priority - b.booking_priority;
+        }
+        // Then sort by time (latest first)
+        const dateA = new Date(a.schedule_datetime).getTime();
+        const dateB = new Date(b.schedule_datetime).getTime();
+        return dateB - dateA;
+      });
+
+      setJobCards(processedResults);
       setPagination(prev => ({
         ...prev,
         count: response.count,
