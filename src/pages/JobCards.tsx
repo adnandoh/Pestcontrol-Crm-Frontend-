@@ -852,9 +852,9 @@ const JobCards: React.FC = () => {
                 const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority || 0);
 
                 const rowBg = currentPriority === 1 
-                  ? 'bg-emerald-800 text-white' 
+                  ? 'bg-emerald-50 text-gray-900 hover:bg-emerald-100/80 transition-colors' 
                   : currentPriority === 2 
-                    ? 'bg-amber-600 text-white' 
+                    ? 'bg-amber-50 text-gray-900 hover:bg-amber-100/80 transition-colors' 
                     : job.is_complaint_call 
                       ? 'bg-red-50/50' 
                       : '';
@@ -863,7 +863,10 @@ const JobCards: React.FC = () => {
                   <React.Fragment key={`jc-${job.id}`}>
                     {showPriorityHeader && (
                       <tr>
-                        <td colSpan={11} className="bg-gray-900 py-1.5 px-4 text-[11px] font-black text-white uppercase tracking-[0.2em] text-center italic">
+                        <td colSpan={11} className={cn(
+                          "py-1.5 px-4 text-[11px] font-black text-white uppercase tracking-[0.2em] text-center italic",
+                          currentPriority === 1 ? "bg-emerald-600" : "bg-amber-500"
+                        )}>
                           --- {currentPriority === 1 ? 'TODAY WORK' : 'TOMORROW WORK'} ---
                         </td>
                       </tr>
