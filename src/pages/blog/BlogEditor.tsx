@@ -30,7 +30,30 @@ const SCHEMA_OPTIONS: { value: BlogSchemaType; label: string }[] = [
   { value: 'NewsArticle', label: 'News Article' },
   { value: 'FAQPage', label: 'FAQ Page' },
   { value: 'HowTo', label: 'How To' },
+  { value: 'Service', label: 'Service' },
+  { value: 'LocalBusiness', label: 'Local Business' },
+  { value: 'Organization', label: 'Organization' },
+  { value: 'WebPage', label: 'Web Page' },
+  { value: 'BreadcrumbList', label: 'Breadcrumb List' },
+  { value: 'Review', label: 'Review' },
+  { value: 'Product', label: 'Product' },
+  { value: 'QAPage', label: 'QA Page' },
+  { value: 'VideoObject', label: 'Video Object' },
+  { value: 'ImageObject', label: 'Image Object' },
 ];
+
+/** SEO-friendly slug generation helper */
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\w-]+/g, '')        // Remove all non-word chars
+    .replace(/--+/g, '-')           // Replace multiple - with single -
+    .replace(/^-+/, '')             // Trim - from start
+    .replace(/-+$/, '');            // Trim - from end
+};
 
 const BlogEditor: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -39,7 +62,7 @@ const BlogEditor: React.FC = () => {
 
   // Form state
   const [form, setForm] = useState<BlogFormData>({
-    title: '', content: '', excerpt: '',
+    title: '', slug: '', content: '', excerpt: '',
     featured_image: null,
     featured_image_alt: '', featured_image_title: '',
     meta_title: '', meta_description: '', target_keywords: '',
@@ -47,6 +70,7 @@ const BlogEditor: React.FC = () => {
     og_title: '', og_description: '',
     status: 'draft', category_id: null, tag_ids: [],
   });
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -91,12 +115,20 @@ const BlogEditor: React.FC = () => {
       .catch(console.error);
   }, []);
 
+  // Auto-generate slug from title while typing (only for new posts)
+  useEffect(() => {
+    if (!isSlugManuallyEdited && !isEdit) {
+      set('slug', slugify(form.title));
+    }
+  }, [form.title, isSlugManuallyEdited, isEdit]);
+
   useEffect(() => {
     if (!isEdit || !id) return;
     getBlog(Number(id))
       .then(blog => {
         setForm({
           title: blog.title,
+          slug: blog.slug,
           content: blog.content,
           excerpt: blog.excerpt,
           featured_image: null,
@@ -113,6 +145,7 @@ const BlogEditor: React.FC = () => {
           category_id: blog.category_detail?.id ?? null,
           tag_ids: blog.tags_detail?.map(t => t.id) ?? [],
         });
+        setIsSlugManuallyEdited(true); // Treat existing posts as manually edited to prevent overwrite
         if (blog.featured_image) setExistingImageUrl(resolveMediaUrl(blog.featured_image));
         editor?.commands.setContent(blog.content);
         setSelectedTags((blog.tags_detail as BlogTag[]) ?? []);
@@ -248,6 +281,20 @@ const BlogEditor: React.FC = () => {
             onChange={e => set('title', e.target.value)}
             className="w-full text-lg font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300"
           />
+          <div className="flex items-center gap-1.5 mt-0.5 group/slug">
+            <Globe className="h-3 w-3 text-gray-400 group-focus-within/slug:text-blue-500 transition-colors" />
+            <span className="text-[11px] text-gray-400 font-medium">pestcontrol99.com/blog/</span>
+            <input
+              type="text"
+              value={form.slug}
+              onChange={e => {
+                setIsSlugManuallyEdited(true);
+                set('slug', slugify(e.target.value));
+              }}
+              placeholder="blog-slug"
+              className="text-[11px] text-blue-600 font-semibold bg-transparent border-none outline-none p-0 flex-1 min-w-0"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

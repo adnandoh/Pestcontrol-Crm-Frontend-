@@ -762,7 +762,7 @@ export interface QuotationFormData extends Partial<Omit<Quotation, 'id' | 'quota
 // ─── Blog CMS ────────────────────────────────────────────────────────────────
 
 export type BlogStatus = 'draft' | 'published';
-export type BlogSchemaType = 'Article' | 'BlogPosting' | 'NewsArticle' | 'FAQPage' | 'HowTo';
+export type BlogSchemaType = 'Article' | 'BlogPosting' | 'NewsArticle' | 'FAQPage' | 'HowTo' | 'Service' | 'LocalBusiness' | 'Organization' | 'WebPage' | 'BreadcrumbList' | 'Review' | 'Product' | 'QAPage' | 'VideoObject' | 'ImageObject';
 
 export interface BlogCategory {
   id: number;
@@ -836,6 +836,7 @@ export interface Blog {
 
 export interface BlogFormData {
   title: string;
+  slug: string;
   content: string;
   excerpt: string;
   featured_image?: File | null;
