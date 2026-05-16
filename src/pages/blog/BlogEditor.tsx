@@ -10,17 +10,17 @@ import Placeholder from '@tiptap/extension-placeholder';
 /** TipTap v3: table package has no default export — use named imports from the kit entry. */
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import {
-  Save, ArrowLeft, Upload, Eye, EyeOff, Globe, Clock,
+  ArrowLeft, Upload, Eye, EyeOff, Globe, Clock,
   Bold, Italic, UnderlineIcon, Strikethrough, AlignLeft, AlignCenter,
   AlignRight, List, ListOrdered, Quote, Code, Minus, Undo, Redo,
   Image as ImageIcon, Link2, Table as TableIcon, Heading1, Heading2,
-  Heading3, X, Plus, Check, ChevronDown
+  Heading3, X, Check
 } from 'lucide-react';
 import {
   getBlog, createBlog, updateBlog, getCategories,
   getTags, createCategory, createTag, uploadBlogImage
 } from '../../services/blogApi';
-import type { Blog, BlogFormData, BlogCategory, BlogTag, BlogSchemaType } from '../../types';
+import type { BlogFormData, BlogCategory, BlogTag, BlogSchemaType } from '../../types';
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 
@@ -56,7 +56,6 @@ const BlogEditor: React.FC = () => {
   const [newTagName, setNewTagName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'seo' | 'settings'>('content');
@@ -116,7 +115,7 @@ const BlogEditor: React.FC = () => {
         });
         if (blog.featured_image) setExistingImageUrl(resolveMediaUrl(blog.featured_image));
         editor?.commands.setContent(blog.content);
-        setSelectedTags(blog.tags_detail ?? []);
+        setSelectedTags((blog.tags_detail as BlogTag[]) ?? []);
       })
       .catch(console.error)
       .finally(() => setPageLoading(false));

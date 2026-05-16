@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus, Search, Edit, Trash2, Eye, FileText,
-  CheckCircle, Clock, Filter, ToggleLeft, ToggleRight,
+  Clock, ToggleLeft, ToggleRight,
   ChevronLeft, ChevronRight, RefreshCw, Globe
 } from 'lucide-react';
 import { getBlogs, deleteBlog, togglePublish } from '../../services/blogApi';

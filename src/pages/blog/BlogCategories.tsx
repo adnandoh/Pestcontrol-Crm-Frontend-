@@ -6,7 +6,6 @@ import {
   deleteCategory, deleteTag
 } from '../../services/blogApi';
 import type { BlogCategory, BlogTag } from '../../types';
-import { cn } from '../../utils/cn';
 
 const BlogCategories: React.FC = () => {
   const [categories, setCategories] = useState<BlogCategory[]>([]);
