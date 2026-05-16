@@ -31,6 +31,10 @@ import MasterCountries from './pages/MasterCountries';
 import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
 import MasterLocations from './pages/MasterLocations';
+import BlogDashboard from './pages/blog/BlogDashboard';
+import BlogList from './pages/blog/BlogList';
+import BlogEditor from './pages/blog/BlogEditor';
+import BlogCategories from './pages/blog/BlogCategories';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +107,12 @@ const AppContent: React.FC = () => {
                   <Route path="/master/states" element={<MasterStates />} />
                   <Route path="/master/cities" element={<MasterCities />} />
                   <Route path="/master/locations" element={<MasterLocations />} />
+                  {/* Blog CMS */}
+                  <Route path="/blog" element={<BlogDashboard />} />
+                  <Route path="/blog/list" element={<BlogList />} />
+                  <Route path="/blog/create" element={<BlogEditor />} />
+                  <Route path="/blog/edit/:id" element={<BlogEditor />} />
+                  <Route path="/blog/categories" element={<BlogCategories />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

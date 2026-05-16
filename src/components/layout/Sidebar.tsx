@@ -14,7 +14,8 @@ import {
   History,
   ChevronDown,
   ChevronRight,
-  Database
+  Database,
+  BookOpen
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -77,6 +78,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Renewals', href: '/renewals', icon: RefreshCw },
         { name: 'References', href: '/references', icon: FileText },
+      ]
+    },
+    {
+      items: [
+        { name: 'Blog CMS', href: '/blog', icon: BookOpen },
       ]
     },
     {

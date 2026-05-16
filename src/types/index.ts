@@ -758,3 +758,115 @@ export interface QuotationFilters {
 export interface QuotationFormData extends Partial<Omit<Quotation, 'id' | 'quotation_no' | 'created_at' | 'updated_at' | 'created_by_name'>> {
   items: QuotationItem[];
 }
+
+// ─── Blog CMS ────────────────────────────────────────────────────────────────
+
+export type BlogStatus = 'draft' | 'published';
+export type BlogSchemaType = 'Article' | 'BlogPosting' | 'NewsArticle' | 'FAQPage' | 'HowTo';
+
+export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  meta_title?: string;
+  meta_description?: string;
+  is_active: boolean;
+  blog_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogTag {
+  id: number;
+  name: string;
+  slug: string;
+  blog_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogListItem {
+  id: number;
+  title: string;
+  slug: string;
+  status: BlogStatus;
+  publish_date: string | null;
+  category_name: string | null;
+  author_name: string | null;
+  reading_time: number;
+  views_count: number;
+  featured_image: string | null;
+  image_thumbnail: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Blog {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  featured_image: string | null;
+  featured_image_alt: string;
+  featured_image_title: string;
+  image_thumbnail: string | null;
+  image_medium: string | null;
+  meta_title: string;
+  meta_description: string;
+  target_keywords: string;
+  canonical_url: string;
+  schema_type: BlogSchemaType;
+  og_title: string;
+  og_description: string;
+  status: BlogStatus;
+  publish_date: string | null;
+  author: number | null;
+  author_name: string | null;
+  category_detail: { id: number; name: string; slug: string } | null;
+  tags_detail: { id: number; name: string; slug: string }[];
+  category_id?: number | null;
+  tag_ids?: number[];
+  reading_time: number;
+  views_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogFormData {
+  title: string;
+  content: string;
+  excerpt: string;
+  featured_image?: File | null;
+  featured_image_alt: string;
+  featured_image_title: string;
+  meta_title: string;
+  meta_description: string;
+  target_keywords: string;
+  canonical_url: string;
+  schema_type: BlogSchemaType;
+  og_title: string;
+  og_description: string;
+  status: BlogStatus;
+  category_id?: number | null;
+  tag_ids?: number[];
+}
+
+export interface BlogDashboardStats {
+  total_blogs: number;
+  published: number;
+  drafts: number;
+  total_views: number;
+  top_blogs: BlogListItem[];
+}
+
+export interface BlogFilters {
+  search?: string;
+  status?: BlogStatus | '';
+  category?: string;
+  tag?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}

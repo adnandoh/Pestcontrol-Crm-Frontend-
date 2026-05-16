@@ -53,6 +53,22 @@ export const API_ENDPOINTS = {
   FEEDBACKS: '/v1/feedbacks/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
+
+  // Blog CMS
+  BLOG: {
+    DASHBOARD: '/blogs/dashboard-stats/',
+    LIST: '/blogs/',
+    CREATE: '/blogs/create/',
+    DETAIL: (id: number) => `/blogs/${id}/`,
+    UPDATE: (id: number) => `/blogs/${id}/update/`,
+    DELETE: (id: number) => `/blogs/${id}/delete/`,
+    TOGGLE_PUBLISH: (id: number) => `/blogs/${id}/toggle-publish/`,
+    UPLOAD_IMAGE: '/blogs/upload-image/',
+    CATEGORIES: '/blogs/categories/',
+    CATEGORY_DETAIL: (id: number) => `/blogs/categories/${id}/`,
+    TAGS: '/blogs/tags/',
+    TAG_DETAIL: (id: number) => `/blogs/tags/${id}/`,
+  },
 } as const;
 
 // Cache Keys
