@@ -342,9 +342,18 @@ const CreateJobCard: React.FC = () => {
       }
       await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
       navigate('/jobcards');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Submission error:', err);
-      alert(err.message || 'Failed to create booking. Please check all fields.');
+      const apiErr = err as { message?: string; details?: Record<string, string[] | string> };
+      let msg = apiErr.message || 'Failed to create booking. Please check all fields.';
+      if (apiErr.details && typeof apiErr.details === 'object') {
+        const lines = Object.entries(apiErr.details).map(([k, v]) => {
+          const text = Array.isArray(v) ? v[0] : String(v);
+          return `${k.replace(/_/g, ' ')}: ${text}`;
+        });
+        if (lines.length) msg = lines.join('\n');
+      }
+      alert(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);

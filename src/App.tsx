@@ -28,6 +28,7 @@ import CreateQuotation from './pages/CreateQuotation';
 import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
 import StaffPerformance from './pages/StaffPerformance';
+import TechnicianSelfies from './pages/TechnicianSelfies';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
 import ActivityLogs from './pages/ActivityLogs';
@@ -124,6 +125,7 @@ const AppContent: React.FC = () => {
                     <Route path="/quotations/preview/:id" element={<QuotationPreview />} />
                     <Route path="/feedbacks" element={<Feedbacks />} />
                     <Route path="/technician-reports" element={<TechnicianReports />} />
+                    <Route path="/technician-selfies" element={<TechnicianSelfies />} />
                     <Route path="/staff-performance" element={<StaffPerformance />} />
                     <Route
                       path="/staff"

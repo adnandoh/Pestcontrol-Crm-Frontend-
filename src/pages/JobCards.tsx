@@ -15,7 +15,8 @@ import {
   MessageCircle,
   Send,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  Smartphone,
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
@@ -33,6 +34,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
+import SendToPartnerModal from '../components/crm/SendToPartnerModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
 import CompleteJobModal from '../components/crm/CompleteJobModal';
 import ReminderModal from '../components/crm/ReminderModal';
@@ -82,6 +84,7 @@ const JobCards: React.FC = () => {
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showSendToPartnerModal, setShowSendToPartnerModal] = useState(false);
   const [doneId, setDoneId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [removeTechId, setRemoveTechId] = useState<number | null>(null);
@@ -1168,6 +1171,21 @@ const JobCards: React.FC = () => {
                         }`}>
                           {job.status}
                         </span>
+                        {job.sent_to_app && job.status === 'Pending' && (
+                          <span className="text-[9px] font-bold text-[#2d8a2f] bg-[#f0faf0] px-1.5 py-0.5 rounded border border-[#c8e6c9]">
+                            In partner app
+                          </span>
+                        )}
+                        {job.partner_status && activeTab === 'on_process' && (
+                          <span className="text-[9px] font-bold text-indigo-600 capitalize">
+                            App: {job.partner_status.replace('_', ' ')}
+                          </span>
+                        )}
+                        {job.status === 'Done' && job.payment_mode && (
+                          <span className="text-[9px] font-bold text-emerald-700">
+                            Paid · {job.payment_mode}
+                          </span>
+                        )}
                         {job.status === 'Cancelled' && job.cancellation_reason && (
                           <div className="max-w-[120px] text-[9px] font-bold text-red-600 bg-red-50/50 px-2 py-0.5 rounded border border-red-100 leading-tight">
                             {job.cancellation_reason}
@@ -1252,6 +1270,18 @@ const JobCards: React.FC = () => {
 
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
+                                {activeTab === 'pending' && !job.sent_to_app && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedJobCard(job);
+                                      setShowSendToPartnerModal(true);
+                                    }}
+                                    className="p-2 bg-[#2d8a2f]/10 hover:bg-[#2d8a2f] text-[#2d8a2f] hover:text-white rounded shadow-xs border border-[#2d8a2f]/30 transition-all"
+                                    title="Send to Partner App"
+                                  >
+                                    <Smartphone className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                                 <button 
                                   onClick={() => {
                                     setCancellingId(job.id);
@@ -1455,6 +1485,15 @@ const JobCards: React.FC = () => {
         jobCard={selectedJobCard}
         onSuccess={() => {
            loadJobCards(pagination.current, filters);
+        }}
+      />
+      <SendToPartnerModal
+        isOpen={showSendToPartnerModal}
+        onClose={() => setShowSendToPartnerModal(false)}
+        jobCard={selectedJobCard}
+        onSuccess={() => {
+          loadJobCards(pagination.current, filters);
+          refreshCounts();
         }}
       />
       <ConfirmationModal

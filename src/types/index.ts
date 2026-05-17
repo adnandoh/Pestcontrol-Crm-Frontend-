@@ -30,6 +30,9 @@ export interface Technician {
   city?: string;
   last_active?: string;
   active_jobs?: number;
+  has_partner_app?: boolean;
+  partner_id?: number | null;
+  partner_name?: string | null;
   active_job_details?: {
     id: number;
     client__full_name: string;
@@ -163,6 +166,12 @@ export interface JobCard {
   technician?: number | null;
   technician_name?: string;
   technician_mobile?: string;
+  partner?: number | null;
+  partner_name?: string | null;
+  partner_status?: string;
+  sent_to_app?: boolean;
+  sent_to_app_at?: string | null;
+  job_start_selfie_url?: string | null;
   reference?: string;
   customer_type?: string;
   next_service_date?: string;
@@ -191,6 +200,19 @@ export interface JobCard {
   done_by_name?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PartnerJobSelfie {
+  id: number;
+  code: string;
+  client_name: string;
+  partner_name: string;
+  technician_name: string;
+  started_at: string | null;
+  schedule_datetime: string;
+  selfie_url: string;
+  status: string;
+  partner_status: string;
 }
 
 export interface Renewal {

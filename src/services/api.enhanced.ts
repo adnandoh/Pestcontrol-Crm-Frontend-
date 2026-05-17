@@ -41,7 +41,24 @@ import type {
   Quotation,
   QuotationFormData,
   QuotationFilters,
+  PartnerJobSelfie,
 } from '../types';
+
+function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
+  if (!data) return fallback;
+  if (typeof data.message === 'string' && data.message) return data.message;
+  if (typeof data.error === 'string' && data.error) return data.error;
+  const details = data.details;
+  if (details && typeof details === 'object') {
+    const parts: string[] = [];
+    for (const [key, val] of Object.entries(details as Record<string, unknown>)) {
+      if (Array.isArray(val) && val.length) parts.push(`${key}: ${val[0]}`);
+      else if (typeof val === 'string') parts.push(`${key}: ${val}`);
+    }
+    if (parts.length) return parts.join('\n');
+  }
+  return fallback;
+}
 
 // Enhanced API Error class
 export class ApiError extends Error {
@@ -183,11 +200,11 @@ class EnhancedApiService {
           }
         }
 
-        // Transform error
+        const data = error.response?.data as Record<string, unknown> | undefined;
         const apiError = new ApiError(
-          (error.response?.data as any)?.message || error.message,
+          formatApiErrorMessage(data, error.message),
           error.response?.status || 0,
-          error.response?.data
+          data
         );
 
         return Promise.reject(apiError);
@@ -267,6 +284,9 @@ class EnhancedApiService {
     if (apiConfig.enableCache) {
       const cached = apiCache.get<T>(cacheKey);
       if (cached) {
+        if (apiConfig.enableLogging) {
+          console.debug(`📦 API cache hit (no network): ${cacheKey}`);
+        }
         return cached;
       }
     }
@@ -826,7 +846,7 @@ class EnhancedApiService {
       time_slot: data.time_slot || null,
       state: data.state || '',
       city: data.city || '',
-      status: data.status || 'Enquiry',
+      status: data.status || 'Pending',
       payment_status: data.payment_status || 'Unpaid',
       assigned_to: data.assigned_to || '',
       technician: data.technician || null,
@@ -959,6 +979,36 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     
+    return result.data;
+  }
+
+  async sendJobToPartnerApp(id: number, technicianId: number): Promise<JobCard> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ success: boolean; message: string; job: JobCard }>(
+        `${API_ENDPOINTS.JOBCARDS}${id}/send-to-app/`,
+        { technician_id: technicianId },
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
+    const data = result.data;
+    if (!data.success) {
+      throw new ApiError(data.message || 'Failed to send to partner app', 400);
+    }
+    return data.job;
+  }
+
+  async getPartnerSelfies(params?: {
+    page?: number;
+    page_size?: number;
+    booking_id?: number;
+  }): Promise<PaginatedResponse<PartnerJobSelfie>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<PartnerJobSelfie>>(
+        `${API_ENDPOINTS.JOBCARDS}partner-selfies/`,
+        { params },
+      ),
+    );
     return result.data;
   }
 

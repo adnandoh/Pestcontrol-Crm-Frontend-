@@ -12,17 +12,29 @@ export interface ApiConfig {
 // Environment detection
 const isProduction = import.meta.env.PROD;
 const isRailway = import.meta.env.VITE_RAILWAY_ENVIRONMENT === 'production';
+const apiBase =
+  isProduction || isRailway
+    ? 'https://api.vacationbna.site/api'
+    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
+// Local dev: disable in-memory API cache so every page navigation shows real Network requests
+const isLocalDev =
+  !isProduction &&
+  !isRailway &&
+  (apiBase.includes('localhost') || apiBase.includes('127.0.0.1'));
 
 // API Configuration based on environment
 export const apiConfig: ApiConfig = {
-  baseUrl: isProduction || isRailway 
-    ? 'https://api.vacationbna.site/api'
-    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseUrl: apiBase,
   timeout: 30000, // 30 seconds
   retryAttempts: 3,
   retryDelay: 1000, // 1 second
   enableLogging: !isProduction,
-  enableCache: true,
+  enableCache: import.meta.env.VITE_DISABLE_API_CACHE === 'true'
+    ? false
+    : import.meta.env.VITE_ENABLE_API_CACHE === 'true'
+      ? true
+      : !isLocalDev,
   cacheTimeout: 5 * 60 * 1000, // 5 minutes
 };
 
