@@ -71,7 +71,7 @@ const BlogEditor: React.FC = () => {
   const [addingTag, setAddingTag] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'content' | 'seo' | 'settings'>('content');
+  const [activeTab, setActiveTab] = useState<'content' | 'seo'>('content');
   const [showPreview, setShowPreview] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -185,7 +185,7 @@ const BlogEditor: React.FC = () => {
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (err: any) {
       console.error('Save failed:', err);
-      setSaveMsg('Save failed â€” check console');
+      setSaveMsg('Save failed — check console');
     } finally {
       setSaving(false);
     }
@@ -210,28 +210,15 @@ const BlogEditor: React.FC = () => {
           <ArrowLeft className="h-4 w-4 text-gray-600" />
         </button>
 
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Blog title..."
-            value={form.title}
-            onChange={e => set('title', e.target.value)}
-            className="w-full text-lg font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300"
-          />
-          <div className="flex items-center gap-1.5 mt-0.5 group/slug">
-            <Globe className="h-3 w-3 text-gray-400 group-focus-within/slug:text-blue-500 transition-colors" />
-            <span className="text-[11px] text-gray-400 font-medium">pestcontrol99.com/blog/</span>
-            <input
-              type="text"
-              value={form.slug}
-              onChange={e => {
-                setIsSlugManuallyEdited(true);
-                set('slug', slugify(e.target.value));
-              }}
-              placeholder="blog-slug"
-              className="text-[11px] text-blue-600 font-semibold bg-transparent border-none outline-none p-0 flex-1 min-w-0"
-            />
-          </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold text-gray-900 truncate">
+            {isEdit ? 'Edit Blog Post' : 'Create Blog Post'}
+          </h1>
+          {form.title.trim() ? (
+            <p className="text-xs text-gray-500 truncate mt-0.5">{form.title}</p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-0.5">Add title in the Content tab</p>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -249,7 +236,7 @@ const BlogEditor: React.FC = () => {
             'px-2.5 py-1 rounded-full text-xs font-semibold',
             form.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
           )}>
-            {form.status === 'published' ? 'â— Published' : 'â— Draft'}
+            {form.status === 'published' ? 'Published' : 'Draft'}
           </span>
 
           <button
@@ -289,7 +276,7 @@ const BlogEditor: React.FC = () => {
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-2 pt-2">
-            {(['content', 'seo', 'settings'] as const).map(tab => (
+            {(['content', 'seo'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -300,7 +287,7 @@ const BlogEditor: React.FC = () => {
                     : 'text-gray-500 hover:text-gray-700'
                 )}
               >
-                {tab}
+                {tab === 'seo' ? 'SEO' : 'Content'}
               </button>
             ))}
           </div>
@@ -308,18 +295,60 @@ const BlogEditor: React.FC = () => {
           {/* Content Tab */}
           {activeTab === 'content' && (
             <div className="bg-white rounded-b-xl border border-t-0 border-gray-200 overflow-hidden">
+              <div className="p-6 pb-4 space-y-4 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <label htmlFor="blog-title" className="block text-sm font-semibold text-gray-800 mb-1.5">
+                    Blog title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="blog-title"
+                    type="text"
+                    placeholder="e.g. How to Get Rid of Cockroaches in Mumbai"
+                    value={form.title}
+                    onChange={e => set('title', e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-base font-semibold text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="blog-slug" className="block text-sm font-semibold text-gray-800 mb-1.5">
+                    URL slug
+                  </label>
+                  <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                    <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border-r border-gray-200 whitespace-nowrap">
+                      pestcontrol99.com/blog/
+                    </span>
+                    <input
+                      id="blog-slug"
+                      type="text"
+                      value={form.slug}
+                      onChange={e => {
+                        setIsSlugManuallyEdited(true);
+                        set('slug', slugify(e.target.value));
+                      }}
+                      placeholder="your-post-slug"
+                      className="flex-1 min-w-0 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Auto-generated from title. Edit only if you need a custom URL.
+                  </p>
+                </div>
+              </div>
               {showPreview ? (
                 <article
                   className="blog-preview prose prose-sm max-w-none p-6 min-h-[500px]"
                   dangerouslySetInnerHTML={{ __html: form.content }}
                 />
               ) : (
-                <QuillEditor
-                  embedded
-                  value={form.content}
-                  onChange={html => set('content', html)}
-                  placeholder="Start writing your blog content here..."
-                />
+                <div>
+                  <p className="px-6 pt-4 pb-1 text-sm font-semibold text-gray-800">Blog body</p>
+                  <QuillEditor
+                    embedded
+                    value={form.content}
+                    onChange={html => set('content', html)}
+                    placeholder="Start writing your blog content here..."
+                  />
+                </div>
               )}
             </div>
           )}
@@ -327,7 +356,9 @@ const BlogEditor: React.FC = () => {
           {/* SEO Tab */}
           {activeTab === 'seo' && (
             <div className="bg-white rounded-b-xl border border-t-0 border-gray-200 p-6 space-y-5">
-              <h3 className="font-bold text-gray-900 text-base">SEO Settings</h3>
+              <h3 className="font-bold text-gray-900 text-base">SEO & listing</h3>
+
+              <h4 className="font-semibold text-gray-800 text-sm">Search engine (Google)</h4>
 
               {/* SEO Preview */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
@@ -336,7 +367,7 @@ const BlogEditor: React.FC = () => {
                   {form.meta_title || form.title || 'Page Title'}
                 </p>
                 <p className="text-green-700 text-xs mt-0.5">
-                  https://www.pestcontrol99.com/blog/{form.title ? form.title.toLowerCase().replace(/\s+/g, '-') : 'blog-slug'}/
+                  https://www.pestcontrol99.com/blog/{form.slug || 'your-slug'}/
                 </p>
                 <p className="text-gray-600 text-sm mt-1 line-clamp-2">
                   {form.meta_description || form.excerpt || 'Meta description will appear here...'}
@@ -365,15 +396,11 @@ const BlogEditor: React.FC = () => {
               <h4 className="font-semibold text-gray-800 text-sm">Open Graph (Social Sharing)</h4>
               <SeoField label="OG Title" maxLen={200} value={form.og_title} onChange={v => set('og_title', v)} placeholder="Title for Facebook / WhatsApp sharing" />
               <SeoField label="OG Description" maxLen={400} value={form.og_description} onChange={v => set('og_description', v)} placeholder="Description for social sharing" textarea />
-            </div>
-          )}
 
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <div className="bg-white rounded-b-xl border border-t-0 border-gray-200 p-6 space-y-5">
-              <h3 className="font-bold text-gray-900 text-base">Post Settings</h3>
+              <hr className="border-gray-200" />
+              <h4 className="font-semibold text-gray-800 text-sm">Listing & publish</h4>
 
-              <SeoField label="Excerpt" value={form.excerpt} onChange={v => set('excerpt', v)} placeholder="Short summary shown in blog listings..." textarea />
+              <SeoField label="Excerpt" value={form.excerpt} onChange={v => set('excerpt', v)} placeholder="Short summary shown in blog listings and search previews..." textarea />
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
@@ -381,9 +408,10 @@ const BlogEditor: React.FC = () => {
                   {(['draft', 'published'] as const).map(s => (
                     <button
                       key={s}
+                      type="button"
                       onClick={() => set('status', s)}
                       className={cn(
-                        'flex-1 py-2 rounded-lg border text-sm font-semibold capitalize transition-all',
+                        'flex-1 py-2.5 rounded-lg border text-sm font-semibold capitalize transition-all',
                         form.status === s
                           ? s === 'published'
                             ? 'border-green-500 bg-green-50 text-green-700'
@@ -398,6 +426,7 @@ const BlogEditor: React.FC = () => {
               </div>
             </div>
           )}
+
         </div>
 
         {/* Right Sidebar */}
@@ -427,7 +456,7 @@ const BlogEditor: React.FC = () => {
               >
                 <Upload className="h-6 w-6 text-gray-300 mb-2" />
                 <p className="text-xs text-gray-400 font-medium">Click to upload</p>
-                <p className="text-xs text-gray-300">JPG, PNG, WebP â€” max 10MB</p>
+                <p className="text-xs text-gray-300">JPG, PNG, WebP — max 10MB</p>
               </div>
             )}
             <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
