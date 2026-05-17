@@ -1,6 +1,6 @@
 import type { AuthUser } from '../types';
 
-export type CRMRole = 'super_admin' | 'admin' | 'staff' | 'blog_user';
+export type CRMRole = 'super_admin' | 'admin' | 'staff' | 'technician' | 'blog_user';
 
 export const BLOG_USER_ROLE: CRMRole = 'blog_user';
 
@@ -25,7 +25,12 @@ export function isBlogUser(user: AuthUser | null | undefined): boolean {
 
 export function isCRMOperationalUser(user: AuthUser | null | undefined): boolean {
   const role = getUserRole(user);
-  return role === 'super_admin' || role === 'admin' || role === 'staff';
+  return (
+    role === 'super_admin' ||
+    role === 'admin' ||
+    role === 'staff' ||
+    role === 'technician'
+  );
 }
 
 export function isBlogCMSRoute(pathname: string): boolean {

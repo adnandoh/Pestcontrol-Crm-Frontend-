@@ -234,6 +234,26 @@ const StaffFormPage: React.FC = () => {
             <p className="text-xs text-gray-500">
               {STAFF_ROLE_OPTIONS.find((o) => o.value === form.role)?.description}
             </p>
+            {form.role === 'Technician' && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <strong>Partner app:</strong> Use the same mobile and password in the Pest 99
+                Partner app. After saving, assign jobs via Send to Partner App on pending bookings.
+              </div>
+            )}
+            {isEdit && member?.role_display === 'Technician' && (
+              <div
+                className={cn(
+                  'rounded-lg px-3 py-2 text-xs font-medium',
+                  member.partner_app_ready
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-red-50 text-red-800 border border-red-200',
+                )}
+              >
+                {member.partner_app_ready
+                  ? 'Partner app linked — technician can log in on mobile.'
+                  : 'Partner app not ready — reset password to link Partner app.'}
+              </div>
+            )}
           </div>
 
           {isEdit && member && (

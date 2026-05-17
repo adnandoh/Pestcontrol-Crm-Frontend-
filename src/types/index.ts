@@ -248,11 +248,14 @@ export interface StaffUser {
   id: number;
   name: string;
   mobile: string;
-  role: 'Super Admin' | 'Admin' | 'Staff' | 'Blog User';
+  role: 'Super Admin' | 'Admin' | 'Staff' | 'Technician' | 'Blog User';
   role_display: string;
   password?: string;
   is_active: boolean;
   date_joined: string;
+  partner_app_ready?: boolean;
+  partner_id?: number | null;
+  technician_id?: number | null;
 }
 
 export interface ActivityLog {

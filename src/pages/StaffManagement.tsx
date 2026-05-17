@@ -87,7 +87,7 @@ const StaffManagement: React.FC = () => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Total</p>
           <p className="text-2xl font-bold text-gray-900">{staff.length}</p>
@@ -102,6 +102,12 @@ const StaffManagement: React.FC = () => {
           <p className="text-xs text-gray-500 font-medium">Super admins</p>
           <p className="text-2xl font-bold text-purple-600">
             {staff.filter((s) => s.role_display === 'Super Admin').length}
+          </p>
+        </Card>
+        <Card className="p-4 border-gray-100">
+          <p className="text-xs text-gray-500 font-medium">Technicians</p>
+          <p className="text-2xl font-bold text-amber-600">
+            {staff.filter((s) => s.role_display === 'Technician').length}
           </p>
         </Card>
         <Card className="p-4 border-gray-100">
@@ -186,17 +192,29 @@ const StaffManagement: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border',
-                          roleBadgeClass(member.role_display),
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border w-fit',
+                            roleBadgeClass(member.role_display),
+                          )}
+                        >
+                          {member.role_display === 'Super Admin' && (
+                            <ShieldCheck className="h-3 w-3" />
+                          )}
+                          {member.role_display}
+                        </span>
+                        {member.role_display === 'Technician' && (
+                          <span
+                            className={cn(
+                              'text-[10px] font-semibold uppercase tracking-wide',
+                              member.partner_app_ready ? 'text-emerald-600' : 'text-amber-600',
+                            )}
+                          >
+                            {member.partner_app_ready ? 'App linked' : 'App not linked'}
+                          </span>
                         )}
-                      >
-                        {member.role_display === 'Super Admin' && (
-                          <ShieldCheck className="h-3 w-3" />
-                        )}
-                        {member.role_display}
-                      </span>
+                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <span

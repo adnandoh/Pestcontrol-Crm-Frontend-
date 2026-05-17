@@ -1,4 +1,4 @@
-export type StaffRoleLabel = 'Super Admin' | 'Admin' | 'Staff' | 'Blog User';
+export type StaffRoleLabel = 'Super Admin' | 'Admin' | 'Staff' | 'Technician' | 'Blog User';
 
 export const STAFF_ROLE_OPTIONS: {
   value: StaffRoleLabel;
@@ -21,6 +21,12 @@ export const STAFF_ROLE_OPTIONS: {
     description: 'Bookings, clients, inquiries, and daily operations',
   },
   {
+    value: 'Technician',
+    label: 'Technician',
+    description:
+      'Field technician — CRM access plus Partner app login (same mobile & password)',
+  },
+  {
     value: 'Blog User',
     label: 'Blog User',
     description: 'Blog CMS only — no bookings or CRM data',
@@ -35,6 +41,8 @@ export function roleBadgeClass(roleDisplay: string): string {
       return 'bg-slate-100 text-slate-800 border-slate-200';
     case 'Blog User':
       return 'bg-[#f0faf0] text-[#2d8a2f] border-[#c8e6c9]';
+    case 'Technician':
+      return 'bg-amber-50 text-amber-900 border-amber-200';
     default:
       return 'bg-blue-50 text-blue-800 border-blue-200';
   }
