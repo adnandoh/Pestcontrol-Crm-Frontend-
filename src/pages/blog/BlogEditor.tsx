@@ -1,24 +1,13 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
-import Link from '@tiptap/extension-link';
-import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
-import Placeholder from '@tiptap/extension-placeholder';
-/** TipTap v3: table package has no default export — use named imports from the kit entry. */
-import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import {
-  ArrowLeft, Upload, Eye, EyeOff, Globe, Clock,
-  Bold, Italic, UnderlineIcon, Strikethrough, AlignLeft, AlignCenter,
-  AlignRight, List, ListOrdered, Quote, Code, Minus, Undo, Redo,
-  Image as ImageIcon, Link2, Table as TableIcon, Heading1, Heading2,
-  Heading3, X, Check
+  ArrowLeft, Upload, Eye, EyeOff, Globe, Clock, X, Check
 } from 'lucide-react';
+import QuillEditor from '../../components/blog/QuillEditor';
+import '../../components/blog/QuillEditor.css';
 import {
   getBlog, createBlog, updateBlog, getCategories,
-  getTags, createCategory, createTag, uploadBlogImage
+  getTags, createCategory, createTag
 } from '../../services/blogApi';
 import type { BlogFormData, BlogCategory, BlogTag, BlogSchemaType } from '../../types';
 import { cn } from '../../utils/cn';
@@ -86,27 +75,6 @@ const BlogEditor: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const editorImageInputRef = useRef<HTMLInputElement>(null);
-
-  // TipTap editor
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
-      Underline,
-      Image.configure({ inline: false, allowBase64: false }),
-      Link.configure({ openOnClick: false, autolink: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Placeholder.configure({ placeholder: 'Start writing your blog content here...' }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-    ],
-    content: '',
-    onUpdate: ({ editor }) => {
-      setForm(prev => ({ ...prev, content: editor.getHTML() }));
-    },
-  });
 
   // Load data
   useEffect(() => {
@@ -147,12 +115,11 @@ const BlogEditor: React.FC = () => {
         });
         setIsSlugManuallyEdited(true); // Treat existing posts as manually edited to prevent overwrite
         if (blog.featured_image) setExistingImageUrl(resolveMediaUrl(blog.featured_image));
-        editor?.commands.setContent(blog.content);
         setSelectedTags((blog.tags_detail as BlogTag[]) ?? []);
       })
       .catch(console.error)
       .finally(() => setPageLoading(false));
-  }, [id, isEdit, editor]);
+  }, [id, isEdit]);
 
   const set = (key: keyof BlogFormData, value: any) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -164,36 +131,6 @@ const BlogEditor: React.FC = () => {
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleEditorImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editor) return;
-    try {
-      const result = await uploadBlogImage(file);
-      const src = resolveMediaUrl(result.url) || result.url;
-      editor.chain().focus().setImage({ src, alt: result.alt_text || '' }).run();
-    } catch (err: any) {
-      console.error('Image upload failed:', err);
-      const msg = err?.response?.data?.error || err?.response?.data?.image?.[0] || 'Image upload failed';
-      alert(typeof msg === 'string' ? msg : 'Image upload failed');
-    }
-  }, [editor]);
-
-  const handleAddLink = () => {
-    const url = window.prompt('Enter URL:');
-    if (!url || !editor) return;
-    editor.chain().focus().setLink({ href: url, target: '_blank' }).run();
-  };
-
-  const handleAddYoutube = () => {
-    const url = window.prompt('Enter YouTube URL (e.g. https://youtu.be/VIDEO_ID):');
-    if (!url || !editor) return;
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (!match) { alert('Invalid YouTube URL'); return; }
-    const embedUrl = `https://www.youtube.com/embed/${match[1]}`;
-    editor.chain().focus().insertContent(
-      `<div class="video-embed"><iframe src="${embedUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe></div>`
-    ).run();
-  };
 
   const handleTagToggle = (tag: BlogTag) => {
     const isSelected = selectedTags.some(t => t.id === tag.id);
@@ -228,14 +165,14 @@ const BlogEditor: React.FC = () => {
 
   const handleSave = async (statusOverride?: 'draft' | 'published') => {
     if (!form.title.trim()) { alert('Title is required'); return; }
-    if (!form.content || form.content === '<p></p>') { alert('Content is required'); return; }
+    const contentText = form.content.replace(/<[^>]+>/g, '').trim();
+    if (!contentText) { alert('Content is required'); return; }
     setSaving(true);
     setSaveMsg('');
     try {
       const payload: BlogFormData = {
         ...form,
         status: statusOverride || form.status,
-        content: editor?.getHTML() || form.content,
       };
       if (isEdit && id) {
         await updateBlog(Number(id), payload);
@@ -248,7 +185,7 @@ const BlogEditor: React.FC = () => {
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (err: any) {
       console.error('Save failed:', err);
-      setSaveMsg('Save failed — check console');
+      setSaveMsg('Save failed â€” check console');
     } finally {
       setSaving(false);
     }
@@ -312,7 +249,7 @@ const BlogEditor: React.FC = () => {
             'px-2.5 py-1 rounded-full text-xs font-semibold',
             form.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
           )}>
-            {form.status === 'published' ? '● Published' : '● Draft'}
+            {form.status === 'published' ? 'â— Published' : 'â— Draft'}
           </span>
 
           <button
@@ -371,31 +308,17 @@ const BlogEditor: React.FC = () => {
           {/* Content Tab */}
           {activeTab === 'content' && (
             <div className="bg-white rounded-b-xl border border-t-0 border-gray-200 overflow-hidden">
-              {/* TipTap Toolbar */}
-              <EditorToolbar
-                editor={editor}
-                onImageClick={() => editorImageInputRef.current?.click()}
-                onLinkClick={handleAddLink}
-                onYoutubeClick={handleAddYoutube}
-              />
-              <input
-                ref={editorImageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleEditorImageUpload}
-              />
-
-              {/* Editor Content */}
               {showPreview ? (
-                <div
-                  className="prose prose-sm max-w-none p-6 min-h-[500px]"
+                <article
+                  className="blog-preview prose prose-sm max-w-none p-6 min-h-[500px]"
                   dangerouslySetInnerHTML={{ __html: form.content }}
                 />
               ) : (
-                <EditorContent
-                  editor={editor}
-                  className="min-h-[500px] px-6 py-4 blog-editor-content focus-within:outline-none"
+                <QuillEditor
+                  embedded
+                  value={form.content}
+                  onChange={html => set('content', html)}
+                  placeholder="Start writing your blog content here..."
                 />
               )}
             </div>
@@ -504,7 +427,7 @@ const BlogEditor: React.FC = () => {
               >
                 <Upload className="h-6 w-6 text-gray-300 mb-2" />
                 <p className="text-xs text-gray-400 font-medium">Click to upload</p>
-                <p className="text-xs text-gray-300">JPG, PNG, WebP — max 10MB</p>
+                <p className="text-xs text-gray-300">JPG, PNG, WebP â€” max 10MB</p>
               </div>
             )}
             <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -632,115 +555,11 @@ const BlogEditor: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Editor styles */}
-      <style>{`
-        .blog-editor-content .ProseMirror { outline: none; min-height: 500px; }
-        .blog-editor-content .ProseMirror p.is-editor-empty:first-child::before {
-          content: attr(data-placeholder); float: left; color: #adb5bd; pointer-events: none; height: 0;
-        }
-        .blog-editor-content .ProseMirror h1 { font-size: 2em; font-weight: 700; margin: 1rem 0 0.5rem; }
-        .blog-editor-content .ProseMirror h2 { font-size: 1.5em; font-weight: 700; margin: 1rem 0 0.5rem; }
-        .blog-editor-content .ProseMirror h3 { font-size: 1.25em; font-weight: 600; margin: 0.75rem 0 0.5rem; }
-        .blog-editor-content .ProseMirror blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; color: #6b7280; margin: 1rem 0; }
-        .blog-editor-content .ProseMirror pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; overflow-x: auto; }
-        .blog-editor-content .ProseMirror code { background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; }
-        .blog-editor-content .ProseMirror pre code { background: transparent; padding: 0; }
-        .blog-editor-content .ProseMirror img { max-width: 100%; border-radius: 0.5rem; margin: 0.75rem 0; }
-        .blog-editor-content .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-        .blog-editor-content .ProseMirror table td, .blog-editor-content .ProseMirror table th { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; }
-        .blog-editor-content .ProseMirror table th { background: #f8fafc; font-weight: 600; }
-        .blog-editor-content .ProseMirror ul, .blog-editor-content .ProseMirror ol { padding-left: 1.5rem; margin: 0.5rem 0; }
-        .blog-editor-content .ProseMirror li { margin: 0.25rem 0; }
-        .blog-editor-content .ProseMirror a { color: #3b82f6; text-decoration: underline; }
-        .blog-editor-content .ProseMirror hr { border: none; border-top: 2px solid #e2e8f0; margin: 1.5rem 0; }
-        .blog-editor-content .ProseMirror .video-embed { margin: 1rem 0; }
-        .blog-editor-content .ProseMirror .video-embed iframe { width: 100%; aspect-ratio: 16/9; border-radius: 0.5rem; }
-      `}</style>
     </div>
   );
 };
 
-// ─── Toolbar ──────────────────────────────────────────────────────────────────
-
-interface ToolbarProps {
-  editor: ReturnType<typeof useEditor>;
-  onImageClick: () => void;
-  onLinkClick: () => void;
-  onYoutubeClick: () => void;
-}
-
-const EditorToolbar: React.FC<ToolbarProps> = ({ editor, onImageClick, onLinkClick, onYoutubeClick }) => {
-  if (!editor) return null;
-
-  const btn = (active: boolean, onClick: () => void, title: string, children: React.ReactNode) => (
-    <button
-      key={title}
-      onMouseDown={e => { e.preventDefault(); onClick(); }}
-      title={title}
-      className={cn(
-        'p-1.5 rounded transition-colors',
-        active ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
-      )}
-    >
-      {children}
-    </button>
-  );
-
-  return (
-    <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-gray-100 bg-gray-50">
-      {/* Headings */}
-      {btn(editor.isActive('heading', { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), 'Heading 1', <Heading1 className="h-4 w-4" />)}
-      {btn(editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Heading 2', <Heading2 className="h-4 w-4" />)}
-      {btn(editor.isActive('heading', { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'Heading 3', <Heading3 className="h-4 w-4" />)}
-
-      <Divider />
-
-      {/* Marks */}
-      {btn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold', <Bold className="h-4 w-4" />)}
-      {btn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic', <Italic className="h-4 w-4" />)}
-      {btn(editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline', <UnderlineIcon className="h-4 w-4" />)}
-      {btn(editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), 'Strikethrough', <Strikethrough className="h-4 w-4" />)}
-      {btn(editor.isActive('code'), () => editor.chain().focus().toggleCode().run(), 'Inline Code', <Code className="h-4 w-4" />)}
-
-      <Divider />
-
-      {/* Alignment */}
-      {btn(editor.isActive({ textAlign: 'left' }), () => editor.chain().focus().setTextAlign('left').run(), 'Align Left', <AlignLeft className="h-4 w-4" />)}
-      {btn(editor.isActive({ textAlign: 'center' }), () => editor.chain().focus().setTextAlign('center').run(), 'Align Center', <AlignCenter className="h-4 w-4" />)}
-      {btn(editor.isActive({ textAlign: 'right' }), () => editor.chain().focus().setTextAlign('right').run(), 'Align Right', <AlignRight className="h-4 w-4" />)}
-
-      <Divider />
-
-      {/* Lists */}
-      {btn(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'Bullet List', <List className="h-4 w-4" />)}
-      {btn(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered List', <ListOrdered className="h-4 w-4" />)}
-      {btn(editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), 'Blockquote', <Quote className="h-4 w-4" />)}
-      {btn(editor.isActive('codeBlock'), () => editor.chain().focus().toggleCodeBlock().run(), 'Code Block', <Code className="h-4 w-4" />)}
-
-      <Divider />
-
-      {/* Insert */}
-      {btn(false, onImageClick, 'Insert Image', <ImageIcon className="h-4 w-4" />)}
-      {btn(editor.isActive('link'), onLinkClick, 'Insert Link', <Link2 className="h-4 w-4" />)}
-      {btn(false, onYoutubeClick, 'Embed YouTube', <span className="text-[10px] font-bold px-0.5">YT</span>)}
-      {btn(false, () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Insert Table', <TableIcon className="h-4 w-4" />)}
-      {btn(false, () => editor.chain().focus().setHorizontalRule().run(), 'Horizontal Rule', <Minus className="h-4 w-4" />)}
-
-      <Divider />
-
-      {/* History */}
-      {btn(false, () => editor.chain().focus().undo().run(), 'Undo', <Undo className="h-4 w-4" />)}
-      {btn(false, () => editor.chain().focus().redo().run(), 'Redo', <Redo className="h-4 w-4" />)}
-    </div>
-  );
-};
-
-const Divider: React.FC = () => (
-  <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
-);
-
-// ─── SEO Field ────────────────────────────────────────────────────────────────
+//â”€â”€â”€ SEO Field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SeoFieldProps {
   label: string;
