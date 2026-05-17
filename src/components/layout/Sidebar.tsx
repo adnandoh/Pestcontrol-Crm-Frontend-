@@ -15,12 +15,14 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
-  BookOpen
+  BookOpen,
+  UserPlus,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
 import type { AuthUser } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
+import { isBlogUser } from '../../utils/roles';
 
 interface SidebarProps {
   className?: string;
@@ -32,6 +34,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, user }) => {
   const location = useLocation();
   const { counts } = useDashboardCounts();
+
+  if (isBlogUser(user)) {
+    return null;
+  }
   const [isMasterOpen, setIsMasterOpen] = React.useState(() => {
     return location.pathname.startsWith('/master/');
   });
@@ -87,8 +93,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     },
     {
       items: [
-        { name: 'Staff Management', href: '/staff', icon: Shield },
-        { name: 'Activity Logs', href: '/activity-logs', icon: History },
+        { name: 'Staff Management', href: '/staff', icon: Shield, superAdminOnly: true },
+        { name: 'Add Employee', href: '/staff/add', icon: UserPlus, superAdminOnly: true },
+        { name: 'Activity Logs', href: '/activity-logs', icon: History, superAdminOnly: true },
       ]
     }
   ];

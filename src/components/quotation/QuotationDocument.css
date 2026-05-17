@@ -1,0 +1,35 @@
+/* Print-friendly Pest Control 99 quotation */
+
+.quotation-doc {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.quotation-doc * {
+  box-sizing: border-box;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .quotation-no-print {
+    display: none !important;
+  }
+
+  .quotation-doc {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

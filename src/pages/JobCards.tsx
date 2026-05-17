@@ -105,6 +105,7 @@ const JobCards: React.FC = () => {
   // Status options for dropdown
   const statusOptions = [
     { value: '', label: 'All Statuses' },
+    { value: 'Upcoming', label: 'Upcoming' },
     { value: 'Pending', label: 'Pending' },
     { value: 'On Process', label: 'On Process' },
     { value: 'Done', label: 'Done' },
@@ -192,22 +193,30 @@ const JobCards: React.FC = () => {
       const today = dayjs().tz("Asia/Kolkata").startOf('day');
       const tomorrow = today.add(1, 'day');
       
-      const processedResults = response.results.map((job: any) => {
+      let processedResults = response.results.map((job: any) => {
         const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
         let priority = 3;
         if (jobDate.isSame(today, 'day')) priority = 1;
         else if (jobDate.isSame(tomorrow, 'day')) priority = 2;
         return { ...job, booking_priority: priority };
-      }).sort((a: any, b: any) => {
-        // First sort by priority
-        if (a.booking_priority !== b.booking_priority) {
-          return a.booking_priority - b.booking_priority;
-        }
-        // Then sort by time (latest first)
-        const dateA = new Date(a.schedule_datetime).getTime();
-        const dateB = new Date(b.schedule_datetime).getTime();
-        return dateB - dateA;
       });
+
+      if (activeTab === 'upcoming_services') {
+        processedResults = [...processedResults].sort((a: any, b: any) => {
+          const dateA = a.next_service_date || a.schedule_datetime?.slice(0, 10) || '';
+          const dateB = b.next_service_date || b.schedule_datetime?.slice(0, 10) || '';
+          return dateA.localeCompare(dateB);
+        });
+      } else {
+        processedResults = processedResults.sort((a: any, b: any) => {
+          if (a.booking_priority !== b.booking_priority) {
+            return a.booking_priority - b.booking_priority;
+          }
+          const dateA = new Date(a.schedule_datetime).getTime();
+          const dateB = new Date(b.schedule_datetime).getTime();
+          return dateB - dateA;
+        });
+      }
 
       setJobCards(processedResults);
       setPagination(prev => ({
@@ -444,6 +453,39 @@ const JobCards: React.FC = () => {
     setShowAssignModal(true);
   };
 
+  const isScheduledServiceVisit = (job: JobCard) =>
+    job.booking_category === 'service_call' ||
+    job.booking_category === 'amc_followup' ||
+    job.included_in_amc ||
+    job.is_followup_visit;
+
+  const handleUpcomingStatusChange = async (
+    jobId: number,
+    newStatus: 'Pending' | 'On Process' | 'Done',
+    paymentMode?: 'Cash' | 'Online'
+  ) => {
+    try {
+      setLoading(true);
+      const payload: {
+        status: string;
+        payment_status?: string;
+        payment_mode?: 'Cash' | 'Online';
+      } = { status: newStatus };
+      if (newStatus === 'Done') {
+        payload.payment_status = 'Paid';
+        payload.payment_mode = paymentMode || 'Cash';
+      }
+      await enhancedApiService.updateJobCard(jobId, payload);
+      loadJobCards(pagination.current, filters);
+      refreshCounts();
+    } catch (err) {
+      console.error('Failed to update booking status:', err);
+      alert('Failed to update booking status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleMarkAsDone = async (paymentMode: 'Cash' | 'Online') => {
     if (!doneId) return;
     try {
@@ -511,10 +553,14 @@ const JobCards: React.FC = () => {
 
     try {
       setLoading(true);
+      const jobToUpdate = jobCards.find(j => j.id === removeTechId);
+      const statusAfterRemoval =
+        jobToUpdate && isScheduledServiceVisit(jobToUpdate) ? 'Upcoming' : 'Pending';
+
       await enhancedApiService.updateJobCard(removeTechId, { 
         technician: null,
         assigned_to: '',
-        status: 'Pending',
+        status: statusAfterRemoval,
         removal_remarks: removeRemarks.trim()
       });
       setRemoveTechId(null);
@@ -1115,6 +1161,7 @@ const JobCards: React.FC = () => {
                       <div className="flex flex-col gap-1.5 items-center">
                         <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shadow-xs border ${
                           job.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                          job.status === 'Upcoming' ? 'bg-violet-50 text-violet-700 border-violet-200' :
                           job.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                           job.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
                           'bg-blue-50 text-blue-700 border-blue-200'
@@ -1171,6 +1218,38 @@ const JobCards: React.FC = () => {
                           </div>
                         ) : (
                           <>
+                            {activeTab === 'upcoming_services' && (
+                              <div className="flex flex-col gap-1.5 min-w-[140px]">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpcomingStatusChange(job.id, 'Pending')}
+                                  className="px-2 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[9px] font-black uppercase rounded shadow-sm transition-all"
+                                  title="Move to Pending queue"
+                                >
+                                  Move to Pending
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpcomingStatusChange(job.id, 'On Process')}
+                                  className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black uppercase rounded shadow-sm transition-all"
+                                  title="Start service (On Process)"
+                                >
+                                  Start Service
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedJobCard(job);
+                                    setDoneId(job.id);
+                                  }}
+                                  className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase rounded shadow-sm transition-all"
+                                  title="Mark service complete"
+                                >
+                                  Complete Service
+                                </button>
+                              </div>
+                            )}
+
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
                                 <button 

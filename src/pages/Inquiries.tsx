@@ -7,6 +7,7 @@ import {
   Check,
   X,
   Bell,
+  MessageCircle,
 } from 'lucide-react';
 import { 
   PageLoading,
@@ -17,6 +18,7 @@ import { cn } from '../utils/cn';
 import type { Inquiry, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
+import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 
 const Inquiries: React.FC = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -295,7 +297,20 @@ const Inquiries: React.FC = () => {
                       {!inquiry.is_read && <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />}
                       <div className="font-bold text-gray-800 uppercase leading-tight truncate">{inquiry.name}</div>
                     </div>
-                    <div className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openWhatsApp(inquiry.mobile, whatsAppTemplates.customerInquiry(inquiry.name));
+                        }}
+                        className="hover:scale-110 transition-transform"
+                        title="Send Service Details"
+                      >
+                        <MessageCircle className="h-3 w-3 text-green-500 fill-green-50" />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-gray-700 uppercase italic truncate">{inquiry.premise_type || 'Residential'}</div>

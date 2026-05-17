@@ -299,6 +299,8 @@ class EnhancedApiService {
       last_name: response.data.last_name || '',
       is_staff: response.data.is_staff || false,
       is_superuser: response.data.is_superuser || false,
+      role: response.data.role,
+      role_display: response.data.role_display,
     };
 
     // Store user information for later use
@@ -839,7 +841,18 @@ class EnhancedApiService {
       reminder_date: data.reminder_date || null,
       reminder_time: data.reminder_time || null,
       reminder_note: data.reminder_note || null,
-      is_reminder_done: data.is_reminder_done || false
+      is_reminder_done: data.is_reminder_done || false,
+      master_country: data.master_country ?? null,
+      master_state: data.master_state ?? null,
+      master_city: data.master_city ?? null,
+      master_location: data.master_location ?? null,
+      full_address: data.full_address ?? null,
+      commercial_type: data.commercial_type || 'home',
+      is_price_estimated: data.is_price_estimated ?? false,
+      is_amc_main_booking: data.is_amc_main_booking ?? false,
+      is_followup_visit: data.is_followup_visit ?? false,
+      included_in_amc: data.included_in_amc ?? false,
+      is_complaint_call: data.is_complaint_call ?? false,
     };
 
     // Explicitly ensure no 'id' is sent during creation
@@ -912,7 +925,19 @@ class EnhancedApiService {
     if (data.reminder_note !== undefined) requestData.reminder_note = data.reminder_note || null;
     if (data.is_reminder_done !== undefined) requestData.is_reminder_done = data.is_reminder_done;
 
+    // Master location FKs (required for Service State/City dropdowns)
+    if (data.master_country !== undefined) requestData.master_country = data.master_country ?? null;
+    if (data.master_state !== undefined) requestData.master_state = data.master_state ?? null;
+    if (data.master_city !== undefined) requestData.master_city = data.master_city ?? null;
+    if (data.master_location !== undefined) requestData.master_location = data.master_location ?? null;
+    if (data.full_address !== undefined) requestData.full_address = data.full_address ?? null;
 
+    if (data.commercial_type !== undefined) requestData.commercial_type = data.commercial_type;
+    if (data.is_price_estimated !== undefined) requestData.is_price_estimated = data.is_price_estimated;
+    if (data.is_amc_main_booking !== undefined) requestData.is_amc_main_booking = data.is_amc_main_booking;
+    if (data.is_followup_visit !== undefined) requestData.is_followup_visit = data.is_followup_visit;
+    if (data.included_in_amc !== undefined) requestData.included_in_amc = data.included_in_amc;
+    if (data.is_complaint_call !== undefined) requestData.is_complaint_call = data.is_complaint_call;
 
     const result = await this.retryRequest(() =>
       this.api.patch<JobCard>(`${API_ENDPOINTS.JOBCARDS}${id}/`, requestData)

@@ -57,7 +57,7 @@ const BlogEditor: React.FC = () => {
     meta_title: '', meta_description: '', target_keywords: '',
     canonical_url: '', schema_type: 'Article',
     og_title: '', og_description: '',
-    status: 'draft', category_id: null, tag_ids: [],
+    status: 'published', category_id: null, tag_ids: [],
   });
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);

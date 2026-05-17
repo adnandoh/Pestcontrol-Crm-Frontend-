@@ -28,6 +28,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 
 const EditJobCard: React.FC = () => {
@@ -44,6 +45,7 @@ const EditJobCard: React.FC = () => {
     scrollToFirstError,
   } = useFormValidation(jobCardValidationRules);
   const isInitialLoad = React.useRef(true);
+  const prevMasterStateRef = React.useRef<number | undefined>(undefined);
   const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
   const [pricingService, setPricingService] = useState('');
   const [pricingArea, setPricingArea] = useState('');
@@ -147,6 +149,17 @@ const EditJobCard: React.FC = () => {
         
         setJobCard(data);
         setMasterStates(statesRes.results);
+
+        let citiesForState: City[] = [];
+        if (data.master_state) {
+          const citiesRes = await enhancedApiService.getCities({
+            state: data.master_state,
+            page_size: 1000,
+          });
+          citiesForState = citiesRes.results;
+          setMasterCities(citiesForState);
+        }
+        prevMasterStateRef.current = data.master_state ?? undefined;
         
         const formattedDate = data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('YYYY-MM-DD') : '';
 
@@ -167,8 +180,8 @@ const EditJobCard: React.FC = () => {
           service_type: data.service_type || '',
           schedule_datetime: formattedDate,
           time_slot: data.time_slot || (data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('hh:mm A') : ''),
-          state: data.state || 'Maharashtra',
-          city: data.city || 'Mumbai',
+          state: data.state || data.master_state_name || '',
+          city: data.city || data.master_city_name || '',
           master_country: data.master_country,
           master_state: data.master_state,
           master_city: data.master_city,
@@ -235,28 +248,40 @@ const EditJobCard: React.FC = () => {
     fetchData();
   }, [id]);
 
-  // Master Location Dynamic Loading
-  const isFirstCityLoad = React.useRef(true);
-
-  // Fetch cities when state changes
+  // Fetch cities when user changes state (not on duplicate effect runs during load)
   useEffect(() => {
     if (loading) return;
-    if (formData.master_state) {
-      enhancedApiService.getCities({ state: formData.master_state })
-        .then(res => {
-          setMasterCities(res.results);
-          if (isFirstCityLoad.current) {
-            isFirstCityLoad.current = false;
-          } else {
-            // Only reset if it's a user change, not initial load
-            setFormData(prev => ({ ...prev, master_city: undefined, master_location: undefined }));
-          }
-        })
-        .catch(err => console.error('Error fetching cities:', err));
-    } else {
+
+    const stateId = formData.master_state;
+    if (!stateId) {
       setMasterCities([]);
+      prevMasterStateRef.current = undefined;
+      return;
     }
-  }, [formData.master_state, loading]);
+
+    const stateChanged =
+      prevMasterStateRef.current !== undefined &&
+      prevMasterStateRef.current !== stateId;
+
+    enhancedApiService
+      .getCities({ state: stateId, page_size: 1000 })
+      .then(res => {
+        setMasterCities(res.results);
+        prevMasterStateRef.current = stateId;
+
+        if (stateChanged) {
+          const stateName = masterStates.find(s => s.id === stateId)?.name || '';
+          setFormData(prev => ({
+            ...prev,
+            master_city: undefined,
+            master_location: undefined,
+            state: stateName,
+            city: '',
+          }));
+        }
+      })
+      .catch(err => console.error('Error fetching cities:', err));
+  }, [formData.master_state, loading, masterStates]);
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {
@@ -444,7 +469,16 @@ const EditJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
                 <select
                   value={formData.master_state || ''}
-                  onChange={(e) => handleInputChange('master_state', Number(e.target.value))}
+                  onChange={(e) => {
+                    const stateId = Number(e.target.value);
+                    const stateName = masterStates.find(s => s.id === stateId)?.name || '';
+                    setFormData(prev => ({
+                      ...prev,
+                      master_state: stateId,
+                      state: stateName,
+                    }));
+                    clearError('master_state');
+                  }}
                   className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                   required
                 >
@@ -457,7 +491,16 @@ const EditJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
                 <select
                   value={formData.master_city || ''}
-                  onChange={(e) => handleInputChange('master_city', Number(e.target.value))}
+                  onChange={(e) => {
+                    const cityId = Number(e.target.value);
+                    const cityName = masterCities.find(c => c.id === cityId)?.name || '';
+                    setFormData(prev => ({
+                      ...prev,
+                      master_city: cityId,
+                      city: cityName,
+                    }));
+                    clearError('master_city');
+                  }}
                   className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                   disabled={!formData.master_state}
                   required
@@ -472,11 +515,19 @@ const EditJobCard: React.FC = () => {
                 <LocationSearchSelect
                   value={formData.master_location}
                   onChange={(locationId, cityId, stateId) => {
+                    const cityName = cityId
+                      ? masterCities.find(c => c.id === cityId)?.name
+                      : undefined;
+                    const stateName = stateId
+                      ? masterStates.find(s => s.id === stateId)?.name
+                      : undefined;
                     setFormData(prev => ({
                       ...prev,
                       master_location: locationId,
-                      master_city: cityId || prev.master_city,
-                      master_state: stateId || prev.master_state
+                      master_city: cityId ?? prev.master_city,
+                      master_state: stateId ?? prev.master_state,
+                      city: cityName ?? prev.city,
+                      state: stateName ?? prev.state,
                     }));
                   }}
                 />
@@ -832,21 +883,9 @@ const EditJobCard: React.FC = () => {
                   required
                 >
                   <option value="">Select Reference</option>
-                  <option value="Website">Website</option>
-                  <option value="Play Store">Play Store</option>
-                  <option value="Previous Client">Previous Client</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="YouTube">YouTube</option>
-                  <option value="LinkedIn">LinkedIn</option>
-                  <option value="SMS">SMS</option>
-                  <option value="Instagram">Instagram</option>
-                  <option value="WhatsApp">WhatsApp</option>
-                  <option value="Justdial">Justdial</option>
-                  <option value="Poster">Poster</option>
-                  <option value="Friend Reference">Friend Reference</option>
-                  <option value="No Parking Board">No Parking Board</option>
-                  <option value="Holding">Holding</option>
-                  <option value="Other">Other</option>
+                  {BOOKING_REFERENCE_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
                 {errors.reference && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>}
               </div>

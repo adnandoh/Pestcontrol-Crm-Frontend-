@@ -1,0 +1,19 @@
+/** Lead source options for booking Reference field (create + edit). */
+export const BOOKING_REFERENCE_OPTIONS = [
+  'Website',
+  'Google',
+  'Play Store',
+  'Previous Client',
+  'Facebook',
+  'YouTube',
+  'LinkedIn',
+  'SMS',
+  'Instagram',
+  'WhatsApp',
+  'Justdial',
+  'Poster',
+  'Friend Reference',
+  'No Parking Board',
+  'Holding',
+  'Other',
+] as const;

@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { isBlogUser, blogUserDefaultPath } from '../utils/roles';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
 import type { LoginCredentials } from '../types';
 
 const Login: React.FC = () => {
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
   const [formData, setFormData] = useState<LoginCredentials>({
     username: '',
@@ -16,10 +17,15 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname;
+  const defaultHome = isBlogUser(user) ? blogUserDefaultPath() : '/';
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+    const target = from && !isBlogUser(user) ? from : defaultHome;
+    if (isBlogUser(user) && from && !from.startsWith('/blog')) {
+      return <Navigate to={blogUserDefaultPath()} replace />;
+    }
+    return <Navigate to={isBlogUser(user) ? blogUserDefaultPath() : target} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

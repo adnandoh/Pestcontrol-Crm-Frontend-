@@ -136,7 +136,8 @@ export interface JobCard {
   is_amc_main_booking?: boolean;
   is_followup_visit?: boolean;
   included_in_amc?: boolean;
-  status: 'Pending' | 'On Process' | 'Done' | 'Cancelled';
+  status: 'Upcoming' | 'Pending' | 'On Process' | 'Done' | 'Cancelled';
+  booking_category?: 'normal_booking' | 'service_call' | 'complaint_call' | 'amc_followup';
   payment_status?: string;
   payment_mode?: 'Cash' | 'Online';
   service_type: string;
@@ -225,8 +226,8 @@ export interface StaffUser {
   id: number;
   name: string;
   mobile: string;
-  role: 'Super Admin' | 'Staff';
-  role_display: 'Super Admin' | 'Staff';
+  role: 'Super Admin' | 'Admin' | 'Staff' | 'Blog User';
+  role_display: string;
   password?: string;
   is_active: boolean;
   date_joined: string;
@@ -282,6 +283,8 @@ export interface LoginRequest {
   password: string;
 }
 
+export type CRMRole = 'super_admin' | 'admin' | 'staff' | 'blog_user';
+
 export interface AuthTokens {
   access: string;
   refresh: string;
@@ -292,6 +295,8 @@ export interface AuthTokens {
   last_name?: string;
   is_staff?: boolean;
   is_superuser?: boolean;
+  role?: CRMRole;
+  role_display?: string;
 }
 
 export interface AuthUser {
@@ -302,6 +307,8 @@ export interface AuthUser {
   last_name: string;
   is_staff: boolean;
   is_superuser: boolean;
+  role?: CRMRole;
+  role_display?: string;
 }
 
 // Form types

@@ -25,6 +25,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
 
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 
 const CreateJobCard: React.FC = () => {
@@ -104,25 +105,6 @@ const CreateJobCard: React.FC = () => {
   }, [pricingService, pricingArea, pricingType]);
 
 
-
-  // Reference options
-  const referenceOptions = [
-    'Website',
-    'Play Store',
-    'Previous Client',
-    'Facebook',
-    'YouTube',
-    'LinkedIn',
-    'SMS',
-    'Instagram',
-    'WhatsApp',
-    'Justdial',
-    'Poster',
-    'Friend Reference',
-    'No Parking Board',
-    'Holding',
-    'Other'
-  ];
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
@@ -786,7 +768,7 @@ const CreateJobCard: React.FC = () => {
                   required
                 >
                   <option value="">Select Reference</option>
-                  {referenceOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  {BOOKING_REFERENCE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
                 {errors.reference && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>}
               </div>

@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { DashboardCounts } from '../types';
+import { useAuth } from './useAuth';
+import { isBlogUser } from '../utils/roles';
 
 export const useDashboardCounts = () => {
+  const { user } = useAuth();
   const [counts, setCounts] = useState<DashboardCounts>({
     website_leads_unread: 0,
     complaint_calls: 0,
@@ -13,6 +16,7 @@ export const useDashboardCounts = () => {
   const [loading, setLoading] = useState(false);
 
   const fetchCounts = useCallback(async () => {
+    if (isBlogUser(user)) return;
     try {
       setLoading(true);
       const data = await enhancedApiService.getDashboardCounts();
@@ -22,7 +26,7 @@ export const useDashboardCounts = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchCounts();

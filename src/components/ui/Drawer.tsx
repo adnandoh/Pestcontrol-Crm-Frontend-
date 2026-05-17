@@ -11,7 +11,6 @@ interface DrawerProps {
 }
 
 const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children, width = 'w-full md:w-[600px]' }) => {
-  // Prevent body scroll when drawer is open
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -27,7 +26,6 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children, width
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -35,7 +33,6 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children, width
             onClick={onClose}
             className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
           />
-          {/* Drawer */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -53,9 +50,7 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children, width
                 <X className="h-6 w-6 text-gray-500 group-hover:text-red-600 transition-colors" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto bg-gray-50/30">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto bg-gray-50/30">{children}</div>
           </motion.div>
         </>
       )}
