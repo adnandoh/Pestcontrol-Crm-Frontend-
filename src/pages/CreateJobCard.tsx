@@ -68,6 +68,7 @@ const CreateJobCard: React.FC = () => {
       price: '0.00',
       next_service_date: '',
       reference: '',
+      master_location: undefined,
       contract_duration: '',
       notes: '',
       extra_notes: '',
@@ -459,15 +460,21 @@ const CreateJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
                 <LocationSearchSelect
                   value={formData.master_location}
+                  error={errors.master_location}
                   onChange={(locationId, cityId, stateId) => {
                     setFormData(prev => ({
                       ...prev,
                       master_location: locationId,
                       master_city: cityId || prev.master_city,
-                      master_state: stateId || prev.master_state
+                      master_state: stateId || prev.master_state,
                     }));
+                    clearError('master_location');
+                    validateField('master_location', locationId);
                   }}
                 />
+                {errors.master_location && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.master_location}</p>
+                )}
               </div>
 
 
@@ -771,8 +778,13 @@ const CreateJobCard: React.FC = () => {
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
                 <select
+                  name="reference"
                   value={formData.reference}
-                  onChange={(e) => handleInputChange('reference', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleInputChange('reference', value);
+                    validateField('reference', value);
+                  }}
                   className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none bg-white ${errors.reference ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 >

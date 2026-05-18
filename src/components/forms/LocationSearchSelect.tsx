@@ -10,13 +10,17 @@ interface LocationSearchSelectProps {
   placeholder?: string;
   className?: string;
   isDisabled?: boolean;
+  error?: string;
+  name?: string;
 }
 
 const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
   onChange,
   placeholder = "Search location (e.g. Khopoli, Thane)...",
   className,
-  isDisabled = false
+  isDisabled = false,
+  error,
+  name = 'master_location',
 }) => {
   // Load options from API
   const loadOptions = async (inputValue: string) => {
@@ -43,9 +47,12 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
     }
   };
 
+  const borderColor = error ? '#ef4444' : undefined;
+
   return (
-    <div className={cn("w-full relative", className)}>
+    <div className={cn('w-full relative', className)} data-field={name}>
       <AsyncSelect
+        name={name}
         cacheOptions
         defaultOptions={false}
         loadOptions={loadOptions}
@@ -63,9 +70,9 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
             ...base,
             minHeight: '40px',
             borderRadius: '8px',
-            borderColor: state.isFocused ? '#3b82f6' : '#e5e7eb',
+            borderColor: borderColor ?? (state.isFocused ? '#3b82f6' : '#e5e7eb'),
             '&:hover': {
-              borderColor: '#3b82f6',
+              borderColor: borderColor ?? '#3b82f6',
             },
             boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
             fontSize: '14px',
