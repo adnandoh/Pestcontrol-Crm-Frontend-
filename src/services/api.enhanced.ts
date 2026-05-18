@@ -4,7 +4,6 @@ import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
 import { apiCache } from './apiCache';
 import {
   forceSessionLogout,
-  performSilentRefresh,
   scheduleProactiveAccessRefresh,
   SESSION_EXPIRED_MESSAGE,
   stopAuthSessionScheduler,

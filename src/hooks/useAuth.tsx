@@ -2,7 +2,6 @@ import { useState, useEffect, useContext, createContext, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
 import {
-  consumeLogoutMessage,
   registerAuthSessionHandlers,
   scheduleProactiveAccessRefresh,
   SESSION_EXPIRED_MESSAGE,
@@ -43,10 +42,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = useCallback(() => {
+  const logout = useCallback((message?: string) => {
     enhancedApiService.logout();
     setUser(null);
-    // Force redirect to login
+    if (message) {
+      sessionStorage.setItem('auth_logout_message', message);
+    }
     window.location.href = '/login';
   }, []);
 
