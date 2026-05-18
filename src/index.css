@@ -203,3 +203,15 @@ input[type="number"] {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* Google Places autocomplete dropdown (India address search) */
+.pac-container {
+  z-index: 10050 !important;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-family: 'Roboto', system-ui, sans-serif;
+}
+.pac-item {
+  padding: 8px 12px;
+  font-size: 13px;
+}

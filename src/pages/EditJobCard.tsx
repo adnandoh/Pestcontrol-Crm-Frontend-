@@ -30,6 +30,8 @@ import type { JobCardFormData, JobCard, State, City } from '../types';
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
+import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
+import { applyGooglePlaceToJobForm } from '../utils/applyGooglePlaceToJobForm';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -70,6 +72,7 @@ const EditJobCard: React.FC = () => {
     city: '',
     status: 'Pending',
     payment_status: 'Unpaid',
+    payment_mode: undefined,
     assigned_to: '',
     technician: undefined,
     price: '0.00',
@@ -189,6 +192,7 @@ const EditJobCard: React.FC = () => {
           full_address: data.full_address,
           status: data.status || 'Pending',
           payment_status: data.payment_status || 'Unpaid',
+          payment_mode: data.payment_mode === 'Cash' || data.payment_mode === 'Online' ? data.payment_mode : undefined,
           assigned_to: data.assigned_to || '',
           technician: data.technician,
           price: data.price?.toString() || '0.00',
@@ -362,6 +366,10 @@ const EditJobCard: React.FC = () => {
           combined = combined.hour(10).minute(0).second(0);
         }
         submitData.schedule_datetime = combined.toISOString();
+      }
+      // Do not wipe partner-recorded payment mode when the dropdown was never loaded/set
+      if (submitData.payment_mode !== 'Cash' && submitData.payment_mode !== 'Online') {
+        delete submitData.payment_mode;
       }
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
@@ -601,7 +609,27 @@ const EditJobCard: React.FC = () => {
 
               <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
-                <Input id="client_address" name="client_address" value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
+                <GooglePlacesAddressInput
+                  id="client_address"
+                  name="client_address"
+                  value={formData.client_address}
+                  onChange={(v) => handleInputChange('client_address', v)}
+                  onPlaceSelect={async (place) => {
+                    const { updates, cities } = await applyGooglePlaceToJobForm(
+                      place,
+                      masterStates,
+                      (stateId) =>
+                        enhancedApiService
+                          .getCities({ state: stateId, page_size: 1000 })
+                          .then((r) => r.results),
+                    );
+                    if (cities.length > 0) setMasterCities(cities);
+                    setFormData((prev) => ({ ...prev, ...updates }));
+                    clearError('client_address');
+                  }}
+                  error={errors.client_address}
+                  required
+                />
               </div>
             </div>
           </div>

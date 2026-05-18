@@ -27,6 +27,8 @@ import type { JobCardFormData, State, City } from '../types';
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
+import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
+import { applyGooglePlaceToJobForm } from '../utils/applyGooglePlaceToJobForm';
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -480,7 +482,27 @@ const CreateJobCard: React.FC = () => {
 
               <div className="lg:col-span-4">
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
-                <Input id="client_address" name="client_address" value={formData.client_address} onChange={(e) => handleInputChange('client_address', e.target.value)} error={errors.client_address} className="h-10 text-sm font-medium text-gray-900 shadow-sm" required />
+                <GooglePlacesAddressInput
+                  id="client_address"
+                  name="client_address"
+                  value={formData.client_address}
+                  onChange={(v) => handleInputChange('client_address', v)}
+                  onPlaceSelect={async (place) => {
+                    const { updates, cities } = await applyGooglePlaceToJobForm(
+                      place,
+                      masterStates,
+                      (stateId) =>
+                        enhancedApiService
+                          .getCities({ state: stateId, page_size: 1000 })
+                          .then((r) => r.results),
+                    );
+                    if (cities.length > 0) setMasterCities(cities);
+                    setFormData((prev) => ({ ...prev, ...updates }));
+                    clearError('client_address');
+                  }}
+                  error={errors.client_address}
+                  required
+                />
               </div>
             </div>
           </div>
