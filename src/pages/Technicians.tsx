@@ -168,20 +168,21 @@ const Technicians: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Age</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Join Date</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Status</th>
+                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Partner App</th>
                 <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
                     <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                   </td>
                 </tr>
               ) : filteredTechs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                  <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                     No Technicians Found
                   </td>
                 </tr>
@@ -213,6 +214,28 @@ const Technicians: React.FC = () => {
                     }`}>
                       {tech.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {!tech.has_partner_app ? (
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">No app</span>
+                    ) : tech.partner_app_approved ? (
+                      <span className="text-[9px] font-bold text-emerald-700 uppercase">Approved</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await enhancedApiService.approvePartnerApp(tech.id);
+                            fetchTechnicians();
+                          } catch {
+                            alert('Could not approve partner app');
+                          }
+                        }}
+                        className="text-[9px] font-black uppercase text-amber-700 underline"
+                      >
+                        Approve app
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">

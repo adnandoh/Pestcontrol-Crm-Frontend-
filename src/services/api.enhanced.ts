@@ -422,6 +422,22 @@ class EnhancedApiService {
     apiCache.clear();
   }
 
+  async approvePartnerApp(technicianId: number): Promise<Technician> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ technician: Technician }>(`/technicians/${technicianId}/approve-partner-app/`)
+    );
+    apiCache.clear();
+    return result.data.technician ?? (result.data as unknown as Technician);
+  }
+
+  async revokePartnerApp(technicianId: number): Promise<Technician> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ technician: Technician }>(`/technicians/${technicianId}/revoke-partner-app/`)
+    );
+    apiCache.clear();
+    return result.data.technician ?? (result.data as unknown as Technician);
+  }
+
   async getTechnicianPerformance(params?: { from?: string; to?: string; service_type?: string }): Promise<{ stats: any; technicians: TechnicianPerformance[] }> {
     const cacheKey = apiCache.generateKey(`${API_ENDPOINTS.TECHNICIANS}performance/`, params);
     

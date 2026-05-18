@@ -31,6 +31,7 @@ export interface Technician {
   last_active?: string;
   active_jobs?: number;
   has_partner_app?: boolean;
+  partner_app_approved?: boolean;
   partner_id?: number | null;
   partner_name?: string | null;
   active_job_details?: {
