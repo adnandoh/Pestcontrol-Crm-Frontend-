@@ -1,6 +1,12 @@
 import { useState, useEffect, useContext, createContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
+import {
+  consumeLogoutMessage,
+  registerAuthSessionHandlers,
+  scheduleProactiveAccessRefresh,
+  SESSION_EXPIRED_MESSAGE,
+} from '../services/authSession';
 import type { AuthUser, LoginCredentials } from '../types';
 
 interface AuthContextType {
@@ -8,7 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
+  logout: (message?: string) => void;
   refreshToken: () => Promise<void>;
 }
 
@@ -44,19 +50,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/login';
   }, []);
 
-  const refreshToken = async (): Promise<void> => {
+  const refreshToken = useCallback(async (): Promise<void> => {
     try {
       const response = await enhancedApiService.refreshToken();
       setUser(response.user);
-      
-      // Update user in localStorage
       localStorage.setItem('user_info', JSON.stringify(response.user));
     } catch (error) {
       console.error('Token refresh failed:', error);
-      logout();
+      logout(SESSION_EXPIRED_MESSAGE);
       throw error;
     }
-  };
+  }, [logout]);
 
   const checkAuthStatus = useCallback(async () => {
     try {
@@ -76,9 +80,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const storedUser = JSON.parse(userInfoStr);
           setUser(storedUser);
+          scheduleProactiveAccessRefresh();
         } catch (e) {
           console.warn('Failed to parse stored user info:', e);
-          logout();
+          logout(SESSION_EXPIRED_MESSAGE);
         }
       } else {
         // No user info available, logout
@@ -121,7 +126,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [checkAuthStatus, isInitialized]);
 
-  // Removed periodic token refresh - API interceptor handles token refresh automatically on 401 errors
+  useEffect(() => {
+    registerAuthSessionHandlers({
+      refresh: async () => {
+        await refreshToken();
+      },
+      logout: (message) => logout(message),
+    });
+  }, [logout, refreshToken]);
 
   const value = {
     user,

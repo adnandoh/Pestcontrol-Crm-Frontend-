@@ -2,6 +2,13 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
 import { apiCache } from './apiCache';
+import {
+  forceSessionLogout,
+  performSilentRefresh,
+  scheduleProactiveAccessRefresh,
+  SESSION_EXPIRED_MESSAGE,
+  stopAuthSessionScheduler,
+} from './authSession';
 import type {
   LoginCredentials,
   AuthTokens,
@@ -108,6 +115,11 @@ const logError = (error: AxiosError) => {
 class EnhancedApiService {
   private api: AxiosInstance;
   private requestQueue: Map<string, Promise<any>> = new Map();
+  private isRefreshing = false;
+  private refreshWaitQueue: Array<{
+    resolve: (token: string) => void;
+    reject: (err: unknown) => void;
+  }> = [];
 
   constructor() {
     this.api = axios.create({
@@ -154,49 +166,29 @@ class EnhancedApiService {
 
         const originalRequest = error.config as any;
 
-        // Handle 401 errors with token refresh
-        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+        // Handle 401 — silent refresh + retry (skip auth endpoints)
+        const url = originalRequest?.url ?? '';
+        const isAuthEndpoint =
+          url.includes(API_ENDPOINTS.AUTH.LOGIN) || url.includes(API_ENDPOINTS.AUTH.REFRESH);
+
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !isAuthEndpoint
+        ) {
           originalRequest._retry = true;
 
-          const refreshToken = localStorage.getItem('refresh_token');
-          if (refreshToken) {
-            try {
-              const response = await axios.post(
-                `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
-                { refresh: refreshToken },
-                {
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
-
-              const newAccessToken = response.data.access;
-              localStorage.setItem('access_token', newAccessToken);
-
-              // Retry original request with new token
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              }
-
-              return this.api(originalRequest);
-            } catch (refreshError) {
-              console.error('Token refresh failed:', refreshError);
-              // Refresh failed, clear tokens and redirect to login
-              this.clearTokens();
-              // Use setTimeout to avoid potential issues with immediate redirect
-              setTimeout(() => {
-                window.location.href = '/login';
-              }, 100);
-              return Promise.reject(refreshError);
+          try {
+            const newAccess = await this.refreshAccessToken();
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${newAccess}`;
             }
-          } else {
-            // No refresh token, redirect to login
-            console.warn('No refresh token available, redirecting to login');
-            this.clearTokens();
-            setTimeout(() => {
-              window.location.href = '/login';
-            }, 100);
+            return this.api(originalRequest);
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            forceSessionLogout(SESSION_EXPIRED_MESSAGE);
+            return Promise.reject(refreshError);
           }
         }
 
@@ -267,8 +259,49 @@ class EnhancedApiService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private async refreshAccessToken(): Promise<string> {
+    if (this.isRefreshing) {
+      return new Promise((resolve, reject) => {
+        this.refreshWaitQueue.push({ resolve, reject });
+      });
+    }
+
+    this.isRefreshing = true;
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token');
+      }
+
+      const response = await axios.post<{ access: string; refresh?: string }>(
+        `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
+        { refresh: refreshToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      const newAccess = response.data.access;
+      localStorage.setItem('access_token', newAccess);
+      if (response.data.refresh) {
+        localStorage.setItem('refresh_token', response.data.refresh);
+      }
+
+      scheduleProactiveAccessRefresh();
+
+      this.refreshWaitQueue.forEach((q) => q.resolve(newAccess));
+      this.refreshWaitQueue = [];
+      return newAccess;
+    } catch (err) {
+      this.refreshWaitQueue.forEach((q) => q.reject(err));
+      this.refreshWaitQueue = [];
+      throw err;
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
   // Token management
   private clearTokens() {
+    stopAuthSessionScheduler();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
@@ -326,6 +359,8 @@ class EnhancedApiService {
     // Store user information for later use
     localStorage.setItem('user_info', JSON.stringify(user));
 
+    scheduleProactiveAccessRefresh();
+
     return {
       user,
       access: response.data.access,
@@ -337,12 +372,17 @@ class EnhancedApiService {
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) throw new Error('No refresh token available');
 
-    const response = await this.api.post<{ access: string }>(
-      API_ENDPOINTS.AUTH.REFRESH,
-      { refresh: refreshToken }
+    const response = await axios.post<{ access: string; refresh?: string }>(
+      `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
+      { refresh: refreshToken },
+      { headers: { 'Content-Type': 'application/json' } }
     );
 
     localStorage.setItem('access_token', response.data.access);
+    if (response.data.refresh) {
+      localStorage.setItem('refresh_token', response.data.refresh);
+    }
+    scheduleProactiveAccessRefresh();
 
     // Get user information from localStorage
     const userInfoStr = localStorage.getItem('user_info');

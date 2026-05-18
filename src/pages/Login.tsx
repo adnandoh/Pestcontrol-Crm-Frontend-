@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { consumeLogoutMessage } from '../services/authSession';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -16,6 +17,11 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const msg = consumeLogoutMessage();
+    if (msg) setError(msg);
+  }, []);
 
   const from = location.state?.from?.pathname;
   const defaultHome = isBlogUser(user) ? blogUserDefaultPath() : '/';
