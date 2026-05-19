@@ -980,22 +980,25 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async sendJobToPartnerApp(id: number, technicianId?: number): Promise<JobCard> {
-    const body =
-      technicianId != null && technicianId > 0
-        ? { technician_id: technicianId }
-        : {};
-    const result = await this.api.post<{ success: boolean; message: string; job: JobCard }>(
-      `${API_ENDPOINTS.JOBCARDS}${id}/send-to-app/`,
-      body,
-    );
+  /** Broadcast booking to all approved partner-app technicians (no single-tech pick). */
+  async sendJobToPartnerApp(id: number): Promise<{ job: JobCard; message: string; refloated: boolean }> {
+    const result = await this.api.post<{
+      success: boolean;
+      message: string;
+      refloated?: boolean;
+      job: JobCard;
+    }>(`${API_ENDPOINTS.JOBCARDS}${id}/send-to-app/`, {});
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     const data = result.data;
     if (!data.success) {
       throw new ApiError(data.message || 'Failed to send to partner app', 400);
     }
-    return data.job;
+    return {
+      job: data.job,
+      message: data.message,
+      refloated: Boolean(data.refloated),
+    };
   }
 
   async getPartnerSelfies(params?: {

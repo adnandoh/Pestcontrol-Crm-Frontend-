@@ -17,6 +17,7 @@ import {
   UserCheck,
   ArrowRight,
   Smartphone,
+  RotateCw,
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import dayjs from 'dayjs';
@@ -30,11 +31,10 @@ import {
   Pagination,
   ConfirmationModal
 } from '../components/ui';
-import { enhancedApiService } from '../services/api.enhanced';
+import { enhancedApiService, ApiError } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
-import SendToPartnerModal from '../components/crm/SendToPartnerModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
 import CompleteJobModal from '../components/crm/CompleteJobModal';
 import ReminderModal from '../components/crm/ReminderModal';
@@ -84,7 +84,12 @@ const JobCards: React.FC = () => {
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showSendToPartnerModal, setShowSendToPartnerModal] = useState(false);
+  const [partnerAppAction, setPartnerAppAction] = useState<{
+    job: JobCard;
+    mode: 'send' | 'refloat';
+  } | null>(null);
+  const [partnerAppError, setPartnerAppError] = useState<string | null>(null);
+  const [partnerAppLoading, setPartnerAppLoading] = useState(false);
   const [doneId, setDoneId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [removeTechId, setRemoveTechId] = useState<number | null>(null);
@@ -454,6 +459,39 @@ const JobCards: React.FC = () => {
   const handleOpenAssign = (job: JobCard) => {
     setSelectedJobCard(job);
     setShowAssignModal(true);
+  };
+
+  const isInPartnerAppQueue = (job: JobCard) =>
+    Boolean(job.sent_to_app_at) &&
+    job.status === 'Pending' &&
+    (!job.partner || job.partner_status === 'pending');
+
+  const openPartnerAppConfirm = (job: JobCard, mode: 'send' | 'refloat') => {
+    setPartnerAppError(null);
+    setPartnerAppAction({ job, mode });
+  };
+
+  const handleConfirmPartnerApp = async () => {
+    if (!partnerAppAction) return;
+    setPartnerAppLoading(true);
+    setPartnerAppError(null);
+    try {
+      const { message } = await enhancedApiService.sendJobToPartnerApp(partnerAppAction.job.id);
+      setPartnerAppAction(null);
+      alert(message);
+      loadJobCards(pagination.current, filters);
+      refreshCounts();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Could not send booking to partner app';
+      setPartnerAppError(msg);
+    } finally {
+      setPartnerAppLoading(false);
+    }
   };
 
   const isScheduledServiceVisit = (job: JobCard) =>
@@ -1171,7 +1209,7 @@ const JobCards: React.FC = () => {
                         }`}>
                           {job.status}
                         </span>
-                        {job.sent_to_app && job.status === 'Pending' && (
+                        {isInPartnerAppQueue(job) && (
                           <span className="text-[9px] font-bold text-[#2d8a2f] bg-[#f0faf0] px-1.5 py-0.5 rounded border border-[#c8e6c9]">
                             In partner app
                           </span>
@@ -1270,17 +1308,26 @@ const JobCards: React.FC = () => {
 
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
-                                {activeTab === 'pending' && !job.sent_to_app_at && !job.sent_to_app && (
-                                  <button
-                                    onClick={() => {
-                                      setSelectedJobCard(job);
-                                      setShowSendToPartnerModal(true);
-                                    }}
-                                    className="p-2 bg-[#2d8a2f]/10 hover:bg-[#2d8a2f] text-[#2d8a2f] hover:text-white rounded shadow-xs border border-[#2d8a2f]/30 transition-all"
-                                    title="Send to Partner App"
-                                  >
-                                    <Smartphone className="h-3.5 w-3.5" />
-                                  </button>
+                                {activeTab === 'pending' && job.status === 'Pending' && (
+                                  isInPartnerAppQueue(job) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openPartnerAppConfirm(job, 'refloat')}
+                                      className="p-2 bg-[#1e5a9e]/10 hover:bg-[#1e5a9e] text-[#1e5a9e] hover:text-white rounded shadow-xs border border-[#1e5a9e]/30 transition-all"
+                                      title="Refloat to Partner App (resend to all approved technicians)"
+                                    >
+                                      <RotateCw className="h-3.5 w-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => openPartnerAppConfirm(job, 'send')}
+                                      className="p-2 bg-[#2d8a2f]/10 hover:bg-[#2d8a2f] text-[#2d8a2f] hover:text-white rounded shadow-xs border border-[#2d8a2f]/30 transition-all"
+                                      title="Send to Partner App (all approved technicians)"
+                                    >
+                                      <Smartphone className="h-3.5 w-3.5" />
+                                    </button>
+                                  )
                                 )}
                                 <button 
                                   onClick={() => {
@@ -1487,15 +1534,34 @@ const JobCards: React.FC = () => {
            loadJobCards(pagination.current, filters);
         }}
       />
-      <SendToPartnerModal
-        isOpen={showSendToPartnerModal}
-        onClose={() => setShowSendToPartnerModal(false)}
-        jobCard={selectedJobCard}
-        onSuccess={() => {
-          loadJobCards(pagination.current, filters);
-          refreshCounts();
+      <ConfirmationModal
+        isOpen={!!partnerAppAction}
+        onClose={() => {
+          if (!partnerAppLoading) {
+            setPartnerAppAction(null);
+            setPartnerAppError(null);
+          }
         }}
-      />
+        onConfirm={handleConfirmPartnerApp}
+        title={
+          partnerAppAction?.mode === 'refloat'
+            ? 'Refloat to Partner App?'
+            : 'Send to Partner App?'
+        }
+        message={
+          partnerAppAction?.mode === 'refloat'
+            ? `Resend booking #${partnerAppAction.job.id} (${partnerAppAction.job.client_name}) to the partner app? All approved and verified technicians will get the alert again.`
+            : `Send booking #${partnerAppAction?.job.id} (${partnerAppAction?.job.client_name}) to the partner app? All approved and verified technicians in the system will be notified.`
+        }
+        confirmText={partnerAppAction?.mode === 'refloat' ? 'Yes, Refloat' : 'Yes, Send'}
+        cancelText="No, Cancel"
+        type="info"
+        isLoading={partnerAppLoading}
+      >
+        {partnerAppError && (
+          <p className="mt-3 text-sm font-medium text-red-600">{partnerAppError}</p>
+        )}
+      </ConfirmationModal>
       <ConfirmationModal
         isOpen={!!removeTechId}
         onClose={() => {
