@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { FullScreenLoading } from '../ui';
@@ -15,29 +15,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  // Debug logging
-  useEffect(() => {
-    console.log('ProtectedRoute - Auth State:', {
-      isAuthenticated,
-      isLoading,
-      hasUser: !!user,
-      hasToken: !!localStorage.getItem('access_token'),
-      location: location.pathname
-    });
-  }, [isAuthenticated, isLoading, user, location.pathname]);
-
   if (isLoading) {
     return <FullScreenLoading text="Authenticating..." />;
   }
 
-  // Check both authentication state and token presence
   const hasValidAuth = isAuthenticated && !!localStorage.getItem('access_token');
   
   if (!hasValidAuth) {
-    console.log('ProtectedRoute - Redirecting to login, auth state:', {
-      isAuthenticated,
-      hasToken: !!localStorage.getItem('access_token')
-    });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

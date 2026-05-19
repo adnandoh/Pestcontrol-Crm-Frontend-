@@ -1,9 +1,13 @@
-import { useState, useEffect, useContext, createContext, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useContext, createContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
 import {
+  performSilentRefresh,
+  refreshAccessTokenFromStorage,
   registerAuthSessionHandlers,
+  refreshSessionIfNeeded,
   scheduleProactiveAccessRefresh,
+  shouldRefreshAccessToken,
   SESSION_EXPIRED_MESSAGE,
 } from '../services/authSession';
 import type { AuthUser, LoginCredentials } from '../types';
@@ -31,8 +35,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       const response = await enhancedApiService.login(credentials);
       setUser(response.user);
-      
-      // Store user in localStorage for persistence
       localStorage.setItem('user_info', JSON.stringify(response.user));
     } catch (error) {
       console.error('Login failed:', error);
@@ -53,9 +55,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshToken = useCallback(async (): Promise<void> => {
     try {
-      const response = await enhancedApiService.refreshToken();
-      setUser(response.user);
-      localStorage.setItem('user_info', JSON.stringify(response.user));
+      await refreshAccessTokenFromStorage();
+      const userInfoStr = localStorage.getItem('user_info');
+      if (userInfoStr) {
+        setUser(JSON.parse(userInfoStr));
+      }
     } catch (error) {
       console.error('Token refresh failed:', error);
       logout(SESSION_EXPIRED_MESSAGE);
@@ -66,50 +70,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkAuthStatus = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       const token = localStorage.getItem('access_token');
+      const refresh = localStorage.getItem('refresh_token');
       const userInfoStr = localStorage.getItem('user_info');
-      
-      if (!token) {
-        setIsLoading(false);
-        setIsInitialized(true);
+
+      if (!token || !refresh) {
+        if (token || refresh) {
+          enhancedApiService.logout();
+        }
+        setUser(null);
         return;
       }
 
-      // If we have user info in localStorage, use it immediately
-      if (userInfoStr) {
-        try {
-          const storedUser = JSON.parse(userInfoStr);
-          setUser(storedUser);
-          scheduleProactiveAccessRefresh();
-        } catch (e) {
-          console.warn('Failed to parse stored user info:', e);
+      if (!userInfoStr) {
+        logout(SESSION_EXPIRED_MESSAGE);
+        return;
+      }
+
+      let storedUser: AuthUser;
+      try {
+        storedUser = JSON.parse(userInfoStr);
+      } catch {
+        logout(SESSION_EXPIRED_MESSAGE);
+        return;
+      }
+
+      if (shouldRefreshAccessToken()) {
+        const ok = await performSilentRefresh();
+        if (!ok) {
           logout(SESSION_EXPIRED_MESSAGE);
+          return;
         }
       } else {
-        // No user info available, logout
-        logout();
+        scheduleProactiveAccessRefresh();
       }
+
+      setUser(storedUser);
     } catch (error) {
       console.warn('Auth check failed:', error);
-      logout();
+      logout(SESSION_EXPIRED_MESSAGE);
+      return;
     } finally {
       setIsLoading(false);
       setIsInitialized(true);
     }
   }, [logout]);
 
-  // Listen for storage changes (logout in other tabs)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'access_token' && !e.newValue) {
-        // Token was removed in another tab
         setUser(null);
       } else if (e.key === 'user_info' && e.newValue) {
-        // User info was updated in another tab
         try {
-          const updatedUser = JSON.parse(e.newValue);
-          setUser(updatedUser);
+          setUser(JSON.parse(e.newValue));
         } catch (error) {
           console.warn('Failed to parse updated user info:', error);
         }
@@ -120,21 +134,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Check auth status on mount
   useEffect(() => {
     if (!isInitialized) {
       checkAuthStatus();
     }
   }, [checkAuthStatus, isInitialized]);
 
+  useLayoutEffect(() => {
+    registerAuthSessionHandlers({ logout: (message) => logout(message) });
+  }, [logout]);
+
   useEffect(() => {
-    registerAuthSessionHandlers({
-      refresh: async () => {
-        await refreshToken();
-      },
-      logout: (message) => logout(message),
-    });
-  }, [logout, refreshToken]);
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshSessionIfNeeded().then((ok) => {
+        if (!ok && localStorage.getItem('refresh_token') && shouldRefreshAccessToken()) {
+          logout(SESSION_EXPIRED_MESSAGE);
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [logout]);
 
   const value = {
     user,

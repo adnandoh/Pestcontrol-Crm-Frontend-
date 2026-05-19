@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useEffect } from 'react';
 import { enhancedApiService } from './services/api.enhanced';
 import { Layout } from './components/layout';
+import { FullScreenLoading } from './components/ui';
 import BlogCMSLayout from './components/layout/BlogCMSLayout';
 import { ProtectedRoute, SuperAdminRoute } from './components/auth';
 import StaffFormPage from './pages/StaffFormPage';
@@ -81,7 +82,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   if (isLoading) {
-    return null;
+    return <FullScreenLoading text="Loading session…" />;
   }
 
   return (

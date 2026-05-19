@@ -204,14 +204,80 @@ input[type="number"] {
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 
-/* Google Places autocomplete dropdown (India address search) */
-.pac-container {
-  z-index: 10050 !important;
+/* Google Places custom address dropdown (full text, India) */
+.google-places-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: 'Roboto', system-ui, sans-serif;
 }
-.pac-item {
-  padding: 8px 12px;
+
+.google-places-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.google-places-item:hover,
+.google-places-item:focus {
+  background: #eff6ff;
+  outline: none;
+}
+
+.google-places-item-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: #6b7280;
+}
+
+.google-places-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.google-places-item-main {
   font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.google-places-item-secondary {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.google-places-powered {
+  padding: 6px 12px 8px;
+  font-size: 10px;
+  color: #9ca3af;
+  text-align: right;
+  border-top: 1px solid #f3f4f6;
 }

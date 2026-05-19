@@ -1,5 +1,10 @@
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { apiConfig } from '../config/api.config';
+import {
+  forceSessionLogout,
+  refreshAccessTokenFromStorage,
+  SESSION_EXPIRED_MESSAGE,
+} from './authSession';
 import type {
   Blog,
   BlogListItem,
@@ -25,6 +30,34 @@ api.interceptors.request.use((config) => {
   config.headers = { ...config.headers, ...getAuthHeaders() } as any;
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+    const url = originalRequest?.url ?? '';
+    const isAuthEndpoint = url.includes('/token/');
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      originalRequest._retry = true;
+      try {
+        const newAccess = await refreshAccessTokenFromStorage();
+        if (originalRequest.headers) {
+          (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${newAccess}`;
+        }
+        return api(originalRequest);
+      } catch {
+        forceSessionLogout(SESSION_EXPIRED_MESSAGE);
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 

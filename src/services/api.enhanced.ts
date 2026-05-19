@@ -4,6 +4,7 @@ import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
 import { apiCache } from './apiCache';
 import {
   forceSessionLogout,
+  refreshAccessTokenFromStorage,
   scheduleProactiveAccessRefresh,
   SESSION_EXPIRED_MESSAGE,
   stopAuthSessionScheduler,
@@ -114,11 +115,6 @@ const logError = (error: AxiosError) => {
 class EnhancedApiService {
   private api: AxiosInstance;
   private requestQueue: Map<string, Promise<any>> = new Map();
-  private isRefreshing = false;
-  private refreshWaitQueue: Array<{
-    resolve: (token: string) => void;
-    reject: (err: unknown) => void;
-  }> = [];
 
   constructor() {
     this.api = axios.create({
@@ -179,7 +175,7 @@ class EnhancedApiService {
           originalRequest._retry = true;
 
           try {
-            const newAccess = await this.refreshAccessToken();
+            const newAccess = await refreshAccessTokenFromStorage();
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${newAccess}`;
             }
@@ -258,46 +254,6 @@ class EnhancedApiService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  private async refreshAccessToken(): Promise<string> {
-    if (this.isRefreshing) {
-      return new Promise((resolve, reject) => {
-        this.refreshWaitQueue.push({ resolve, reject });
-      });
-    }
-
-    this.isRefreshing = true;
-    try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        throw new Error('No refresh token');
-      }
-
-      const response = await axios.post<{ access: string; refresh?: string }>(
-        `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
-        { refresh: refreshToken },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-
-      const newAccess = response.data.access;
-      localStorage.setItem('access_token', newAccess);
-      if (response.data.refresh) {
-        localStorage.setItem('refresh_token', response.data.refresh);
-      }
-
-      scheduleProactiveAccessRefresh();
-
-      this.refreshWaitQueue.forEach((q) => q.resolve(newAccess));
-      this.refreshWaitQueue = [];
-      return newAccess;
-    } catch (err) {
-      this.refreshWaitQueue.forEach((q) => q.reject(err));
-      this.refreshWaitQueue = [];
-      throw err;
-    } finally {
-      this.isRefreshing = false;
-    }
-  }
-
   // Token management
   private clearTokens() {
     stopAuthSessionScheduler();
@@ -368,20 +324,7 @@ class EnhancedApiService {
   }
 
   async refreshToken(): Promise<{ user: AuthUser }> {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) throw new Error('No refresh token available');
-
-    const response = await axios.post<{ access: string; refresh?: string }>(
-      `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
-      { refresh: refreshToken },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-
-    localStorage.setItem('access_token', response.data.access);
-    if (response.data.refresh) {
-      localStorage.setItem('refresh_token', response.data.refresh);
-    }
-    scheduleProactiveAccessRefresh();
+    await refreshAccessTokenFromStorage();
 
     // Get user information from localStorage
     const userInfoStr = localStorage.getItem('user_info');

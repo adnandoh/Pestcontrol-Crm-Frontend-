@@ -64,7 +64,7 @@ export async function loadGoogleMapsPlaces(): Promise<void> {
     throw new Error('Google Maps can only load in the browser');
   }
 
-  if (window.google?.maps?.places?.Autocomplete) {
+  if (window.google?.maps?.places?.AutocompleteService) {
     return;
   }
 
@@ -78,7 +78,7 @@ export async function loadGoogleMapsPlaces(): Promise<void> {
     loadPromise = (async () => {
       await injectMapsScript();
       await window.google!.maps!.importLibrary('places');
-      if (!window.google?.maps?.places?.Autocomplete) {
+      if (!window.google?.maps?.places?.AutocompleteService) {
         throw new Error(
           'Google Places library failed to load. Enable Places API and Maps JavaScript API in Google Cloud.',
         );

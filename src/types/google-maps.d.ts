@@ -6,16 +6,43 @@ declare global {
   }
 
   namespace google.maps.places {
-    interface AutocompleteOptions {
+    type PlacesServiceStatus = string;
+
+    interface AutocompletePredictionRequest {
+      input: string;
       componentRestrictions?: { country: string | string[] };
-      fields?: string[];
-      types?: string[];
     }
 
-    class Autocomplete {
-      constructor(input: HTMLInputElement, opts?: AutocompleteOptions);
-      addListener(event: string, handler: () => void): void;
-      getPlace(): PlaceResult;
+    interface AutocompletePrediction {
+      description: string;
+      place_id: string;
+      structured_formatting?: {
+        main_text: string;
+        secondary_text?: string;
+      };
+    }
+
+    interface PlaceDetailsRequest {
+      placeId: string;
+      fields?: string[];
+    }
+
+    class AutocompleteService {
+      getPlacePredictions(
+        request: AutocompletePredictionRequest,
+        callback: (
+          results: AutocompletePrediction[] | null,
+          status: PlacesServiceStatus,
+        ) => void,
+      ): void;
+    }
+
+    class PlacesService {
+      constructor(attrContainer: HTMLDivElement);
+      getDetails(
+        request: PlaceDetailsRequest,
+        callback: (result: PlaceResult | null, status: PlacesServiceStatus) => void,
+      ): void;
     }
 
     interface PlaceResult {
@@ -34,15 +61,11 @@ declare global {
     }
   }
 
-  namespace google.maps {
-    // eslint-disable-next-line @typescript-eslint/no-namespace
-    namespace places {}
-  }
-
   interface Window {
     google?: {
       maps?: {
         places?: typeof google.maps.places;
+        importLibrary?: (name: string) => Promise<unknown>;
       };
     };
   }

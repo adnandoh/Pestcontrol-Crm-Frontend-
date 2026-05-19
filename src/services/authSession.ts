@@ -1,15 +1,21 @@
 /**
- * Proactive CRM JWT refresh — keeps session alive until refresh token expires (60 days).
+ * CRM JWT session: single refresh mutex (required when backend rotates refresh tokens),
+ * proactive access refresh, and coordinated logout.
  */
+import axios from 'axios';
+import { apiConfig, API_ENDPOINTS } from '../config/api.config';
+import { apiCache } from './apiCache';
 
-const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresh 5 minutes before access expiry
+const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresh 5 min before access expiry
 const MIN_SCHEDULE_MS = 60 * 1000;
+const FALLBACK_REFRESH_MS = 23 * 60 * 60 * 1000; // if JWT exp cannot be decoded (24h tokens)
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please login again.';
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-let refreshInFlight: Promise<boolean> | null = null;
+/** One in-flight refresh for the whole app (axios 401, proactive timer, tab focus, mount). */
+let refreshMutex: Promise<string> | null = null;
 
-function decodeJwtExp(token: string): number | null {
+export function decodeJwtExp(token: string): number | null {
   try {
     const parts = token.split('.');
     if (parts.length < 2) return null;
@@ -24,37 +30,83 @@ function decodeJwtExp(token: string): number | null {
   return null;
 }
 
-export type RefreshFn = () => Promise<void>;
+export function isAccessTokenExpired(bufferMs = 0): boolean {
+  const access = localStorage.getItem('access_token');
+  if (!access) return true;
+  const expMs = decodeJwtExp(access);
+  if (!expMs) return false;
+  return Date.now() >= expMs - bufferMs;
+}
+
+/** True when access token is missing, expired, or within REFRESH_BUFFER_MS of expiry. */
+export function shouldRefreshAccessToken(): boolean {
+  return isAccessTokenExpired(REFRESH_BUFFER_MS);
+}
+
+export function clearStoredAuthSession(): void {
+  stopAuthSessionScheduler();
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_info');
+  apiCache.clear();
+}
+
 export type LogoutFn = (message?: string) => void;
 
-let refreshFn: RefreshFn | null = null;
 let logoutFn: LogoutFn | null = null;
 
-export function registerAuthSessionHandlers(handlers: {
-  refresh: RefreshFn;
-  logout: LogoutFn;
-}) {
-  refreshFn = handlers.refresh;
+export function registerAuthSessionHandlers(handlers: { logout: LogoutFn }) {
   logoutFn = handlers.logout;
 }
 
-export async function performSilentRefresh(): Promise<boolean> {
-  if (!refreshFn) return false;
-  if (refreshInFlight) return refreshInFlight;
+/**
+ * Refresh access (and rotated refresh) token — must be the only refresh path in the CRM.
+ */
+export async function refreshAccessTokenFromStorage(): Promise<string> {
+  if (refreshMutex) return refreshMutex;
 
-  refreshInFlight = (async () => {
-    try {
-      await refreshFn!();
-      scheduleProactiveAccessRefresh();
-      return true;
-    } catch {
-      return false;
-    } finally {
-      refreshInFlight = null;
+  refreshMutex = (async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('No refresh token');
     }
-  })();
 
-  return refreshInFlight;
+    const response = await axios.post<{ access: string; refresh?: string }>(
+      `${apiConfig.baseUrl}${API_ENDPOINTS.AUTH.REFRESH}`,
+      { refresh: refreshToken },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+
+    const newAccess = response.data.access;
+    localStorage.setItem('access_token', newAccess);
+    if (response.data.refresh) {
+      localStorage.setItem('refresh_token', response.data.refresh);
+    }
+
+    scheduleProactiveAccessRefresh();
+    return newAccess;
+  })().finally(() => {
+    refreshMutex = null;
+  });
+
+  return refreshMutex;
+}
+
+export async function performSilentRefresh(): Promise<boolean> {
+  try {
+    await refreshAccessTokenFromStorage();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Refresh when tab returns if access token is expired or about to expire. */
+export function refreshSessionIfNeeded(): Promise<boolean> {
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) return Promise.resolve(false);
+  if (!shouldRefreshAccessToken()) return Promise.resolve(true);
+  return performSilentRefresh();
 }
 
 export function scheduleProactiveAccessRefresh(): void {
@@ -68,9 +120,9 @@ export function scheduleProactiveAccessRefresh(): void {
   if (!access || !refresh) return;
 
   const expMs = decodeJwtExp(access);
-  if (!expMs) return;
-
-  const delay = Math.max(expMs - Date.now() - REFRESH_BUFFER_MS, MIN_SCHEDULE_MS);
+  const delay = expMs
+    ? Math.max(expMs - Date.now() - REFRESH_BUFFER_MS, MIN_SCHEDULE_MS)
+    : FALLBACK_REFRESH_MS;
 
   refreshTimer = setTimeout(async () => {
     const ok = await performSilentRefresh();
@@ -88,9 +140,13 @@ export function stopAuthSessionScheduler(): void {
 }
 
 export function forceSessionLogout(message: string = SESSION_EXPIRED_MESSAGE): void {
-  stopAuthSessionScheduler();
   sessionStorage.setItem('auth_logout_message', message);
-  logoutFn?.(message);
+  clearStoredAuthSession();
+  if (logoutFn) {
+    logoutFn(message);
+  } else {
+    window.location.href = '/login';
+  }
 }
 
 export function consumeLogoutMessage(): string | null {

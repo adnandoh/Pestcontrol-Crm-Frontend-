@@ -27,11 +27,13 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
   const [complaintStats, setComplaintStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string>(dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD"));
   const [dateTo, setDateTo] = useState<string>(dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD"));
 
   const fetchStats = async () => {
     try {
+      setLoadError(null);
       const params: any = {};
       if (dateFrom) params.from = dateFrom;
       if (dateTo) params.to = dateTo;
@@ -45,6 +47,7 @@ const Dashboard: React.FC = () => {
       setComplaintStats(complaints);
     } catch (error: any) {
       console.error('Dashboard error:', error);
+      setLoadError(error?.message || 'Could not load dashboard. Try refresh or login again.');
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +70,23 @@ const Dashboard: React.FC = () => {
 
   if (isLoading && !stats) {
     return <PageLoading text="Loading dashboard..." />;
+  }
+
+  if (!stats && loadError) {
+    return (
+      <div className="p-6 max-w-lg mx-auto text-center space-y-4">
+        <AlertCircle className="h-10 w-10 text-amber-600 mx-auto" />
+        <p className="text-sm font-medium text-gray-800">{loadError}</p>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
   }
 
   // Helper for Donut Chart
