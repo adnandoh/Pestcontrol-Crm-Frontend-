@@ -1,6 +1,10 @@
 export {};
 
 declare global {
+  namespace google.maps {
+    function importLibrary(name: 'places' | string): Promise<unknown>;
+  }
+
   namespace google.maps.places {
     interface AutocompleteOptions {
       componentRestrictions?: { country: string | string[] };

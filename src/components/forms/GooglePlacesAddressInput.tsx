@@ -55,12 +55,18 @@ const GooglePlacesAddressInput: React.FC<GooglePlacesAddressInputProps> = ({
 
     loadGoogleMapsPlaces()
       .then(() => {
-        if (cancelled || !inputRef.current || !window.google?.maps?.places) return;
+        if (cancelled || !inputRef.current) return;
+
+        if (!window.google?.maps?.places?.Autocomplete) {
+          setLoadError(
+            'Google Places did not load. Check API key, billing, and enable Places API in Google Cloud.',
+          );
+          return;
+        }
 
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           componentRestrictions: { country: 'in' },
           fields: ['formatted_address', 'address_components', 'geometry', 'name'],
-          types: ['geocode', 'establishment'],
         });
 
         autocomplete.addListener('place_changed', () => {
@@ -77,7 +83,9 @@ const GooglePlacesAddressInput: React.FC<GooglePlacesAddressInputProps> = ({
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : 'Could not load Google Maps');
+          const msg = err instanceof Error ? err.message : 'Could not load Google Maps';
+          setLoadError(msg);
+          setReady(false);
         }
       });
 
