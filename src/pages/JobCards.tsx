@@ -1270,7 +1270,7 @@ const JobCards: React.FC = () => {
 
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
-                                {activeTab === 'pending' && !job.sent_to_app && (
+                                {activeTab === 'pending' && !job.sent_to_app_at && !job.sent_to_app && (
                                   <button
                                     onClick={() => {
                                       setSelectedJobCard(job);

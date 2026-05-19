@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Smartphone, Loader2, AlertCircle } from 'lucide-react';
-import { enhancedApiService } from '../../services/api.enhanced';
+import { enhancedApiService, ApiError } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import { Button } from '../ui';
 
@@ -29,17 +29,39 @@ const SendToPartnerModal: React.FC<SendToPartnerModalProps> = ({
     enhancedApiService
       .getTechnicians({ is_active: true, page_size: 200 })
       .then((res) => {
-        const withApp = res.results.filter((t) => t.has_partner_app);
+        const withApp = res.results.filter(
+          (t) => t.has_partner_app && t.partner_app_approved,
+        );
         setTechnicians(withApp);
         if (withApp.length === 0) {
           setError(
-            'No technicians have a Partner App account. Link a partner account to a technician first.',
+            'No technicians have an approved Partner App account. Approve them on the Technicians page first.',
           );
         }
       })
       .catch(() => setError('Failed to load technicians'))
       .finally(() => setLoading(false));
   }, [isOpen]);
+
+  const handleSendAll = async () => {
+    if (!jobCard) return;
+    try {
+      setSending(-1);
+      setError(null);
+      await enhancedApiService.sendJobToPartnerApp(jobCard.id);
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        const e = err as { message?: string };
+        setError(e.message || 'Could not send booking to app');
+      }
+    } finally {
+      setSending(null);
+    }
+  };
 
   const handleSend = async (techId: number) => {
     if (!jobCard) return;
@@ -50,8 +72,12 @@ const SendToPartnerModal: React.FC<SendToPartnerModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message || 'Could not send booking to app');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        const e = err as { message?: string };
+        setError(e.message || 'Could not send booking to app');
+      }
     } finally {
       setSending(null);
     }
@@ -82,9 +108,23 @@ const SendToPartnerModal: React.FC<SendToPartnerModalProps> = ({
 
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           <p className="text-sm text-gray-600 mb-4">
-            The booking stays in <strong>Pending</strong> until the technician accepts it in the
-            app. Then it moves to <strong>On Process</strong> automatically.
+            The booking stays in <strong>Pending</strong> until a technician accepts it in the
+            partner app. You can notify everyone or pick one technician to target the push.
           </p>
+
+          {!loading && technicians.length > 0 && (
+            <Button
+              className="w-full mb-4 bg-[#1e5a9e] hover:bg-[#174a82] text-white"
+              disabled={sending !== null}
+              onClick={handleSendAll}
+            >
+              {sending === -1 ? (
+                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+              ) : (
+                'Send to all approved partners'
+              )}
+            </Button>
+          )}
 
           {error && (
             <div className="mb-4 flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">

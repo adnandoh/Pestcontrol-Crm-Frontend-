@@ -980,12 +980,14 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async sendJobToPartnerApp(id: number, technicianId: number): Promise<JobCard> {
-    const result = await this.retryRequest(() =>
-      this.api.post<{ success: boolean; message: string; job: JobCard }>(
-        `${API_ENDPOINTS.JOBCARDS}${id}/send-to-app/`,
-        { technician_id: technicianId },
-      ),
+  async sendJobToPartnerApp(id: number, technicianId?: number): Promise<JobCard> {
+    const body =
+      technicianId != null && technicianId > 0
+        ? { technician_id: technicianId }
+        : {};
+    const result = await this.api.post<{ success: boolean; message: string; job: JobCard }>(
+      `${API_ENDPOINTS.JOBCARDS}${id}/send-to-app/`,
+      body,
     );
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
