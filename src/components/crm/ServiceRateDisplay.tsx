@@ -31,6 +31,9 @@ const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
         >
           {planLabel}
         </span>
+        {info.area_label && (
+          <span className="text-[10px] font-medium text-slate-500">{info.area_label}</span>
+        )}
         {info.items.length === 1 ? (
           <span className="text-sm font-bold text-emerald-700 tabular-nums">
             ₹{info.items[0].rate.toLocaleString('en-IN')}

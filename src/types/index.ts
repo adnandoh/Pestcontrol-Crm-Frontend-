@@ -72,6 +72,8 @@ export interface ServiceRateInfo {
   display_total: number | null;
   rate_label: string | null;
   has_service_rate: boolean;
+  area_label?: string | null;
+  rate_note?: string | null;
 }
 
 export interface Inquiry {

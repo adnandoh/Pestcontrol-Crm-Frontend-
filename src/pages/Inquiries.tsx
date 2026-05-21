@@ -6,8 +6,12 @@ import {
   Bell,
   MessageCircle,
   CheckCheck,
-  MapPin,
 } from 'lucide-react';
+import {
+  LocationCell,
+  buildLocationTooltip,
+  propertyAddressFromMessage,
+} from '../components/crm/LocationCell';
 import { useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { PageLoading, Pagination, Badge } from '../components/ui';
@@ -368,25 +372,20 @@ const Inquiries: React.FC = () => {
                     </div>
                   </td>
                   <td className={crmTdClass}>
-                    <div className="flex gap-2 min-w-0 max-w-[220px]">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        {inquiry.city?.trim() || inquiry.state?.trim() ? (
-                          <>
-                            <p className="text-xs text-slate-700 line-clamp-2 leading-snug">
-                              {inquiry.city?.trim() || inquiry.state?.trim()}
-                            </p>
-                            {inquiry.city?.trim() && inquiry.state?.trim() && (
-                              <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                                {inquiry.state.trim()}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="text-xs text-slate-400">—</p>
-                        )}
-                      </div>
-                    </div>
+                    <LocationCell
+                      primary={inquiry.city?.trim() || inquiry.state?.trim() || ''}
+                      secondary={
+                        inquiry.city?.trim() && inquiry.state?.trim()
+                          ? inquiry.state.trim()
+                          : undefined
+                      }
+                      tooltip={buildLocationTooltip(
+                        propertyAddressFromMessage(inquiry.message),
+                        inquiry.city,
+                        inquiry.state,
+                        inquiry.message,
+                      )}
+                    />
                   </td>
                   <td className={crmTdClass}>
                     <p className="text-xs font-medium text-slate-700">{inquiry.premise_type || 'Residential'}</p>

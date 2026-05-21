@@ -47,11 +47,8 @@ export function getSharedPricingTypes(selectedServices: string[]): string[] {
   return shared ?? [];
 }
 
-export function getAreaOptions(
-  selectedServices: string[],
-  pricingType: string,
-): string[] {
-  if (!selectedServices.length || !pricingType) return [];
+export function getAreaOptions(selectedServices: string[]): string[] {
+  if (!selectedServices.length) return [];
 
   const hasRodent = selectedServices.includes('Rodent');
   const hasCommercial = selectedServices.includes('Hotel / Commercial');
@@ -73,6 +70,14 @@ export function getAreaOptions(
   }
 
   return Array.from(options);
+}
+
+/** Prefer one-time when multiple plan types are available (e.g. Cockroach). */
+export function getDefaultPricingType(selectedServices: string[]): string {
+  const types = getSharedPricingTypes(selectedServices);
+  if (types.length === 0) return '';
+  if (types.includes('One Time Service')) return 'One Time Service';
+  return types[0];
 }
 
 export function computeMultiServicePricing(

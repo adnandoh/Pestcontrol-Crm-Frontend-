@@ -3,7 +3,6 @@ import {
   Plus, 
   Search, 
   Calendar, 
-  MapPin, 
   Zap,
   MessageCircle,
   Bell,
@@ -20,6 +19,7 @@ import type { CRMInquiry, CRMInquiryStatus } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import ReminderModal from '../components/crm/ReminderModal';
 import RemarkListCell from '../components/crm/RemarkListCell';
+import { LocationCell, buildLocationTooltip } from '../components/crm/LocationCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
@@ -356,17 +356,20 @@ const CRMInquiries: React.FC = () => {
                     </div>
                   </td>
                   <td className={crmTdClass}>
-                    <div className="flex gap-2 min-w-0 max-w-[200px]">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-slate-700 line-clamp-2 leading-snug">
-                          {inq.location || '—'}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                          {[inq.master_city_name,inq.master_state_name].filter(Boolean).join(', ') || '—'}
-                        </p>
-                      </div>
-                    </div>
+                    <LocationCell
+                      primary={inq.location?.trim() || ''}
+                      secondary={
+                        [inq.master_city_name, inq.master_state_name].filter(Boolean).join(', ') ||
+                        undefined
+                      }
+                      tooltip={buildLocationTooltip(
+                        inq.location,
+                        inq.master_location_name,
+                        inq.master_city_name,
+                        inq.master_state_name,
+                      )}
+                      className="max-w-[200px]"
+                    />
                   </td>
                   <td className={crmTdClass}>
                     <ServiceRateDisplay

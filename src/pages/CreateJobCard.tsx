@@ -28,6 +28,7 @@ import {
   SERVICE_PACKAGE_OPTIONS,
   computeMultiServicePricing,
   getAreaOptions,
+  getDefaultPricingType,
   getSharedPricingTypes,
   type ServicePriceLine,
 } from '../utils/jobCardPricing';
@@ -94,7 +95,7 @@ const CreateJobCard: React.FC = () => {
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
   const availablePricingTypes = getSharedPricingTypes(selectedPackages);
-  const availableAreas = getAreaOptions(selectedPackages, pricingType);
+  const availableAreas = getAreaOptions(selectedPackages);
 
   // Sync service_type from selected packages
   useEffect(() => {
@@ -103,20 +104,22 @@ const CreateJobCard: React.FC = () => {
     if (label) validateField('service_type', label);
   }, [selectedPackages]);
 
-  // Reset type/area when package mix changes
+  // When services change: default plan type and reset invalid area
   useEffect(() => {
-    if (pricingType && !availablePricingTypes.includes(pricingType)) {
-      setPricingType(availablePricingTypes[0] || '');
-    } else if (!pricingType && availablePricingTypes.length === 1) {
-      setPricingType(availablePricingTypes[0]);
+    if (selectedPackages.length === 0) {
+      setPricingType('');
+      setPricingArea('');
+      return;
     }
-  }, [selectedPackages, availablePricingTypes.join('|')]);
-
-  useEffect(() => {
-    if (pricingArea && availableAreas.length > 0 && !availableAreas.includes(pricingArea)) {
+    const types = getSharedPricingTypes(selectedPackages);
+    if (!pricingType || !types.includes(pricingType)) {
+      setPricingType(getDefaultPricingType(selectedPackages));
+    }
+    const areas = getAreaOptions(selectedPackages);
+    if (pricingArea && areas.length > 0 && !areas.includes(pricingArea)) {
       setPricingArea('');
     }
-  }, [selectedPackages, pricingType, availableAreas.join('|')]);
+  }, [selectedPackages.join('|')]);
 
   useEffect(() => {
     if (pricingType === 'AMC 3 Services') {
@@ -284,9 +287,22 @@ const CreateJobCard: React.FC = () => {
 
 
   const toggleServicePackage = (service: string) => {
-    setSelectedPackages((prev) =>
-      prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service],
-    );
+    setSelectedPackages((prev) => {
+      const next = prev.includes(service)
+        ? prev.filter((s) => s !== service)
+        : [...prev, service];
+      if (next.length === 0) {
+        setPricingType('');
+        setPricingArea('');
+      } else {
+        const types = getSharedPricingTypes(next);
+        const currentTypeValid = pricingType && types.includes(pricingType);
+        if (!currentTypeValid) {
+          setPricingType(getDefaultPricingType(next));
+        }
+      }
+      return next;
+    });
   };
 
   // Check if client exists by mobile number
@@ -551,7 +567,6 @@ const CreateJobCard: React.FC = () => {
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
              <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
                 <div className="flex-1 flex flex-col gap-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                    <div>
                       <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
                       <select
@@ -565,7 +580,7 @@ const CreateJobCard: React.FC = () => {
                             price: val !== 'home' ? '0.00' : prev.price
                           }));
                         }}
-                        className="w-full h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                        className="w-full max-w-xs h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                       >
                         <option value="home">Home (Residential)</option>
                         <option value="hotel">Hotel</option>
@@ -575,44 +590,6 @@ const CreateJobCard: React.FC = () => {
                         <option value="other">Other Commercial</option>
                       </select>
                    </div>
-                   <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
-                      <select
-                        value={pricingArea}
-                        onChange={(e) => {
-                          setPricingArea(e.target.value);
-                          if (['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK'].includes(e.target.value)) {
-                            handleInputChange('bhk_size', e.target.value);
-                          } else {
-                            handleInputChange('bhk_size', '');
-                          }
-                        }}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
-                        required
-                        disabled={selectedPackages.length === 0}
-                      >
-                        <option value="">Select Area</option>
-                        {availableAreas.map((loc) => (
-                          <option key={loc} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                   </div>
-                   <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
-                      <select
-                        value={pricingType}
-                        onChange={(e) => setPricingType(e.target.value)}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
-                        required
-                        disabled={selectedPackages.length === 0}
-                      >
-                        <option value="">Select Type</option>
-                        {availablePricingTypes.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                   </div>
-                  </div>
 
                   <div>
                     <label className="text-[13px] font-bold text-gray-700 mb-2 block">
@@ -649,6 +626,46 @@ const CreateJobCard: React.FC = () => {
                     {errors.service_type && (
                       <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.service_type}</p>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
+                      <select
+                        value={pricingType}
+                        onChange={(e) => setPricingType(e.target.value)}
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
+                        required
+                        disabled={selectedPackages.length === 0}
+                      >
+                        <option value="">Select Type</option>
+                        {availablePricingTypes.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                   </div>
+                   <div>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
+                      <select
+                        value={pricingArea}
+                        onChange={(e) => {
+                          setPricingArea(e.target.value);
+                          if (['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK'].includes(e.target.value)) {
+                            handleInputChange('bhk_size', e.target.value);
+                          } else {
+                            handleInputChange('bhk_size', '');
+                          }
+                        }}
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
+                        required
+                        disabled={selectedPackages.length === 0}
+                      >
+                        <option value="">Select Area</option>
+                        {availableAreas.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
+                      </select>
+                   </div>
                   </div>
                 </div>
 
@@ -934,11 +951,16 @@ const CreateJobCard: React.FC = () => {
                       setSavingInquiry(true);
                       const today = new Date().toISOString().split('T')[0];
                       const now   = new Date().toTimeString().slice(0, 5);
+                      const bhkLabel = formData.bhk_size || pricingArea || '';
+                      const addressBase = formData.client_address || `${formData.city}, ${formData.state}`;
                       await enhancedApiService.createCRMInquiry({
                         name:         formData.client_name,
                         mobile:       formData.client_mobile,
-                        location:     formData.client_address || formData.city + ', ' + formData.state,
-                        pest_type:    formData.service_type   || 'Other',
+                        location:     bhkLabel
+                          ? `${addressBase} · ${bhkLabel}`
+                          : addressBase,
+                        pest_type:    formData.service_type   || selectedPackages.join(', ') || 'Other',
+                        service_frequency: formData.service_category === 'AMC' ? 'amc' : 'one-time',
                         remark:       formData.notes          || formData.client_notes || '',
                         inquiry_date: today,
                         inquiry_time: now,
