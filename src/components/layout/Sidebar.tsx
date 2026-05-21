@@ -125,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       )}
       <aside
         className={cn(
-          'w-[220px] bg-[#f8f9fa] border-r border-gray-200 transition-all duration-300 ease-in-out',
+          'w-[220px] bg-crm-surface-2 border-r border-crm-border transition-all duration-300 ease-in-out',
           'fixed left-0 top-16 z-50 h-[calc(100vh-4rem)]',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
@@ -154,20 +154,20 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                         className={cn(
                           'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
                           active 
-                            ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900 border border-gray-100' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                            ? 'bg-crm-surface shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)] text-crm-text border border-crm-border' 
+                            : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover'
                         )}
                       >
                         <div className={cn(
                           'flex items-center justify-center transition-colors',
-                          active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
+                          active ? 'text-blue-600' : 'text-crm-muted group-hover:text-crm-text'
                         )}>
                           <Icon className="h-[18px] w-[18px]" />
                         </div>
 
                         <span className={cn(
                           'flex-1 text-[14px] font-semibold transition-colors',
-                          active ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
+                          active ? 'text-crm-text' : 'text-crm-text group-hover:text-crm-text'
                         )}>
                           {item.name}
                         </span>

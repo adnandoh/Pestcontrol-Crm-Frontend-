@@ -6,6 +6,34 @@
 
 :root {
   --radius: 0.5rem;
+  /* CRM theme tokens (light default) */
+  --crm-background: #F8FAFC;
+  --crm-surface: #FFFFFF;
+  --crm-surface-2: #F1F5F9;
+  --crm-text: #111827;
+  --crm-text-muted: #6B7280;
+  --crm-border: #E5E7EB;
+  --crm-input: #FFFFFF;
+  --crm-input-border: #D1D5DB;
+  --crm-hover: #F1F5F9;
+  --crm-overlay: rgba(15, 23, 42, 0.4);
+  --crm-chart-grid: #E5E7EB;
+  --crm-chart-text: #6B7280;
+}
+
+html.dark {
+  --crm-background: #0B1220;
+  --crm-surface: #111827;
+  --crm-surface-2: #1F2937;
+  --crm-text: #F9FAFB;
+  --crm-text-muted: #9CA3AF;
+  --crm-border: #374151;
+  --crm-input: #1F2937;
+  --crm-input-border: #4B5563;
+  --crm-hover: #1F2937;
+  --crm-overlay: rgba(0, 0, 0, 0.6);
+  --crm-chart-grid: #374151;
+  --crm-chart-text: #9CA3AF;
 }
 
 * {
@@ -14,8 +42,8 @@
 
 body {
   font-family: 'Roboto', system-ui, sans-serif;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--crm-background);
+  color: var(--crm-text);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -280,4 +308,93 @@ input[type="number"] {
   color: #9ca3af;
   text-align: right;
   border-top: 1px solid #f3f4f6;
+}
+
+/* ─── CRM dark mode: safe overrides for legacy Tailwind utilities ─── */
+html.dark .bg-white {
+  background-color: var(--crm-surface) !important;
+}
+html.dark .bg-gray-50,
+html.dark .bg-slate-50 {
+  background-color: var(--crm-background) !important;
+}
+html.dark .bg-gray-100,
+html.dark .bg-slate-100 {
+  background-color: var(--crm-surface-2) !important;
+}
+html.dark .bg-\[\#f8f9fa\] {
+  background-color: var(--crm-surface-2) !important;
+}
+html.dark .text-gray-900,
+html.dark .text-slate-900 {
+  color: var(--crm-text) !important;
+}
+html.dark .text-gray-800,
+html.dark .text-gray-700,
+html.dark .text-slate-700 {
+  color: var(--crm-text) !important;
+}
+html.dark .text-gray-600,
+html.dark .text-gray-500,
+html.dark .text-slate-500,
+html.dark .text-slate-600 {
+  color: var(--crm-text-muted) !important;
+}
+html.dark .text-gray-400,
+html.dark .text-slate-400 {
+  color: var(--crm-text-muted) !important;
+}
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-slate-100,
+html.dark .border-slate-200 {
+  border-color: var(--crm-border) !important;
+}
+html.dark input:not([type='checkbox']):not([type='radio']),
+html.dark select,
+html.dark textarea {
+  background-color: var(--crm-input) !important;
+  border-color: var(--crm-input-border) !important;
+  color: var(--crm-text) !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--crm-text-muted) !important;
+}
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover,
+html.dark .hover\:bg-slate-50:hover {
+  background-color: var(--crm-hover) !important;
+}
+html.dark tr.hover\:bg-slate-50\/80:hover,
+html.dark tr.hover\:bg-gray-50\/80:hover {
+  background-color: color-mix(in srgb, var(--crm-hover) 80%, transparent) !important;
+}
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--crm-border);
+}
+html.dark .shadow-sm,
+html.dark .shadow-xs {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+}
+html.dark .google-places-dropdown {
+  background: var(--crm-surface);
+  border-color: var(--crm-border);
+}
+html.dark .google-places-item:hover,
+html.dark .google-places-item:focus {
+  background: var(--crm-hover);
+}
+html.dark .google-places-item-main {
+  color: var(--crm-text);
+}
+html.dark .google-places-item-secondary {
+  color: var(--crm-text-muted);
+}
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+html.dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
 }

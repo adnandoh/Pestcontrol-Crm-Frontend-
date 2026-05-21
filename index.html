@@ -8,6 +8,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
     <title>pest-crm</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('pest99-crm-theme');
+          var dark = false;
+          if (t === 'DARK') dark = true;
+          else if (t === 'SYSTEM') {
+            dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          if (dark) document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

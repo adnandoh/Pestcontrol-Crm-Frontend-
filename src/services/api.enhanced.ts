@@ -1686,6 +1686,20 @@ class EnhancedApiService {
     );
     return result.data;
   }
+
+  async getUserTheme(): Promise<{ theme: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.get<{ theme: string }>(API_ENDPOINTS.USERS_THEME),
+    );
+    return result.data;
+  }
+
+  async updateUserTheme(theme: string): Promise<{ theme: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<{ theme: string }>(API_ENDPOINTS.USERS_THEME, { theme }),
+    );
+    return result.data;
+  }
 }
 
 // Export singleton instance

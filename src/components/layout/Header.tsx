@@ -2,6 +2,7 @@ import React from 'react';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '../ui';
 import { GlobalSearch } from './GlobalSearch';
+import ThemeAppearanceMenu from '../../theme/ThemeAppearanceMenu';
 import type { AuthUser } from '../../types';
 
 interface HeaderProps {
@@ -37,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
   }, [showUserMenu]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-white shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-crm-border bg-crm-surface shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left side - Logo and Menu toggle */}
         <div className="flex items-center space-x-4">
@@ -92,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
             variant="ghost"
             size="sm"
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-3 hover:bg-gray-100"
+            className="flex items-center space-x-3 hover:bg-crm-hover"
           >
             <div className="h-9 w-9 rounded-full bg-primary-600 flex items-center justify-center">
               <span className="text-white text-sm font-medium">
@@ -100,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
               </span>
             </div>
             <div className="hidden md:block text-left italic">
-              <div className="text-xs font-black text-gray-800 uppercase tracking-tight leading-none mb-0.5">
+              <div className="text-xs font-black text-crm-text uppercase tracking-tight leading-none mb-0.5">
                 {userName}
               </div>
               <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">
@@ -110,26 +111,28 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
           </Button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white p-1 shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-56 rounded-md border border-crm-border bg-crm-surface p-1 shadow-lg z-50">
               <div className="px-3 py-3">
-                <div className="text-sm font-medium text-gray-900">
+                <div className="text-sm font-medium text-crm-text">
                   {userName}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-crm-muted mt-1">
                   {user?.email}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-crm-muted">
                   {userRole}
                 </div>
               </div>
-              <div className="my-1 h-px bg-gray-200" />
-              <button className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-gray-100 transition-colors">
+              <div className="my-1 h-px bg-crm-border" />
+              <ThemeAppearanceMenu />
+              <div className="my-1 h-px bg-crm-border" />
+              <button className="flex w-full items-center rounded-sm px-3 py-2 text-sm text-crm-text hover:bg-crm-hover transition-colors">
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </button>
               <button
                 onClick={onLogout}
-                className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-gray-100 transition-colors text-red-600"
+                className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-crm-hover transition-colors text-red-500"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout

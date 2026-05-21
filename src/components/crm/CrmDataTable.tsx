@@ -8,7 +8,7 @@ export const CrmTableShell: React.FC<{
 }> = ({ children, className }) => (
   <div
     className={cn(
-      'rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden',
+      'rounded-xl border border-crm-border bg-crm-surface shadow-sm overflow-hidden',
       className,
     )}
   >
@@ -19,6 +19,6 @@ export const CrmTableShell: React.FC<{
 );
 
 export const crmThClass =
-  'px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/90 whitespace-nowrap';
+  'px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-crm-muted bg-crm-surface-2 whitespace-nowrap';
 
-export const crmTdClass = 'px-3 py-3 align-middle text-sm text-slate-700';
+export const crmTdClass = 'px-3 py-3 align-middle text-sm text-crm-text';

@@ -45,7 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
   const sidebarIsOpen = isSidebarOpen;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-crm-bg text-crm-text">
       <Header
         user={user || undefined}
         onLogout={onLogout}

@@ -23,18 +23,18 @@ const BlogCMSLayout: React.FC<BlogCMSLayoutProps> = ({ user, onLogout, children 
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 md:pl-64">
+    <div className="min-h-screen bg-crm-bg text-crm-text">
+      <header className="sticky top-0 z-40 bg-crm-surface border-b border-crm-border md:pl-64">
         <div className="flex items-center justify-between px-4 h-14">
           <button
             type="button"
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg hover:bg-crm-hover"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <p className="text-sm font-semibold text-gray-800 hidden md:block">
+          <p className="text-sm font-semibold text-crm-text hidden md:block">
             Pest Control 99 — Content Management
           </p>
           <span className="text-[10px] font-bold uppercase text-[#2d8a2f] bg-[#f0faf0] px-2 py-1 rounded">

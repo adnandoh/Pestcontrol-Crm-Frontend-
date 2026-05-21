@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       const response = await enhancedApiService.login(credentials);
       setUser(response.user);
+      window.dispatchEvent(new Event('pest99-theme-sync'));
       localStorage.setItem('user_info', JSON.stringify(response.user));
     } catch (error) {
       console.error('Login failed:', error);

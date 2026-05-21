@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,6 +8,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        crm: {
+          bg: 'var(--crm-background)',
+          surface: 'var(--crm-surface)',
+          'surface-2': 'var(--crm-surface-2)',
+          text: 'var(--crm-text)',
+          muted: 'var(--crm-text-muted)',
+          border: 'var(--crm-border)',
+          input: 'var(--crm-input)',
+          hover: 'var(--crm-hover)',
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

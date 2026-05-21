@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ThemeProvider } from './theme'
 
 // Global fix to prevent mouse wheel from changing input[type="number"]
 document.addEventListener('wheel', function(event) {
@@ -12,6 +13,8 @@ document.addEventListener('wheel', function(event) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 )

@@ -60,6 +60,8 @@ export const API_ENDPOINTS = {
   DASHBOARD_STATS: '/v1/dashboard/statistics/',
   DASHBOARD: '/v1/dashboard/',
   
+  USERS_THEME: '/v1/users/theme/',
+
   // Health Check
   HEALTH: '/v1/health/',
   FIREBASE_HEALTH: '/v1/firebase/health/',
