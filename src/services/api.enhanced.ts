@@ -1466,11 +1466,6 @@ class EnhancedApiService {
     return response.data;
   }
 
-  async getComplaintStats(): Promise<any> {
-    const response = await this.api.get('/complaints/stats/');
-    return response.data;
-  }
-
   // Location methods
   async getLocations(): Promise<Record<string, string[]>> {
     const cacheKey = 'location_data';

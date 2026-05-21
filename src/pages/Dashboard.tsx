@@ -18,14 +18,13 @@ import timezone from 'dayjs/plugin/timezone';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-import { Card, CardContent, PageLoading, Badge } from '../components/ui';
+import { Card, CardContent, PageLoading } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { DashboardStatisticsResponse } from '../types';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
-  const [complaintStats, setComplaintStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string>(dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD"));
@@ -38,13 +37,8 @@ const Dashboard: React.FC = () => {
       if (dateFrom) params.from = dateFrom;
       if (dateTo) params.to = dateTo;
       
-      const [dashboardStats, complaints] = await Promise.all([
-        enhancedApiService.getDashboardStatistics(params),
-        enhancedApiService.getComplaintStats()
-      ]);
-      
+      const dashboardStats = await enhancedApiService.getDashboardStatistics(params);
       setStats(dashboardStats);
-      setComplaintStats(complaints);
     } catch (error: any) {
       console.error('Dashboard error:', error);
       setLoadError(error?.message || 'Could not load dashboard. Try refresh or login again.');
@@ -372,54 +366,6 @@ const Dashboard: React.FC = () => {
                     <span className={cn("text-[10px] font-bold uppercase tracking-tight", step.text)}>{step.label}</span>
                  </div>
                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 🚨 8. COMPLAINT TRACKING */}
-        <Card className="border-red-100 shadow-sm rounded-xl bg-red-50/20">
-          <CardContent className="p-4 px-6">
-            <div className="flex items-center justify-between mb-4 border-b border-red-100 pb-2">
-              <div className="flex items-center gap-2">
-                 <AlertCircle className="h-4 w-4 text-red-600" />
-                 <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Complaints Tracking</h2>
-              </div>
-              <Badge variant="destructive" size="sm" className="text-[9px] uppercase font-black">
-                {complaintStats?.unresolved_count || 0} Open
-              </Badge>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Resolution Rate</p>
-                  <p className="text-3xl font-black text-gray-900 leading-none">
-                    {complaintStats?.resolution_rate || 0}%
-                  </p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-black text-red-600 uppercase tracking-tighter">
-                    {complaintStats?.high_priority_count || 0} High Priority
-                  </span>
-                  <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
-                      style={{ width: `${complaintStats?.resolution_rate || 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-red-100">
-                <div className="bg-white/60 p-2 rounded-lg border border-red-50">
-                  <p className="text-[8px] font-black text-gray-400 uppercase leading-tight">Total</p>
-                  <p className="text-sm font-black text-gray-900">{complaintStats?.total_count || 0}</p>
-                </div>
-                <div className="bg-white/60 p-2 rounded-lg border border-red-50">
-                  <p className="text-[8px] font-black text-gray-400 uppercase leading-tight">Resolved</p>
-                  <p className="text-sm font-black text-emerald-600">{complaintStats?.resolved_count || 0}</p>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
