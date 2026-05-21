@@ -124,6 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         />
       )}
       <aside
+        id="crm-app-sidebar"
         className={cn(
           'w-[220px] bg-crm-surface-2 border-r border-crm-border transition-all duration-300 ease-in-out',
           'fixed left-0 top-16 z-50 h-[calc(100vh-4rem)]',

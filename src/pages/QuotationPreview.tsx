@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Printer, Share2, Zap, Pencil } from 'lucide-react';
+import { ArrowLeft, Printer, Share2, Zap, Pencil, X } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -13,6 +13,11 @@ const QuotationPreview: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const previewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.body.classList.add('quotation-preview-mode');
+    return () => document.body.classList.remove('quotation-preview-mode');
+  }, []);
 
   const { data: quotation, isLoading } = useQuery({
     queryKey: ['quotation', id],
@@ -51,19 +56,37 @@ ${COMPANY.website}`;
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading quotation...</div>;
+    return (
+      <div className="quotation-preview-page flex min-h-[60vh] items-center justify-center text-gray-500">
+        Loading quotation...
+      </div>
+    );
   }
   if (!quotation) {
-    return <div className="p-8 text-center text-red-600 font-bold">Quotation not found.</div>;
+    return (
+      <div className="quotation-preview-page flex min-h-[60vh] items-center justify-center text-red-600 font-bold">
+        Quotation not found.
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20 print:bg-white print:pb-0">
-      <div className="quotation-no-print sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="max-w-[900px] mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div className="quotation-preview-page min-h-full bg-slate-100 pb-8 print:bg-white print:pb-0">
+      {/* Toolbar — hidden when printing */}
+      <div className="quotation-no-print sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
+        <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/quotations')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/quotations')} aria-label="Back">
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/quotations')}
+              className="gap-1 text-gray-600"
+              aria-label="Close preview"
+            >
+              <X className="h-4 w-4" />
             </Button>
             <div>
               <h2 className="text-sm font-bold text-gray-900">{quotation.quotation_no}</h2>
@@ -94,15 +117,18 @@ ${COMPANY.website}`;
         </div>
       </div>
 
-      <div className="max-w-[900px] mx-auto mt-6 px-4 print:max-w-none print:px-0 print:mt-0">
+      {/* Document — full width, A4-sized, solid white (no sidebar bleed) */}
+      <div className="quotation-preview-canvas mx-auto w-full max-w-[210mm] px-3 py-6 sm:px-4 print:max-w-none print:px-0 print:py-0">
         <div
           ref={previewRef}
-          className="bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none p-8 print:p-0"
+          className="quotation-print-area rounded-lg bg-white shadow-lg print:rounded-none print:shadow-none"
         >
-          <QuotationDocument quotation={quotation} />
+          <div className="quotation-print-padding p-6 sm:p-8 md:p-10 print:p-0">
+            <QuotationDocument quotation={quotation} />
+          </div>
         </div>
 
-        <div className="quotation-no-print mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="quotation-no-print mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Card className="p-4 text-center">
             <p className="text-[10px] uppercase font-bold text-gray-400">Status</p>
             <p className="text-sm font-black text-gray-800 mt-1">{quotation.status}</p>
@@ -119,8 +145,8 @@ ${COMPANY.website}`;
           </Card>
         </div>
 
-        <p className="quotation-no-print text-center text-[10px] text-gray-400 mt-4">
-          Tip: Use Print / PDF and choose &quot;Save as PDF&quot; to send to customer.
+        <p className="quotation-no-print mt-4 text-center text-[10px] text-gray-400">
+          Use Print / PDF → Save as PDF for a clean full-page quotation (sidebar hidden automatically).
         </p>
       </div>
     </div>

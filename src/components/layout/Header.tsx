@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
   }, [showUserMenu]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-crm-border bg-crm-surface shadow-sm">
+    <header id="crm-app-header" className="fixed top-0 left-0 right-0 z-50 w-full border-b border-crm-border bg-crm-surface shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left side - Logo and Menu toggle */}
         <div className="flex items-center space-x-4">
