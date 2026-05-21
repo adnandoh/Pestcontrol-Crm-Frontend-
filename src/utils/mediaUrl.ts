@@ -24,15 +24,33 @@ function rewriteToApiOrigin(absoluteUrl: string): string {
   return absoluteUrl;
 }
 
+/** Legacy API URLs used /media/job_selfies/... which 404 on Railway — route through media-file proxy. */
+function legacyJobSelfieProxyUrl(absoluteUrl: string): string | null {
+  try {
+    const parsed = new URL(absoluteUrl);
+    const match = parsed.pathname.match(/\/media\/(job_selfies\/.+)$/);
+    if (!match) return null;
+    const origin = apiMediaOrigin();
+    return `${origin}/v1/media-file/?path=${encodeURIComponent(match[1])}`;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const proxy = legacyJobSelfieProxyUrl(trimmed);
+    if (proxy) return proxy;
     return rewriteToApiOrigin(trimmed);
   }
 
   const origin = apiMediaOrigin();
+  if (trimmed.startsWith('job_selfies/')) {
+    return `${origin}/v1/media-file/?path=${encodeURIComponent(trimmed)}`;
+  }
   return `${origin}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
 }

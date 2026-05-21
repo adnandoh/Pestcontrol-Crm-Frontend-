@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Camera, Search, Loader2 } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 import type { PartnerJobSelfie } from '../types';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -87,11 +88,26 @@ const TechnicianSelfies: React.FC = () => {
           {items.map((row) => (
             <Card key={row.id} className="overflow-hidden border-gray-100 shadow-sm">
               <div className="aspect-[4/3] bg-gray-100 relative">
-                {row.selfie_url ? (
+                {resolveMediaUrl(row.selfie_url) ? (
                   <img
-                    src={row.selfie_url}
+                    src={resolveMediaUrl(row.selfie_url)!}
                     alt={`Selfie booking ${row.id}`}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.style.display = 'none';
+                      const parent = img.parentElement;
+                      if (parent && !parent.querySelector('[data-fallback]')) {
+                        const fallback = document.createElement('div');
+                        fallback.dataset.fallback = '1';
+                        fallback.className =
+                          'flex items-center justify-center h-full text-gray-400 text-sm px-4 text-center';
+                        fallback.textContent = 'Image unavailable';
+                        parent.appendChild(fallback);
+                      }
+                    }}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400 text-sm">
