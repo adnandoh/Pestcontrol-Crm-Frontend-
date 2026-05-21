@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -187,8 +188,8 @@ const StaffManagement: React.FC = () => {
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
-                        <Smartphone className="h-3.5 w-3.5 text-gray-400" />
-                        {member.mobile}
+                        <Smartphone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        <CopyablePhone phone={member.mobile} className="text-sm text-gray-700" />
                       </span>
                     </td>
                     <td className="px-5 py-4">

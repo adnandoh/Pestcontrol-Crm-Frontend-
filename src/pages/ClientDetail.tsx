@@ -11,6 +11,7 @@ import {
   FileText,
   Plus
 } from 'lucide-react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
   Card,
@@ -162,10 +163,10 @@ const ClientDetail: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Mobile Number</label>
-                  <div className="flex items-center mt-1">
-                    <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                    <p className="text-gray-900">{client.mobile}</p>
-                    <Button variant="ghost" size="sm" className="ml-2">
+                  <div className="flex items-center mt-1 gap-2">
+                    <Phone className="h-4 w-4 text-gray-400 shrink-0" />
+                    <CopyablePhone phone={client.mobile} className="text-sm text-gray-900" />
+                    <Button variant="ghost" size="sm" className="ml-1">
                       <a href={`tel:${client.mobile}`} className="text-primary-600">
                         Call
                       </a>

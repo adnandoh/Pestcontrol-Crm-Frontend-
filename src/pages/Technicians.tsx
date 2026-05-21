@@ -10,6 +10,7 @@ import {
   Contact2,
   MapPin
 } from 'lucide-react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
   Card,
@@ -203,8 +204,12 @@ const Technicians: React.FC = () => {
                     )}
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="font-bold text-gray-600">{tech.mobile}</div>
-                    {tech.alternative_mobile && <div className="text-[9px] font-bold text-gray-400 uppercase">Alt: {tech.alternative_mobile}</div>}
+                    <CopyablePhone phone={tech.mobile} className="text-sm font-bold text-gray-600" />
+                    {tech.alternative_mobile && (
+                      <div className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                        Alt: <CopyablePhone phone={tech.alternative_mobile} className="text-[9px] font-bold text-gray-400" />
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 font-bold text-gray-600">{tech.age || '---'}</td>
                   <td className="px-3 py-2.5 font-bold text-gray-600">{new Date(tech.created_at).toLocaleDateString('en-GB')}</td>

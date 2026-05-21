@@ -4,6 +4,7 @@ import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import { Button } from '../ui';
 import { cn } from '../../utils/cn';
+import CopyablePhone from './CopyablePhone';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -153,8 +154,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                             </span>
 
                             <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {tech.mobile || tech.phone || '---'}
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <CopyablePhone
+                                phone={tech.mobile || tech.phone}
+                                className="text-[10px] font-bold text-gray-500"
+                              />
                             </span>
 
                             {(tech.service_area || tech.city) && (

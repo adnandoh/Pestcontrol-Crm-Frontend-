@@ -4,7 +4,6 @@ import {
   Search, 
   Calendar, 
   Zap,
-  MessageCircle,
   Bell,
   CheckCircle,
   CheckCheck,
@@ -21,6 +20,7 @@ import ReminderModal from '../components/crm/ReminderModal';
 import RemarkListCell from '../components/crm/RemarkListCell';
 import { LocationCell, buildLocationTooltip } from '../components/crm/LocationCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 
@@ -340,18 +340,14 @@ const CRMInquiries: React.FC = () => {
                   <td className={crmTdClass}>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 truncate">{inq.name}</p>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <a href={`tel:${inq.mobile}`} className="text-xs font-medium text-blue-600 hover:underline tabular-nums">
-                          {inq.mobile}
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))}
-                          className="rounded-full p-0.5 hover:bg-green-50"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5 text-green-600" />
-                        </button>
+                      <div className="mt-0.5">
+                        <CopyablePhone
+                          phone={inq.mobile}
+                          className="text-xs"
+                          onWhatsApp={() =>
+                            openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))
+                          }
+                        />
                       </div>
                     </div>
                   </td>

@@ -10,6 +10,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -468,7 +469,9 @@ const EditJobCard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Mobile Number</label>
-                <Input value={formData.client_mobile} readOnly disabled className="h-10 text-sm font-medium bg-gray-50 text-gray-500 shadow-sm" />
+                <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 shadow-sm">
+                  <CopyablePhone phone={formData.client_mobile} className="text-sm font-medium text-gray-600" />
+                </div>
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Client Name</label>

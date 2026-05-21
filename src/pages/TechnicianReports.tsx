@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { 
   CheckCircle, 
   IndianRupee, 
@@ -243,7 +244,7 @@ const TechnicianReports: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-black text-gray-900 uppercase group-hover:text-blue-600 transition-colors">{tech.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400">{tech.mobile}</p>
+                    <CopyablePhone phone={tech.mobile} className="text-[10px] font-bold text-gray-400" />
                   </div>
                 </div>
                 <div className="text-emerald-600 font-black text-sm">
@@ -351,7 +352,7 @@ const TechnicianReports: React.FC = () => {
                           <p className="text-sm font-black text-gray-900 uppercase leading-none mb-1 group-hover:text-blue-600 transition-colors">
                             {tech.name}
                           </p>
-                          <p className="text-[10px] font-bold text-gray-500">{tech.mobile}</p>
+                          <CopyablePhone phone={tech.mobile} className="text-[10px] font-bold text-gray-500" />
                         </div>
                       </div>
                     </td>

@@ -10,6 +10,7 @@ import { ClientForm } from '../components/forms';
 
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import type { Client, PaginatedResponse } from '../types';
 
 const Clients: React.FC = () => {
@@ -202,7 +203,7 @@ const Clients: React.FC = () => {
                     {client.notes && <div className="text-[9px] font-bold text-gray-400 italic line-clamp-1">{client.notes}</div>}
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="font-bold text-gray-600">{client.mobile}</div>
+                    <CopyablePhone phone={client.mobile} className="text-sm font-bold text-gray-600" />
                     {client.email && <div className="text-[9px] font-bold text-gray-400 lowercase">{client.email}</div>}
                   </td>
                   <td className="px-3 py-2.5">

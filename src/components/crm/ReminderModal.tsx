@@ -4,6 +4,7 @@ import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { ReminderFormData, Reminder } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
+import CopyablePhone from './CopyablePhone';
 
 interface ReminderModalProps {
   isOpen: boolean;
@@ -151,7 +152,7 @@ const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSucces
           <div className="bg-blue-50/50 p-3 rounded border border-blue-100 mb-4">
             <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Customer Details</div>
             <div className="font-bold text-gray-800 uppercase text-sm">{formData.customer_name}</div>
-            <div className="text-xs font-bold text-gray-500">{formData.mobile_number}</div>
+            <CopyablePhone phone={formData.mobile_number} className="text-xs font-bold text-gray-500" />
             <div className="text-[9px] font-bold text-gray-400 uppercase mt-1 italic">Source: {formData.inquiry_type === 'crm' ? 'CRM Inquiry' : 'Website Inquiry'}</div>
           </div>
 

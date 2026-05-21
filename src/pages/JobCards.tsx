@@ -20,6 +20,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -1043,12 +1044,15 @@ const JobCards: React.FC = () => {
                           {job.client_name || '---'}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-[11px] font-bold",
-                            (currentPriority === 1 || currentPriority === 2) ? "text-inherit opacity-90" : "text-blue-600"
-                          )}>
-                            {job.client_mobile || '---'}
-                          </span>
+                          <CopyablePhone
+                            phone={job.client_mobile}
+                            className={cn(
+                              'text-[11px] font-bold',
+                              currentPriority === 1 || currentPriority === 2
+                                ? 'text-inherit opacity-90'
+                                : 'text-blue-600',
+                            )}
+                          />
                         </div>
                       </div>
                     </td>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
@@ -235,7 +236,7 @@ const Quotations: React.FC = () => {
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">{q.customer_name}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">{q.mobile}</span>
+                          <CopyablePhone phone={q.mobile} className="text-xs text-gray-500" />
                           <span className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">
                             • {q.master_location_name || q.city || q.master_city_name}
                           </span>

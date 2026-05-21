@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Search,
   Bell,
-  MessageCircle,
   CheckCheck,
 } from 'lucide-react';
 import {
@@ -23,6 +22,7 @@ import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
 import RemarkListCell from '../components/crm/RemarkListCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 
 const Inquiries: React.FC = () => {
@@ -355,18 +355,17 @@ const Inquiries: React.FC = () => {
                       )}
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-900 truncate">{inquiry.name}</p>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-blue-600 tabular-nums">{inquiry.mobile}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openWhatsApp(inquiry.mobile, whatsAppTemplates.customerInquiry(inquiry.name));
-                            }}
-                            className="rounded-full p-0.5 hover:bg-green-50"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5 text-green-600" />
-                          </button>
+                        <div className="mt-0.5">
+                          <CopyablePhone
+                            phone={inquiry.mobile}
+                            className="text-xs"
+                            onWhatsApp={() =>
+                              openWhatsApp(
+                                inquiry.mobile,
+                                whatsAppTemplates.customerInquiry(inquiry.name),
+                              )
+                            }
+                          />
                         </div>
                       </div>
                     </div>
