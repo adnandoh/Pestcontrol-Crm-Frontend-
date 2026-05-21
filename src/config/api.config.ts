@@ -54,6 +54,7 @@ export const API_ENDPOINTS = {
   RENEWALS: '/v1/renewals/',
   TECHNICIANS: '/v1/technicians/',
   CRM_INQUIRIES: '/v1/crm-inquiries/',
+  WEBSITE_LEADS: '/v1/website-leads/',
   
   // Dashboard
   DASHBOARD_STATS: '/v1/dashboard/statistics/',

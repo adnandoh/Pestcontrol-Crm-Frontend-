@@ -8,10 +8,11 @@ export const useDashboardCounts = () => {
   const { user } = useAuth();
   const [counts, setCounts] = useState<DashboardCounts>({
     website_leads_unread: 0,
+    crm_inquiries_unread: 0,
     complaint_calls: 0,
     reminders: 0,
     feedbacks: 0,
-    pending_quotations: 0
+    pending_quotations: 0,
   });
   const [loading, setLoading] = useState(false);
 

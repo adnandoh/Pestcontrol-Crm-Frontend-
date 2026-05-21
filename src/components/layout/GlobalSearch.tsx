@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User, Briefcase, FileText, X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, User, Briefcase, FileText, X, Loader2, Bell, Globe } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { GlobalSearchResult } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +10,7 @@ interface GlobalSearchProps {
 }
 
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,6 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -69,21 +70,65 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
   };
 
   const handleSelect = (result: GlobalSearchResult) => {
-    if (result.type === 'Customer') {
-      onSelectClient(result.id);
-    } else if (result.client_id) {
-      onSelectClient(result.client_id);
-    }
     setShowResults(false);
     setQuery('');
+
+    if (result.type === 'Customer') {
+      onSelectClient(result.id);
+      return;
+    }
+
+    if (result.type === 'Booking' && result.client_id) {
+      onSelectClient(result.client_id);
+    }
+
+    if (result.link) {
+      navigate(result.link);
+      return;
+    }
+
+    if (result.type === 'Booking') {
+      navigate(`/jobcards/edit/${result.id}`);
+    } else if (result.type === 'CRM Inquiry') {
+      navigate(`/crm-inquiries?focus=${result.id}`);
+    } else if (result.type === 'Website Lead') {
+      navigate(`/inquiries?focus=${result.id}`);
+    } else if (result.type === 'Reminder') {
+      navigate('/jobcards?tab=reminders');
+    }
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: GlobalSearchResult['type']) => {
     switch (type) {
-      case 'Customer': return <User className="h-4 w-4 text-blue-600" />;
-      case 'Booking': return <Briefcase className="h-4 w-4 text-emerald-600" />;
-      case 'Inquiry': return <FileText className="h-4 w-4 text-purple-600" />;
-      default: return <Search className="h-4 w-4" />;
+      case 'Customer':
+        return <User className="h-4 w-4 text-blue-600" />;
+      case 'Booking':
+        return <Briefcase className="h-4 w-4 text-emerald-600" />;
+      case 'CRM Inquiry':
+        return <FileText className="h-4 w-4 text-orange-600" />;
+      case 'Website Lead':
+        return <Globe className="h-4 w-4 text-purple-600" />;
+      case 'Reminder':
+        return <Bell className="h-4 w-4 text-amber-600" />;
+      default:
+        return <Search className="h-4 w-4" />;
+    }
+  };
+
+  const tagClass = (type: GlobalSearchResult['type']) => {
+    switch (type) {
+      case 'Customer':
+        return 'bg-blue-100 text-blue-700';
+      case 'Booking':
+        return 'bg-emerald-100 text-emerald-700';
+      case 'CRM Inquiry':
+        return 'bg-orange-100 text-orange-700';
+      case 'Website Lead':
+        return 'bg-purple-100 text-purple-700';
+      case 'Reminder':
+        return 'bg-amber-100 text-amber-800';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
@@ -108,7 +153,11 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2 z-10">
           {query ? (
             <button
-              onClick={() => { setQuery(''); setResults([]); }}
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setResults([]);
+              }}
               className="p-1.5 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-all active:scale-90"
             >
               <X className="h-4 w-4" />
@@ -142,6 +191,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
                   {results.map((result, idx) => (
                     <button
                       key={`${result.type}-${result.id}-${idx}`}
+                      type="button"
                       onClick={() => handleSelect(result)}
                       className="w-full flex items-center px-4 py-3.5 hover:bg-blue-50/50 transition-all border-b border-gray-50 last:border-0 group text-left relative overflow-hidden"
                     >
@@ -151,21 +201,16 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-[14px] font-black text-gray-900 truncate group-hover:text-blue-700 transition-colors">{result.title}</p>
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-tighter uppercase ${
-                            result.type === 'Customer' ? 'bg-blue-100 text-blue-700' :
-                            result.type === 'Booking' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-purple-100 text-purple-700'
-                          }`}>
+                          <p className="text-[14px] font-black text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                            {result.title}
+                          </p>
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-tighter uppercase shrink-0 ${tagClass(result.type)}`}>
                             {result.type}
                           </span>
                         </div>
-                        <p className="text-[11px] font-bold text-gray-500 truncate group-hover:text-gray-600">{result.subtitle}</p>
-                      </div>
-                      <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center">
-                          <Search className="h-3 w-3 text-white" />
-                        </div>
+                        <p className="text-[11px] font-bold text-gray-500 truncate group-hover:text-gray-600">
+                          {result.subtitle}
+                        </p>
                       </div>
                     </button>
                   ))}
@@ -177,12 +222,9 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
                   <Search className="h-8 w-8 text-gray-200" />
                 </div>
                 <h3 className="text-[15px] font-black text-gray-800 mb-1">No Results Found</h3>
-                <p className="text-xs font-bold text-gray-400 px-10 leading-relaxed uppercase tracking-tight">We couldn't find any customer or booking matching "{query}"</p>
-                <div className="mt-6 flex flex-wrap justify-center gap-2">
-                   <span className="text-[10px] font-bold px-3 py-1 bg-white border border-gray-200 rounded-full text-gray-500">Check Mobile</span>
-                   <span className="text-[10px] font-bold px-3 py-1 bg-white border border-gray-200 rounded-full text-gray-500">Check Name</span>
-                   <span className="text-[10px] font-bold px-3 py-1 bg-white border border-gray-200 rounded-full text-gray-500">Check ID</span>
-                </div>
+                <p className="text-xs font-bold text-gray-400 px-10 leading-relaxed uppercase tracking-tight">
+                  We couldn&apos;t find any customer or booking matching &quot;{query}&quot;
+                </p>
               </div>
             ) : null}
           </motion.div>

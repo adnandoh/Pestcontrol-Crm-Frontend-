@@ -49,6 +49,7 @@ import type {
   QuotationFormData,
   QuotationFilters,
   PartnerJobSelfie,
+  InquiryRemarkEntry,
 } from '../types';
 
 function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
@@ -525,6 +526,74 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async getCRMInquiryRemarks(
+    inquiryId: number,
+    params?: { page?: number; page_size?: number },
+  ): Promise<PaginatedResponse<InquiryRemarkEntry>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<InquiryRemarkEntry>>(
+        `${API_ENDPOINTS.CRM_INQUIRIES}${inquiryId}/remarks/`,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async createCRMInquiryRemark(
+    inquiryId: number,
+    data: { remark: string; remark_type?: string },
+  ): Promise<InquiryRemarkEntry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<InquiryRemarkEntry>(
+        `${API_ENDPOINTS.CRM_INQUIRIES}${inquiryId}/remarks/`,
+        data,
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    return result.data;
+  }
+
+  async deleteCRMInquiryRemark(remarkId: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.CRM_INQUIRIES}remarks/${remarkId}/`),
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+  }
+
+  async getWebsiteLeadRemarks(
+    leadId: number,
+    params?: { page?: number; page_size?: number },
+  ): Promise<PaginatedResponse<InquiryRemarkEntry>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<InquiryRemarkEntry>>(
+        `${API_ENDPOINTS.WEBSITE_LEADS}${leadId}/remarks/`,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async createWebsiteLeadRemark(
+    leadId: number,
+    data: { remark: string; remark_type?: string },
+  ): Promise<InquiryRemarkEntry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<InquiryRemarkEntry>(
+        `${API_ENDPOINTS.WEBSITE_LEADS}${leadId}/remarks/`,
+        data,
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    return result.data;
+  }
+
+  async deleteWebsiteLeadRemark(remarkId: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.WEBSITE_LEADS}remarks/${remarkId}/`),
+    );
+    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+  }
+
   async getCRMInquiryReminders(params?: { from?: string; to?: string }): Promise<{ count: number; results: CRMInquiry[] }> {
     const result = await this.retryRequest(() =>
       this.api.get<{ count: number; results: CRMInquiry[] }>(`${API_ENDPOINTS.CRM_INQUIRIES}reminders/`, { params })
@@ -537,6 +606,22 @@ class EnhancedApiService {
       this.api.post(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/mark_reminder_done/`)
     );
     apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+  }
+
+  async markCRMInquiryAsRead(id: number): Promise<CRMInquiry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<CRMInquiry>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/mark_as_read/`),
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    return result.data;
+  }
+
+  async markCRMInquiriesAsRead(): Promise<{ updated: number }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ status: string; updated: number }>(`${API_ENDPOINTS.CRM_INQUIRIES}mark-all-read/`),
+    );
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
+    return { updated: result.data.updated ?? 0 };
   }
 
   // Client methods

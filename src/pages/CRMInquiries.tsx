@@ -6,33 +6,31 @@ import {
   MapPin, 
   Zap,
   MessageCircle,
-  Edit,
-  Check,
-  X,
-  Bell
+  Bell,
+  CheckCircle,
+  CheckCheck,
 } from 'lucide-react';
-import { 
-  Button, 
-  Pagination
-} from '../components/ui';
+import { useSearchParams } from 'react-router-dom';
+import { Button, Pagination, Badge } from '../components/ui';
+import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import ReminderModal from '../components/crm/ReminderModal';
+import RemarkListCell from '../components/crm/RemarkListCell';
+import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 
 const CRMInquiries: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get('focus');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<number | null>(null);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [inquiries, setInquiries] = useState<CRMInquiry[]>([]);
-  const { refreshCounts } = useDashboardCounts();
-  
-  // Remark editing state
-  const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
-  const [tempRemark, setTempRemark] = useState('');
-  const [updatingRemark, setUpdatingRemark] = useState(false);
+  const { refreshCounts, counts } = useDashboardCounts();
   
   const pestTypesList = [
     'Cockroach', 'Ants', 'Mosquito', 'Spiders', 'Flies', 'Silverfish', 
@@ -116,17 +114,34 @@ const CRMInquiries: React.FC = () => {
     }
   };
 
-  const handleRemarkUpdate = async (id: number) => {
+  const patchInquiryRow = (id: number, patch: Partial<CRMInquiry>) => {
+    setInquiries((prev) => prev.map((inq) => (inq.id === id ? { ...inq, ...patch } : inq)));
+  };
+
+  const handleMarkAsRead = async (id: number) => {
     try {
-      setUpdatingRemark(true);
-      await enhancedApiService.updateCRMInquiry(id, { remark: tempRemark });
-      setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, remark: tempRemark } : inq));
-      setEditingRemarkId(null);
-    } catch (err) {
-      console.error('Remark update failed:', err);
-      alert('Failed to update remark. Please try again.');
+      await enhancedApiService.markCRMInquiryAsRead(id);
+      setInquiries((prev) =>
+        prev.map((inq) => (inq.id === id ? { ...inq, is_read: true } : inq)),
+      );
+      refreshCounts();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to mark as read');
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!counts.crm_inquiries_unread) return;
+    if (!window.confirm(`Mark all ${counts.crm_inquiries_unread} unread CRM inquiries as read?`)) return;
+    try {
+      setMarkingAllRead(true);
+      await enhancedApiService.markCRMInquiriesAsRead();
+      setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
+      refreshCounts();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to mark all as read');
     } finally {
-      setUpdatingRemark(false);
+      setMarkingAllRead(false);
     }
   };
 
@@ -156,19 +171,37 @@ const CRMInquiries: React.FC = () => {
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
       {/* 1. Header Area */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Inquiries</h1>
           <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
             Total {pagination.count} Manual Leads
           </span>
+          {counts.crm_inquiries_unread > 0 && (
+            <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded">
+              {counts.crm_inquiries_unread} unread
+            </span>
+          )}
         </div>
-        <Button 
-          onClick={() => setShowCreateModal(true)}
-          className="bg-blue-700 hover:bg-blue-800 h-8 text-[11px] font-extrabold shadow-lg px-6 uppercase tracking-wider"
-        >
-          <Plus className="h-4 w-4 mr-1" /> Create Inquiry
-        </Button>
+        <div className="flex items-center gap-2">
+          {counts.crm_inquiries_unread > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllAsRead}
+              disabled={markingAllRead}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Mark all as read
+            </button>
+          )}
+          <Button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-700 hover:bg-blue-800 h-8 text-[11px] font-extrabold shadow-lg px-6 uppercase tracking-wider"
+          >
+            <Plus className="h-4 w-4 mr-1" /> Create Inquiry
+          </Button>
+        </div>
       </div>
 
       {/* 2. Filter Bar - High Density */}
@@ -230,184 +263,154 @@ const CRMInquiries: React.FC = () => {
         </div>
       </div>
 
+      <p className="text-[10px] text-slate-400 lg:hidden">Swipe horizontally to see all columns →</p>
+
       {/* 3. Table Results */}
-      <div className="bg-white border border-gray-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[600px]">
-          <table className="w-full table-auto border-collapse text-[11px]">
-            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
-              <tr className="divide-x divide-gray-200">
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-12">ID</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-48">Customer Info</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-64">Location</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Plan</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Pest Type</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-44">Action</th>
+      <CrmTableShell>
+        <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+              <tr>
+                <th className={cn(crmThClass, 'w-12')}>ID</th>
+                <th className={cn(crmThClass, 'min-w-[140px]')}>Customer</th>
+                <th className={cn(crmThClass, 'min-w-[160px]')}>Location</th>
+                <th className={cn(crmThClass, 'w-24')}>Plan / Rate</th>
+                <th className={cn(crmThClass, 'w-28')}>Pest</th>
+                <th className={cn(crmThClass, 'min-w-[200px]')}>Remark</th>
+                <th className={cn(crmThClass, 'w-28')}>Status</th>
+                <th className={cn(crmThClass, 'min-w-[120px] text-center')}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto" />
+                  <td colSpan={8} className="py-16 text-center">
+                    <div className="animate-spin rounded-full h-7 w-7 border-2 border-blue-600 border-t-transparent mx-auto" />
                   </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-gray-400 font-semibold uppercase italic text-sm tracking-tight opacity-70">No inquiries found. Create your first lead now!</td>
+                  <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
+                    No inquiries found. Create your first lead.
+                  </td>
                 </tr>
               ) : inquiries.map((inq) => (
-                <tr key={inq.id} className="hover:bg-blue-50/20 transition-colors group">
-                  <td className="px-4 py-3 text-xs font-extrabold text-gray-400">{inq.id}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-extrabold text-gray-800 leading-tight uppercase tracking-tighter truncate">{inq.name}</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
+                <tr
+                  key={inq.id}
+                  className={cn(
+                    'hover:bg-slate-50/80 transition-colors',
+                    !inq.is_read && 'bg-orange-50/40 border-l-2 border-l-orange-400',
+                    focusId && String(inq.id) === focusId && 'ring-2 ring-inset ring-blue-400',
+                  )}
+                >
+                  <td className={cn(crmTdClass, 'text-xs font-semibold text-slate-400 tabular-nums')}>
+                    {inq.id}
+                  </td>
+                  <td className={crmTdClass}>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{inq.name}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <a href={`tel:${inq.mobile}`} className="text-xs font-medium text-blue-600 hover:underline tabular-nums">
                           {inq.mobile}
-                        </span>
-                        <button 
+                        </a>
+                        <button
+                          type="button"
                           onClick={() => openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))}
-                          className="hover:scale-110 transition-transform"
-                          title="Send Service Details"
+                          className="rounded-full p-0.5 hover:bg-green-50"
+                          title="WhatsApp"
                         >
-                          <MessageCircle className="h-3 w-3 text-green-500 fill-green-50" />
+                          <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                         </button>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-start gap-2 max-w-[240px]">
-                      <MapPin className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-semibold text-gray-600 leading-tight line-clamp-2">{inq.location || 'No location provided'}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">
-                          {inq.master_location_name ? (
-                            <span className="text-blue-600/80">{inq.master_location_name}, </span>
-                          ) : null}
-                          {inq.master_city_name || '---'}, {inq.master_state_name || '---'}
-                        </span>
+                  <td className={crmTdClass}>
+                    <div className="flex gap-2 min-w-0 max-w-[200px]">
+                      <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-700 line-clamp-2 leading-snug">
+                          {inq.location || '—'}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                          {[inq.master_city_name,inq.master_state_name].filter(Boolean).join(', ') || '—'}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase italic tracking-widest">{inq.service_frequency || 'one-time'}</span>
-                    </div>
+                  <td className={crmTdClass}>
+                    <ServiceRateDisplay
+                      info={inq.service_rate_info}
+                      fallbackFrequency={inq.service_frequency}
+                    />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-extrabold text-indigo-700 uppercase tracking-tighter italic">{inq.pest_type}</span>
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 mt-0.5">
-                        <Calendar className="h-2.5 w-2.5" /> {new Date(inq.inquiry_date).toLocaleDateString('en-GB')}
-                      </div>
-                    </div>
+                  <td className={crmTdClass}>
+                    <p className="text-xs font-semibold text-indigo-700">{inq.pest_type}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(inq.inquiry_date).toLocaleDateString('en-GB')}
+                    </p>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1 min-w-[160px]">
-                      {editingRemarkId === inq.id ? (
-                        <div className="flex items-center gap-1 animate-fade-in">
-                          <textarea
-                            value={tempRemark}
-                            onChange={(e) => setTempRemark(e.target.value)}
-                            className="w-full text-[11px] p-1.5 border border-blue-300 rounded-md outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50/30 font-semibold italic"
-                            rows={2}
-                            autoFocus
-                            placeholder="Enter remark..."
-                          />
-                          <div className="flex flex-col gap-1">
-                            <button
-                              onClick={() => handleRemarkUpdate(inq.id)}
-                              disabled={updatingRemark}
-                              className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
-                              title="Save Remark"
-                            >
-                              <Check className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={() => setEditingRemarkId(null)}
-                              disabled={updatingRemark}
-                              className="p-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors shadow-sm disabled:opacity-50"
-                              title="Cancel"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start justify-between group/remark">
-                          <p 
-                            className="text-[11px] text-gray-500 line-clamp-2 italic font-semibold leading-normal cursor-pointer hover:text-blue-600 transition-colors flex-1" 
-                            title={inq.remark}
-                            onClick={() => {
-                              setEditingRemarkId(inq.id);
-                              setTempRemark(inq.remark || '');
-                            }}
-                          >
-                            {inq.remark || <span className="text-gray-300">Add remark...</span>}
-                          </p>
-                          <button
-                            onClick={() => {
-                              setEditingRemarkId(inq.id);
-                              setTempRemark(inq.remark || '');
-                            }}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition-all"
-                            title="Edit Remark"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  <td className={crmTdClass}>
+                    <RemarkListCell sourceType="crm" row={inq} onUpdate={patchInquiryRow} />
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className={crmTdClass}>
                     <select
                       value={inq.status}
                       onChange={(e) => handleStatusChange(inq.id, e.target.value as CRMInquiryStatus)}
                       disabled={submitting === inq.id}
                       className={cn(
-                        "w-full h-6 px-1.5 rounded-full text-[9px] font-extrabold uppercase text-center outline-none ring-1 ring-inset transition-all cursor-pointer",
-                        statusColors[inq.status]
+                        'w-full max-w-[120px] rounded-lg border-0 py-1.5 pl-2 pr-6 text-[10px] font-bold uppercase cursor-pointer ring-1 ring-inset',
+                        statusColors[inq.status],
                       )}
                     >
-                      <option value="New">New Lead</option>
+                      <option value="New">New</option>
                       <option value="Contacted">Contacted</option>
                       <option value="Converted">Converted</option>
                       <option value="Closed">Closed</option>
                     </select>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
+                  <td className={crmTdClass}>
+                    <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                      {!inq.is_read && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsRead(inq.id)}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-orange-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-orange-700"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Read
+                        </button>
+                      )}
+                      <button
+                        type="button"
                         onClick={() => {
                           setSelectedInquiry({
                             id: inq.id,
                             type: 'crm',
                             name: inq.name,
-                            mobile: inq.mobile
+                            mobile: inq.mobile,
                           });
                           setShowReminderModal(true);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95"
-                        title="Add Reminder"
+                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-600"
                       >
-                        <Bell className="h-3 w-3 fill-white" />
-                        <span>Reminder</span>
+                        <Bell className="h-3 w-3" />
+                        Reminder
                       </button>
-
                       {inq.status !== 'Converted' ? (
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => handleConvert(inq.id)}
                           disabled={submitting === inq.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
-                          title="Convert to Booking"
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
-                          <Zap className="h-3 w-3 fill-white" />
-                          <span>Convert</span>
+                          <Zap className="h-3 w-3" />
+                          Convert
                         </button>
                       ) : (
-                        <span className="text-[10px] font-bold text-gray-400 uppercase italic">Converted</span>
+                        <Badge variant="success" size="sm" className="justify-center">
+                          Converted
+                        </Badge>
                       )}
                     </div>
                   </td>
@@ -417,7 +420,7 @@ const CRMInquiries: React.FC = () => {
           </table>
         </div>
 
-        <div className="p-4 bg-gray-50 border-t border-gray-100">
+        <div className="p-4 bg-slate-50/80 border-t border-slate-100">
           <Pagination
             currentPage={pagination.current}
             totalPages={Math.ceil(pagination.count / pagination.pageSize)}
@@ -426,7 +429,7 @@ const CRMInquiries: React.FC = () => {
             onPageChange={loadInquiries}
           />
         </div>
-      </div>
+      </CrmTableShell>
 
       <CreateCRMInquiryModal 
         isOpen={showCreateModal}

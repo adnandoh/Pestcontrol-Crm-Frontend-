@@ -48,11 +48,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       case 'Website Leads':
         return counts.website_leads_unread;
       case 'CRM Inquiries':
-        // Now using the unified reminders count for CRM inquiries badge too
-        return counts.reminders;
+        return counts.crm_inquiries_unread;
       case 'View Bookings':
-        // Show count for pending reminders + complaint calls
-        return counts.reminders + counts.complaint_calls;
+        return 0;
       case 'Feedbacks':
         return counts.feedbacks;
       case 'Quotations':
@@ -177,9 +175,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                         {getBadgeCount(item.name) > 0 && (
                           <span className={cn(
                             "flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white shadow-sm",
-                            item.name === 'Website Leads' ? "bg-red-600" : 
-                            item.name === 'CRM Inquiries' ? "bg-orange-500" : 
-                            item.name === 'View Bookings' ? "bg-blue-600" :
+                            item.name === 'Website Leads' ? "bg-red-600" :
+                            item.name === 'CRM Inquiries' ? "bg-orange-500" :
                             item.name === 'Quotations' ? "bg-amber-500" :
                             "bg-green-600"
                           )}>

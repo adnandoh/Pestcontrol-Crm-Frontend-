@@ -45,6 +45,35 @@ export interface Technician {
   updated_at: string;
 }
 
+export interface LatestRemarkSummary {
+  id: number | null;
+  remark: string;
+  remark_type?: string;
+  created_by_name?: string;
+  created_at?: string | null;
+}
+
+export interface InquiryRemarkEntry {
+  id: number;
+  remark: string;
+  remark_type: string;
+  created_by?: number | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+  inquiry?: number;
+  lead?: number;
+}
+
+export interface ServiceRateInfo {
+  plan: string;
+  items: { pest: string; rate: number }[];
+  total: number | null;
+  display_total: number | null;
+  rate_label: string | null;
+  has_service_rate: boolean;
+}
+
 export interface Inquiry {
   id: number;
   name: string;
@@ -66,7 +95,10 @@ export interface Inquiry {
   estimated_price?: number | string;
   is_inspection_required?: boolean;
   service_frequency?: string;
-  remark?: string;
+  remark?: string | null;
+  latest_remark?: LatestRemarkSummary | null;
+  remark_count?: number;
+  service_rate_info?: ServiceRateInfo;
   reminder_date?: string | null;
   reminder_time?: string | null;
   reminder_note?: string | null;
@@ -96,11 +128,15 @@ export interface CRMInquiry {
   master_location?: number;
   master_location_name?: string;
   pest_type: PestType;
-  remark?: string;
+  remark?: string | null;
+  latest_remark?: LatestRemarkSummary | null;
+  remark_count?: number;
+  service_rate_info?: ServiceRateInfo;
   service_frequency?: string;
   inquiry_date: string;
   inquiry_time: string;
   status: CRMInquiryStatus;
+  is_read?: boolean;
   created_by?: number;
   created_by_name?: string;
   converted_by?: number;
@@ -591,6 +627,7 @@ export interface DashboardStatisticsResponse {
 
 export interface DashboardCounts {
   website_leads_unread: number;
+  crm_inquiries_unread: number;
   complaint_calls: number;
   reminders: number;
   feedbacks: number;
@@ -650,7 +687,7 @@ export interface GlobalSearchResult {
   id: number;
   title: string;
   subtitle: string;
-  type: 'Customer' | 'Booking' | 'Inquiry';
+  type: 'Customer' | 'Booking' | 'CRM Inquiry' | 'Website Lead' | 'Reminder';
   link: string;
   client_id?: number;
 }

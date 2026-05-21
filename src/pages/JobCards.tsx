@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Edit,
@@ -56,6 +56,7 @@ const TableSkeleton: React.FC = () => (
 
 const JobCards: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { counts, refreshCounts } = useDashboardCounts();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +81,19 @@ const JobCards: React.FC = () => {
     commercial_type: ''
   });
   const [searchInput, setSearchInput] = useState('');
-  const [activeTab, setActiveTab] = useState('pending');
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl && ['pending', 'on_process', 'done', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tabFromUrl)
+      ? tabFromUrl
+      : 'pending',
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['pending', 'on_process', 'done', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -688,7 +701,7 @@ const JobCards: React.FC = () => {
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
             { id: 'reminders', label: 'Reminders', badge: counts.reminders },
-            { id: 'complaint_calls', label: 'Complaint Calls', badge: counts.complaint_calls },
+            { id: 'complaint_calls', label: 'Complaint Calls' },
             { id: 'cancelled', label: 'Cancelled' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;

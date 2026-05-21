@@ -3,27 +3,29 @@ import {
   CheckCircle,
   ArrowRight,
   Search,
-  Edit,
-  Check,
-  X,
   Bell,
   MessageCircle,
+  CheckCheck,
 } from 'lucide-react';
-import { 
-  PageLoading,
-  Pagination,
-} from '../components/ui';
+import { useSearchParams } from 'react-router-dom';
+import { PageLoading, Pagination, Badge } from '../components/ui';
+import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { Inquiry, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
+import RemarkListCell from '../components/crm/RemarkListCell';
+import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 
 const Inquiries: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get('focus');
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const { refreshCounts } = useDashboardCounts();
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const { refreshCounts, counts } = useDashboardCounts();
   const [pagination, setPagination] = useState({
     count: 0,
     next: null as string | null,
@@ -38,9 +40,6 @@ const Inquiries: React.FC = () => {
   });
   const [activeTab, setActiveTab] = useState('All');
   const [searchInput, setSearchInput] = useState('');
-  const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
-  const [tempRemark, setTempRemark] = useState('');
-  const [updatingRemark, setUpdatingRemark] = useState<number | null>(null);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
 
@@ -50,12 +49,6 @@ const Inquiries: React.FC = () => {
   const loadInquiries = async (page = 1) => {
     try {
       setLoading(true);
-
-      // Mark all as read when loading the first page
-      if (page === 1) {
-        await enhancedApiService.markInquiriesAsRead();
-        refreshCounts();
-      }
 
       const params = {
         page,
@@ -83,17 +76,8 @@ const Inquiries: React.FC = () => {
     }
   };
 
-  const handleRemarkUpdate = async (id: number) => {
-    try {
-      setUpdatingRemark(id);
-      await enhancedApiService.updateInquiry(id, { remark: tempRemark });
-      setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, remark: tempRemark } : inq));
-      setEditingRemarkId(null);
-    } catch (err: any) {
-      alert('Failed to update remark: ' + err.message);
-    } finally {
-      setUpdatingRemark(null);
-    }
+  const patchLeadRow = (id: number, patch: Partial<Inquiry>) => {
+    setInquiries((prev) => prev.map((inq) => (inq.id === id ? { ...inq, ...patch } : inq)));
   };
 
   useEffect(() => {
@@ -132,10 +116,27 @@ const Inquiries: React.FC = () => {
   const handleMarkAsRead = async (id: number) => {
     try {
       await enhancedApiService.markInquiryAsRead(id);
-      loadInquiries(pagination.current);
+      setInquiries((prev) =>
+        prev.map((inq) => (inq.id === id ? { ...inq, is_read: true } : inq)),
+      );
       refreshCounts();
     } catch (err: any) {
       alert('Failed to mark inquiry as read: ' + err.message);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!counts.website_leads_unread) return;
+    if (!window.confirm(`Mark all ${counts.website_leads_unread} unread website leads as read?`)) return;
+    try {
+      setMarkingAllRead(true);
+      await enhancedApiService.markInquiriesAsRead();
+      setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
+      refreshCounts();
+    } catch (err: any) {
+      alert('Failed to mark all as read: ' + (err.message || 'Unknown error'));
+    } finally {
+      setMarkingAllRead(false);
     }
   };
 
@@ -188,13 +189,29 @@ const Inquiries: React.FC = () => {
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
       {/* 1. Header Area */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Website Leads</h1>
           <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
             Total {pagination.count} Inquiries
           </span>
+          {counts.website_leads_unread > 0 && (
+            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
+              {counts.website_leads_unread} unread
+            </span>
+          )}
         </div>
+        {counts.website_leads_unread > 0 && (
+          <button
+            type="button"
+            onClick={handleMarkAllAsRead}
+            disabled={markingAllRead}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            Mark all as read
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -253,24 +270,25 @@ const Inquiries: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Table Results */}
-      <div className="bg-white border border-gray-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[600px]">
-          <table className="w-full table-auto border-collapse text-[11px]">
-            <thead className="bg-[#f8f9fa] sticky top-0 z-10 border-b border-gray-200 text-gray-600 uppercase">
-              <tr className="divide-x divide-gray-200">
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-12">ID</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-44">Lead Profile</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Prop Details</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-32">Price/Plan</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Interest</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-24">Received</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-40">Remark</th>
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic w-20">Status</th>
-                <th className="px-3 py-2 text-center font-extrabold tracking-tight italic w-44">Action</th>
+      <p className="text-[10px] text-slate-400 lg:hidden">Swipe horizontally to see all columns →</p>
+
+      <CrmTableShell>
+        <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+              <tr>
+                <th className={cn(crmThClass, 'w-12')}>ID</th>
+                <th className={cn(crmThClass, 'min-w-[130px]')}>Lead</th>
+                <th className={cn(crmThClass, 'w-28')}>Property</th>
+                <th className={cn(crmThClass, 'w-24')}>Plan / Rate</th>
+                <th className={cn(crmThClass, 'min-w-[120px]')}>Interest</th>
+                <th className={cn(crmThClass, 'w-24')}>Received</th>
+                <th className={cn(crmThClass, 'min-w-[200px]')}>Remark</th>
+                <th className={cn(crmThClass, 'w-24')}>Status</th>
+                <th className={cn(crmThClass, 'min-w-[130px] text-center')}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                    <td colSpan={9} className="py-20 text-center">
@@ -283,145 +301,120 @@ const Inquiries: React.FC = () => {
                    <td colSpan={9} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
                 </tr>
               ) : inquiries.map((inquiry) => (
-                <tr 
-                  key={inquiry.id} 
-                  onClick={() => !inquiry.is_read && handleMarkAsRead(inquiry.id)}
+                <tr
+                  key={inquiry.id}
                   className={cn(
-                    "hover:bg-gray-50/80 transition-colors divide-x divide-gray-100 cursor-pointer",
-                    !inquiry.is_read && "bg-blue-50/40 border-l-2 border-l-blue-600"
+                    'transition-colors hover:bg-slate-50/80',
+                    !inquiry.is_read && 'bg-blue-50/50 border-l-2 border-l-blue-500',
+                    focusId && String(inquiry.id) === focusId && 'ring-2 ring-inset ring-blue-400',
                   )}
                 >
-                  <td className="px-3 py-2.5 font-bold text-gray-400 italic">{inquiry.id}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      {!inquiry.is_read && <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />}
-                      <div className="font-bold text-gray-800 uppercase leading-tight truncate">{inquiry.name}</div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[9px] font-bold text-blue-600">{inquiry.mobile}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openWhatsApp(inquiry.mobile, whatsAppTemplates.customerInquiry(inquiry.name));
-                        }}
-                        className="hover:scale-110 transition-transform"
-                        title="Send Service Details"
-                      >
-                        <MessageCircle className="h-3 w-3 text-green-500 fill-green-50" />
-                      </button>
-                    </div>
+                  <td className={cn(crmTdClass, 'text-xs font-semibold text-slate-400 tabular-nums')}>
+                    {inquiry.id}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-bold text-gray-700 uppercase italic truncate">{inquiry.premise_type || 'Residential'}</div>
-                    <div className="text-[9px] font-bold text-indigo-600 uppercase italic tracking-tighter">{inquiry.premise_size || 'N/A'}</div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-bold text-green-700 uppercase leading-tight">
-                       {inquiry.estimated_price ? `₹${inquiry.estimated_price}` : inquiry.is_inspection_required ? 'Inspection' : '---'}
-                    </div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase italic tracking-widest">{inquiry.service_frequency || 'One-time'}</div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-bold text-indigo-700 uppercase tracking-tighter truncate">{inquiry.service_interest}</div>
-                    <div className="text-[9px] font-bold text-gray-400 line-clamp-1 italic">{inquiry.pest_problems || inquiry.message}</div>
-                  </td>
-                  <td className="px-3 py-2.5 font-bold text-gray-500 uppercase italic tabular-nums">
-                    {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
-                  </td>
-                  <td className="px-3 py-2.5 group/remark" onClick={(e) => e.stopPropagation()}>
-                    {editingRemarkId === inquiry.id ? (
-                      <div className="flex items-center gap-1">
-                        <textarea
-                          value={tempRemark}
-                          onChange={(e) => setTempRemark(e.target.value)}
-                          className="w-full p-1 text-[10px] border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none min-h-[40px] font-semibold"
-                          placeholder="Add remark..."
-                          autoFocus
-                        />
-                        <div className="flex flex-col gap-1">
-                          <button 
-                            onClick={() => handleRemarkUpdate(inquiry.id)}
-                            disabled={updatingRemark === inquiry.id}
-                            className="p-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                  <td className={crmTdClass}>
+                    <div className="flex items-start gap-2 min-w-0">
+                      {!inquiry.is_read && (
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{inquiry.name}</p>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-blue-600 tabular-nums">{inquiry.mobile}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openWhatsApp(inquiry.mobile, whatsAppTemplates.customerInquiry(inquiry.name));
+                            }}
+                            className="rounded-full p-0.5 hover:bg-green-50"
                           >
-                            <Check className="h-3 w-3" />
-                          </button>
-                          <button 
-                            onClick={() => setEditingRemarkId(null)}
-                            className="p-1 bg-gray-400 text-white rounded hover:bg-gray-500"
-                          >
-                            <X className="h-3 w-3" />
+                            <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                           </button>
                         </div>
                       </div>
+                    </div>
+                  </td>
+                  <td className={crmTdClass}>
+                    <p className="text-xs font-medium text-slate-700">{inquiry.premise_type || 'Residential'}</p>
+                    <p className="text-[10px] text-slate-500">{inquiry.premise_size || '—'}</p>
+                  </td>
+                  <td className={crmTdClass}>
+                    {inquiry.is_inspection_required && !inquiry.service_rate_info?.display_total ? (
+                      <Badge variant="warning" size="sm">Inspection</Badge>
                     ) : (
-                      <div className="relative pr-6">
-                        <p className="text-[10px] font-bold text-gray-600 italic line-clamp-2 leading-tight">
-                          {inquiry.remark || <span className="text-gray-300">No remark...</span>}
-                        </p>
-                        <button 
-                          onClick={() => {
-                            setEditingRemarkId(inquiry.id);
-                            setTempRemark(inquiry.remark || '');
-                          }}
-                          className="absolute right-0 top-0 p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
-                          title="Edit Remark"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </button>
-                      </div>
+                      <ServiceRateDisplay
+                        info={inquiry.service_rate_info}
+                        fallbackPrice={inquiry.estimated_price}
+                        fallbackFrequency={inquiry.service_frequency}
+                      />
                     )}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ring-1 ring-inset ${
-                      inquiry.status === 'Converted' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
-                      inquiry.status === 'New' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' : 
-                      inquiry.status === 'Contacted' ? 'bg-orange-50 text-orange-700 ring-orange-600/20' :
-                      'bg-gray-50 text-gray-700 ring-gray-600/20'
-                    }`}>
-                      {inquiry.status}
-                    </span>
+                  <td className={crmTdClass}>
+                    <p className="text-xs font-semibold text-indigo-700 truncate">{inquiry.service_interest}</p>
+                    <p className="text-[10px] text-slate-500 line-clamp-1">{inquiry.pest_problems || inquiry.message}</p>
                   </td>
-                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
-                       <button 
-                         onClick={() => {
-                           setSelectedInquiry({
-                             id: inquiry.id,
-                             type: 'website',
-                             name: inquiry.name,
-                             mobile: inquiry.mobile
-                           });
-                           setShowReminderModal(true);
-                         }}
-                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95"
-                         title="Add Reminder"
-                       >
-                         <Bell className="h-3 w-3 fill-white" />
-                         <span>Reminder</span>
-                       </button>
-
-                       {inquiry.status === 'New' && (
-                         <button 
-                           onClick={() => handleConvertToJobCard(inquiry)} 
-                           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-all hover:scale-105 active:scale-95" 
-                           title="Convert to Booking"
-                         >
-                           <ArrowRight className="h-3 w-3" />
-                           <span>Convert</span>
-                         </button>
-                       )}
-                       
-                       {!inquiry.is_read && (
-                         <button 
-                           onClick={() => handleMarkAsRead(inquiry.id)} 
-                           className="p-1.5 bg-gray-100 hover:bg-green-100 rounded transition-all group" 
-                           title="Mark Read"
-                         >
-                           <CheckCircle className="h-3 w-3 text-gray-400 group-hover:text-green-600" />
-                         </button>
-                       )}
+                  <td className={cn(crmTdClass, 'text-xs text-slate-500 tabular-nums')}>
+                    {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
+                  </td>
+                  <td className={crmTdClass} onClick={(e) => e.stopPropagation()}>
+                    <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} />
+                  </td>
+                  <td className={crmTdClass}>
+                    <Badge
+                      variant={
+                        inquiry.status === 'Converted'
+                          ? 'success'
+                          : inquiry.status === 'New'
+                            ? 'default'
+                            : inquiry.status === 'Contacted'
+                              ? 'warning'
+                              : 'secondary'
+                      }
+                      size="sm"
+                    >
+                      {inquiry.status}
+                    </Badge>
+                  </td>
+                  <td className={crmTdClass} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedInquiry({
+                            id: inquiry.id,
+                            type: 'website',
+                            name: inquiry.name,
+                            mobile: inquiry.mobile,
+                          });
+                          setShowReminderModal(true);
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-600"
+                      >
+                        <Bell className="h-3 w-3" />
+                        Reminder
+                      </button>
+                      {inquiry.status === 'New' && (
+                        <button
+                          type="button"
+                          onClick={() => handleConvertToJobCard(inquiry)}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-blue-700"
+                        >
+                          <ArrowRight className="h-3 w-3" />
+                          Convert
+                        </button>
+                      )}
+                      {!inquiry.is_read ? (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsRead(inquiry.id)}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-[10px] font-bold text-white hover:bg-blue-700"
+                          title="Mark as read"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Read
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -429,7 +422,7 @@ const Inquiries: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </CrmTableShell>
 
       {/* Pagination */}
       <Pagination
