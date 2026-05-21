@@ -88,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
         )}
 
         {/* Right side - User Profile */}
-        <div className="relative" ref={menuRef}>
+        <div className="relative z-[100]" ref={menuRef}>
           <Button
             variant="ghost"
             size="sm"
@@ -111,28 +111,33 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
           </Button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-md border border-crm-border bg-crm-surface p-1 shadow-lg z-50">
-              <div className="px-3 py-3">
-                <div className="text-sm font-medium text-crm-text">
+            <div
+              className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border border-crm-border bg-white p-1 shadow-xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-[#111827] dark:ring-white/10 z-[200]"
+              role="menu"
+            >
+              <div className="bg-white px-3 py-3 dark:bg-[#111827]">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {userName}
                 </div>
-                <div className="text-xs text-crm-muted mt-1">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {user?.email}
                 </div>
-                <div className="text-xs text-crm-muted">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   {userRole}
                 </div>
               </div>
-              <div className="my-1 h-px bg-crm-border" />
-              <ThemeAppearanceMenu />
-              <div className="my-1 h-px bg-crm-border" />
-              <button className="flex w-full items-center rounded-sm px-3 py-2 text-sm text-crm-text hover:bg-crm-hover transition-colors">
+              <div className="my-1 h-px bg-gray-200 dark:bg-gray-700" />
+              <div className="bg-white dark:bg-[#111827]">
+                <ThemeAppearanceMenu />
+              </div>
+              <div className="my-1 h-px bg-gray-200 dark:bg-gray-700" />
+              <button className="flex w-full items-center rounded-sm px-3 py-2 text-sm text-gray-800 hover:bg-gray-100 transition-colors dark:text-gray-100 dark:hover:bg-gray-800">
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </button>
               <button
                 onClick={onLogout}
-                className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-crm-hover transition-colors text-red-500"
+                className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-gray-100 transition-colors text-red-600 dark:hover:bg-gray-800 dark:text-red-400"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
