@@ -1,18 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Printer, Share2, Zap, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Printer, Share2, Zap, Pencil, X } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import QuotationDocument from '../components/quotation/QuotationDocument';
 import { COMPANY } from '../constants/quotation';
+import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
 
 const QuotationPreview: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const previewRef = useRef<HTMLDivElement>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     document.body.classList.add('quotation-preview-mode');
@@ -39,6 +41,22 @@ const QuotationPreview: React.FC = () => {
   });
 
   const handlePrint = () => window.print();
+
+  const handleDownloadPdf = async () => {
+    if (!previewRef.current || !quotation) return;
+    setDownloadingPdf(true);
+    try {
+      await downloadQuotationPdf({
+        element: previewRef.current,
+        filename: quotation.quotation_no,
+      });
+    } catch (err) {
+      console.error('PDF download failed:', err);
+      alert('Could not generate PDF. Please use Print / PDF, or try again in a moment.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const handleShareWhatsApp = () => {
     if (!quotation) return;
@@ -97,8 +115,22 @@ ${COMPANY.website}`;
             <Button variant="outline" size="sm" onClick={() => navigate(`/quotations/edit/${quotation.id}`)} className="gap-1">
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="gap-1 border-[#1e5a9e] text-[#1e5a9e] hover:bg-blue-50"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloadingPdf ? 'Generating…' : 'Download PDF'}
+            </Button>
             <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1">
-              <Printer className="h-3.5 w-3.5" /> Print / PDF
+              <Printer className="h-3.5 w-3.5" /> Print
             </Button>
             <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="gap-1 text-green-700 border-green-200">
               <Share2 className="h-3.5 w-3.5" /> WhatsApp
@@ -146,7 +178,7 @@ ${COMPANY.website}`;
         </div>
 
         <p className="quotation-no-print mt-4 text-center text-[10px] text-gray-400">
-          Use Print / PDF → Save as PDF for a clean full-page quotation (sidebar hidden automatically).
+          Download PDF saves directly to your device. Print opens the browser print dialog.
         </p>
       </div>
     </div>
