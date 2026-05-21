@@ -83,32 +83,71 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Helper for Donut Chart
-  const DonutChart = ({ value, total, label, color }: { value: number; total: number; label: string; color: string }) => {
+  const oneTimeCount = stats?.category_stats?.one_time || 0;
+  const amcCount = stats?.category_stats?.amc || 0;
+  const serviceMixTotal = oneTimeCount + amcCount;
+  const retailCount = stats?.job_type_stats?.individual || 0;
+  const corporateCount = stats?.job_type_stats?.society || 0;
+  const clientMixTotal = retailCount + corporateCount;
+
+  const PerformanceRing = ({
+    value,
+    total,
+    color,
+    trackClass,
+  }: {
+    value: number;
+    total: number;
+    color: string;
+    trackClass: string;
+  }) => {
     const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-    const circumference = 2 * Math.PI * 15.9155;
+    const circumference = 2 * Math.PI * 16;
     const offset = circumference - (percentage / 100) * circumference;
 
     return (
-      <div className="relative flex flex-col items-center justify-center w-24 h-24">
-        <svg viewBox="0 0 42 42" className="w-24 h-24 transform -rotate-90">
-          <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#f3f4f6" strokeWidth="4" />
+      <div className="relative h-[88px] w-[88px] shrink-0">
+        <svg viewBox="0 0 40 40" className="h-full w-full -rotate-90">
+          <circle cx="20" cy="20" r="16" fill="none" className={trackClass} strokeWidth="5" />
           <circle
-            cx="21" cy="21" r="15.9155" fill="transparent"
-            stroke={color} strokeWidth="4"
+            cx="20"
+            cy="20"
+            r="16"
+            fill="none"
+            stroke={color}
+            strokeWidth="5"
             strokeDasharray={`${circumference} ${circumference}`}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className="transition-all duration-1000 ease-out"
+            className="transition-all duration-700 ease-out"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-sm font-black text-gray-800">{percentage}%</span>
+          <span className="text-lg font-black text-gray-900 dark:text-gray-50 leading-none">{percentage}%</span>
         </div>
-        <p className="absolute -bottom-5 text-[9px] font-black text-gray-400 uppercase tracking-tighter">{label}</p>
       </div>
     );
   };
+
+  const PerformanceStatRow = ({
+    label,
+    value,
+    accent,
+    accentBg,
+  }: {
+    label: string;
+    value: number;
+    accent: string;
+    accentBg: string;
+  }) => (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100/80 bg-white/80 px-3.5 py-2.5 dark:border-gray-700/60 dark:bg-gray-800/40">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className={cn('h-2 w-2 shrink-0 rounded-full', accentBg)} />
+        <span className={cn('text-[11px] font-bold uppercase tracking-wide truncate', accent)}>{label}</span>
+      </div>
+      <span className="text-xl font-black tabular-nums text-gray-900 dark:text-gray-50">{value}</span>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pb-6 min-h-screen">
@@ -197,50 +236,116 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-fade-up delay-300">
-        {/* 📊 4. PERFORMANCE SECTION - TIGHTER */}
-        <Card className="lg:col-span-2 border-gray-100 shadow-sm rounded-xl overflow-hidden bg-white">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-6">
-               <TrendingUp className="h-4 w-4 text-blue-600" />
-               <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Performance Insights</h2>
+        {/* 📊 4. PERFORMANCE INSIGHTS */}
+        <Card className="lg:col-span-2 overflow-hidden rounded-2xl border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-crm-surface">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-700/80">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-500/20">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-wide text-gray-900 dark:text-gray-50">
+                    Performance Insights
+                  </h2>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">
+                    Service & client mix for selected dates
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                {serviceMixTotal + clientMixTotal} bookings
+              </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex items-center justify-between px-6 bg-gray-50/50 p-4 rounded-xl h-28">
-                  <DonutChart 
-                    value={stats?.category_stats?.amc || 0} 
-                    total={(stats?.category_stats?.amc || 0) + (stats?.category_stats?.one_time || 0)} 
-                    label="AMC" 
-                    color="#3b82f6" 
-                  />
-                  <div className="space-y-2 text-right">
-                     <div>
-                        <p className="text-[9px] font-bold text-gray-600 uppercase">One-Time</p>
-                        <p className="text-lg font-black text-gray-900">{stats?.category_stats?.one_time || 0}</p>
-                     </div>
-                     <div>
-                        <p className="text-[9px] font-bold text-blue-600 uppercase">AMC</p>
-                        <p className="text-lg font-black text-gray-900">{stats?.category_stats?.amc || 0}</p>
-                     </div>
+
+            <div className="grid grid-cols-1 gap-4 p-5 sm:p-6 md:grid-cols-2">
+              {/* Service mix */}
+              <div className="flex min-h-[200px] flex-col rounded-2xl border border-blue-100/80 bg-gradient-to-br from-blue-50/40 via-white to-white p-5 shadow-sm dark:border-blue-900/40 dark:from-blue-950/20 dark:via-crm-surface dark:to-crm-surface">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                      Service Mix
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">One-time vs AMC</p>
                   </div>
-               </div>
-               <div className="flex items-center justify-between px-6 bg-gray-50/50 p-4 rounded-xl h-28">
-                  <DonutChart 
-                    value={stats?.job_type_stats?.society || 0} 
-                    total={(stats?.job_type_stats?.individual || 0) + (stats?.job_type_stats?.society || 0)} 
-                    label="Corporate" 
-                    color="#6366f1" 
-                  />
-                  <div className="space-y-2 text-right">
-                     <div>
-                        <p className="text-[9px] font-bold text-gray-600 uppercase">Retail</p>
-                        <p className="text-lg font-black text-gray-900">{stats?.job_type_stats?.individual || 0}</p>
-                     </div>
-                     <div>
-                        <p className="text-[9px] font-bold text-indigo-600 uppercase">Corporate</p>
-                        <p className="text-lg font-black text-gray-900">{stats?.job_type_stats?.society || 0}</p>
-                     </div>
+                  <span className="rounded-lg bg-blue-600 px-2.5 py-1 text-[10px] font-black text-white">
+                    {serviceMixTotal} total
+                  </span>
+                </div>
+
+                <div className="flex flex-1 flex-col sm:flex-row sm:items-center gap-5">
+                  <div className="flex flex-col items-center gap-2 sm:pl-1">
+                    <PerformanceRing
+                      value={amcCount}
+                      total={serviceMixTotal}
+                      color="#2563eb"
+                      trackClass="stroke-blue-100 dark:stroke-blue-950"
+                    />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      AMC share
+                    </span>
                   </div>
-               </div>
+
+                  <div className="flex flex-1 flex-col justify-center gap-2.5 min-w-0">
+                    <PerformanceStatRow
+                      label="One-Time"
+                      value={oneTimeCount}
+                      accent="text-gray-600 dark:text-gray-300"
+                      accentBg="bg-gray-400"
+                    />
+                    <PerformanceStatRow
+                      label="AMC"
+                      value={amcCount}
+                      accent="text-blue-600 dark:text-blue-400"
+                      accentBg="bg-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Client type */}
+              <div className="flex min-h-[200px] flex-col rounded-2xl border border-violet-100/80 bg-gradient-to-br from-violet-50/40 via-white to-white p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-crm-surface dark:to-crm-surface">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                      Client Type
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Retail vs corporate</p>
+                  </div>
+                  <span className="rounded-lg bg-violet-600 px-2.5 py-1 text-[10px] font-black text-white">
+                    {clientMixTotal} total
+                  </span>
+                </div>
+
+                <div className="flex flex-1 flex-col sm:flex-row sm:items-center gap-5">
+                  <div className="flex flex-col items-center gap-2 sm:pl-1">
+                    <PerformanceRing
+                      value={corporateCount}
+                      total={clientMixTotal}
+                      color="#7c3aed"
+                      trackClass="stroke-violet-100 dark:stroke-violet-950"
+                    />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                      Corporate share
+                    </span>
+                  </div>
+
+                  <div className="flex flex-1 flex-col justify-center gap-2.5 min-w-0">
+                    <PerformanceStatRow
+                      label="Retail"
+                      value={retailCount}
+                      accent="text-gray-600 dark:text-gray-300"
+                      accentBg="bg-gray-400"
+                    />
+                    <PerformanceStatRow
+                      label="Corporate"
+                      value={corporateCount}
+                      accent="text-violet-600 dark:text-violet-400"
+                      accentBg="bg-violet-500"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
