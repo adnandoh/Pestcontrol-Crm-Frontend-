@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -11,6 +11,7 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { Button, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -26,6 +27,7 @@ import { useDashboardCounts } from '../hooks/useDashboardCounts';
 const CRMInquiries: React.FC = () => {
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('focus');
+  const [focusPreview, setFocusPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [markingAllRead, setMarkingAllRead] = useState(false);
@@ -58,28 +60,39 @@ const CRMInquiries: React.FC = () => {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
 
-  const loadInquiries = async (page = 1) => {
+  const loadInquiries = async (page = 1, opts?: { focus?: string }) => {
     try {
       setLoading(true);
-      const params = {
+      const params: Record<string, string | number | undefined> = {
         page,
         page_size: pagination.pageSize,
         search: filters.search,
         status: filters.status,
         pest_type: filters.pest_type,
         inquiry_date: filters.date,
-        ordering: '-created_at'
+        ordering: '-created_at',
       };
-      
+      if (opts?.focus) {
+        params.focus = opts.focus;
+      }
+
       const response = await enhancedApiService.getCRMInquiries(params);
       setInquiries(response.results);
       setPagination(prev => ({ ...prev, count: response.count, current: page }));
     } catch (err) {
       console.error('Failed to load inquiries:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
   };
+
+  const handleFocusFromSearch = useCallback(async (id: string) => {
+    setFocusPreview(id);
+    await loadInquiries(1, { focus: id });
+  }, [filters, pagination.pageSize]);
+
+  useInquiryFocusFromSearch(handleFocusFromSearch);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -91,6 +104,8 @@ const CRMInquiries: React.FC = () => {
   }, [searchInput]);
 
   useEffect(() => {
+    if (focusId) return;
+    setFocusPreview(null);
     loadInquiries(1);
   }, [filters]);
 
@@ -263,6 +278,22 @@ const CRMInquiries: React.FC = () => {
         </div>
       </div>
 
+      {focusPreview && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">
+          <span>Showing CRM inquiry #{focusPreview} from search</span>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusPreview(null);
+              loadInquiries(1);
+            }}
+            className="text-blue-700 underline hover:text-blue-900"
+          >
+            Show all inquiries
+          </button>
+        </div>
+      )}
+
       <p className="text-[10px] text-slate-400 lg:hidden">Swipe horizontally to see all columns →</p>
 
       {/* 3. Table Results */}
@@ -297,10 +328,10 @@ const CRMInquiries: React.FC = () => {
               ) : inquiries.map((inq) => (
                 <tr
                   key={inq.id}
+                  id={inquiryRowAnchorId(inq.id)}
                   className={cn(
                     'hover:bg-slate-50/80 transition-colors',
                     !inq.is_read && 'bg-orange-50/40 border-l-2 border-l-orange-400',
-                    focusId && String(inq.id) === focusId && 'ring-2 ring-inset ring-blue-400',
                   )}
                 >
                   <td className={cn(crmTdClass, 'text-xs font-semibold text-slate-400 tabular-nums')}>

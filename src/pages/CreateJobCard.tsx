@@ -24,7 +24,13 @@ import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValid
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
 
-import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import {
+  SERVICE_PACKAGE_OPTIONS,
+  computeMultiServicePricing,
+  getAreaOptions,
+  getSharedPricingTypes,
+  type ServicePriceLine,
+} from '../utils/jobCardPricing';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
@@ -37,9 +43,10 @@ const CreateJobCard: React.FC = () => {
   const [savingInquiry, setSavingInquiry] = useState(false);
   
   // Pricing selector states
-  const [pricingService, setPricingService] = useState('');
+  const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
+  const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
 
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
@@ -86,30 +93,59 @@ const CreateJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-  // Handle pricing calculation
+  const availablePricingTypes = getSharedPricingTypes(selectedPackages);
+  const availableAreas = getAreaOptions(selectedPackages, pricingType);
+
+  // Sync service_type from selected packages
   useEffect(() => {
-    if (pricingService && pricingArea && pricingType) {
-      const serviceData = PRICING_DATA[pricingService];
-      if (serviceData && serviceData[pricingType]) {
-        const typeData = serviceData[pricingType];
-        if (typeof typeData === 'object') {
-          const price = (typeData as any)[pricingArea];
-          if (price !== undefined) {
-             setFormData(prev => ({ ...prev, price: price.toString() }));
-          }
-        } else if (typeof typeData === 'number') {
-           setFormData(prev => ({ ...prev, price: typeData.toString() }));
-        }
-      }
-    } else {
-      // Reset price if selection is incomplete
-      setFormData(prev => ({ ...prev, price: '0.00' }));
+    const label = selectedPackages.join(', ');
+    setFormData((prev) => ({ ...prev, service_type: label }));
+    if (label) validateField('service_type', label);
+  }, [selectedPackages]);
+
+  // Reset type/area when package mix changes
+  useEffect(() => {
+    if (pricingType && !availablePricingTypes.includes(pricingType)) {
+      setPricingType(availablePricingTypes[0] || '');
+    } else if (!pricingType && availablePricingTypes.length === 1) {
+      setPricingType(availablePricingTypes[0]);
     }
-  }, [pricingService, pricingArea, pricingType]);
+  }, [selectedPackages, availablePricingTypes.join('|')]);
 
+  useEffect(() => {
+    if (pricingArea && availableAreas.length > 0 && !availableAreas.includes(pricingArea)) {
+      setPricingArea('');
+    }
+  }, [selectedPackages, pricingType, availableAreas.join('|')]);
 
+  useEffect(() => {
+    if (pricingType === 'AMC 3 Services') {
+      setFormData((prev) => ({ ...prev, service_category: 'AMC' }));
+    } else if (pricingType) {
+      setFormData((prev) => ({ ...prev, service_category: 'One-Time Service' }));
+    }
+  }, [pricingType]);
 
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  // Multi-service total price
+  useEffect(() => {
+    if (
+      formData.commercial_type === 'home' &&
+      selectedPackages.length > 0 &&
+      pricingArea &&
+      pricingType
+    ) {
+      const { total, lines } = computeMultiServicePricing(
+        selectedPackages,
+        pricingType,
+        pricingArea,
+      );
+      setPriceBreakdown(lines);
+      setFormData((prev) => ({ ...prev, price: total.toFixed(2) }));
+    } else if (formData.commercial_type === 'home') {
+      setPriceBreakdown([]);
+      setFormData((prev) => ({ ...prev, price: '0.00' }));
+    }
+  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type]);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -169,9 +205,9 @@ const CreateJobCard: React.FC = () => {
 
   // Handle Next Service Date Auto-calculation
   useEffect(() => {
-    const service = pricingService.toLowerCase();
-    const isCockroachAMC = service.includes('cockroach') && formData.service_category === 'AMC';
-    const isBedBug = service.includes('bedbug') || service.includes('bed bug');
+    const labels = selectedPackages.join(' ').toLowerCase();
+    const isCockroachAMC = labels.includes('cockroach') && formData.service_category === 'AMC';
+    const isBedBug = labels.includes('bed');
 
     if (isCockroachAMC || isBedBug) {
       // Auto-calculate only if not manually edited and schedule_date exists
@@ -195,7 +231,7 @@ const CreateJobCard: React.FC = () => {
         setFormData(prev => ({ ...prev, next_service_date: '' }));
       }
     }
-  }, [pricingService, formData.service_category, formData.schedule_datetime, isNextDateManual]);
+  }, [selectedPackages, formData.service_category, formData.schedule_datetime, isNextDateManual]);
 
 
 
@@ -247,12 +283,11 @@ const CreateJobCard: React.FC = () => {
   };
 
 
-  // Update service_type field when selections change
-  useEffect(() => {
-    const updatedServiceType = selectedServices.join(', ');
-    handleInputChange('service_type', updatedServiceType);
-    validateField('service_type', updatedServiceType);
-  }, [selectedServices]);
+  const toggleServicePackage = (service: string) => {
+    setSelectedPackages((prev) =>
+      prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service],
+    );
+  };
 
   // Check if client exists by mobile number
   const checkClientExists = async (mobile: string) => {
@@ -309,6 +344,10 @@ const CreateJobCard: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedPackages.length === 0) {
+      alert('Please select at least one service.');
+      return;
+    }
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       console.error('Validation errors:', validationErrors);
@@ -510,8 +549,9 @@ const CreateJobCard: React.FC = () => {
           {/* Section: Service Configuration & Pricing */}
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
-             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+             <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
+                <div className="flex-1 flex flex-col gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                    <div>
                       <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
                       <select
@@ -536,112 +576,119 @@ const CreateJobCard: React.FC = () => {
                       </select>
                    </div>
                    <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Service *</label>
-                      <select
-                        value={pricingService}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPricingService(val);
-                          
-                          // Handle automatic type selection
-                          const availableTypes = SERVICE_TYPES[val] || [];
-                          if (availableTypes.length === 1) {
-                            setPricingType(availableTypes[0]);
-                            // Also map to backend category
-                            const typeVal = availableTypes[0];
-                            if (typeVal === 'AMC') {
-                                handleInputChange('service_category', 'AMC');
-                            } else if (typeVal.includes('One-Time')) {
-                                handleInputChange('service_category', 'One-Time Service');
-                            } else {
-                                handleInputChange('service_category', typeVal);
-                            }
-                          } else {
-                            setPricingType('');
-                          }
-                          
-                          // Auto-check pests
-                          const serviceToPestsMap: Record<string, string[]> = {
-                            'Cockroach / Ants': ['Cockroach', 'Ants'],
-                            'Bed Bugs': ['Bed Bug'],
-                            'Termite': ['Termite'],
-                            'Rodent': ['Rodent'],
-                            'Mosquito': ['Mosquito']
-                          };
-                          if (serviceToPestsMap[val]) {
-                            setSelectedServices(serviceToPestsMap[val]);
-                          } else {
-                            setSelectedServices([]);
-                          }
-                        }}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
-                        required
-                      >
-                        <option value="">Select Service</option>
-                        {Object.keys(SERVICE_TYPES).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                   </div>
-                   <div>
                       <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
                       <select
                         value={pricingArea}
                         onChange={(e) => {
                           setPricingArea(e.target.value);
-                          if (PROPERTY_LOCATIONS.includes(e.target.value)) {
+                          if (['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK'].includes(e.target.value)) {
                             handleInputChange('bhk_size', e.target.value);
                           } else {
                             handleInputChange('bhk_size', '');
                           }
                         }}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
                         required
+                        disabled={selectedPackages.length === 0}
                       >
                         <option value="">Select Area</option>
-                        {pricingService === 'Rodent' ? (
-                          <>
-                            <option value="Society Area">Society Area</option>
-                            <option value="Windows">Windows</option>
-                          </>
-                        ) : pricingService === 'Hotel / Commercial' ? (
-                          <option value="Commercial Space">Commercial Space</option>
-                        ) : (
-                          PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)
-                        )}
+                        {availableAreas.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
                       </select>
                    </div>
                    <div>
                       <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
                       <select
                         value={pricingType}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPricingType(val);
-                          // Map to backend service_category
-                          if (val === 'AMC 3 Services') {
-                            handleInputChange('service_category', 'AMC');
-                          } else {
-                            handleInputChange('service_category', 'One-Time Service');
-                          }
-                        }}
+                        onChange={(e) => setPricingType(e.target.value)}
                         className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
                         required
-                        disabled={!pricingService}
+                        disabled={selectedPackages.length === 0}
                       >
                         <option value="">Select Type</option>
-                        {pricingService && SERVICE_TYPES[pricingService]?.map((t: string) => <option key={t} value={t}>{t}</option>)}
+                        {availablePricingTypes.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                       </select>
                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[13px] font-bold text-gray-700 mb-2 block">
+                      Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
+                    </label>
+                    <div className="rounded-lg border border-gray-200 bg-white p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {SERVICE_PACKAGE_OPTIONS.map((service) => {
+                        const checked = selectedPackages.includes(service);
+                        return (
+                          <label
+                            key={service}
+                            className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                              checked
+                                ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
+                                : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              checked={checked}
+                              onChange={() => toggleServicePackage(service)}
+                            />
+                            <span className="text-sm font-semibold text-gray-800">{service}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {selectedPackages.length > 0 && (
+                      <p className="text-[11px] font-bold text-blue-700 mt-2">
+                        Selected: {selectedPackages.join(' + ')}
+                      </p>
+                    )}
+                    {errors.service_type && (
+                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.service_type}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex flex-col items-start lg:items-end justify-center min-w-[140px] pl-4 lg:border-l border-gray-200">
+                <div className="flex flex-col items-start lg:items-end justify-start min-w-[200px] lg:max-w-[240px] pl-0 lg:pl-4 lg:border-l border-gray-200">
                    <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
                      {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
                    </span>
                    {formData.commercial_type === 'home' ? (
+                     <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
                         {formData.price}
                      </div>
+                     {priceBreakdown.length > 0 && (
+                       <div className="mt-3 w-full rounded-lg border border-blue-100 bg-white/90 p-3 text-left">
+                         <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider mb-2">
+                           Add-on services in this price
+                         </p>
+                         <ul className="space-y-1.5">
+                           {priceBreakdown.map((line) => (
+                             <li key={line.service} className="flex justify-between gap-2 text-xs">
+                               <span className="font-semibold text-gray-700 shrink min-w-0">
+                                 {line.service}
+                                 {line.note && (
+                                   <span className="block text-[10px] font-normal text-amber-700">{line.note}</span>
+                                 )}
+                               </span>
+                               <span className="font-bold text-gray-900 tabular-nums shrink-0">
+                                 {line.price > 0 ? `₹${line.price}` : '—'}
+                               </span>
+                             </li>
+                           ))}
+                         </ul>
+                         <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between text-xs font-black text-blue-900">
+                           <span>Total</span>
+                           <span>₹{formData.price}</span>
+                         </div>
+                       </div>
+                     )}
+                     </>
                    ) : (
                      <div className="flex flex-col items-start lg:items-end">
                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-md tracking-tighter uppercase mb-1">To be decided</span>
@@ -751,8 +798,8 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               {/* Next Service Date Field */}
-              {((pricingService.toLowerCase().includes('cockroach') && formData.service_category === 'AMC') || 
-                pricingService.toLowerCase().includes('bed bug')) && (
+              {((selectedPackages.join(' ').toLowerCase().includes('cockroach') && formData.service_category === 'AMC') ||
+                selectedPackages.some((s) => s.toLowerCase().includes('bed'))) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
                   <Input
@@ -765,7 +812,9 @@ const CreateJobCard: React.FC = () => {
                     className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
                   />
                   <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
-                    {pricingService.toLowerCase().includes('cockroach') ? 'Every 4 months for AMC' : 'After 15 days for Bed Bug'}
+                    {selectedPackages.join(' ').toLowerCase().includes('cockroach') && formData.service_category === 'AMC'
+                      ? 'Every 4 months for AMC'
+                      : 'After 15 days for Bed Bug'}
                   </p>
                 </div>
               )}

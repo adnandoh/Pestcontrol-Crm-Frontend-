@@ -1401,6 +1401,7 @@ const JobCards: React.FC = () => {
                                       <button
                                         onClick={() => {
                                           openWhatsApp(job.technician_mobile!, whatsAppTemplates.technicianJobDetails({
+                                            techName: job.technician_name || job.assigned_to || '',
                                             bookingId: job.code || job.id.toString(),
                                             clientName: job.client_name,
                                             clientMobile: job.client_mobile,

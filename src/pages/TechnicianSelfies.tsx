@@ -19,7 +19,7 @@ const TechnicianSelfies: React.FC = () => {
         page_size: 100,
         booking_id: bookingId,
       });
-      setItems(res.results);
+      setItems(res.results.filter((row) => Boolean(row.selfie_url)));
     } catch (e) {
       console.error(e);
     } finally {
@@ -74,9 +74,13 @@ const TechnicianSelfies: React.FC = () => {
           <Loader2 className="h-8 w-8 animate-spin text-[#1e5a9e]" />
         </div>
       ) : items.length === 0 ? (
-        <Card className="p-12 text-center text-gray-500">
+        <Card className="p-12 text-center text-gray-500 max-w-lg mx-auto">
           <Camera className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-          No selfies found yet
+          <p className="font-semibold text-gray-700">No selfies found yet</p>
+          <p className="text-sm mt-2 leading-relaxed">
+            Selfies appear here after a technician starts a job in the Partner App and uploads a start-of-service photo.
+            Bookings that are only sent to the app (pending) do not have selfies.
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

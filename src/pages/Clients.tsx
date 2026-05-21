@@ -43,7 +43,7 @@ const Clients: React.FC = () => {
       };
 
       if (currentSearch.trim()) {
-        params.search = currentSearch.trim();
+        params.q = currentSearch.trim();
       }
 
       const response: PaginatedResponse<Client> = await enhancedApiService.getClients(params);

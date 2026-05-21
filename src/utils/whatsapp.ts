@@ -134,6 +134,7 @@ PestControl99 Team`;
 
   // 4. Technician Message (to Technician)
   technicianJobDetails: (data: {
+    techName: string;
     bookingId: string;
     clientName: string;
     clientMobile: string;
@@ -144,7 +145,10 @@ PestControl99 Team`;
     dateTime: string;
     instructions: string;
   }) => {
-    return `New Service Assigned
+    const greeting = data.techName.trim()
+      ? `Dear ${data.techName.trim()},\n\n`
+      : '';
+    return `${greeting}New Service Assigned
 
 Booking ID: ${data.bookingId}
 

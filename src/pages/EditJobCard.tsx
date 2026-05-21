@@ -420,6 +420,7 @@ const EditJobCard: React.FC = () => {
             <>
               <button
                 onClick={() => openWhatsApp(jobCard.technician_mobile!, whatsAppTemplates.technicianJobDetails({
+                  techName: jobCard.technician_name || jobCard.assigned_to || '',
                   bookingId: jobCard.code || jobCard.id.toString(),
                   clientName: formData.client_name,
                   clientMobile: formData.client_mobile,

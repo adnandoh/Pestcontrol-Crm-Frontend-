@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CheckCircle,
   ArrowRight,
@@ -6,8 +6,10 @@ import {
   Bell,
   MessageCircle,
   CheckCheck,
+  MapPin,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -22,6 +24,7 @@ import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 const Inquiries: React.FC = () => {
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('focus');
+  const [focusPreview, setFocusPreview] = useState<string | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAllRead, setMarkingAllRead] = useState(false);
@@ -46,17 +49,20 @@ const Inquiries: React.FC = () => {
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
   // Load inquiries
-  const loadInquiries = async (page = 1) => {
+  const loadInquiries = async (page = 1, opts?: { focus?: string }) => {
     try {
       setLoading(true);
 
-      const params = {
+      const params: Record<string, string | number | undefined> = {
         page,
         page_size: pagination.pageSize,
         ordering: '-created_at',
         status: filters.status || undefined,
-        search: filters.search || undefined
+        search: filters.search || undefined,
       };
+      if (opts?.focus) {
+        params.focus = opts.focus;
+      }
 
       const response: PaginatedResponse<Inquiry> = await enhancedApiService.getInquiries(params);
       
@@ -71,10 +77,18 @@ const Inquiries: React.FC = () => {
       }));
     } catch (err: any) {
       console.error('Error loading inquiries:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
   };
+
+  const handleFocusFromSearch = useCallback(async (id: string) => {
+    setFocusPreview(id);
+    await loadInquiries(1, { focus: id });
+  }, [filters, pagination.pageSize, activeTab]);
+
+  useInquiryFocusFromSearch(handleFocusFromSearch);
 
   const patchLeadRow = (id: number, patch: Partial<Inquiry>) => {
     setInquiries((prev) => prev.map((inq) => (inq.id === id ? { ...inq, ...patch } : inq)));
@@ -89,8 +103,9 @@ const Inquiries: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Initial load and filter changes
   useEffect(() => {
+    if (focusId) return;
+    setFocusPreview(null);
     loadInquiries(1);
   }, [filters.status, filters.search, activeTab]);
 
@@ -240,7 +255,7 @@ const Inquiries: React.FC = () => {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search Name, Phone, Email..."
+              placeholder="Search Name, Phone, Email, Location..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && setFilters(prev => ({ ...prev, search: searchInput }))}
@@ -270,6 +285,22 @@ const Inquiries: React.FC = () => {
         </div>
       </div>
 
+      {focusPreview && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-800">
+          <span>Showing website lead #{focusPreview} from search</span>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusPreview(null);
+              loadInquiries(1);
+            }}
+            className="text-purple-700 underline hover:text-purple-900"
+          >
+            Show all leads
+          </button>
+        </div>
+      )}
+
       <p className="text-[10px] text-slate-400 lg:hidden">Swipe horizontally to see all columns →</p>
 
       <CrmTableShell>
@@ -279,6 +310,7 @@ const Inquiries: React.FC = () => {
               <tr>
                 <th className={cn(crmThClass, 'w-12')}>ID</th>
                 <th className={cn(crmThClass, 'min-w-[130px]')}>Lead</th>
+                <th className={cn(crmThClass, 'min-w-[160px]')}>Location</th>
                 <th className={cn(crmThClass, 'w-28')}>Property</th>
                 <th className={cn(crmThClass, 'w-24')}>Plan / Rate</th>
                 <th className={cn(crmThClass, 'min-w-[120px]')}>Interest</th>
@@ -291,22 +323,22 @@ const Inquiries: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                   <td colSpan={9} className="py-20 text-center">
+                   <td colSpan={10} className="py-20 text-center">
                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
                      <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                    </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                   <td colSpan={9} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
+                   <td colSpan={10} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
                 </tr>
               ) : inquiries.map((inquiry) => (
                 <tr
                   key={inquiry.id}
+                  id={inquiryRowAnchorId(inquiry.id)}
                   className={cn(
                     'transition-colors hover:bg-slate-50/80',
                     !inquiry.is_read && 'bg-blue-50/50 border-l-2 border-l-blue-500',
-                    focusId && String(inquiry.id) === focusId && 'ring-2 ring-inset ring-blue-400',
                   )}
                 >
                   <td className={cn(crmTdClass, 'text-xs font-semibold text-slate-400 tabular-nums')}>
@@ -332,6 +364,27 @@ const Inquiries: React.FC = () => {
                             <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className={crmTdClass}>
+                    <div className="flex gap-2 min-w-0 max-w-[220px]">
+                      <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        {inquiry.city?.trim() || inquiry.state?.trim() ? (
+                          <>
+                            <p className="text-xs text-slate-700 line-clamp-2 leading-snug">
+                              {inquiry.city?.trim() || inquiry.state?.trim()}
+                            </p>
+                            {inquiry.city?.trim() && inquiry.state?.trim() && (
+                              <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                {inquiry.state.trim()}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-xs text-slate-400">—</p>
+                        )}
                       </div>
                     </div>
                   </td>
