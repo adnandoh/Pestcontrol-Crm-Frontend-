@@ -116,7 +116,8 @@ export const togglePublish = async (id: number): Promise<{ status: string; publi
 export const uploadBlogImage = async (
   file: File,
   altText = '',
-  title = ''
+  title = '',
+  onProgress?: (percent: number) => void,
 ): Promise<{ url: string; path: string; alt_text?: string; title?: string }> => {
   const fd = new FormData();
   fd.append('image', file);
@@ -125,6 +126,10 @@ export const uploadBlogImage = async (
   const { data } = await api.post('/blogs/upload-image/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120000,
+    onUploadProgress: (event) => {
+      if (!onProgress || !event.total) return;
+      onProgress(Math.round((event.loaded * 100) / event.total));
+    },
   });
   return data;
 };

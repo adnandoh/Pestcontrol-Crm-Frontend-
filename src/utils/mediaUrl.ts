@@ -29,16 +29,27 @@ function rewriteToApiOrigin(absoluteUrl: string): string {
   return absoluteUrl;
 }
 
+const SELFIE_PREFIXES = ['job_selfies/', 'technician_selfies/'] as const;
+
+function selfieStoragePathFromPathname(pathname: string): string | null {
+  for (const prefix of SELFIE_PREFIXES) {
+    const mediaMatch = pathname.match(new RegExp(`/media/(${prefix.replace('/', '\\/')}.+)$`));
+    if (mediaMatch) return mediaMatch[1];
+    const s3Match = pathname.match(new RegExp(`^/(${prefix.replace('/', '\\/')}.+)$`));
+    if (s3Match) return s3Match[1];
+  }
+  return null;
+}
+
 /** Job selfies: use API proxy (private S3 returns Access Denied on direct bucket URLs). */
 function jobSelfieProxyUrl(absoluteUrl: string): string | null {
   try {
     const parsed = new URL(absoluteUrl);
-    let storagePath: string | null = null;
-    const mediaMatch = parsed.pathname.match(/\/media\/(job_selfies\/.+)$/);
-    const s3Match = parsed.pathname.match(/^\/(job_selfies\/.+)$/);
-    if (mediaMatch) storagePath = mediaMatch[1];
-    else if (s3Match && parsed.hostname.includes('amazonaws.com')) storagePath = s3Match[1];
+    const storagePath = selfieStoragePathFromPathname(parsed.pathname);
     if (!storagePath) return null;
+    const isS3 = parsed.hostname.includes('amazonaws.com');
+    const isLocalMedia = parsed.pathname.includes('/media/');
+    if (!isS3 && !isLocalMedia) return null;
     return mediaFileProxyUrl(storagePath);
   } catch {
     return null;
@@ -56,7 +67,7 @@ export function resolveMediaUrl(url: string | null | undefined): string | null {
     return rewriteToApiOrigin(trimmed);
   }
 
-  if (trimmed.startsWith('job_selfies/')) {
+  if (SELFIE_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
     return mediaFileProxyUrl(trimmed);
   }
   const origin = apiMediaOrigin();

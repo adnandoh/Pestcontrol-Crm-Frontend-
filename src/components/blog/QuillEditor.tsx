@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 import { uploadBlogImage } from '../../services/blogApi';
@@ -25,6 +25,7 @@ if (ImageFormat?.sanitize) {
 }
 
 const MAX_IMAGE_MB = 10;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function insertEditorImage(quill: Quill, imageUrl: string, altText = '') {
   const url = imageUrl.trim();
@@ -94,6 +95,8 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
   const placeholderRef = useRef(placeholder);
   const isToolbarFixedRef = useRef(false);
   const initialValueRef = useRef(value);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   onChangeRef.current = onChange;
   placeholderRef.current = placeholder;
@@ -101,13 +104,13 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
   const imageHandler = useCallback(() => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
+    input.setAttribute('accept', 'image/jpeg,image/png,image/webp');
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
 
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file.');
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        alert('Only JPG, PNG, and WebP images are allowed.');
         return;
       }
       if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
@@ -115,8 +118,10 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
         return;
       }
 
+      setImageUploading(true);
+      setUploadProgress(0);
       try {
-        const result = await uploadBlogImage(file);
+        const result = await uploadBlogImage(file, '', '', (pct) => setUploadProgress(pct));
         const url = resolveMediaUrl(result.url) || result.url;
         if (!url) {
           alert('Upload succeeded but no image URL was returned.');
@@ -133,6 +138,9 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
           ax?.response?.data?.image?.[0] ||
           'Failed to upload image.';
         alert(typeof msg === 'string' ? msg : 'Failed to upload image.');
+      } finally {
+        setImageUploading(false);
+        setUploadProgress(0);
       }
     };
     input.click();
@@ -317,10 +325,23 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
   }, [readOnly]);
 
   return (
-    <div
-      ref={rootRef}
-      className={`quill-editor-root ${embedded ? 'quill-embedded' : ''} ${readOnly ? 'ql-readonly' : ''} ${className}`.trim()}
-    />
+    <div className={`relative ${className}`.trim()}>
+      {imageUploading && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-lg bg-white/90">
+          <p className="text-sm font-medium text-gray-700 mb-2">Uploading to S3… {uploadProgress}%</p>
+          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-200"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+      <div
+        ref={rootRef}
+        className={`quill-editor-root ${embedded ? 'quill-embedded' : ''} ${readOnly ? 'ql-readonly' : ''}`}
+      />
+    </div>
   );
 };
 

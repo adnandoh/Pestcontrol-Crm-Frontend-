@@ -127,6 +127,15 @@ const BlogEditor: React.FC = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      alert('Only JPG, PNG, and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be under 10 MB.');
+      return;
+    }
     set('featured_image', file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -459,7 +468,7 @@ const BlogEditor: React.FC = () => {
                 <p className="text-xs text-gray-300">JPG, PNG, WebP — max 10MB</p>
               </div>
             )}
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
             {(imagePreview || existingImageUrl) && (
               <button
                 onClick={() => imageInputRef.current?.click()}
