@@ -194,7 +194,9 @@ const BlogEditor: React.FC = () => {
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (err: any) {
       console.error('Save failed:', err);
-      setSaveMsg('Save failed — check console');
+      const apiErr = err?.response?.data?.error || err?.response?.data?.detail;
+      const detail = typeof apiErr === 'string' ? apiErr : Array.isArray(apiErr) ? apiErr.join(', ') : null;
+      setSaveMsg(detail ? `Save failed: ${detail}` : 'Save failed — check console');
     } finally {
       setSaving(false);
     }
