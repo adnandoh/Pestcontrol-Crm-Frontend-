@@ -23,6 +23,7 @@ import Renewals from './pages/Renewals';
 import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
+import PartnerReferrals from './pages/PartnerReferrals';
 import Feedbacks from './pages/Feedbacks';
 import Quotations from './pages/Quotations';
 import CreateQuotation from './pages/CreateQuotation';
@@ -120,6 +121,7 @@ const AppContent: React.FC = () => {
                     <Route path="/references" element={<References />} />
                     <Route path="/technicians" element={<Technicians />} />
                     <Route path="/crm-inquiries" element={<CRMInquiries />} />
+                    <Route path="/partner-referrals" element={<PartnerReferrals />} />
                     <Route path="/quotations" element={<Quotations />} />
                     <Route path="/quotations/create" element={<CreateQuotation />} />
                     <Route path="/quotations/edit/:id" element={<CreateQuotation />} />

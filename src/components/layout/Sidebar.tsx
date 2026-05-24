@@ -67,6 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'View Bookings', href: '/jobcards', icon: ClipboardList },
         { name: 'Quotations', href: '/quotations', icon: FileText },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
+        { name: 'Partner Referrals', href: '/partner-referrals', icon: UserPlus },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]

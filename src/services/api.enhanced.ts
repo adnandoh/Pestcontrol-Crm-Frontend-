@@ -35,6 +35,8 @@ import type {
   CRMInquiry,
   CRMInquiryFormData,
   CRMInquiryFilters,
+  PartnerReferral,
+  CRMInquiryStatus,
   DashboardCounts,
   StaffPerformance,
   GlobalSearchResult,
@@ -523,6 +525,36 @@ class EnhancedApiService {
     // Invalidate both caches
     apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    return result.data;
+  }
+
+  async getPartnerReferrals(params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    status?: CRMInquiryStatus;
+    partner_status?: string;
+    ordering?: string;
+  }): Promise<PaginatedResponse<PartnerReferral>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.PARTNER_REFERRALS, params);
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<PaginatedResponse<PartnerReferral>>(API_ENDPOINTS.PARTNER_REFERRALS, { params }),
+        ),
+      ),
+      2 * 60 * 1000,
+    );
+  }
+
+  async updatePartnerReferralStatus(id: number, status: CRMInquiryStatus): Promise<PartnerReferral> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<PartnerReferral>(`${API_ENDPOINTS.PARTNER_REFERRALS}${id}/`, { status }),
+    );
+    apiCache.deletePattern(CACHE_KEYS.PARTNER_REFERRALS);
+    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
     return result.data;
   }
 

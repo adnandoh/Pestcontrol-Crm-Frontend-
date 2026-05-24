@@ -114,6 +114,28 @@ export interface Inquiry {
 }
 
 export type CRMInquiryStatus = 'New' | 'Contacted' | 'Converted' | 'Closed';
+
+export type PartnerReferralPartnerStatus = 'pending' | 'in_progress' | 'successful' | 'closed';
+
+export interface PartnerReferral {
+  id: number;
+  client_name: string;
+  mobile: string;
+  area: string;
+  partner_id: number;
+  partner_name: string;
+  partner_mobile: string;
+  partner_role: string;
+  crm_inquiry_id: number | null;
+  crm_status: CRMInquiryStatus;
+  partner_status: PartnerReferralPartnerStatus;
+  partner_status_label: string;
+  referred_at: string;
+  inquiry_date: string | null;
+  inquiry_time: string | null;
+  created_at: string;
+  updated_at: string;
+}
 export type PestType = string; // Using string for maximum flexibility in CRM
 
 export interface CRMInquiry {

@@ -54,6 +54,7 @@ export const API_ENDPOINTS = {
   RENEWALS: '/v1/renewals/',
   TECHNICIANS: '/v1/technicians/',
   CRM_INQUIRIES: '/v1/crm-inquiries/',
+  PARTNER_REFERRALS: '/v1/partner-referrals/',
   WEBSITE_LEADS: '/v1/website-leads/',
   
   // Dashboard
@@ -95,6 +96,7 @@ export const CACHE_KEYS = {
   DASHBOARD_STATS: 'dashboard_stats',
   TECHNICIANS: 'technicians',
   CRM_INQUIRIES: 'crm_inquiries',
+  PARTNER_REFERRALS: 'partner_referrals',
   FEEDBACKS: 'feedbacks',
   REMINDERS: 'reminders',
   DASHBOARD_COUNTS: 'dashboard_counts',
