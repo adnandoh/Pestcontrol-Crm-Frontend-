@@ -36,6 +36,7 @@ import type {
   CRMInquiryFormData,
   CRMInquiryFilters,
   PartnerReferral,
+  PartnerAppVersionConfig,
   CRMInquiryStatus,
   DashboardCounts,
   StaffPerformance,
@@ -1724,6 +1725,22 @@ class EnhancedApiService {
   async updateUserTheme(theme: string): Promise<{ theme: string }> {
     const result = await this.retryRequest(() =>
       this.api.patch<{ theme: string }>(API_ENDPOINTS.USERS_THEME, { theme }),
+    );
+    return result.data;
+  }
+
+  async getPartnerAppVersion(): Promise<PartnerAppVersionConfig> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PartnerAppVersionConfig>(API_ENDPOINTS.PARTNER_APP_VERSION),
+    );
+    return result.data;
+  }
+
+  async updatePartnerAppVersion(
+    data: Partial<PartnerAppVersionConfig>,
+  ): Promise<PartnerAppVersionConfig> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<PartnerAppVersionConfig>(API_ENDPOINTS.PARTNER_APP_VERSION, data),
     );
     return result.data;
   }

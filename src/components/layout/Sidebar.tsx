@@ -18,6 +18,7 @@ import {
   BookOpen,
   UserPlus,
   Camera,
+  Smartphone,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -97,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Staff Management', href: '/staff', icon: Shield, superAdminOnly: true },
         { name: 'Add Employee', href: '/staff/add', icon: UserPlus, superAdminOnly: true },
         { name: 'Activity Logs', href: '/activity-logs', icon: History, superAdminOnly: true },
+        { name: 'Partner App Version', href: '/partner-app-version', icon: Smartphone, superAdminOnly: true },
       ]
     }
   ];

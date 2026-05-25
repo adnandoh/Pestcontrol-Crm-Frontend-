@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
   TECHNICIANS: '/v1/technicians/',
   CRM_INQUIRIES: '/v1/crm-inquiries/',
   PARTNER_REFERRALS: '/v1/partner-referrals/',
+  PARTNER_APP_VERSION: '/v1/partner-app-version/',
   WEBSITE_LEADS: '/v1/website-leads/',
   
   // Dashboard

@@ -117,6 +117,15 @@ export type CRMInquiryStatus = 'New' | 'Contacted' | 'Converted' | 'Closed';
 
 export type PartnerReferralPartnerStatus = 'pending' | 'in_progress' | 'successful' | 'closed';
 
+export interface PartnerAppVersionConfig {
+  latest_version: string;
+  minimum_supported_version: string;
+  force_update: boolean;
+  update_title: string;
+  update_message: string;
+  updated_at?: string | null;
+}
+
 export interface PartnerReferral {
   id: number;
   client_name: string;
