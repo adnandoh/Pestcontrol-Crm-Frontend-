@@ -36,6 +36,11 @@ import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
 import { applyGooglePlaceToJobForm } from '../utils/applyGooglePlaceToJobForm';
+import {
+  computeNextServiceDate,
+  nextServiceDateHint,
+  shouldShowNextServiceField,
+} from '../utils/amcNextServiceDate';
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -206,35 +211,35 @@ const CreateJobCard: React.FC = () => {
     }
   }, [formData.master_state, masterStates.length]); // Added masterStates.length to ensure it runs after states are loaded
 
-  // Handle Next Service Date Auto-calculation
+  // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
-    const labels = selectedPackages.join(' ').toLowerCase();
-    const isCockroachAMC = labels.includes('cockroach') && formData.service_category === 'AMC';
-    const isBedBug = labels.includes('bed');
+    if (isNextDateManual) return;
 
-    if (isCockroachAMC || isBedBug) {
-      // Auto-calculate only if not manually edited and schedule_date exists
-      if (!isNextDateManual && formData.schedule_datetime) {
-        const scheduleDate = new Date(formData.schedule_datetime);
-        if (isNaN(scheduleDate.getTime())) return;
+    const nextDateStr = computeNextServiceDate({
+      scheduleDate: formData.schedule_datetime,
+      selectedPackages,
+      pricingType,
+      serviceCategory: formData.service_category,
+    });
 
-        let nextDate = new Date(scheduleDate);
-        
-        if (isCockroachAMC) {
-          nextDate.setMonth(nextDate.getMonth() + 4);
-        } else if (isBedBug) {
-          nextDate.setDate(nextDate.getDate() + 15);
-        }
-        
-        const nextDateStr = nextDate.toISOString().split('T')[0];
-        setFormData(prev => ({ ...prev, next_service_date: nextDateStr }));
-      }
-    } else {
-      if (!isNextDateManual) {
-        setFormData(prev => ({ ...prev, next_service_date: '' }));
-      }
+    if (nextDateStr) {
+      setFormData((prev) =>
+        prev.next_service_date === nextDateStr
+          ? prev
+          : { ...prev, next_service_date: nextDateStr },
+      );
+    } else if (!shouldShowNextServiceField(selectedPackages, pricingType, formData.service_category)) {
+      setFormData((prev) =>
+        prev.next_service_date === '' ? prev : { ...prev, next_service_date: '' },
+      );
     }
-  }, [selectedPackages, formData.service_category, formData.schedule_datetime, isNextDateManual]);
+  }, [
+    selectedPackages,
+    pricingType,
+    formData.service_category,
+    formData.schedule_datetime,
+    isNextDateManual,
+  ]);
 
 
 
@@ -376,6 +381,15 @@ const CreateJobCard: React.FC = () => {
       setSubmitting(true);
       // Ensure schedule_datetime is in ISO format
       const submitData = { ...formData };
+      if (!submitData.next_service_date && submitData.schedule_datetime) {
+        const computed = computeNextServiceDate({
+          scheduleDate: submitData.schedule_datetime,
+          selectedPackages,
+          pricingType,
+          serviceCategory: submitData.service_category,
+        });
+        if (computed) submitData.next_service_date = computed;
+      }
       if (submitData.schedule_datetime) {
         // Create a dayjs object from the date part (local time)
         let combined = dayjs(submitData.schedule_datetime);
@@ -815,8 +829,11 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               {/* Next Service Date Field */}
-              {((selectedPackages.join(' ').toLowerCase().includes('cockroach') && formData.service_category === 'AMC') ||
-                selectedPackages.some((s) => s.toLowerCase().includes('bed'))) && (
+              {shouldShowNextServiceField(
+                selectedPackages,
+                pricingType,
+                formData.service_category,
+              ) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
                   <Input
@@ -829,9 +846,7 @@ const CreateJobCard: React.FC = () => {
                     className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
                   />
                   <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
-                    {selectedPackages.join(' ').toLowerCase().includes('cockroach') && formData.service_category === 'AMC'
-                      ? 'Every 4 months for AMC'
-                      : 'After 15 days for Bed Bug'}
+                    {nextServiceDateHint(selectedPackages, pricingType, formData.service_category)}
                   </p>
                 </div>
               )}

@@ -33,6 +33,11 @@ import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
 import { applyGooglePlaceToJobForm } from '../utils/applyGooglePlaceToJobForm';
+import {
+  computeNextServiceDate,
+  nextServiceDateHint,
+  shouldShowNextServiceField,
+} from '../utils/amcNextServiceDate';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -288,33 +293,30 @@ const EditJobCard: React.FC = () => {
       .catch(err => console.error('Error fetching cities:', err));
   }, [formData.master_state, loading, masterStates]);
 
-  // Handle Next Service Date Auto-calculation
+  // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
-    if (loading || !formData.schedule_datetime || isNextDateManual) return;
+    if (loading || isNextDateManual) return;
 
-    const service = pricingService.toLowerCase();
-    const isCockroachAMC = service.includes('cockroach') && formData.service_category === 'AMC';
-    const isBedBug = service.includes('bedbug') || service.includes('bed bug');
+    const packages = pricingService ? [pricingService] : selectedServices;
+    const nextDateStr = computeNextServiceDate({
+      scheduleDate: formData.schedule_datetime,
+      selectedPackages: packages,
+      pricingType,
+      serviceCategory: formData.service_category,
+    });
 
-    if (isCockroachAMC || isBedBug) {
-        const scheduleDate = new Date(formData.schedule_datetime);
-        if (isNaN(scheduleDate.getTime())) return;
-
-        let nextDate = new Date(scheduleDate);
-        
-        if (isCockroachAMC) {
-          nextDate.setMonth(nextDate.getMonth() + 4);
-        } else if (isBedBug) {
-          nextDate.setDate(nextDate.getDate() + 15);
-        }
-        
-        const nextDateStr = nextDate.toISOString().split('T')[0];
-        
-        if (nextDateStr !== formData.next_service_date) {
-            setFormData(prev => ({ ...prev, next_service_date: nextDateStr }));
-        }
+    if (nextDateStr && nextDateStr !== formData.next_service_date) {
+      setFormData((prev) => ({ ...prev, next_service_date: nextDateStr }));
     }
-  }, [pricingService, formData.service_category, formData.schedule_datetime, isNextDateManual, loading]);
+  }, [
+    pricingService,
+    selectedServices,
+    pricingType,
+    formData.service_category,
+    formData.schedule_datetime,
+    isNextDateManual,
+    loading,
+  ]);
 
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -857,8 +859,11 @@ const EditJobCard: React.FC = () => {
               </div>
 
               {/* Next Service Date Field */}
-              {((pricingService.toLowerCase().includes('cockroach') && formData.service_category === 'AMC') || 
-                pricingService.toLowerCase().includes('bed bug')) && (
+              {shouldShowNextServiceField(
+                pricingService ? [pricingService] : selectedServices,
+                pricingType,
+                formData.service_category,
+              ) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
                   <Input
@@ -871,7 +876,11 @@ const EditJobCard: React.FC = () => {
                     className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
                   />
                   <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
-                    {pricingService.toLowerCase().includes('cockroach') ? 'Every 4 months for AMC' : 'After 15 days for Bed Bug'}
+                    {nextServiceDateHint(
+                      pricingService ? [pricingService] : selectedServices,
+                      pricingType,
+                      formData.service_category,
+                    )}
                   </p>
                 </div>
               )}
