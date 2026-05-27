@@ -122,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       {/* Mobile overlay */}
       {isOpen && onClose && (
         <div
-          className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-[1px] md:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-[1px] md:hidden transition-opacity duration-300"
           onClick={onClose}
         />
       )}
@@ -202,26 +202,26 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                   className={cn(
                     'w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left border',
                     isMasterOpen || location.pathname.startsWith('/master/')
-                      ? 'bg-white shadow-[0_2px_10px_rgba(37,99,235,0.1)] text-blue-800 border-blue-100'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50 border-transparent'
+                      ? 'bg-crm-surface text-blue-600 border-crm-border'
+                      : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover border-transparent'
                   )}
                 >
                   <div className={cn(
                     'flex items-center justify-center transition-colors',
-                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-800' : 'text-gray-400 group-hover:text-gray-600'
+                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-600' : 'text-crm-muted group-hover:text-crm-text'
                   )}>
                     <Database className={cn("h-5 w-5 fill-current opacity-20", (isMasterOpen || location.pathname.startsWith('/master/')) && "opacity-100")} />
                   </div>
                   <span className={cn(
                     "flex-1 text-[14px] font-bold tracking-tight",
-                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-900' : 'text-gray-700'
+                    isMasterOpen || location.pathname.startsWith('/master/') ? 'text-blue-600' : 'text-crm-text'
                   )}>
                     Master
                   </span>
                   {isMasterOpen ? (
-                    <ChevronDown className="h-4 w-4 text-blue-900 rotate-180 transition-transform duration-200" />
+                    <ChevronDown className="h-4 w-4 text-blue-600 rotate-180 transition-transform duration-200" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <ChevronRight className="h-4 w-4 text-crm-muted" />
                   )}
                 </button>
                 

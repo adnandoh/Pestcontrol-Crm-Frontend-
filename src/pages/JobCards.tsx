@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Smartphone,
   RotateCw,
+  Download,
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import CopyablePhone from '../components/crm/CopyablePhone';
@@ -40,6 +41,7 @@ import FeedbackModal from '../components/crm/FeedbackModal';
 import CompleteJobModal from '../components/crm/CompleteJobModal';
 import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
+import { downloadInvoicePdf } from '../utils/invoicePdf';
 
 const TableSkeleton: React.FC = () => (
   <>
@@ -114,6 +116,7 @@ const JobCards: React.FC = () => {
   const [removeErrors, setRemoveErrors] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [invoiceLoadingId, setInvoiceLoadingId] = useState<number | null>(null);
   
   // Unified Reminders state
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -560,6 +563,18 @@ const JobCards: React.FC = () => {
     }
   };
 
+  const handleDownloadInvoice = async (job: JobCard) => {
+    try {
+      setInvoiceLoadingId(job.id);
+      await downloadInvoicePdf(job);
+    } catch (error) {
+      console.error('Failed to download invoice:', error);
+      alert('Invoice download failed. Try again.');
+    } finally {
+      setInvoiceLoadingId(null);
+    }
+  };
+
   const handleDeleteJobCard = async () => {
     if (!deleteId) return;
     try {
@@ -673,6 +688,30 @@ const JobCards: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getPriorityForDate = (rawDate?: string | null) => {
+    if (!rawDate) return 3;
+    const today = dayjs().tz("Asia/Kolkata").startOf("day");
+    const tomorrow = today.add(1, "day");
+    const date = dayjs(rawDate).tz("Asia/Kolkata");
+    if (!date.isValid()) return 3;
+    if (date.isSame(today, "day")) return 1;
+    if (date.isSame(tomorrow, "day")) return 2;
+    return 3;
+  };
+
+  const getTabDateForPriority = (job: JobCard) => {
+    if (activeTab === "upcoming_services") {
+      return job.next_service_date || job.schedule_datetime || null;
+    }
+    if (activeTab === "upcoming_renewals") {
+      return job.next_service_date || job.schedule_datetime || null;
+    }
+    if (activeTab === "cancelled") {
+      return job.updated_at || job.schedule_datetime || null;
+    }
+    return job.schedule_datetime || null;
   };
 
   return (
@@ -841,13 +880,28 @@ const JobCards: React.FC = () => {
                     </td>
                  </tr>
               ) : activeTab === 'reminders' ? (
-                reminders.map((reminder) => {
+                reminders.map((reminder, index) => {
                   const today = dayjs().tz("Asia/Kolkata").startOf('day');
                   const reminderDate = dayjs(reminder.reminder_date).tz("Asia/Kolkata");
                   const isToday = reminderDate.isSame(today, 'day');
+                  const currentPriority = getPriorityForDate(reminder.reminder_date);
+                  const prevReminder = index > 0 ? reminders[index - 1] : null;
+                  const prevPriority = prevReminder ? getPriorityForDate(prevReminder.reminder_date) : null;
+                  const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority);
                   
                   return (
-                    <tr key={reminder.id} className={cn(
+                    <React.Fragment key={`rem-${reminder.id}`}>
+                    {showPriorityHeader && (
+                      <tr>
+                        <td colSpan={8} className={cn(
+                          "py-1.5 px-4 text-[11px] font-black text-white uppercase tracking-[0.2em] text-center italic",
+                          currentPriority === 1 ? "bg-emerald-600" : "bg-amber-500"
+                        )}>
+                          --- {currentPriority === 1 ? 'TODAY WORK' : 'TOMORROW WORK'} ---
+                        </td>
+                      </tr>
+                    )}
+                    <tr className={cn(
                       "hover:bg-blue-50/50 transition-colors divide-x divide-gray-50 group",
                       isToday ? "bg-red-50/50" : "bg-white"
                     )}>
@@ -960,20 +1014,22 @@ const JobCards: React.FC = () => {
                         </div>
                       </td>
                     </tr>
+                    </React.Fragment>
                   );
                 })
               ) : (jobCards || []).map((job: JobCard, index: number) => {
                 const today = dayjs().tz("Asia/Kolkata").startOf('day');
                 const tomorrow = today.add(1, 'day');
-                const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
+                const tabDate = getTabDateForPriority(job);
+                const jobDate = dayjs(tabDate || job.schedule_datetime).tz("Asia/Kolkata");
 
                 const isToday = jobDate.isSame(today, 'day');
                 const isTomorrow = jobDate.isSame(tomorrow, 'day');
                 
                 // Priority labels logic
                 const prevJob = index > 0 ? jobCards[index-1] : null;
-                const prevPriority = prevJob?.booking_priority;
-                const currentPriority = job.booking_priority;
+                const prevPriority = prevJob ? getPriorityForDate(getTabDateForPriority(prevJob)) : null;
+                const currentPriority = getPriorityForDate(tabDate);
                 const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority || 0);
 
                 const rowBg = currentPriority === 1 
@@ -1325,6 +1381,16 @@ const JobCards: React.FC = () => {
 
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
+                                {activeTab === 'pending' && (
+                                  <button
+                                    onClick={() => handleDownloadInvoice(job)}
+                                    disabled={invoiceLoadingId === job.id}
+                                    className="p-2 bg-cyan-50 hover:bg-cyan-600 text-cyan-600 hover:text-white rounded shadow-xs border border-cyan-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Download Invoice PDF"
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                                 {activeTab === 'pending' && job.status === 'Pending' && (
                                   isInPartnerAppQueue(job) ? (
                                     <button

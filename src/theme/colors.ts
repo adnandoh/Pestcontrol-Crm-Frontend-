@@ -16,18 +16,18 @@ export const lightColors = {
 } as const;
 
 export const darkColors = {
-  background: '#0B1220',
-  surface: '#111827',
-  surface2: '#1F2937',
-  text: '#F9FAFB',
-  textMuted: '#9CA3AF',
-  border: '#374151',
-  input: '#1F2937',
-  inputBorder: '#4B5563',
-  hover: '#1F2937',
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  chartGrid: '#374151',
-  chartText: '#9CA3AF',
+  background: '#0F172A',
+  surface: '#1E293B',
+  surface2: '#162033',
+  text: '#F8FAFC',
+  textMuted: '#94A3B8',
+  border: '#334155',
+  input: '#0F172A',
+  inputBorder: '#334155',
+  hover: '#1E293B',
+  overlay: 'rgba(0, 0, 0, 0.7)',
+  chartGrid: '#334155',
+  chartText: '#94A3B8',
 } as const;
 
 /** Status badge colors — same in light and dark (do not invert). */

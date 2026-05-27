@@ -14,8 +14,8 @@ const ThemeAppearanceMenu: React.FC = () => {
   const { theme, setTheme, isSyncing } = useTheme();
 
   return (
-    <div className="px-2 py-2 bg-white dark:bg-[#111827]">
-      <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+    <div className="px-2 py-2 bg-crm-surface">
+      <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-crm-muted">
         Appearance
       </p>
       <div className="space-y-0.5">
@@ -30,16 +30,16 @@ const ThemeAppearanceMenu: React.FC = () => {
               className={cn(
                 'flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
                 active
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300'
-                  : 'text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800',
+                  ? 'bg-blue-600/15 text-blue-500'
+                  : 'text-crm-text hover:bg-crm-hover',
               )}
             >
-              <span className={cn(active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400')}>
+              <span className={cn(active ? 'text-blue-500' : 'text-crm-muted')}>
                 {icon}
               </span>
               <span className="font-medium">{label}</span>
               {active && (
-                <span className="ml-auto text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400">
+                <span className="ml-auto text-[10px] font-bold uppercase text-blue-500">
                   ✓
                 </span>
               )}
