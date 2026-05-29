@@ -19,6 +19,7 @@ import {
   UserPlus,
   Camera,
   Smartphone,
+  Receipt,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -67,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
         { name: 'View Bookings', href: '/jobcards', icon: ClipboardList },
         { name: 'Quotations', href: '/quotations', icon: FileText },
+        { name: 'Invoices', href: '/invoices', icon: Receipt },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
         { name: 'Partner Referrals', href: '/partner-referrals', icon: UserPlus },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
@@ -119,19 +121,25 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
 
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && onClose && (
+      {/* Mobile overlay — always mounted for smooth fade */}
+      {onClose && (
         <div
-          className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-[1px] md:hidden transition-opacity duration-300"
+          className={cn(
+            'fixed inset-0 z-[45] bg-black/40 backdrop-blur-[1px] md:hidden',
+            'transition-opacity duration-500 ease-in-out',
+            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+          )}
           onClick={onClose}
+          aria-hidden={!isOpen}
         />
       )}
       <aside
         id="crm-app-sidebar"
         className={cn(
-          'w-[220px] bg-crm-surface-2 border-r border-crm-border transition-all duration-300 ease-in-out',
+          'w-[220px] bg-crm-surface-2 border-r border-crm-border',
           'fixed left-0 top-16 z-50 h-[calc(100vh-4rem)]',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
+          isOpen ? 'translate-x-0 shadow-lg' : '-translate-x-full shadow-none',
           className
         )}
       >

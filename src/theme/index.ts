@@ -14,3 +14,4 @@ export {
 export { ThemeProvider, ThemeContext, type ThemeContextValue } from './ThemeProvider';
 export { useTheme } from './useTheme';
 export { default as ThemeAppearanceMenu } from './ThemeAppearanceMenu';
+export { default as ThemeToggle } from './ThemeToggle';

@@ -26,6 +26,7 @@ import CRMInquiries from './pages/CRMInquiries';
 import PartnerReferrals from './pages/PartnerReferrals';
 import Feedbacks from './pages/Feedbacks';
 import Quotations from './pages/Quotations';
+import Invoices from './pages/Invoices';
 import CreateQuotation from './pages/CreateQuotation';
 import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
@@ -124,6 +125,7 @@ const AppContent: React.FC = () => {
                     <Route path="/crm-inquiries" element={<CRMInquiries />} />
                     <Route path="/partner-referrals" element={<PartnerReferrals />} />
                     <Route path="/quotations" element={<Quotations />} />
+                    <Route path="/invoices" element={<Invoices />} />
                     <Route path="/quotations/create" element={<CreateQuotation />} />
                     <Route path="/quotations/edit/:id" element={<CreateQuotation />} />
                     <Route path="/quotations/preview/:id" element={<QuotationPreview />} />

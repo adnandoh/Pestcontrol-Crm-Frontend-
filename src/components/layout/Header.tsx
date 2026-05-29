@@ -1,8 +1,8 @@
 import React from 'react';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '../ui';
 import { GlobalSearch } from './GlobalSearch';
-import ThemeAppearanceMenu from '../../theme/ThemeAppearanceMenu';
+import ThemeToggle from '../../theme/ThemeToggle';
 import type { AuthUser } from '../../types';
 
 interface HeaderProps {
@@ -45,21 +45,21 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
           {onMenuToggle && (
             <button
               onClick={onMenuToggle}
-              className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-crm-border bg-crm-surface-2 transition-all duration-300 hover:bg-crm-hover hover:scale-105 active:scale-95"
+              className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-crm-border bg-crm-surface-2 transition-all duration-500 ease-in-out hover:bg-crm-hover hover:scale-105 active:scale-95"
               aria-label="Toggle menu"
             >
               <div className="relative h-5 w-5">
                 {/* Animated hamburger/close icon */}
                 <span
-                  className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? 'rotate-45 translate-y-2' : 'translate-y-0'
+                  className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500 ease-in-out ${isMenuOpen ? 'rotate-45 translate-y-2' : 'translate-y-0'
                     }`}
                 />
                 <span
-                  className={`absolute left-0 top-2 h-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? 'w-0 opacity-0' : 'w-5 opacity-100'
+                  className={`absolute left-0 top-2 h-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500 ease-in-out ${isMenuOpen ? 'w-0 opacity-0' : 'w-5 opacity-100'
                     }`}
                 />
                 <span
-                  className={`absolute left-0 top-4 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-2' : 'translate-y-0'
+                  className={`absolute left-0 top-4 h-0.5 w-5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500 ease-in-out ${isMenuOpen ? '-rotate-45 -translate-y-2' : 'translate-y-0'
                     }`}
                 />
               </div>
@@ -87,8 +87,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
           <GlobalSearch onSelectClient={onSelectClient} />
         )}
 
-        {/* Right side - User Profile */}
-        <div className="relative z-[100]" ref={menuRef}>
+        {/* Right side - Theme toggle + User Profile */}
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <div className="relative z-[100]" ref={menuRef}>
           <Button
             variant="ghost"
             size="sm"
@@ -127,14 +129,6 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
                 </div>
               </div>
               <div className="my-1 h-px bg-crm-border" />
-              <div className="bg-crm-surface">
-                <ThemeAppearanceMenu />
-              </div>
-              <div className="my-1 h-px bg-crm-border" />
-              <button className="flex w-full items-center rounded-sm px-3 py-2 text-sm text-crm-text hover:bg-crm-hover transition-colors">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </button>
               <button
                 onClick={onLogout}
                 className="flex w-full items-center rounded-sm px-3 py-2 text-sm hover:bg-crm-hover transition-colors text-red-600"
@@ -144,6 +138,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuToggle, isMenuOpe
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </header>
