@@ -628,6 +628,13 @@ export interface DashboardStatisticsResponse {
   yesterday_revenue?: number;
   month_revenue?: number;
   range_revenue?: number;
+  revenue_target?: number;
+  month_achievement_pct?: number;
+  last_month_revenue?: number;
+  revenue_growth_pct?: number;
+  today_growth_pct?: number;
+  jobs_done_month?: number;
+  avg_ticket_month?: number;
   category_stats?: {
     one_time: number;
     amc: number;

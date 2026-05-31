@@ -7,7 +7,6 @@ import {
   Home,
   Briefcase,
   TrendingUp,
-  DollarSign,
   UserCheck,
   AlertCircle,
   RotateCcw
@@ -19,6 +18,7 @@ import timezone from 'dayjs/plugin/timezone';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 import { Card, CardContent, PageLoading } from '../components/ui';
+import { RevenueTargetCard } from '../components/dashboard/RevenueTargetCard';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { DashboardStatisticsResponse } from '../types';
@@ -350,75 +350,12 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 💰 5. BUSINESS INSIGHTS - PREMIUM CIRCULAR TARGET */}
-        <Card className="border-gray-100 shadow-sm rounded-xl overflow-hidden bg-[#0f172a] text-white">
-          <CardContent className="p-6 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-                  <DollarSign className="h-4 w-4 text-emerald-400" />
-                </div>
-                <h2 className="text-[12px] font-black uppercase tracking-widest text-white">Revenue Target</h2>
-              </div>
-              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                Month: {new Date().toLocaleString('default', { month: 'long' })}
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-6 xl:gap-8">
-              {/* Circular Target Chart */}
-              <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex flex-col items-center justify-center shrink-0">
-                <svg viewBox="0 0 42 42" className="w-32 h-32 sm:w-40 sm:h-40 transform -rotate-90">
-                  <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-                  <circle
-                    cx="21" cy="21" r="15.9155" fill="transparent"
-                    stroke="#10b981" strokeWidth="3"
-                    strokeDasharray={`${2 * Math.PI * 15.9155} ${2 * Math.PI * 15.9155}`}
-                    strokeDashoffset={2 * Math.PI * 15.9155 - (Math.min(Math.round(((stats?.month_revenue || 0) / 500000) * 100), 100) / 100) * (2 * Math.PI * 15.9155)}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl sm:text-3xl font-black text-white leading-none">
-                    {Math.min(Math.round(((stats?.range_revenue || 0) / 500000) * 100), 100)}%
-                  </span>
-                  <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-tighter mt-1">Achieved</span>
-                </div>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="flex-1 grid grid-cols-1 gap-3 w-full">
-                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Today Revenue</p>
-                  <p className="text-xl sm:text-2xl font-black text-emerald-400">₹ {Math.round(stats?.today_revenue || 0).toLocaleString()}</p>
-                </div>
-                
-                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Selected Range</p>
-                  <div className="flex flex-wrap items-baseline justify-between gap-1">
-                    <p className="text-lg sm:text-xl font-black text-white whitespace-nowrap">₹ {Math.round(stats?.range_revenue || 0).toLocaleString()}</p>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 whitespace-nowrap">/ 5,00,000</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between px-1">
-                   <div className="space-y-0.5">
-                      <p className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Avg Ticket</p>
-                      <p className="text-xs sm:text-sm font-black text-white">
-                        ₹ {stats?.status_stats?.done ? Math.round((stats?.range_revenue || 0) / stats.status_stats.done).toLocaleString() : '0'}
-                      </p>
-                   </div>
-                   <div className="h-8 w-px bg-white/10 mx-2" />
-                   <div className="text-right space-y-0.5">
-                      <p className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Jobs Done</p>
-                      <p className="text-xs sm:text-sm font-black text-white">{stats?.status_stats?.done || 0}</p>
-                   </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <RevenueTargetCard
+          stats={stats}
+          loading={isLoading}
+          error={loadError}
+          onRetry={handleRefresh}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up delay-400">
