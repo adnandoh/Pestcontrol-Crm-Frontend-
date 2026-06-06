@@ -2,6 +2,7 @@
 import { format } from 'date-fns';
 import type { Quotation } from '../../types';
 import { COMPANY, BANK_DETAILS, amountInWords } from '../../constants/quotation';
+import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
 import './QuotationDocument.css';
 
 const fmt = (n: number) =>
@@ -291,11 +292,14 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             <p className="mt-1 text-gray-400">Prepared by: {quotation.created_by_name}</p>
           )}
         </div>
-        <div className="text-center">
-          <div className="h-14 w-36 border border-dashed border-gray-300 rounded flex items-center justify-center text-[9px] text-gray-400 mb-1">
-            Authorised Signatory
-          </div>
-          <p className="text-[10px] font-bold text-[#1e5a9e]">{COMPANY.name}</p>
+        <div className="text-center quotation-signature-block">
+          <img
+            src={COMPANY_SIGNATURE_STAMP_URL}
+            alt="Authorised Signatory — Pest Control 99"
+            className="company-signature-stamp mx-auto object-contain"
+          />
+          <p className="text-[10px] font-bold text-[#1e5a9e] mt-2">{COMPANY.name}</p>
+          <p className="text-[8px] text-gray-500 uppercase tracking-wide">Authorised Signatory</p>
         </div>
       </div>
     </div>

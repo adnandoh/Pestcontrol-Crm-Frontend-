@@ -1,3 +1,5 @@
+import { waitForImagesInElement } from './pdfImagePreload';
+
 export interface DownloadQuotationPdfOptions {
   element: HTMLElement;
   filename: string;
@@ -13,10 +15,12 @@ export async function downloadQuotationPdf({
 
   const { default: html2pdf } = await import('html2pdf.js');
 
+  await waitForImagesInElement(element);
+
   const options = {
     margin: [8, 8, 8, 8] as [number, number, number, number],
     filename: finalName,
-    image: { type: 'jpeg' as const, quality: 0.95 },
+    image: { type: 'jpeg' as const, quality: 0.98 },
     html2canvas: {
       scale: 2,
       useCORS: true,

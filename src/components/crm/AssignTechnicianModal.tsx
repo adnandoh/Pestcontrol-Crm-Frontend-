@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone } from 'lucide-react';
+import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone, Search } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import { Button } from '../ui';
@@ -18,6 +18,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -29,9 +30,8 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     try {
       setLoading(true);
       setError(null);
-      // We use getTechnicians which we annotated in backend to include active_jobs
-      const response = await enhancedApiService.getTechnicians({ is_active: true });
-      setTechnicians(response.results);
+      const activeTechnicians = await enhancedApiService.getActiveTechnicians({ fresh: true });
+      setTechnicians(activeTechnicians);
     } catch (err) {
       setError('Failed to load technicians');
       console.error(err);
@@ -55,6 +55,16 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       setAssigning(null);
     }
   };
+
+  const filteredTechnicians = technicians.filter((tech) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const mobile = (tech.mobile || tech.phone || '').replace(/\D/g, '');
+    return (
+      tech.name.toLowerCase().includes(q) ||
+      mobile.includes(q.replace(/\D/g, ''))
+    );
+  });
 
   if (!isOpen) return null;
 
@@ -101,7 +111,21 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           )}
 
           <div className="space-y-3">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Select Staff Member</p>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                Select Staff Member ({technicians.length} active)
+              </p>
+            </div>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name or mobile..."
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white font-semibold"
+              />
+            </div>
             
             {loading ? (
               <div className="py-20 flex flex-col items-center justify-center">
@@ -112,8 +136,15 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
               <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
                 <p className="text-xs font-bold text-gray-400 italic">No active technicians found</p>
               </div>
+            ) : filteredTechnicians.length === 0 ? (
+              <div className="py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+                <p className="text-xs font-bold text-gray-400 italic">No match for &quot;{searchQuery}&quot;</p>
+                <p className="text-[10px] text-amber-700 mt-2 font-semibold">
+                  If they exist but are Inactive, open Technicians and mark them Active.
+                </p>
+              </div>
             ) : (
-              technicians.map((tech) => {
+              filteredTechnicians.map((tech) => {
                 const workload = tech.active_jobs || 0;
                 const isHighLoad = workload >= 7;
                 const isMediumLoad = workload >= 4 && workload < 7;

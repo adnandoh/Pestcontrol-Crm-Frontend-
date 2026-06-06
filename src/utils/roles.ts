@@ -23,6 +23,11 @@ export function isBlogUser(user: AuthUser | null | undefined): boolean {
   return getUserRole(user) === BLOG_USER_ROLE;
 }
 
+export function isPricingAdmin(user: AuthUser | null | undefined): boolean {
+  const role = getUserRole(user);
+  return role === 'super_admin' || role === 'admin';
+}
+
 export function isCRMOperationalUser(user: AuthUser | null | undefined): boolean {
   const role = getUserRole(user);
   return (

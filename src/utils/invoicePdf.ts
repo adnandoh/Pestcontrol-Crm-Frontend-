@@ -1,5 +1,7 @@
 import html2pdf from "html2pdf.js";
 import type { JobCard } from "../types";
+import { COMPANY_LOGO_URL, COMPANY_SIGNATURE_STAMP_URL } from "../constants/companyAssets";
+import { waitForImagesInElement } from "./pdfImagePreload";
 
 const formatDate = (value?: string) => {
   if (!value) return "-";
@@ -67,8 +69,22 @@ interface RenderInvoicePayload {
   }>;
 }
 
+const buildSignatureBlockHtml = () => `
+  <div style="margin-top:22px;display:flex;justify-content:flex-end;padding-right:4px">
+    <div style="text-align:center;min-width:200px">
+      <img
+        src="${COMPANY_SIGNATURE_STAMP_URL}"
+        alt="Authorised Signatory"
+        style="height:76px;max-width:210px;width:auto;object-fit:contain;display:block;margin:0 auto"
+      />
+      <div style="font-size:11px;font-weight:800;color:#1e5a9e;margin-top:8px">Pest Control 99</div>
+      <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Authorised Signatory</div>
+    </div>
+  </div>
+`;
+
 const buildInvoiceNode = (payload: RenderInvoicePayload) => {
-  const logoPath = "/pest-control-99-logo.png";
+  const logoPath = COMPANY_LOGO_URL;
   const rowsHtml = payload.items
     .map(
       (item) => `
@@ -214,6 +230,7 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
           <div>Reference: ${payload.reference}</div>
           ${payload.notes ? `<div>Notes: ${payload.notes}</div>` : ""}
         </div>
+        ${buildSignatureBlockHtml()}
       </div>
       <div class="inv-footer" style="padding:12px 22px;background:#f9fafb;font-size:11px;color:#6b7280;text-align:center">
         Thank you for choosing Pest Control 99
@@ -243,6 +260,8 @@ const exportInvoicePdf = async (payload: RenderInvoicePayload, filenameBase: str
   document.body.appendChild(wrapper);
 
   try {
+    await waitForImagesInElement(node);
+
     await html2pdf()
       .set({
         margin: [10, 10, 10, 10],

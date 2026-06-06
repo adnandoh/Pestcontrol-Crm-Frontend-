@@ -20,12 +20,13 @@ import {
   Camera,
   Smartphone,
   Receipt,
+  IndianRupee,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
 import type { AuthUser } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
-import { isBlogUser } from '../../utils/roles';
+import { isBlogUser, isPricingAdmin } from '../../utils/roles';
 
 interface SidebarProps {
   className?: string;
@@ -111,6 +112,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     { name: 'Master Cities', href: '/master/cities' },
     { name: 'Master Locations', href: '/master/locations' },
   ];
+
+  const pricingAdmin = isPricingAdmin(user);
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -201,6 +204,24 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                 </div>
               );
             })}
+
+            {/* Pricing Master — Admin & Super Admin */}
+            {pricingAdmin && (
+              <div className="space-y-1 mt-2">
+                <Link
+                  to="/pricing-master"
+                  className={cn(
+                    'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+                    isActive('/pricing-master')
+                      ? 'bg-crm-surface shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-crm-text border border-crm-border'
+                      : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover',
+                  )}
+                >
+                  <IndianRupee className={cn('h-[18px] w-[18px]', isActive('/pricing-master') ? 'text-green-600' : '')} />
+                  <span className="flex-1 text-[14px] font-semibold">Pricing Master</span>
+                </Link>
+              </div>
+            )}
 
             {/* Master Collapsible Group */}
             {user?.is_superuser && (

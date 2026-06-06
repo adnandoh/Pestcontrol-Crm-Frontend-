@@ -28,7 +28,15 @@ import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValid
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City } from '../types';
 
-import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import {
+  BHK_AREA_VALUES,
+  MUMBAI_PRICING_CONFIG,
+  getAreaOptions,
+  getUnitPrice,
+  supportsAutoPricing,
+  typesForPackage,
+  type PricingConfig,
+} from '../utils/jobCardPricing';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
@@ -58,6 +66,7 @@ const EditJobCard: React.FC = () => {
   const [pricingService, setPricingService] = useState('');
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
 
   const getInitialFormData = (): JobCardFormData => ({
     client_name: '',
@@ -109,21 +118,26 @@ const EditJobCard: React.FC = () => {
     // 3. Skip if the user has manually overridden the price in this session
     if (loading || isInitialLoad.current || isPriceManuallyEdited) return;
 
-    if (pricingService && pricingArea && pricingType) {
-      const serviceData = PRICING_DATA[pricingService];
-      if (serviceData && serviceData[pricingType]) {
-        const typeData = serviceData[pricingType];
-        if (typeof typeData === 'object') {
-          const price = (typeData as any)[pricingArea];
-          if (price !== undefined) {
-             setFormData(prev => ({ ...prev, price: price.toString() }));
-          }
-        } else if (typeof typeData === 'number') {
-            setFormData(prev => ({ ...prev, price: typeData.toString() }));
-        }
+    if (
+      supportsAutoPricing(formData.commercial_type, pricingConfig) &&
+      pricingService &&
+      pricingArea &&
+      pricingType
+    ) {
+      const price = getUnitPrice(pricingService, pricingType, pricingArea, pricingConfig);
+      if (price !== null) {
+        setFormData((prev) => ({ ...prev, price: price.toString() }));
       }
     }
-  }, [pricingService, pricingArea, pricingType, loading, isPriceManuallyEdited]);
+  }, [
+    pricingService,
+    pricingArea,
+    pricingType,
+    loading,
+    isPriceManuallyEdited,
+    pricingConfig,
+    formData.commercial_type,
+  ]);
 
   const serviceTypeCategories = [
     {
@@ -292,6 +306,28 @@ const EditJobCard: React.FC = () => {
       })
       .catch(err => console.error('Error fetching cities:', err));
   }, [formData.master_state, loading, masterStates]);
+
+  useEffect(() => {
+    if (loading) return;
+    const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
+    const params = formData.master_city
+      ? { master_city: formData.master_city }
+      : cityName
+        ? { city: cityName }
+        : { city: 'Mumbai' };
+
+    enhancedApiService
+      .getPricingConfig(params)
+      .then((config) => setPricingConfig(config))
+      .catch((err) => {
+        console.error('Error fetching pricing config:', err);
+        setPricingConfig(MUMBAI_PRICING_CONFIG);
+      });
+  }, [formData.master_city, formData.city, loading]);
+
+  const pricingAreaOptions = pricingService
+    ? getAreaOptions([pricingService], pricingConfig, formData.commercial_type)
+    : [];
 
   // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
@@ -556,8 +592,8 @@ const EditJobCard: React.FC = () => {
                     setFormData(prev => ({ 
                       ...prev, 
                       commercial_type: val,
-                      is_price_estimated: val !== 'home',
-                      price: val !== 'home' ? '0.00' : prev.price
+                      is_price_estimated: !supportsAutoPricing(val, pricingConfig),
+                      price: supportsAutoPricing(val, pricingConfig) ? prev.price : '0.00'
                     }));
                     clearError('commercial_type');
                   }}
@@ -654,7 +690,7 @@ const EditJobCard: React.FC = () => {
                           setPricingService(val);
                           
                           // Handle automatic type selection
-                          const availableTypes = SERVICE_TYPES[val] || [];
+                          const availableTypes = typesForPackage(val, pricingConfig);
                           if (availableTypes.length === 1) {
                             setPricingType(availableTypes[0]);
                              // Also map to backend category
@@ -686,7 +722,7 @@ const EditJobCard: React.FC = () => {
                         required
                       >
                         <option value="">Select Service</option>
-                        {Object.keys(SERVICE_TYPES).map(s => <option key={s} value={s}>{s}</option>)}
+                        {Object.keys(pricingConfig.pricing).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                    </div>
                    <div>
@@ -695,7 +731,7 @@ const EditJobCard: React.FC = () => {
                         value={pricingArea}
                         onChange={(e) => {
                           setPricingArea(e.target.value);
-                          if (PROPERTY_LOCATIONS.includes(e.target.value)) {
+                          if (BHK_AREA_VALUES.includes(e.target.value)) {
                             handleInputChange('bhk_size', e.target.value);
                           } else {
                             handleInputChange('bhk_size', '');
@@ -705,16 +741,9 @@ const EditJobCard: React.FC = () => {
                         required
                       >
                         <option value="">Select Area</option>
-                        {pricingService === 'Rodent' ? (
-                          <>
-                            <option value="Society Area">Society Area</option>
-                            <option value="Windows">Windows</option>
-                          </>
-                        ) : pricingService === 'Hotel / Commercial' ? (
-                          <option value="Commercial Space">Commercial Space</option>
-                        ) : (
-                          PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)
-                        )}
+                        {pricingAreaOptions.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
                       </select>
                    </div>
                    <div>
@@ -736,16 +765,16 @@ const EditJobCard: React.FC = () => {
                         disabled={!pricingService}
                       >
                         <option value="">Select Type</option>
-                        {pricingService && SERVICE_TYPES[pricingService]?.map((t: string) => <option key={t} value={t}>{t}</option>)}
+                        {pricingService && typesForPackage(pricingService, pricingConfig).map((t: string) => <option key={t} value={t}>{t}</option>)}
                       </select>
                    </div>
                 </div>
 
                 <div className="flex flex-col items-start lg:items-end justify-center min-w-[140px] pl-4 lg:border-l border-gray-200">
                    <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
-                     {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
+                     {supportsAutoPricing(formData.commercial_type, pricingConfig) ? 'Total Price' : 'Estimated Price'}
                    </span>
-                   {formData.commercial_type === 'home' ? (
+                   {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
                         {formData.price}
@@ -759,7 +788,7 @@ const EditJobCard: React.FC = () => {
                 </div>
              </div>
              
-             {formData.commercial_type !== 'home' && (
+             {!supportsAutoPricing(formData.commercial_type, pricingConfig) && (
                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
                </div>

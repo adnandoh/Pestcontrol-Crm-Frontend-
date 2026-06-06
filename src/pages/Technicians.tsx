@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Search,
@@ -14,21 +14,32 @@ import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
   Card,
-  Input
+  Input,
+  Pagination,
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { Technician } from '../types';
+import type { PaginatedResponse, Technician } from '../types';
 import { cn } from '../utils/cn';
+
+const PAGE_SIZE = 10;
 
 const Technicians: React.FC = () => {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [pagination, setPagination] = useState({
+    count: 0,
+    next: null as string | null,
+    previous: null as string | null,
+    current: 1,
+    pageSize: PAGE_SIZE,
+    totalPages: 0,
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingTech, setEditingTech] = useState<Technician | null>(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -36,53 +47,120 @@ const Technicians: React.FC = () => {
     alternative_mobile: '',
     service_area: '',
     city: '',
-    is_active: true
+    is_active: true,
   });
 
-  const fetchTechnicians = async () => {
+  const loadTechnicians = useCallback(async (page = 1, currentSearch = searchInput) => {
     try {
       setLoading(true);
-      const response = await enhancedApiService.getTechnicians();
+
+      const params: {
+        page: number;
+        page_size: number;
+        ordering: string;
+        search?: string;
+      } = {
+        page,
+        page_size: PAGE_SIZE,
+        ordering: '-created_at',
+      };
+
+      if (currentSearch.trim()) {
+        params.search = currentSearch.trim();
+      }
+
+      const response: PaginatedResponse<Technician> = await enhancedApiService.getTechnicians(params);
+
       setTechnicians(response.results);
+      setPagination((prev) => ({
+        ...prev,
+        count: response.count,
+        next: response.next,
+        previous: response.previous,
+        current: page,
+        totalPages: Math.max(1, Math.ceil(response.count / PAGE_SIZE)),
+      }));
     } catch (error) {
       console.error('Failed to fetch technicians:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchInput]);
 
   useEffect(() => {
-    fetchTechnicians();
+    loadTechnicians(1);
+    return () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+    };
   }, []);
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const newTimeout = setTimeout(() => {
+      loadTechnicians(1, value);
+    }, 400);
+
+    setSearchTimeout(newTimeout);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    loadTechnicians(1, searchInput);
+  };
+
+  const handlePageChange = (page: number) => {
+    loadTechnicians(page, searchInput);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
+
+  const normalizeFormPayload = () => ({
+    name: formData.name.trim(),
+    mobile: formData.mobile.replace(/\D/g, '').slice(0, 10),
+    age: formData.age ? parseInt(formData.age, 10) : undefined,
+    alternative_mobile: formData.alternative_mobile
+      ? formData.alternative_mobile.replace(/\D/g, '').slice(0, 10)
+      : '',
+    service_area: formData.service_area.trim(),
+    city: formData.city.trim(),
+    is_active: formData.is_active,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const payload = normalizeFormPayload();
       if (editingTech) {
-        await enhancedApiService.updateTechnician(editingTech.id, {
-          ...formData,
-          age: formData.age ? parseInt(formData.age) : undefined
-        });
+        await enhancedApiService.updateTechnician(editingTech.id, payload);
       } else {
-        await enhancedApiService.createTechnician({
-          ...formData,
-          age: formData.age ? parseInt(formData.age) : undefined
-        });
+        await enhancedApiService.createTechnician(payload);
       }
       setIsModalOpen(false);
       resetForm();
-      fetchTechnicians();
-    } catch (error) {
+      await loadTechnicians(pagination.current, searchInput);
+    } catch (error: unknown) {
       console.error('Failed to save technician:', error);
+      const apiErr = error as { message?: string; details?: Record<string, string[] | string> };
+      let msg = apiErr.message || 'Failed to save technician.';
+      if (apiErr.details?.mobile) {
+        const mobileErr = Array.isArray(apiErr.details.mobile)
+          ? apiErr.details.mobile[0]
+          : String(apiErr.details.mobile);
+        msg = mobileErr;
+      }
+      alert(msg);
     } finally {
       setSubmitting(false);
     }
@@ -96,7 +174,7 @@ const Technicians: React.FC = () => {
       alternative_mobile: '',
       service_area: '',
       city: '',
-      is_active: true
+      is_active: true,
     });
     setEditingTech(null);
   };
@@ -110,37 +188,31 @@ const Technicians: React.FC = () => {
       alternative_mobile: tech.alternative_mobile || '',
       service_area: tech.service_area || '',
       city: tech.city || '',
-      is_active: tech.is_active
+      is_active: tech.is_active,
     });
     setIsModalOpen(true);
   };
 
-
-
-  const filteredTechs = technicians.filter(tech =>
-    tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tech.mobile.includes(searchTerm)
-  );
+  const showingFrom = pagination.count === 0 ? 0 : (pagination.current - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(pagination.current * PAGE_SIZE, pagination.count);
 
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10">
-      {/* 1. Header Area */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-2">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Technicians</h1>
           <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
-            Total {filteredTechs.length} Staff
+            Total {pagination.count} Staff
           </span>
         </div>
-        <Button 
-          onClick={() => { resetForm(); setIsModalOpen(true); }} 
+        <Button
+          onClick={() => { resetForm(); setIsModalOpen(true); }}
           className="bg-blue-700 hover:bg-blue-800 h-8 text-[11px] font-extrabold shadow-lg px-6 uppercase tracking-wider"
         >
           <Plus className="h-4 w-4 mr-1" /> Create Technician
         </Button>
       </div>
 
-      {/* 2. Filter Bar */}
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex items-end gap-3 rounded">
         <div className="flex-1">
           <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Name / Mobile</label>
@@ -149,15 +221,15 @@ const Technicians: React.FC = () => {
             <input
               type="text"
               placeholder="Search Name, Phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
               className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
             />
           </div>
         </div>
       </div>
 
-      {/* 3. Table Results */}
       <div className="bg-white border border-gray-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto max-h-[600px]">
           <table className="w-full table-auto border-collapse text-[11px]">
@@ -181,16 +253,16 @@ const Technicians: React.FC = () => {
                     <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                   </td>
                 </tr>
-              ) : filteredTechs.length === 0 ? (
+              ) : technicians.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                     No Technicians Found
                   </td>
                 </tr>
-              ) : filteredTechs.map((tech) => (
+              ) : technicians.map((tech) => (
                 <tr key={tech.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
                   <td className="px-3 py-2.5">
-                    <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold shadow-inner", tech.is_active ? "bg-emerald-500" : "bg-gray-400")}>
+                    <div className={cn('h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold shadow-inner', tech.is_active ? 'bg-emerald-500' : 'bg-gray-400')}>
                       {tech.name.charAt(0).toUpperCase()}
                     </div>
                   </td>
@@ -231,7 +303,7 @@ const Technicians: React.FC = () => {
                         onClick={async () => {
                           try {
                             await enhancedApiService.approvePartnerApp(tech.id);
-                            fetchTechnicians();
+                            await loadTechnicians(pagination.current, searchInput);
                           } catch {
                             alert('Could not approve partner app');
                           }
@@ -247,7 +319,6 @@ const Technicians: React.FC = () => {
                       <button onClick={() => handleEdit(tech)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
                         <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
                       </button>
-
                     </div>
                   </td>
                 </tr>
@@ -255,9 +326,25 @@ const Technicians: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {pagination.count > 0 && (
+          <div className="px-4 py-2 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+              Showing {showingFrom}–{showingTo} of {pagination.count}
+            </p>
+            <Pagination
+              currentPage={pagination.current}
+              totalPages={Math.max(1, pagination.totalPages)}
+              totalItems={pagination.count}
+              itemsPerPage={PAGE_SIZE}
+              onPageChange={handlePageChange}
+              showPageSizeSelector={false}
+              showGoToPage
+            />
+          </div>
+        )}
       </div>
 
-      {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
@@ -378,16 +465,16 @@ const Technicians: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsModalOpen(false)} 
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
                   className="flex-1 h-10 text-[11px] font-black uppercase tracking-wider border-gray-300 hover:bg-gray-50 transition-all"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={submitting}
                   className="flex-1 h-10 text-[11px] font-black uppercase tracking-wider bg-blue-700 hover:bg-blue-800 shadow-xl shadow-blue-100 transition-all active:scale-95"
                 >

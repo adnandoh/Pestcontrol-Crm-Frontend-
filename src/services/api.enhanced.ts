@@ -53,6 +53,11 @@ import type {
   QuotationFilters,
   PartnerJobSelfie,
   InquiryRemarkEntry,
+  PricingRegion,
+  PricingRate,
+  PricingRateFormData,
+  PricingRateFilters,
+  PricingRateAuditLog,
 } from '../types';
 
 function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
@@ -356,71 +361,91 @@ class EnhancedApiService {
   }
 
   // Technician methods
-  async getTechnicians(params?: any): Promise<PaginatedResponse<Technician>> {
-    const cacheKey = apiCache.generateKey('/technicians/', params);
-    
+  async getTechnicians(params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    is_active?: boolean;
+    ordering?: string;
+  }): Promise<PaginatedResponse<Technician>> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.TECHNICIANS, params);
+
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<PaginatedResponse<Technician>>('/technicians/', { params })
-        )
-      )
+          () => this.api.get<PaginatedResponse<Technician>>(API_ENDPOINTS.TECHNICIANS, { params }),
+        ),
+      ),
+      2 * 60 * 1000,
     );
   }
 
-  async getActiveTechnicians(): Promise<Technician[]> {
-    const cacheKey = '/technicians/active/';
-    
+  async getActiveTechnicians(options?: { fresh?: boolean }): Promise<Technician[]> {
+    const cacheKey = `${API_ENDPOINTS.TECHNICIANS}active/`;
+
+    if (options?.fresh) {
+      return this.retryRequest(() =>
+        this.makeRequest(
+          cacheKey,
+          () => this.api.get<Technician[]>(cacheKey),
+        ),
+      );
+    }
+
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<Technician[]>('/technicians/active/')
-        )
+          () => this.api.get<Technician[]>(cacheKey),
+        ),
       ),
-      5 * 60 * 1000 // 5 minutes cache
+      5 * 60 * 1000,
     );
   }
 
   async createTechnician(data: Partial<Technician>): Promise<Technician> {
     const result = await this.retryRequest(() =>
-      this.api.post<Technician>('/technicians/', data)
+      this.api.post<Technician>(API_ENDPOINTS.TECHNICIANS, data),
     );
-    apiCache.clear();
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data;
   }
 
   async updateTechnician(id: number, data: Partial<Technician>): Promise<Technician> {
     const result = await this.retryRequest(() =>
-      this.api.patch<Technician>(`/technicians/${id}/`, data)
+      this.api.patch<Technician>(`${API_ENDPOINTS.TECHNICIANS}${id}/`, data),
     );
-    apiCache.clear();
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data;
   }
 
   async deleteTechnician(id: number): Promise<void> {
     await this.retryRequest(() =>
-      this.api.delete(`/technicians/${id}/`)
+      this.api.delete(`${API_ENDPOINTS.TECHNICIANS}${id}/`),
     );
-    apiCache.clear();
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
   }
 
   async approvePartnerApp(technicianId: number): Promise<Technician> {
     const result = await this.retryRequest(() =>
-      this.api.post<{ technician: Technician }>(`/technicians/${technicianId}/approve-partner-app/`)
+      this.api.post<{ technician: Technician }>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/approve-partner-app/`,
+      ),
     );
-    apiCache.clear();
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data.technician ?? (result.data as unknown as Technician);
   }
 
   async revokePartnerApp(technicianId: number): Promise<Technician> {
     const result = await this.retryRequest(() =>
-      this.api.post<{ technician: Technician }>(`/technicians/${technicianId}/revoke-partner-app/`)
+      this.api.post<{ technician: Technician }>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/revoke-partner-app/`,
+      ),
     );
-    apiCache.clear();
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data.technician ?? (result.data as unknown as Technician);
   }
 
@@ -1643,6 +1668,50 @@ class EnhancedApiService {
 
   async searchLocations(q: string): Promise<any[]> {
     return this.api.get<any[]>('/locations/search/', { params: { q } }).then(r => r.data);
+  }
+
+  async getPricingConfig(params?: { city?: string; master_city?: number }): Promise<import('../utils/jobCardPricing').PricingConfig> {
+    return this.api
+      .get<import('../utils/jobCardPricing').PricingConfig>(API_ENDPOINTS.PRICING_CONFIG, { params })
+      .then((r) => r.data);
+  }
+
+  async getPricingRegions(params?: { search?: string; page_size?: number }): Promise<PaginatedResponse<PricingRegion>> {
+    return this.api.get<PaginatedResponse<PricingRegion>>(API_ENDPOINTS.PRICING_REGIONS, { params }).then((r) => r.data);
+  }
+
+  async getPricingRates(params?: PricingRateFilters): Promise<PaginatedResponse<PricingRate>> {
+    return this.api.get<PaginatedResponse<PricingRate>>(API_ENDPOINTS.PRICING_RATES, { params }).then((r) => r.data);
+  }
+
+  async createPricingRate(data: PricingRateFormData): Promise<PricingRate> {
+    const result = await this.api.post<PricingRate>(API_ENDPOINTS.PRICING_RATES, data);
+    apiCache.deletePattern(CACHE_KEYS.PRICING_RATES);
+    return result.data;
+  }
+
+  async updatePricingRate(id: number, data: Partial<PricingRateFormData>): Promise<PricingRate> {
+    const result = await this.api.patch<PricingRate>(`${API_ENDPOINTS.PRICING_RATES}${id}/`, data);
+    apiCache.deletePattern(CACHE_KEYS.PRICING_RATES);
+    return result.data;
+  }
+
+  async deletePricingRate(id: number): Promise<void> {
+    await this.api.delete(`${API_ENDPOINTS.PRICING_RATES}${id}/`);
+    apiCache.deletePattern(CACHE_KEYS.PRICING_RATES);
+  }
+
+  async getPricingAuditLogs(params?: {
+    search?: string;
+    region_slug?: string;
+    service_package?: string;
+    action?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<PricingRateAuditLog>> {
+    return this.api
+      .get<PaginatedResponse<PricingRateAuditLog>>(API_ENDPOINTS.PRICING_AUDIT_LOGS, { params })
+      .then((r) => r.data);
   }
 
   // Quotation methods

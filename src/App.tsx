@@ -7,7 +7,7 @@ import { enhancedApiService } from './services/api.enhanced';
 import { Layout } from './components/layout';
 import { FullScreenLoading } from './components/ui';
 import BlogCMSLayout from './components/layout/BlogCMSLayout';
-import { ProtectedRoute, SuperAdminRoute } from './components/auth';
+import { ProtectedRoute, SuperAdminRoute, AdminRoute } from './components/auth';
 import StaffFormPage from './pages/StaffFormPage';
 import { isBlogUser, blogUserDefaultPath } from './utils/roles';
 import Login from './pages/Login';
@@ -40,6 +40,7 @@ import MasterCountries from './pages/MasterCountries';
 import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
 import MasterLocations from './pages/MasterLocations';
+import PricingMaster from './pages/PricingMaster';
 import BlogDashboard from './pages/blog/BlogDashboard';
 import BlogList from './pages/blog/BlogList';
 import BlogEditor from './pages/blog/BlogEditor';
@@ -177,6 +178,14 @@ const AppContent: React.FC = () => {
                     <Route path="/master/states" element={<MasterStates />} />
                     <Route path="/master/cities" element={<MasterCities />} />
                     <Route path="/master/locations" element={<MasterLocations />} />
+                    <Route
+                      path="/pricing-master"
+                      element={
+                        <AdminRoute>
+                          <PricingMaster />
+                        </AdminRoute>
+                      }
+                    />
                     <Route path="/blog" element={<BlogDashboard />} />
                     <Route path="/blog/list" element={<BlogList />} />
                     <Route path="/blog/create" element={<BlogEditor />} />

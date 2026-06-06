@@ -70,6 +70,10 @@ export const API_ENDPOINTS = {
   FEEDBACKS: '/v1/feedbacks/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
+  PRICING_CONFIG: '/pricing-config/',
+  PRICING_REGIONS: '/pricing-regions/',
+  PRICING_RATES: '/pricing-rates/',
+  PRICING_AUDIT_LOGS: '/pricing-audit-logs/',
 
   // Blog CMS
   BLOG: {
@@ -102,6 +106,8 @@ export const CACHE_KEYS = {
   REMINDERS: 'reminders',
   DASHBOARD_COUNTS: 'dashboard_counts',
   QUOTATIONS: 'quotations',
+  PRICING_RATES: 'pricing_rates',
+  PRICING_REGIONS: 'pricing_regions',
 } as const;
 
 // Request timeout configurations for different operations

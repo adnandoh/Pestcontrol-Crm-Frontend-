@@ -26,10 +26,14 @@ import type { JobCardFormData, State, City } from '../types';
 
 import {
   SERVICE_PACKAGE_OPTIONS,
+  BHK_AREA_VALUES,
+  MUMBAI_PRICING_CONFIG,
   computeMultiServicePricing,
   getAreaOptions,
   getDefaultPricingType,
   getSharedPricingTypes,
+  supportsAutoPricing,
+  type PricingConfig,
   type ServicePriceLine,
 } from '../utils/jobCardPricing';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
@@ -53,6 +57,7 @@ const CreateJobCard: React.FC = () => {
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
 
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
@@ -99,8 +104,12 @@ const CreateJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-  const availablePricingTypes = getSharedPricingTypes(selectedPackages);
-  const availableAreas = getAreaOptions(selectedPackages);
+  const availablePricingTypes = getSharedPricingTypes(selectedPackages, pricingConfig);
+  const availableAreas = getAreaOptions(
+    selectedPackages,
+    pricingConfig,
+    formData.commercial_type,
+  );
 
   // Sync service_type from selected packages
   useEffect(() => {
@@ -116,15 +125,19 @@ const CreateJobCard: React.FC = () => {
       setPricingArea('');
       return;
     }
-    const types = getSharedPricingTypes(selectedPackages);
+    const types = getSharedPricingTypes(selectedPackages, pricingConfig);
     if (!pricingType || !types.includes(pricingType)) {
-      setPricingType(getDefaultPricingType(selectedPackages));
+      setPricingType(getDefaultPricingType(selectedPackages, pricingConfig));
     }
-    const areas = getAreaOptions(selectedPackages);
+    const areas = getAreaOptions(
+      selectedPackages,
+      pricingConfig,
+      formData.commercial_type,
+    );
     if (pricingArea && areas.length > 0 && !areas.includes(pricingArea)) {
       setPricingArea('');
     }
-  }, [selectedPackages.join('|')]);
+  }, [selectedPackages.join('|'), pricingConfig.region, formData.commercial_type]);
 
   useEffect(() => {
     if (pricingType === 'AMC 3 Services') {
@@ -134,10 +147,10 @@ const CreateJobCard: React.FC = () => {
     }
   }, [pricingType]);
 
-  // Multi-service total price
+  // Multi-service total price (city-aware via pricingConfig)
   useEffect(() => {
     if (
-      formData.commercial_type === 'home' &&
+      supportsAutoPricing(formData.commercial_type, pricingConfig) &&
       selectedPackages.length > 0 &&
       pricingArea &&
       pricingType
@@ -146,14 +159,15 @@ const CreateJobCard: React.FC = () => {
         selectedPackages,
         pricingType,
         pricingArea,
+        pricingConfig,
       );
       setPriceBreakdown(lines);
       setFormData((prev) => ({ ...prev, price: total.toFixed(2) }));
-    } else if (formData.commercial_type === 'home') {
+    } else if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
       setPriceBreakdown([]);
       setFormData((prev) => ({ ...prev, price: '0.00' }));
     }
-  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type]);
+  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type, pricingConfig]);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -210,6 +224,28 @@ const CreateJobCard: React.FC = () => {
       setMasterCities([]);
     }
   }, [formData.master_state, masterStates.length]); // Added masterStates.length to ensure it runs after states are loaded
+
+  // 3. Load city-specific pricing when Service City changes
+  useEffect(() => {
+    const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
+    const params = formData.master_city
+      ? { master_city: formData.master_city }
+      : cityName
+        ? { city: cityName }
+        : { city: 'Mumbai' };
+
+    enhancedApiService
+      .getPricingConfig(params)
+      .then((config) => {
+        setPricingConfig(config);
+        setPricingArea('');
+        setPriceBreakdown([]);
+      })
+      .catch((err) => {
+        console.error('Error fetching pricing config:', err);
+        setPricingConfig(MUMBAI_PRICING_CONFIG);
+      });
+  }, [formData.master_city, formData.city]);
 
   // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
@@ -590,8 +626,8 @@ const CreateJobCard: React.FC = () => {
                           setFormData(prev => ({ 
                             ...prev, 
                             commercial_type: val,
-                            is_price_estimated: val !== 'home',
-                            price: val !== 'home' ? '0.00' : prev.price
+                            is_price_estimated: !supportsAutoPricing(val, pricingConfig),
+                            price: supportsAutoPricing(val, pricingConfig) ? prev.price : '0.00',
                           }));
                         }}
                         className="w-full max-w-xs h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
@@ -664,7 +700,7 @@ const CreateJobCard: React.FC = () => {
                         value={pricingArea}
                         onChange={(e) => {
                           setPricingArea(e.target.value);
-                          if (['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK'].includes(e.target.value)) {
+                          if (BHK_AREA_VALUES.includes(e.target.value)) {
                             handleInputChange('bhk_size', e.target.value);
                           } else {
                             handleInputChange('bhk_size', '');
@@ -687,7 +723,7 @@ const CreateJobCard: React.FC = () => {
                    <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
                      {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
                    </span>
-                   {formData.commercial_type === 'home' ? (
+                   {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>

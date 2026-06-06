@@ -142,4 +142,22 @@ body.quotation-preview-mode .quotation-preview-page {
     padding: 0 !important;
     margin: 0 !important;
   }
+
+  .company-signature-stamp {
+    height: 72px !important;
+    max-width: 200px !important;
+    width: auto !important;
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+.company-signature-stamp {
+  height: 80px;
+  max-width: 220px;
+  width: auto;
+  display: block;
+}
+
+.quotation-signature-block {
+  min-width: 200px;
 }

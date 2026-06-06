@@ -981,3 +981,80 @@ export interface BlogFilters {
   page?: number;
   page_size?: number;
 }
+
+export interface PricingRegion {
+  id: number;
+  slug: string;
+  name: string;
+  city?: number | null;
+  city_name?: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PricingPropertyCategory =
+  | 'residential'
+  | 'villa'
+  | 'fogging'
+  | 'rodent'
+  | 'commercial';
+
+export interface PricingRate {
+  id: number;
+  region: number;
+  region_name: string;
+  region_slug: string;
+  service_package: string;
+  plan_type: string;
+  area_key: string;
+  property_category: PricingPropertyCategory;
+  amount: number | string;
+  is_active: boolean;
+  notes?: string;
+  updated_by?: number | null;
+  updated_by_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingRateFormData {
+  region: number;
+  service_package: string;
+  plan_type: string;
+  area_key: string;
+  property_category: PricingPropertyCategory;
+  amount: number;
+  is_active: boolean;
+  notes?: string;
+}
+
+export interface PricingRateAuditLog {
+  id: number;
+  rate?: number | null;
+  region_slug: string;
+  service_package: string;
+  plan_type: string;
+  area_key: string;
+  property_category?: string;
+  old_amount?: number | string | null;
+  new_amount?: number | string | null;
+  action: 'create' | 'update' | 'activate' | 'deactivate' | 'delete';
+  changed_by?: number | null;
+  changed_by_name?: string | null;
+  change_note?: string;
+  created_at: string;
+}
+
+export interface PricingRateFilters {
+  search?: string;
+  region?: number;
+  service_package?: string;
+  plan_type?: string;
+  property_category?: string;
+  is_active?: boolean;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
+}
