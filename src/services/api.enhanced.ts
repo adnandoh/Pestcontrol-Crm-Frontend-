@@ -73,7 +73,49 @@ function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallba
     }
     if (parts.length) return parts.join('\n');
   }
+  const fieldParts: string[] = [];
+  for (const [key, val] of Object.entries(data)) {
+    if (['message', 'error', 'details', 'success', 'code'].includes(key)) continue;
+    if (Array.isArray(val) && val.length) fieldParts.push(`${key.replace(/_/g, ' ')}: ${val[0]}`);
+    else if (typeof val === 'string' && val) fieldParts.push(`${key.replace(/_/g, ' ')}: ${val}`);
+  }
+  if (fieldParts.length) return fieldParts.join('\n');
   return fallback;
+}
+
+function nullIfEmpty(value: unknown): unknown {
+  if (value === '' || value === undefined) return null;
+  return value;
+}
+
+function normalizeServiceCategory(value: unknown): string | null | undefined {
+  if (value === null || value === undefined || value === '') return null;
+  const sc = String(value).trim();
+  if (sc === 'AMC' || sc.includes('AMC')) return 'AMC';
+  if (sc === 'One-Time Service' || sc.includes('One Time') || sc.includes('One-Time')) {
+    return 'One-Time Service';
+  }
+  return sc;
+}
+
+function sanitizeJobCardPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...payload };
+  const emptyToNull = [
+    'bhk_size', 'property_type', 'contract_duration', 'payment_mode',
+    'reminder_date', 'reminder_time', 'reminder_note', 'next_service_date',
+    'assigned_to', 'notes', 'extra_notes', 'cancellation_reason', 'removal_remarks',
+    'technician', 'master_country', 'master_state', 'master_city', 'master_location',
+    'full_address',
+  ];
+  for (const field of emptyToNull) {
+    if (field in out) out[field] = nullIfEmpty(out[field]);
+  }
+  if ('service_category' in out) {
+    const normalized = normalizeServiceCategory(out.service_category);
+    if (normalized === null) delete out.service_category;
+    else out.service_category = normalized;
+  }
+  return out;
 }
 
 // Enhanced API Error class
@@ -1022,7 +1064,7 @@ class EnhancedApiService {
     }
 
     const result = await this.retryRequest(() =>
-      this.api.post<JobCard>(API_ENDPOINTS.JOBCARDS, requestData)
+      this.api.post<JobCard>(API_ENDPOINTS.JOBCARDS, sanitizeJobCardPayload(requestData))
     );
 
     // Invalidate job cards cache
@@ -1101,7 +1143,10 @@ class EnhancedApiService {
     if (data.is_complaint_call !== undefined) requestData.is_complaint_call = data.is_complaint_call;
 
     const result = await this.retryRequest(() =>
-      this.api.patch<JobCard>(`${API_ENDPOINTS.JOBCARDS}${id}/`, requestData)
+      this.api.patch<JobCard>(
+        `${API_ENDPOINTS.JOBCARDS}${id}/`,
+        sanitizeJobCardPayload(requestData),
+      )
     );
 
     // Invalidate related caches

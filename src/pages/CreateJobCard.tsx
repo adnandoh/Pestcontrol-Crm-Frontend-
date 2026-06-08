@@ -26,7 +26,6 @@ import type { JobCardFormData, State, City } from '../types';
 
 import {
   SERVICE_PACKAGE_OPTIONS,
-  BHK_AREA_VALUES,
   MUMBAI_PRICING_CONFIG,
   computeMultiServicePricing,
   getAreaOptions,
@@ -699,12 +698,9 @@ const CreateJobCard: React.FC = () => {
                       <select
                         value={pricingArea}
                         onChange={(e) => {
-                          setPricingArea(e.target.value);
-                          if (BHK_AREA_VALUES.includes(e.target.value)) {
-                            handleInputChange('bhk_size', e.target.value);
-                          } else {
-                            handleInputChange('bhk_size', '');
-                          }
+                          const area = e.target.value;
+                          setPricingArea(area);
+                          handleInputChange('bhk_size', area || '');
                         }}
                         className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
                         required

@@ -29,7 +29,6 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City } from '../types';
 
 import {
-  BHK_AREA_VALUES,
   MUMBAI_PRICING_CONFIG,
   getAreaOptions,
   getUnitPrice,
@@ -223,7 +222,7 @@ const EditJobCard: React.FC = () => {
           contract_duration: data.contract_duration || '',
           cancellation_reason: data.cancellation_reason || '',
           reminder_date: data.reminder_date || '',
-          reminder_time: data.reminder_time || '',
+          reminder_time: data.reminder_time ? String(data.reminder_time).slice(0, 5) : '',
           reminder_note: data.reminder_note || '',
           is_reminder_done: data.is_reminder_done || false,
           is_amc_main_booking: data.is_amc_main_booking || false,
@@ -410,11 +409,27 @@ const EditJobCard: React.FC = () => {
       if (submitData.payment_mode !== 'Cash' && submitData.payment_mode !== 'Online') {
         delete submitData.payment_mode;
       }
+      if (pricingArea) {
+        submitData.bhk_size = pricingArea;
+      }
+      if (!submitData.reminder_date) {
+        submitData.reminder_date = '';
+        submitData.reminder_time = '';
+      }
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Update error:', err);
-      alert(err.message || 'Failed to update booking. Please check all fields.');
+      const apiErr = err as { message?: string; details?: Record<string, string[] | string> };
+      let msg = apiErr.message || 'Failed to update booking. Please check all fields.';
+      if (apiErr.details && typeof apiErr.details === 'object') {
+        const lines = Object.entries(apiErr.details).map(([k, v]) => {
+          const text = Array.isArray(v) ? v[0] : String(v);
+          return `${k.replace(/_/g, ' ')}: ${text}`;
+        });
+        if (lines.length) msg = lines.join('\n');
+      }
+      alert(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -730,12 +745,9 @@ const EditJobCard: React.FC = () => {
                       <select
                         value={pricingArea}
                         onChange={(e) => {
-                          setPricingArea(e.target.value);
-                          if (BHK_AREA_VALUES.includes(e.target.value)) {
-                            handleInputChange('bhk_size', e.target.value);
-                          } else {
-                            handleInputChange('bhk_size', '');
-                          }
+                          const area = e.target.value;
+                          setPricingArea(area);
+                          handleInputChange('bhk_size', area || '');
                         }}
                         className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-white shadow-sm"
                         required

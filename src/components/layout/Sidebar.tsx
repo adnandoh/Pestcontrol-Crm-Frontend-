@@ -98,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     },
     {
       items: [
+        { name: 'Pricing Master', href: '/pricing-master', icon: IndianRupee, adminOnly: true },
         { name: 'Staff Management', href: '/staff', icon: Shield, superAdminOnly: true },
         { name: 'Add Employee', href: '/staff/add', icon: UserPlus, superAdminOnly: true },
         { name: 'Activity Logs', href: '/activity-logs', icon: History, superAdminOnly: true },
@@ -114,6 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
   ];
 
   const pricingAdmin = isPricingAdmin(user);
+  const showAdministration = Boolean(user?.is_superuser || pricingAdmin);
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -151,14 +153,28 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
 
           <nav className="flex-1 space-y-6 overflow-y-auto custom-scrollbar">
             {navigationGroups.map((group, gIdx) => {
-              // Hide the last group (Administration) if user is not a superuser
-              if (gIdx === navigationGroups.length - 1 && !user?.is_superuser) {
+              const isAdminGroup = gIdx === navigationGroups.length - 1;
+              if (isAdminGroup && !showAdministration) {
+                return null;
+              }
+
+              const visibleItems = group.items.filter((item) => {
+                if ('superAdminOnly' in item && item.superAdminOnly && !user?.is_superuser) {
+                  return false;
+                }
+                if ('adminOnly' in item && item.adminOnly && !pricingAdmin) {
+                  return false;
+                }
+                return true;
+              });
+
+              if (visibleItems.length === 0) {
                 return null;
               }
               
               return (
                 <div key={gIdx} className="space-y-1">
-                  {group.items.map((item) => {
+                  {visibleItems.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
                     
@@ -204,24 +220,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                 </div>
               );
             })}
-
-            {/* Pricing Master — Admin & Super Admin */}
-            {pricingAdmin && (
-              <div className="space-y-1 mt-2">
-                <Link
-                  to="/pricing-master"
-                  className={cn(
-                    'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
-                    isActive('/pricing-master')
-                      ? 'bg-crm-surface shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-crm-text border border-crm-border'
-                      : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover',
-                  )}
-                >
-                  <IndianRupee className={cn('h-[18px] w-[18px]', isActive('/pricing-master') ? 'text-green-600' : '')} />
-                  <span className="flex-1 text-[14px] font-semibold">Pricing Master</span>
-                </Link>
-              </div>
-            )}
 
             {/* Master Collapsible Group */}
             {user?.is_superuser && (
