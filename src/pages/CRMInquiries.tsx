@@ -14,15 +14,25 @@ import { Button, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
-import type { CRMInquiry, CRMInquiryStatus } from '../types';
+import type { CRMInquiry, CRMInquiryStatus, InquiryStatusCounts } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import ReminderModal from '../components/crm/ReminderModal';
+import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
+import {
+  dateFilterToApiParams,
+  EMPTY_DATE_FILTER,
+  loadStoredDateFilter,
+  saveStoredDateFilter,
+  type InquiryDateFilterState,
+} from '../utils/inquiryDateFilters';
 import RemarkListCell from '../components/crm/RemarkListCell';
 import { LocationCell, buildLocationTooltip } from '../components/crm/LocationCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
+
+const CRM_DATE_FILTER_KEY = 'crm-inquiries-date-filter';
 
 const CRMInquiries: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -32,6 +42,7 @@ const CRMInquiries: React.FC = () => {
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [inquiries, setInquiries] = useState<CRMInquiry[]>([]);
+  const [statusCounts, setStatusCounts] = useState<InquiryStatusCounts | null>(null);
   const { refreshCounts, counts } = useDashboardCounts();
   
   const pestTypesList = [
@@ -48,28 +59,34 @@ const CRMInquiries: React.FC = () => {
     pageSize: 10
   });
 
-  const [filters, setFilters] = useState<{pest_type: string, date: string, search: string, status: string}>({
+  const [filters, setFilters] = useState<{ pest_type: string; search: string; status: string }>({
     pest_type: '',
-    date: '',
     search: '',
-    status: ''
+    status: '',
   });
+  const [dateDraft, setDateDraft] = useState<InquiryDateFilterState>(() => loadStoredDateFilter(CRM_DATE_FILTER_KEY));
+  const [appliedDateFilter, setAppliedDateFilter] = useState<InquiryDateFilterState>(() =>
+    loadStoredDateFilter(CRM_DATE_FILTER_KEY),
+  );
   const [searchInput, setSearchInput] = useState('');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
 
-  const loadInquiries = async (page = 1, opts?: { focus?: string }) => {
+  const loadInquiries = useCallback(async (page = 1, opts?: { focus?: string; dateFilter?: InquiryDateFilterState }) => {
     try {
       setLoading(true);
+      const activeDate = opts?.dateFilter ?? appliedDateFilter;
+      const dateParams = dateFilterToApiParams(activeDate);
       const params: Record<string, string | number | undefined> = {
         page,
         page_size: pagination.pageSize,
-        search: filters.search,
-        status: filters.status,
-        pest_type: filters.pest_type,
-        inquiry_date: filters.date,
+        search: filters.search || undefined,
+        status: filters.status || undefined,
+        pest_type: filters.pest_type || undefined,
+        from: dateParams.from,
+        to: dateParams.to,
         ordering: '-created_at',
       };
       if (opts?.focus) {
@@ -78,19 +95,20 @@ const CRMInquiries: React.FC = () => {
 
       const response = await enhancedApiService.getCRMInquiries(params);
       setInquiries(response.results);
-      setPagination(prev => ({ ...prev, count: response.count, current: page }));
+      setStatusCounts(response.status_counts ?? null);
+      setPagination(prev => ({ ...prev, count: response.status_counts?.all ?? response.count, current: page }));
     } catch (err) {
       console.error('Failed to load inquiries:', err);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, [appliedDateFilter, filters, pagination.pageSize]);
 
   const handleFocusFromSearch = useCallback(async (id: string) => {
     setFocusPreview(id);
     await loadInquiries(1, { focus: id });
-  }, [filters, pagination.pageSize]);
+  }, [loadInquiries]);
 
   useInquiryFocusFromSearch(handleFocusFromSearch);
 
@@ -107,12 +125,22 @@ const CRMInquiries: React.FC = () => {
     if (focusId) return;
     setFocusPreview(null);
     loadInquiries(1);
-  }, [filters]);
+  }, [filters, appliedDateFilter, focusId, loadInquiries]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadInquiries(1);
+  const handleApplyDateFilter = () => {
+    setAppliedDateFilter(dateDraft);
+    saveStoredDateFilter(CRM_DATE_FILTER_KEY, dateDraft);
   };
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setFilters({ search: '', status: '', pest_type: '' });
+    setDateDraft({ ...EMPTY_DATE_FILTER });
+    setAppliedDateFilter({ ...EMPTY_DATE_FILTER });
+    saveStoredDateFilter(CRM_DATE_FILTER_KEY, EMPTY_DATE_FILTER);
+  };
+
+  const totalCount = statusCounts?.all ?? pagination.count;
 
 
 
@@ -190,7 +218,7 @@ const CRMInquiries: React.FC = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Inquiries</h1>
           <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
-            Total {pagination.count} Manual Leads
+            Total {totalCount} Manual Leads
           </span>
           {counts.crm_inquiries_unread > 0 && (
             <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded">
@@ -262,20 +290,13 @@ const CRMInquiries: React.FC = () => {
           </select>
         </div>
 
-        <div className="w-36">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Date</label>
-          <input
-            type="date"
-            value={filters.date}
-            onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white font-bold text-gray-700"
-          />
-        </div>
-
-        <div className="flex gap-1 h-8">
-           <button type="button" onClick={() => setFilters({ search: '', status: '', pest_type: '', date: '' })} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
-           <button onClick={handleSearch} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors uppercase">Search</button>
-        </div>
+        <InquiryDateFilterBar
+          value={dateDraft}
+          onChange={setDateDraft}
+          onApply={handleApplyDateFilter}
+          onClear={handleClearFilters}
+          loading={loading}
+        />
       </div>
 
       {focusPreview && (

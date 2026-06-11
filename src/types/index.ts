@@ -354,11 +354,20 @@ export interface Reminder {
 }
 
 // API Response types
+export interface InquiryStatusCounts {
+  all: number;
+  New: number;
+  Contacted: number;
+  Converted: number;
+  Closed: number;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
   results: T[];
+  status_counts?: InquiryStatusCounts;
 }
 
 export interface ApiError {
@@ -538,6 +547,8 @@ export interface InquiryFilters {
   state?: string;
   city?: string;
   is_read?: boolean;
+  from?: string;
+  to?: string;
   ordering?: string;
 }
 

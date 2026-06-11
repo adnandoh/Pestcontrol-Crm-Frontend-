@@ -524,16 +524,11 @@ class EnhancedApiService {
   // CRM Inquiry methods
   async getCRMInquiries(params?: CRMInquiryFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<CRMInquiry>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.CRM_INQUIRIES, params);
-    
-    return this.cachedRequest(
-      cacheKey,
-      () => this.retryRequest(() =>
-        this.makeRequest(
-          cacheKey,
-          () => this.api.get<PaginatedResponse<CRMInquiry>>(API_ENDPOINTS.CRM_INQUIRIES, { params })
-        )
+    return this.retryRequest(() =>
+      this.makeRequest(
+        cacheKey,
+        () => this.api.get<PaginatedResponse<CRMInquiry>>(API_ENDPOINTS.CRM_INQUIRIES, { params }),
       ),
-      2 * 60 * 1000 // 2 minutes cache
     );
   }
 
@@ -790,16 +785,11 @@ class EnhancedApiService {
   // Inquiry methods
   async getInquiries(params?: InquiryFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Inquiry>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.INQUIRIES, params);
-    
-    return this.cachedRequest(
-      cacheKey,
-      () => this.retryRequest(() =>
-        this.makeRequest(
-          cacheKey,
-          () => this.api.get<PaginatedResponse<Inquiry>>(API_ENDPOINTS.INQUIRIES, { params })
-        )
+    return this.retryRequest(() =>
+      this.makeRequest(
+        cacheKey,
+        () => this.api.get<PaginatedResponse<Inquiry>>(API_ENDPOINTS.INQUIRIES, { params }),
       ),
-      2 * 60 * 1000 // 2 minutes cache for inquiries (more dynamic)
     );
   }
 
@@ -965,19 +955,14 @@ class EnhancedApiService {
   // Job Card methods
   async getJobCards(params?: JobCardFilters & { page?: number; page_size?: number }, signal?: AbortSignal): Promise<PaginatedResponse<JobCard>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.JOBCARDS, params);
-    
-    // If we have an abort signal, we bypass the request deduplication queue 
-    // to avoid conflicts between different controllers aborting the same promise.
-    return this.cachedRequest(
-      cacheKey,
-      () => this.retryRequest(() =>
-        this.makeRequest(
-          cacheKey,
-          () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params, signal }),
-          !!signal // bypass queue if signal exists
-        )
+
+    // Booking lists are sorted/filtered dynamically — always fetch fresh data.
+    return this.retryRequest(() =>
+      this.makeRequest(
+        cacheKey,
+        () => this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.JOBCARDS, { params, signal }),
+        !!signal,
       ),
-      3 * 60 * 1000 // 3 minutes cache
     );
   }
 

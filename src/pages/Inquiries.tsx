@@ -17,13 +17,31 @@ import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
-import type { Inquiry, PaginatedResponse } from '../types';
+import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
+import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
+import {
+  dateFilterToApiParams,
+  EMPTY_DATE_FILTER,
+  loadStoredDateFilter,
+  saveStoredDateFilter,
+  type InquiryDateFilterState,
+} from '../utils/inquiryDateFilters';
 import RemarkListCell from '../components/crm/RemarkListCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+
+const WEBSITE_LEADS_DATE_FILTER_KEY = 'website-leads-date-filter';
+
+const TAB_STATUS_MAP: Record<string, keyof InquiryStatusCounts | 'all'> = {
+  All: 'all',
+  New: 'New',
+  Contacted: 'Contacted',
+  Converted: 'Converted',
+  Closed: 'Closed',
+};
 
 const Inquiries: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -32,6 +50,7 @@ const Inquiries: React.FC = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAllRead, setMarkingAllRead] = useState(false);
+  const [statusCounts, setStatusCounts] = useState<InquiryStatusCounts | null>(null);
   const { refreshCounts, counts } = useDashboardCounts();
   const [pagination, setPagination] = useState({
     count: 0,
@@ -43,8 +62,14 @@ const Inquiries: React.FC = () => {
   });
   const [filters, setFilters] = useState({
     status: '',
-    search: ''
+    search: '',
   });
+  const [dateDraft, setDateDraft] = useState<InquiryDateFilterState>(() =>
+    loadStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY),
+  );
+  const [appliedDateFilter, setAppliedDateFilter] = useState<InquiryDateFilterState>(() =>
+    loadStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY),
+  );
   const [activeTab, setActiveTab] = useState('All');
   const [searchInput, setSearchInput] = useState('');
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -53,9 +78,10 @@ const Inquiries: React.FC = () => {
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
   // Load inquiries
-  const loadInquiries = async (page = 1, opts?: { focus?: string }) => {
+  const loadInquiries = useCallback(async (page = 1, opts?: { focus?: string }) => {
     try {
       setLoading(true);
+      const dateParams = dateFilterToApiParams(appliedDateFilter);
 
       const params: Record<string, string | number | undefined> = {
         page,
@@ -63,21 +89,25 @@ const Inquiries: React.FC = () => {
         ordering: '-created_at',
         status: filters.status || undefined,
         search: filters.search || undefined,
+        from: dateParams.from,
+        to: dateParams.to,
       };
       if (opts?.focus) {
         params.focus = opts.focus;
       }
 
       const response: PaginatedResponse<Inquiry> = await enhancedApiService.getInquiries(params);
-      
+
       setInquiries(response.results);
+      setStatusCounts(response.status_counts ?? null);
+      const total = response.status_counts?.all ?? response.count;
       setPagination(prev => ({
         ...prev,
-        count: response.count,
+        count: total,
         next: response.next,
         previous: response.previous,
         current: page,
-        totalPages: Math.max(1, Math.ceil(response.count / prev.pageSize))
+        totalPages: Math.max(1, Math.ceil(total / prev.pageSize)),
       }));
     } catch (err: any) {
       console.error('Error loading inquiries:', err);
@@ -85,12 +115,12 @@ const Inquiries: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appliedDateFilter, filters, pagination.pageSize]);
 
   const handleFocusFromSearch = useCallback(async (id: string) => {
     setFocusPreview(id);
     await loadInquiries(1, { focus: id });
-  }, [filters, pagination.pageSize, activeTab]);
+  }, [loadInquiries]);
 
   useInquiryFocusFromSearch(handleFocusFromSearch);
 
@@ -111,7 +141,30 @@ const Inquiries: React.FC = () => {
     if (focusId) return;
     setFocusPreview(null);
     loadInquiries(1);
-  }, [filters.status, filters.search, activeTab]);
+  }, [filters.status, filters.search, appliedDateFilter, focusId, loadInquiries]);
+
+  const handleApplyDateFilter = () => {
+    setAppliedDateFilter(dateDraft);
+    saveStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY, dateDraft);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setActiveTab('All');
+    setFilters({ status: '', search: '' });
+    setDateDraft({ ...EMPTY_DATE_FILTER });
+    setAppliedDateFilter({ ...EMPTY_DATE_FILTER });
+    saveStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY, EMPTY_DATE_FILTER);
+  };
+
+  const getTabCount = (tab: string): number | null => {
+    if (!statusCounts) return null;
+    const key = TAB_STATUS_MAP[tab];
+    if (!key) return null;
+    return statusCounts[key];
+  };
+
+  const totalCount = statusCounts?.all ?? pagination.count;
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -212,7 +265,7 @@ const Inquiries: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Website Leads</h1>
           <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
-            Total {pagination.count} Inquiries
+            Total {totalCount} Inquiries
           </span>
           {counts.website_leads_unread > 0 && (
             <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
@@ -247,6 +300,9 @@ const Inquiries: React.FC = () => {
             )}
           >
             {tab}
+            {getTabCount(tab) !== null && (
+              <span className="ml-1 text-[10px] opacity-70">({getTabCount(tab)})</span>
+            )}
           </button>
         ))}
       </div>
@@ -283,10 +339,13 @@ const Inquiries: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex gap-1 h-8">
-           <button onClick={() => { setSearchInput(''); setFilters({ status: '', search: '' }); }} className="px-3 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded transition-colors uppercase">Clear</button>
-           <button onClick={() => setFilters(prev => ({ ...prev, search: searchInput }))} className="px-3 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded transition-colors uppercase">Search</button>
-        </div>
+        <InquiryDateFilterBar
+          value={dateDraft}
+          onChange={setDateDraft}
+          onApply={handleApplyDateFilter}
+          onClear={handleClearFilters}
+          loading={loading}
+        />
       </div>
 
       {focusPreview && (
