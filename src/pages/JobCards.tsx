@@ -9,6 +9,8 @@ import {
   Ban,
   Trash2,
   ChevronDown,
+  ArrowUp,
+  ArrowDown,
   UserMinus,
   CheckSquare,
   Star,
@@ -98,6 +100,7 @@ const JobCards: React.FC = () => {
     }
   }, [searchParams]);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [scheduleDateTimeSort, setScheduleDateTimeSort] = useState<'asc' | 'desc'>('asc');
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [partnerAppAction, setPartnerAppAction] = useState<{
@@ -161,7 +164,7 @@ const JobCards: React.FC = () => {
       const params: any = {
         page,
         page_size: pagination.pageSize,
-        ordering: '-created_at',
+        ordering: scheduleDateTimeSort === 'asc' ? 'schedule_datetime' : '-schedule_datetime',
         booking_type: activeTab
       };
 
@@ -211,39 +214,7 @@ const JobCards: React.FC = () => {
 
       const response: PaginatedResponse<JobCard> = await enhancedApiService.getJobCards(params, controller.signal);
 
-      // Process and sort jobs based on priority rules
-      // 1. Today's bookings (priority 1) - Latest first
-      // 2. Tomorrow's bookings (priority 2) - Latest first
-      // 3. Others (priority 3) - Default sorting
-      const today = dayjs().tz("Asia/Kolkata").startOf('day');
-      const tomorrow = today.add(1, 'day');
-      
-      let processedResults = response.results.map((job: any) => {
-        const jobDate = dayjs(job.schedule_datetime).tz("Asia/Kolkata");
-        let priority = 3;
-        if (jobDate.isSame(today, 'day')) priority = 1;
-        else if (jobDate.isSame(tomorrow, 'day')) priority = 2;
-        return { ...job, booking_priority: priority };
-      });
-
-      if (activeTab === 'upcoming_services') {
-        processedResults = [...processedResults].sort((a: any, b: any) => {
-          const dateA = a.next_service_date || a.schedule_datetime?.slice(0, 10) || '';
-          const dateB = b.next_service_date || b.schedule_datetime?.slice(0, 10) || '';
-          return dateA.localeCompare(dateB);
-        });
-      } else {
-        processedResults = processedResults.sort((a: any, b: any) => {
-          if (a.booking_priority !== b.booking_priority) {
-            return a.booking_priority - b.booking_priority;
-          }
-          const dateA = new Date(a.schedule_datetime).getTime();
-          const dateB = new Date(b.schedule_datetime).getTime();
-          return dateB - dateA;
-        });
-      }
-
-      setJobCards(processedResults);
+      setJobCards(response.results);
       setPagination(prev => ({
         ...prev,
         count: response.count,
@@ -272,14 +243,16 @@ const JobCards: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [activeTab, filters, pagination.pageSize]);
+  }, [activeTab, filters, pagination.pageSize, scheduleDateTimeSort]);
 
   // Load unified reminders
   const loadReminders = useCallback(async (currentFilters = filters) => {
     try {
       setRemindersLoading(true);
       const params: any = {
-        ordering: 'reminder_date,reminder_time',
+        ordering: scheduleDateTimeSort === 'asc'
+          ? 'reminder_date,reminder_time'
+          : '-reminder_date,-reminder_time',
         status: 'pending' // Only show pending reminders by default
       };
       
@@ -294,7 +267,7 @@ const JobCards: React.FC = () => {
     } finally {
       setRemindersLoading(false);
     }
-  }, [filters]);
+  }, [filters, scheduleDateTimeSort]);
 
   // Initial load
   useEffect(() => {
@@ -701,6 +674,42 @@ const JobCards: React.FC = () => {
     return 3;
   };
 
+  const renderDateTimeSortHeader = (label: string) => (
+    <div className="inline-flex items-center gap-1">
+      <span className="whitespace-nowrap">{label}</span>
+      <div className="inline-flex flex-col rounded border border-gray-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
+        <button
+          type="button"
+          onClick={() => setScheduleDateTimeSort('asc')}
+          className={cn(
+            'flex items-center justify-center w-[18px] h-[14px] leading-none transition-colors',
+            scheduleDateTimeSort === 'asc'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600',
+          )}
+          title="Sort earliest first"
+          aria-label="Sort booking date and time ascending"
+        >
+          <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setScheduleDateTimeSort('desc')}
+          className={cn(
+            'flex items-center justify-center w-[18px] h-[14px] leading-none border-t border-gray-200 transition-colors',
+            scheduleDateTimeSort === 'desc'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600',
+          )}
+          title="Sort latest first"
+          aria-label="Sort booking date and time descending"
+        >
+          <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />
+        </button>
+      </div>
+    </div>
+  );
+
   const getTabDateForPriority = (job: JobCard) => {
     if (activeTab === "upcoming_services") {
       return job.next_service_date || job.schedule_datetime || null;
@@ -842,7 +851,9 @@ const JobCards: React.FC = () => {
               <tr className="divide-x divide-gray-100">
                 {activeTab === 'reminders' ? (
                   <>
-                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Date & Time</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">
+                      {renderDateTimeSortHeader('Booking Date & Time')}
+                    </th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Customer Name</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Mobile Number</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Inquiry Source</th>
@@ -858,7 +869,9 @@ const JobCards: React.FC = () => {
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Area</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
-                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Schedule</th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">
+                      {renderDateTimeSortHeader('Booking Date & Time')}
+                    </th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
                     {activeTab === 'upcoming_services' && (
                       <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
@@ -885,9 +898,7 @@ const JobCards: React.FC = () => {
                   const reminderDate = dayjs(reminder.reminder_date).tz("Asia/Kolkata");
                   const isToday = reminderDate.isSame(today, 'day');
                   const currentPriority = getPriorityForDate(reminder.reminder_date);
-                  const prevReminder = index > 0 ? reminders[index - 1] : null;
-                  const prevPriority = prevReminder ? getPriorityForDate(prevReminder.reminder_date) : null;
-                  const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority);
+                  const showPriorityHeader = false;
                   
                   return (
                     <React.Fragment key={`rem-${reminder.id}`}>
@@ -1026,11 +1037,8 @@ const JobCards: React.FC = () => {
                 const isToday = jobDate.isSame(today, 'day');
                 const isTomorrow = jobDate.isSame(tomorrow, 'day');
                 
-                // Priority labels logic
-                const prevJob = index > 0 ? jobCards[index-1] : null;
-                const prevPriority = prevJob ? getPriorityForDate(getTabDateForPriority(prevJob)) : null;
                 const currentPriority = getPriorityForDate(tabDate);
-                const showPriorityHeader = currentPriority !== prevPriority && [1, 2].includes(currentPriority || 0);
+                const showPriorityHeader = false;
 
                 const rowBg = currentPriority === 1 
                   ? 'bg-emerald-50 text-gray-900 hover:bg-emerald-100/80 transition-colors' 
