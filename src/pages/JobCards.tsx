@@ -893,7 +893,7 @@ const JobCards: React.FC = () => {
                     </td>
                  </tr>
               ) : activeTab === 'reminders' ? (
-                reminders.map((reminder, index) => {
+                reminders.map((reminder) => {
                   const today = dayjs().tz("Asia/Kolkata").startOf('day');
                   const reminderDate = dayjs(reminder.reminder_date).tz("Asia/Kolkata");
                   const isToday = reminderDate.isSame(today, 'day');
@@ -1028,7 +1028,7 @@ const JobCards: React.FC = () => {
                     </React.Fragment>
                   );
                 })
-              ) : (jobCards || []).map((job: JobCard, index: number) => {
+              ) : (jobCards || []).map((job: JobCard) => {
                 const today = dayjs().tz("Asia/Kolkata").startOf('day');
                 const tomorrow = today.add(1, 'day');
                 const tabDate = getTabDateForPriority(job);
