@@ -9,8 +9,6 @@ import {
   Ban,
   Trash2,
   ChevronDown,
-  ArrowUp,
-  ArrowDown,
   UserMinus,
   CheckSquare,
   Star,
@@ -100,7 +98,6 @@ const JobCards: React.FC = () => {
     }
   }, [searchParams]);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [scheduleDateTimeSort, setScheduleDateTimeSort] = useState<'asc' | 'desc'>('asc');
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [partnerAppAction, setPartnerAppAction] = useState<{
@@ -164,7 +161,6 @@ const JobCards: React.FC = () => {
       const params: any = {
         page,
         page_size: pagination.pageSize,
-        ordering: scheduleDateTimeSort === 'asc' ? 'schedule_datetime' : '-schedule_datetime',
         booking_type: activeTab
       };
 
@@ -243,16 +239,14 @@ const JobCards: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [activeTab, filters, pagination.pageSize, scheduleDateTimeSort]);
+  }, [activeTab, filters, pagination.pageSize]);
 
   // Load unified reminders
   const loadReminders = useCallback(async (currentFilters = filters) => {
     try {
       setRemindersLoading(true);
       const params: any = {
-        ordering: scheduleDateTimeSort === 'asc'
-          ? 'reminder_date,reminder_time'
-          : '-reminder_date,-reminder_time',
+        ordering: 'reminder_date,reminder_time',
         status: 'pending' // Only show pending reminders by default
       };
       
@@ -267,7 +261,7 @@ const JobCards: React.FC = () => {
     } finally {
       setRemindersLoading(false);
     }
-  }, [filters, scheduleDateTimeSort]);
+  }, [filters]);
 
   // Initial load
   useEffect(() => {
@@ -674,42 +668,6 @@ const JobCards: React.FC = () => {
     return 3;
   };
 
-  const renderDateTimeSortHeader = (label: string) => (
-    <div className="inline-flex items-center gap-1">
-      <span className="whitespace-nowrap">{label}</span>
-      <div className="inline-flex flex-col rounded border border-gray-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
-        <button
-          type="button"
-          onClick={() => setScheduleDateTimeSort('asc')}
-          className={cn(
-            'flex items-center justify-center w-[18px] h-[14px] leading-none transition-colors',
-            scheduleDateTimeSort === 'asc'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600',
-          )}
-          title="Sort earliest first"
-          aria-label="Sort booking date and time ascending"
-        >
-          <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setScheduleDateTimeSort('desc')}
-          className={cn(
-            'flex items-center justify-center w-[18px] h-[14px] leading-none border-t border-gray-200 transition-colors',
-            scheduleDateTimeSort === 'desc'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600',
-          )}
-          title="Sort latest first"
-          aria-label="Sort booking date and time descending"
-        >
-          <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />
-        </button>
-      </div>
-    </div>
-  );
-
   const getTabDateForPriority = (job: JobCard) => {
     if (activeTab === "upcoming_services") {
       return job.next_service_date || job.schedule_datetime || null;
@@ -851,9 +809,7 @@ const JobCards: React.FC = () => {
               <tr className="divide-x divide-gray-100">
                 {activeTab === 'reminders' ? (
                   <>
-                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">
-                      {renderDateTimeSortHeader('Booking Date & Time')}
-                    </th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Booking Date & Time</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Customer Name</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Mobile Number</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Inquiry Source</th>
@@ -869,9 +825,7 @@ const JobCards: React.FC = () => {
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Area</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Service Details</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Technician</th>
-                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">
-                      {renderDateTimeSortHeader('Booking Date & Time')}
-                    </th>
+                    <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Booking Date & Time</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
                     {activeTab === 'upcoming_services' && (
                       <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
