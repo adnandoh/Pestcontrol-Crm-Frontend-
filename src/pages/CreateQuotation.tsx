@@ -447,6 +447,13 @@ const CreateQuotation: React.FC = () => {
                 <Label className="text-xs font-bold uppercase text-gray-500">Location</Label>
                 <LocationSearchSelect
                   value={formData.master_location}
+                  defaultLabel={
+                    formData.master_location
+                      ? [existingQuotation?.master_location_name, formData.city || existingQuotation?.master_city_name]
+                          .filter(Boolean)
+                          .join(', ')
+                      : undefined
+                  }
                   onChange={(locationId, cityId, stateId) => {
                     const state = masterStates.find(s => s.id === stateId);
                     // Find city from masterCities or wait for effect? 

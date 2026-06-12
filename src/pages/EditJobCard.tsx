@@ -609,6 +609,13 @@ const EditJobCard: React.FC = () => {
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
                 <LocationSearchSelect
                   value={formData.master_location}
+                  defaultLabel={
+                    formData.master_location
+                      ? [jobCard?.master_location_name, formData.city || jobCard?.master_city_name]
+                          .filter(Boolean)
+                          .join(', ')
+                      : undefined
+                  }
                   onChange={(locationId, cityId, stateId) => {
                     const cityName = cityId
                       ? masterCities.find(c => c.id === cityId)?.name

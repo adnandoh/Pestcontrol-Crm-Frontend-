@@ -1680,6 +1680,10 @@ class EnhancedApiService {
     return this.api.get<PaginatedResponse<MasterLocation>>('/locations/', { params }).then(r => r.data);
   }
 
+  async getMasterLocation(id: number): Promise<MasterLocation & { display_name?: string; state_id?: number }> {
+    return this.api.get<MasterLocation & { display_name?: string; state_id?: number }>(`/locations/${id}/`).then(r => r.data);
+  }
+
   async createMasterLocation(data: any): Promise<MasterLocation> {
     return this.api.post<MasterLocation>('/locations/', data).then(r => r.data);
   }

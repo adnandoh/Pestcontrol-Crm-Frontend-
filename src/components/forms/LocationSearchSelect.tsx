@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
 import { MapPin } from 'lucide-react';
 
+interface LocationOption {
+  value: number;
+  label: string;
+  city_id?: number;
+  state_id?: number;
+}
+
 interface LocationSearchSelectProps {
   value?: number;
+  /** Pre-filled label for edit forms (e.g. master_location_name + city). */
+  defaultLabel?: string;
   onChange: (locationId: number, cityId?: number, stateId?: number) => void;
   placeholder?: string;
   className?: string;
@@ -15,6 +24,8 @@ interface LocationSearchSelectProps {
 }
 
 const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
+  value,
+  defaultLabel,
   onChange,
   placeholder = "Search location (e.g. Khopoli, Thane)...",
   className,
@@ -22,26 +33,64 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
   error,
   name = 'master_location',
 }) => {
-  // Load options from API
+  const [selectedOption, setSelectedOption] = useState<LocationOption | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveSelectedOption = async () => {
+      if (!value) {
+        setSelectedOption(null);
+        return;
+      }
+
+      if (defaultLabel) {
+        setSelectedOption({ value, label: defaultLabel });
+        return;
+      }
+
+      try {
+        const location = await enhancedApiService.getMasterLocation(value);
+        if (cancelled) return;
+        setSelectedOption({
+          value: location.id,
+          label: location.display_name || `${location.name}, ${location.city_name}`,
+          city_id: location.city,
+          state_id: location.state_id,
+        });
+      } catch (fetchError) {
+        console.error('Error loading saved location:', fetchError);
+        if (!cancelled) {
+          setSelectedOption({ value, label: `Location #${value}` });
+        }
+      }
+    };
+
+    resolveSelectedOption();
+    return () => {
+      cancelled = true;
+    };
+  }, [value, defaultLabel]);
+
   const loadOptions = async (inputValue: string) => {
     if (!inputValue || inputValue.length < 4) return [];
-    
+
     try {
       const results = await enhancedApiService.searchLocations(inputValue);
-      return results.map(loc => ({
+      return results.map((loc) => ({
         value: loc.id,
         label: loc.display_name,
         city_id: loc.city_id,
-        state_id: loc.state_id
+        state_id: loc.state_id,
       }));
-    } catch (error) {
-      console.error('Error searching locations:', error);
+    } catch (loadError) {
+      console.error('Error searching locations:', loadError);
       return [];
     }
   };
 
-  // Handle selection
-  const handleChange = (option: any) => {
+  const handleChange = (option: LocationOption | null) => {
+    setSelectedOption(option);
     if (option) {
       onChange(option.value, option.city_id, option.state_id);
     }
@@ -56,14 +105,15 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
         cacheOptions
         defaultOptions={false}
         loadOptions={loadOptions}
+        value={selectedOption}
         onChange={handleChange}
         placeholder={placeholder}
         isDisabled={isDisabled}
         isClearable
-        noOptionsMessage={({ inputValue }) => 
-          inputValue.length < 4 ? "Type at least 4 characters..." : "No locations found"
+        noOptionsMessage={({ inputValue }) =>
+          inputValue.length < 4 ? 'Type at least 4 characters...' : 'No locations found'
         }
-        loadingMessage={() => "Searching..."}
+        loadingMessage={() => 'Searching...'}
         classNamePrefix="location-select"
         styles={{
           control: (base, state) => ({
@@ -78,7 +128,7 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
             fontSize: '14px',
             backgroundColor: '#ffffff',
             fontWeight: '600',
-            color: '#374151'
+            color: '#374151',
           }),
           option: (base, state) => ({
             ...base,
@@ -90,17 +140,17 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
             cursor: 'pointer',
             '&:active': {
               backgroundColor: '#dbeafe',
-            }
+            },
           }),
           placeholder: (base) => ({
             ...base,
             color: '#9ca3af',
-            fontSize: '13px'
+            fontSize: '13px',
           }),
           singleValue: (base) => ({
             ...base,
-            color: '#1f2937'
-          })
+            color: '#1f2937',
+          }),
         }}
       />
       <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
