@@ -1346,16 +1346,14 @@ const JobCards: React.FC = () => {
 
                             {(activeTab === 'pending' || activeTab === 'on_process') && (
                               <>
-                                {activeTab === 'pending' && (
-                                  <button
-                                    onClick={() => handleDownloadInvoice(job)}
-                                    disabled={invoiceLoadingId === job.id}
-                                    className="p-2 bg-cyan-50 hover:bg-cyan-600 text-cyan-600 hover:text-white rounded shadow-xs border border-cyan-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Download Invoice PDF"
-                                  >
-                                    <Download className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => handleDownloadInvoice(job)}
+                                  disabled={invoiceLoadingId === job.id}
+                                  className="p-2 bg-cyan-50 hover:bg-cyan-600 text-cyan-600 hover:text-white rounded shadow-xs border border-cyan-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Download Invoice PDF"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
                                 {activeTab === 'pending' && job.status === 'Pending' && (
                                   isInPartnerAppQueue(job) ? (
                                     <button
