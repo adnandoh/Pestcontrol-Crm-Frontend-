@@ -41,8 +41,20 @@ export const SERVICE_PACKAGE_TO_PESTS: Record<string, string[]> = {
 export interface ServicePriceLine {
   service: string;
   price: number;
+  plan?: string;
+  area?: string;
   note?: string;
 }
+
+/** Per-service plan/area selection (create & edit booking forms). */
+export interface ServiceItemConfig {
+  service: string;
+  plan: string;
+  area: string;
+  amount: number;
+}
+
+export type ServiceConfigMap = Record<string, { plan: string; area: string }>;
 
 export function getUnitPrice(
   service: string,
@@ -161,6 +173,180 @@ export function getDefaultPricingType(
   if (types.length === 0) return '';
   if (types.includes('One Time Service')) return 'One Time Service';
   return types[0];
+}
+
+/** Plan types available for a single service package. */
+export function getPricingTypesForService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  return Object.keys(config.pricing[service] || {});
+}
+
+/** Area options for one service (not intersected across services). */
+export function getAreaOptionsForService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  commercialType = 'home',
+): string[] {
+  return getAreaOptions([service], config, commercialType);
+}
+
+export function getDefaultPlanForService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string {
+  const types = getPricingTypesForService(service, config);
+  if (types.includes('One Time Service')) return 'One Time Service';
+  return types[0] || '';
+}
+
+export function createDefaultServiceConfig(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): { plan: string; area: string } {
+  return { plan: getDefaultPlanForService(service, config), area: '' };
+}
+
+export function buildServiceConfigMap(
+  selectedServices: string[],
+  prev: ServiceConfigMap,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): ServiceConfigMap {
+  const next: ServiceConfigMap = {};
+  for (const service of selectedServices) {
+    const existing = prev[service];
+    const planTypes = getPricingTypesForService(service, config);
+    let plan = existing?.plan || getDefaultPlanForService(service, config);
+    if (!planTypes.includes(plan)) {
+      plan = getDefaultPlanForService(service, config);
+    }
+    const areas = getAreaOptionsForService(service, config);
+    let area = existing?.area || '';
+    if (area && areas.length > 0 && !areas.includes(area)) {
+      area = '';
+    }
+    next[service] = { plan, area };
+  }
+  return next;
+}
+
+export function computePerServicePricing(
+  serviceConfigs: ServiceConfigMap,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): { total: number; lines: ServicePriceLine[]; items: ServiceItemConfig[] } {
+  const lines: ServicePriceLine[] = [];
+  const items: ServiceItemConfig[] = [];
+
+  for (const [service, { plan, area }] of Object.entries(serviceConfigs)) {
+    if (!plan || !area) {
+      lines.push({
+        service,
+        plan,
+        area,
+        price: 0,
+        note: !plan ? 'Select service type' : 'Select area',
+      });
+      continue;
+    }
+    const unit = getUnitPrice(service, plan, area, config);
+    if (unit === null) {
+      lines.push({
+        service,
+        plan,
+        area,
+        price: 0,
+        note: 'Rate not available for this area/type',
+      });
+      items.push({ service, plan, area, amount: 0 });
+      continue;
+    }
+    if (unit === 0) {
+      lines.push({
+        service,
+        plan,
+        area,
+        price: 0,
+        note:
+          service === 'Hotel / Commercial'
+            ? 'Inspection required'
+            : 'Price after visit',
+      });
+      items.push({ service, plan, area, amount: 0 });
+      continue;
+    }
+    lines.push({ service, plan, area, price: unit });
+    items.push({ service, plan, area, amount: unit });
+  }
+
+  const total = lines.reduce((sum, line) => sum + line.price, 0);
+  return { total, lines, items };
+}
+
+export function deriveServiceCategoryFromItems(
+  items: Array<Pick<ServiceItemConfig, 'service' | 'plan'>>,
+): 'AMC' | 'One-Time Service' {
+  const hasAmc = items.some(
+    (item) =>
+      item.plan === 'AMC 3 Services' ||
+      item.plan.toLowerCase().includes('amc'),
+  );
+  return hasAmc ? 'AMC' : 'One-Time Service';
+}
+
+export function validateServiceConfigs(
+  selectedServices: string[],
+  serviceConfigs: ServiceConfigMap,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  const errors: string[] = [];
+  for (const service of selectedServices) {
+    const cfg = serviceConfigs[service];
+    if (!cfg?.plan) {
+      errors.push(`${service}: select a service type.`);
+      continue;
+    }
+    if (!cfg.area) {
+      errors.push(`${service}: select an area.`);
+      continue;
+    }
+    const unit = getUnitPrice(service, cfg.plan, cfg.area, config);
+    if (unit === null) {
+      errors.push(`${service}: pricing rate not found in Pricing Master.`);
+    }
+  }
+  return errors;
+}
+
+export function serviceItemsToConfigMap(
+  items: ServiceItemConfig[],
+): ServiceConfigMap {
+  const map: ServiceConfigMap = {};
+  for (const item of items) {
+    map[item.service] = { plan: item.plan, area: item.area };
+  }
+  return map;
+}
+
+/** Backfill per-service config from legacy single plan/area bookings. */
+export function legacyServiceConfigFromJob(
+  packages: string[],
+  bhkSize: string,
+  serviceCategory?: string,
+  pricingType?: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): ServiceConfigMap {
+  let plan = pricingType || 'One Time Service';
+  if (!pricingType && serviceCategory === 'AMC') {
+    plan = 'AMC 3 Services';
+  }
+  const map: ServiceConfigMap = {};
+  for (const pkg of packages) {
+    const types = getPricingTypesForService(pkg, config);
+    const resolvedPlan = types.includes(plan) ? plan : getDefaultPlanForService(pkg, config);
+    map[pkg] = { plan: resolvedPlan, area: bhkSize || '' };
+  }
+  return map;
 }
 
 export function computeMultiServicePricing(

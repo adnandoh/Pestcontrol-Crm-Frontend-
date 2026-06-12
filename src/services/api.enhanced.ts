@@ -58,6 +58,10 @@ import type {
   PricingRateFormData,
   PricingRateFilters,
   PricingRateAuditLog,
+  BookingPaymentRecord,
+  PendingPaymentStats,
+  PendingPaymentFilters,
+  CollectPaymentPayload,
 } from '../types';
 
 function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
@@ -1010,6 +1014,7 @@ class EnhancedApiService {
       bhk_size: data.bhk_size || null,
       is_paused: data.is_paused || false,
       service_type: data.service_type,
+      service_items: data.service_items || [],
       schedule_datetime: data.schedule_datetime,
       time_slot: data.time_slot || null,
       state: data.state || '',
@@ -1086,12 +1091,24 @@ class EnhancedApiService {
     if (data.bhk_size !== undefined) requestData.bhk_size = data.bhk_size;
     if (data.is_paused !== undefined) requestData.is_paused = data.is_paused;
     if (data.service_type !== undefined) requestData.service_type = data.service_type;
+    if (data.service_items !== undefined) requestData.service_items = data.service_items;
     if (data.schedule_datetime !== undefined) requestData.schedule_datetime = data.schedule_datetime;
     if (data.time_slot !== undefined) requestData.time_slot = data.time_slot;
     if (data.state !== undefined) requestData.state = data.state;
     if (data.city !== undefined) requestData.city = data.city;
     if (data.status !== undefined) requestData.status = data.status;
     if (data.payment_status !== undefined) requestData.payment_status = data.payment_status;
+    if (data.payment_mode !== undefined) requestData.payment_mode = data.payment_mode;
+    if (data.payment_collection_type !== undefined) {
+      requestData.payment_collection_type = data.payment_collection_type;
+    }
+    if (data.completion_paid_amount !== undefined) {
+      requestData.completion_paid_amount = data.completion_paid_amount;
+    }
+    if (data.completion_pending_amount !== undefined) {
+      requestData.completion_pending_amount = data.completion_pending_amount;
+    }
+    if (data.payment_remarks !== undefined) requestData.payment_remarks = data.payment_remarks;
     if (data.assigned_to !== undefined) requestData.assigned_to = data.assigned_to;
     if (data.technician !== undefined) requestData.technician = data.technician;
     if (data.price !== undefined) {
@@ -1197,6 +1214,47 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     
+    return result.data;
+  }
+
+  async getPendingPayments(
+    params?: PendingPaymentFilters,
+    signal?: AbortSignal,
+  ): Promise<PaginatedResponse<JobCard>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<JobCard>>(API_ENDPOINTS.PENDING_PAYMENTS, { params, signal }),
+    );
+    return result.data;
+  }
+
+  async getPendingPaymentStats(signal?: AbortSignal): Promise<PendingPaymentStats> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PendingPaymentStats>(`${API_ENDPOINTS.PENDING_PAYMENTS}stats/`, { signal }),
+    );
+    return result.data;
+  }
+
+  async getBookingPaymentHistory(jobCardId: number): Promise<BookingPaymentRecord[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<BookingPaymentRecord[]>(
+        `${API_ENDPOINTS.PENDING_PAYMENTS}${jobCardId}/history/`,
+      ),
+    );
+    return result.data;
+  }
+
+  async collectPendingPayment(
+    jobCardId: number,
+    data: CollectPaymentPayload,
+  ): Promise<JobCard> {
+    const result = await this.retryRequest(() =>
+      this.api.post<JobCard>(
+        `${API_ENDPOINTS.PENDING_PAYMENTS}${jobCardId}/collect/`,
+        data,
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(API_ENDPOINTS.PENDING_PAYMENTS);
     return result.data;
   }
 

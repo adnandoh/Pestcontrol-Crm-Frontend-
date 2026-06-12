@@ -212,8 +212,13 @@ export interface JobCard {
   status: 'Upcoming' | 'Pending' | 'On Process' | 'Done' | 'Cancelled';
   booking_category?: 'normal_booking' | 'service_call' | 'complaint_call' | 'amc_followup';
   payment_status?: string;
+  payment_status_display?: string;
   payment_mode?: 'Cash' | 'Online';
+  total_amount?: number | string;
+  paid_amount?: number | string;
+  pending_amount?: number | string;
   service_type: string;
+  service_items?: ServiceItemConfig[];
   schedule_datetime: string;
   completed_at?: string;
   booking_priority?: number;
@@ -480,6 +485,13 @@ export interface ReminderFormData {
   status?: 'pending' | 'completed';
 }
 
+export interface ServiceItemConfig {
+  service: string;
+  plan: string;
+  area: string;
+  amount: number;
+}
+
 export interface JobCardFormData {
   client?: number;
   client_name: string;
@@ -497,6 +509,7 @@ export interface JobCardFormData {
   bhk_size?: string;
   is_paused: boolean;
   service_type: string;
+  service_items?: ServiceItemConfig[];
   schedule_datetime: string;
   time_slot?: string;
   state?: string;
@@ -507,8 +520,12 @@ export interface JobCardFormData {
   master_location?: number;
   full_address?: string;
   status: string;
-  payment_status: string;
+  payment_status?: string;
   payment_mode?: 'Cash' | 'Online';
+  payment_collection_type?: 'full' | 'half' | 'custom';
+  completion_paid_amount?: number;
+  completion_pending_amount?: number;
+  payment_remarks?: string;
   assigned_to?: string;
   technician?: number | null;
   price: number | string;
@@ -1068,4 +1085,43 @@ export interface PricingRateFilters {
   page?: number;
   page_size?: number;
   ordering?: string;
+}
+
+export interface BookingPaymentRecord {
+  id: number;
+  jobcard: number;
+  jobcard_code: string;
+  amount: string | number;
+  payment_mode: 'Cash' | 'Online';
+  collection_type: string;
+  balance_after: string | number;
+  remarks: string;
+  collected_by?: number | null;
+  collected_by_name?: string;
+  created_at: string;
+}
+
+export interface PendingPaymentStats {
+  total_outstanding_amount: number | string;
+  total_collected_amount: number | string;
+  total_pending_bookings: number;
+  todays_collections: number | string;
+}
+
+export interface PendingPaymentFilters {
+  search?: string;
+  payment_status?: 'Fully Paid' | 'Partially Paid' | 'Pending' | '';
+  master_city?: string | number;
+  created_by?: string | number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
+}
+
+export interface CollectPaymentPayload {
+  amount: number | string;
+  payment_mode: 'Cash' | 'Online';
+  remarks?: string;
 }

@@ -38,7 +38,7 @@ import { cn } from '../utils/cn';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
-import CompleteJobModal from '../components/crm/CompleteJobModal';
+import CompleteJobModal, { type CompleteJobPaymentPayload } from '../components/crm/CompleteJobModal';
 import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
 import { downloadInvoicePdf } from '../utils/invoicePdf';
@@ -514,20 +514,23 @@ const JobCards: React.FC = () => {
     }
   };
 
-  const handleMarkAsDone = async (paymentMode: 'Cash' | 'Online') => {
+  const handleMarkAsDone = async (payload: CompleteJobPaymentPayload) => {
     if (!doneId) return;
     try {
       setLoading(true);
-      await enhancedApiService.updateJobCard(doneId, { 
+      await enhancedApiService.updateJobCard(doneId, {
         status: 'Done',
-        payment_mode: paymentMode,
-        payment_status: 'Paid'
+        payment_mode: payload.paymentMode,
+        payment_collection_type: payload.paymentCollectionType,
+        completion_paid_amount: payload.completionPaidAmount,
+        completion_pending_amount: payload.completionPendingAmount,
       });
       setDoneId(null);
       loadJobCards(pagination.current, filters);
       refreshCounts();
     } catch (error) {
       console.error('Failed to mark as done:', error);
+      alert('Failed to complete booking. Please check payment details and try again.');
     } finally {
       setLoading(false);
     }

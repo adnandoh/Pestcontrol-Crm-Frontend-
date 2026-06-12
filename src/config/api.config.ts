@@ -70,6 +70,7 @@ export const API_ENDPOINTS = {
   FEEDBACKS: '/v1/feedbacks/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
+  PENDING_PAYMENTS: '/v1/pending-payments/',
   PRICING_CONFIG: '/pricing-config/',
   PRICING_REGIONS: '/pricing-regions/',
   PRICING_RATES: '/pricing-rates/',

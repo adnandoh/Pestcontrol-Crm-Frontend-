@@ -26,15 +26,18 @@ import type { JobCardFormData, State, City } from '../types';
 
 import {
   MUMBAI_PRICING_CONFIG,
-  computeMultiServicePricing,
-  getAreaOptions,
-  getDefaultPricingType,
+  buildServiceConfigMap,
+  computePerServicePricing,
+  deriveServiceCategoryFromItems,
   getServicePackageOptions,
-  getSharedPricingTypes,
   supportsAutoPricing,
+  validateServiceConfigs,
   type PricingConfig,
+  type ServiceConfigMap,
+  type ServiceItemConfig,
   type ServicePriceLine,
 } from '../utils/jobCardPricing';
+import PerServicePricingSection from '../components/crm/PerServicePricingSection';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
@@ -53,8 +56,9 @@ const CreateJobCard: React.FC = () => {
   
   // Pricing selector states
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
-  const [pricingArea, setPricingArea] = useState('');
-  const [pricingType, setPricingType] = useState('');
+  const [serviceConfigs, setServiceConfigs] = useState<ServiceConfigMap>({});
+  const [serviceItems, setServiceItems] = useState<ServiceItemConfig[]>([]);
+  const [serviceConfigErrors, setServiceConfigErrors] = useState<string[]>([]);
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
   const [pricingConfigReady, setPricingConfigReady] = useState(false);
@@ -106,12 +110,6 @@ const CreateJobCard: React.FC = () => {
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
   const servicePackageOptions = getServicePackageOptions(pricingConfig);
-  const availablePricingTypes = getSharedPricingTypes(selectedPackages, pricingConfig);
-  const availableAreas = getAreaOptions(
-    selectedPackages,
-    pricingConfig,
-    formData.commercial_type,
-  );
 
   // Sync service_type from selected packages
   useEffect(() => {
@@ -120,57 +118,52 @@ const CreateJobCard: React.FC = () => {
     if (label) validateField('service_type', label);
   }, [selectedPackages]);
 
-  // When services change: default plan type and reset invalid area
+  // Reconcile per-service plan/area when selection or pricing config changes
   useEffect(() => {
     if (selectedPackages.length === 0) {
-      setPricingType('');
-      setPricingArea('');
+      setServiceConfigs({});
+      setServiceItems([]);
+      setPriceBreakdown([]);
       return;
     }
-    const types = getSharedPricingTypes(selectedPackages, pricingConfig);
-    if (!pricingType || !types.includes(pricingType)) {
-      setPricingType(getDefaultPricingType(selectedPackages, pricingConfig));
-    }
-    const areas = getAreaOptions(
-      selectedPackages,
-      pricingConfig,
-      formData.commercial_type,
+    setServiceConfigs((prev) =>
+      buildServiceConfigMap(selectedPackages, prev, pricingConfig),
     );
-    if (pricingArea && areas.length > 0 && !areas.includes(pricingArea)) {
-      setPricingArea('');
-    }
   }, [selectedPackages.join('|'), pricingConfig.region, formData.commercial_type]);
 
-  useEffect(() => {
-    if (pricingType === 'AMC 3 Services') {
-      setFormData((prev) => ({ ...prev, service_category: 'AMC' }));
-    } else if (pricingType) {
-      setFormData((prev) => ({ ...prev, service_category: 'One-Time Service' }));
-    }
-  }, [pricingType]);
-
-  // Multi-service total price (city-aware via pricingConfig)
+  // Per-service pricing total (city-aware via pricingConfig)
   useEffect(() => {
     if (
       pricingConfigReady &&
       supportsAutoPricing(formData.commercial_type, pricingConfig) &&
       selectedPackages.length > 0 &&
-      pricingArea &&
-      pricingType
+      Object.keys(serviceConfigs).length > 0
     ) {
-      const { total, lines } = computeMultiServicePricing(
-        selectedPackages,
-        pricingType,
-        pricingArea,
-        pricingConfig,
-      );
+      const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
       setPriceBreakdown(lines);
-      setFormData((prev) => ({ ...prev, price: total.toFixed(2) }));
+      setServiceItems(items);
+      const category = deriveServiceCategoryFromItems(items);
+      const primaryArea = items.find((i) => i.area)?.area || '';
+      setFormData((prev) => ({
+        ...prev,
+        price: total.toFixed(2),
+        service_category: category,
+        bhk_size: primaryArea || prev.bhk_size,
+      }));
+      setServiceConfigErrors(validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig));
     } else if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
       setPriceBreakdown([]);
+      setServiceItems([]);
+      setServiceConfigErrors([]);
       setFormData((prev) => ({ ...prev, price: '0.00' }));
     }
-  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type, pricingConfig, pricingConfigReady]);
+  }, [
+    selectedPackages,
+    serviceConfigs,
+    formData.commercial_type,
+    pricingConfig,
+    pricingConfigReady,
+  ]);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -249,7 +242,7 @@ const CreateJobCard: React.FC = () => {
       .then((config) => {
         if (fetchId !== pricingFetchIdRef.current) return;
         setPricingConfig(config);
-        setPricingArea('');
+        setServiceConfigs({});
         setPriceBreakdown([]);
         setPricingConfigReady(true);
       })
@@ -270,8 +263,8 @@ const CreateJobCard: React.FC = () => {
     const nextDateStr = computeNextServiceDate({
       scheduleDate: formData.schedule_datetime,
       selectedPackages,
-      pricingType,
       serviceCategory: formData.service_category,
+      serviceItems,
     });
 
     if (nextDateStr) {
@@ -280,14 +273,14 @@ const CreateJobCard: React.FC = () => {
           ? prev
           : { ...prev, next_service_date: nextDateStr },
       );
-    } else if (!shouldShowNextServiceField(selectedPackages, pricingType, formData.service_category)) {
+    } else if (!shouldShowNextServiceField(selectedPackages, '', formData.service_category, serviceItems)) {
       setFormData((prev) =>
         prev.next_service_date === '' ? prev : { ...prev, next_service_date: '' },
       );
     }
   }, [
     selectedPackages,
-    pricingType,
+    serviceItems,
     formData.service_category,
     formData.schedule_datetime,
     isNextDateManual,
@@ -344,22 +337,25 @@ const CreateJobCard: React.FC = () => {
 
 
   const toggleServicePackage = (service: string) => {
-    setSelectedPackages((prev) => {
-      const next = prev.includes(service)
+    setSelectedPackages((prev) =>
+      prev.includes(service)
         ? prev.filter((s) => s !== service)
-        : [...prev, service];
-      if (next.length === 0) {
-        setPricingType('');
-        setPricingArea('');
-      } else {
-        const types = getSharedPricingTypes(next);
-        const currentTypeValid = pricingType && types.includes(pricingType);
-        if (!currentTypeValid) {
-          setPricingType(getDefaultPricingType(next));
-        }
-      }
-      return next;
-    });
+        : [...prev, service],
+    );
+  };
+
+  const handleServicePlanChange = (service: string, plan: string) => {
+    setServiceConfigs((prev) => ({
+      ...prev,
+      [service]: { ...prev[service], plan, area: prev[service]?.area || '' },
+    }));
+  };
+
+  const handleServiceAreaChange = (service: string, area: string) => {
+    setServiceConfigs((prev) => ({
+      ...prev,
+      [service]: { ...prev[service], area, plan: prev[service]?.plan || '' },
+    }));
   };
 
   // Check if client exists by mobile number
@@ -421,6 +417,12 @@ const CreateJobCard: React.FC = () => {
       alert('Please select at least one service.');
       return;
     }
+    const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
+    if (configErrors.length > 0) {
+      setServiceConfigErrors(configErrors);
+      alert(configErrors.join('\n'));
+      return;
+    }
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       console.error('Validation errors:', validationErrors);
@@ -432,13 +434,17 @@ const CreateJobCard: React.FC = () => {
     try {
       setSubmitting(true);
       // Ensure schedule_datetime is in ISO format
-      const submitData = { ...formData };
+      const submitData = {
+        ...formData,
+        service_items: serviceItems,
+        service_category: deriveServiceCategoryFromItems(serviceItems),
+      };
       if (!submitData.next_service_date && submitData.schedule_datetime) {
         const computed = computeNextServiceDate({
           scheduleDate: submitData.schedule_datetime,
           selectedPackages,
-          pricingType,
           serviceCategory: submitData.service_category,
+          serviceItems,
         });
         if (computed) submitData.next_service_date = computed;
       }
@@ -694,42 +700,17 @@ const CreateJobCard: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Type *</label>
-                      <select
-                        value={pricingType}
-                        onChange={(e) => setPricingType(e.target.value)}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
-                        required
-                        disabled={selectedPackages.length === 0}
-                      >
-                        <option value="">Select Type</option>
-                        {availablePricingTypes.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                   </div>
-                   <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Select Area *</label>
-                      <select
-                        value={pricingArea}
-                        onChange={(e) => {
-                          const area = e.target.value;
-                          setPricingArea(area);
-                          handleInputChange('bhk_size', area || '');
-                        }}
-                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white disabled:bg-gray-50"
-                        required
-                        disabled={selectedPackages.length === 0}
-                      >
-                        <option value="">Select Area</option>
-                        {availableAreas.map((loc) => (
-                          <option key={loc} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                   </div>
-                  </div>
+                  <PerServicePricingSection
+                    selectedPackages={selectedPackages}
+                    serviceConfigs={serviceConfigs}
+                    pricingConfig={pricingConfig}
+                    commercialType={formData.commercial_type}
+                    priceBreakdown={priceBreakdown}
+                    totalPrice={formData.price?.toString() || '0'}
+                    onPlanChange={handleServicePlanChange}
+                    onAreaChange={handleServiceAreaChange}
+                    validationErrors={serviceConfigErrors}
+                  />
                 </div>
 
                 <div className="flex flex-col items-start lg:items-end justify-start min-w-[200px] lg:max-w-[240px] pl-0 lg:pl-4 lg:border-l border-gray-200">
@@ -743,30 +724,9 @@ const CreateJobCard: React.FC = () => {
                         {formData.price}
                      </div>
                      {priceBreakdown.length > 0 && (
-                       <div className="mt-3 w-full rounded-lg border border-blue-100 bg-white/90 p-3 text-left">
-                         <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider mb-2">
-                           Add-on services in this price
-                         </p>
-                         <ul className="space-y-1.5">
-                           {priceBreakdown.map((line) => (
-                             <li key={line.service} className="flex justify-between gap-2 text-xs">
-                               <span className="font-semibold text-gray-700 shrink min-w-0">
-                                 {line.service}
-                                 {line.note && (
-                                   <span className="block text-[10px] font-normal text-amber-700">{line.note}</span>
-                                 )}
-                               </span>
-                               <span className="font-bold text-gray-900 tabular-nums shrink-0">
-                                 {line.price > 0 ? `₹${line.price}` : '—'}
-                               </span>
-                             </li>
-                           ))}
-                         </ul>
-                         <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between text-xs font-black text-blue-900">
-                           <span>Total</span>
-                           <span>₹{formData.price}</span>
-                         </div>
-                       </div>
+                       <p className="mt-2 text-[10px] font-bold text-gray-500 text-left lg:text-right">
+                         {selectedPackages.length} service{selectedPackages.length > 1 ? 's' : ''} configured
+                       </p>
                      )}
                      </>
                    ) : (
@@ -880,8 +840,9 @@ const CreateJobCard: React.FC = () => {
               {/* Next Service Date Field */}
               {shouldShowNextServiceField(
                 selectedPackages,
-                pricingType,
+                '',
                 formData.service_category,
+                serviceItems,
               ) && (
                 <div className="animate-fade-in md:col-span-1">
                   <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
@@ -895,7 +856,7 @@ const CreateJobCard: React.FC = () => {
                     className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
                   />
                   <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
-                    {nextServiceDateHint(selectedPackages, pricingType, formData.service_category)}
+                    {nextServiceDateHint(selectedPackages, '', formData.service_category, serviceItems)}
                   </p>
                 </div>
               )}
@@ -1015,7 +976,7 @@ const CreateJobCard: React.FC = () => {
                       setSavingInquiry(true);
                       const today = new Date().toISOString().split('T')[0];
                       const now   = new Date().toTimeString().slice(0, 5);
-                      const bhkLabel = formData.bhk_size || pricingArea || '';
+                      const bhkLabel = formData.bhk_size || serviceItems[0]?.area || '';
                       const addressBase = formData.client_address || `${formData.city}, ${formData.state}`;
                       await enhancedApiService.createCRMInquiry({
                         name:         formData.client_name,
