@@ -132,7 +132,7 @@ const EditJobCard: React.FC = () => {
     setServiceConfigs((prev) =>
       buildServiceConfigMap(selectedPackages, prev, pricingConfig),
     );
-  }, [selectedPackages.join('|'), pricingConfig.region, formData.commercial_type, loading, pricingConfigReady]);
+  }, [selectedPackages.join('|'), pricingConfig, formData.commercial_type, loading, pricingConfigReady]);
 
   useEffect(() => {
     if (loading || isInitialLoad.current || isPriceManuallyEdited || !pricingConfigReady) return;
@@ -618,7 +618,9 @@ const EditJobCard: React.FC = () => {
                       ...prev,
                       master_city: cityId,
                       city: cityName,
+                      master_location: undefined,
                     }));
+                    setIsPriceManuallyEdited(false);
                     clearError('master_city');
                   }}
                   className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"

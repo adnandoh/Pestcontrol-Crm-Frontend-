@@ -129,7 +129,7 @@ const CreateJobCard: React.FC = () => {
     setServiceConfigs((prev) =>
       buildServiceConfigMap(selectedPackages, prev, pricingConfig),
     );
-  }, [selectedPackages.join('|'), pricingConfig.region, formData.commercial_type]);
+  }, [selectedPackages.join('|'), pricingConfig, formData.commercial_type]);
 
   // Per-service pricing total (city-aware via pricingConfig)
   useEffect(() => {
@@ -242,8 +242,6 @@ const CreateJobCard: React.FC = () => {
       .then((config) => {
         if (fetchId !== pricingFetchIdRef.current) return;
         setPricingConfig(config);
-        setServiceConfigs({});
-        setPriceBreakdown([]);
         setPricingConfigReady(true);
       })
       .catch((err) => {
@@ -326,6 +324,7 @@ const CreateJobCard: React.FC = () => {
       const city = masterCities.find(c => c.id === value);
       if (city) {
         updatedFormData.city = city.name;
+        updatedFormData.master_location = undefined;
       }
     }
 
