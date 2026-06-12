@@ -1704,9 +1704,12 @@ class EnhancedApiService {
     return this.api.get<any[]>('/locations/search/', { params: { q } }).then(r => r.data);
   }
 
-  async getPricingConfig(params?: { city?: string; master_city?: number }): Promise<import('../utils/jobCardPricing').PricingConfig> {
+  async getPricingConfig(
+    params?: { city?: string; master_city?: number },
+    signal?: AbortSignal,
+  ): Promise<import('../utils/jobCardPricing').PricingConfig> {
     return this.api
-      .get<import('../utils/jobCardPricing').PricingConfig>(API_ENDPOINTS.PRICING_CONFIG, { params })
+      .get<import('../utils/jobCardPricing').PricingConfig>(API_ENDPOINTS.PRICING_CONFIG, { params, signal })
       .then((r) => r.data);
   }
 

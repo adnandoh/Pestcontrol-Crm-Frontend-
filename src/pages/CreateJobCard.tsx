@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,11 +25,11 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
 
 import {
-  SERVICE_PACKAGE_OPTIONS,
   MUMBAI_PRICING_CONFIG,
   computeMultiServicePricing,
   getAreaOptions,
   getDefaultPricingType,
+  getServicePackageOptions,
   getSharedPricingTypes,
   supportsAutoPricing,
   type PricingConfig,
@@ -57,6 +57,8 @@ const CreateJobCard: React.FC = () => {
   const [pricingType, setPricingType] = useState('');
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
+  const [pricingConfigReady, setPricingConfigReady] = useState(false);
+  const pricingFetchIdRef = useRef(0);
 
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
@@ -78,8 +80,8 @@ const CreateJobCard: React.FC = () => {
       service_type: '',
       schedule_datetime: '',
       time_slot: '',
-      state: 'Maharashtra',
-      city: 'Mumbai',
+      state: '',
+      city: '',
       status: 'Pending',
       payment_status: 'Unpaid',
       assigned_to: '',
@@ -103,6 +105,7 @@ const CreateJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
+  const servicePackageOptions = getServicePackageOptions(pricingConfig);
   const availablePricingTypes = getSharedPricingTypes(selectedPackages, pricingConfig);
   const availableAreas = getAreaOptions(
     selectedPackages,
@@ -149,6 +152,7 @@ const CreateJobCard: React.FC = () => {
   // Multi-service total price (city-aware via pricingConfig)
   useEffect(() => {
     if (
+      pricingConfigReady &&
       supportsAutoPricing(formData.commercial_type, pricingConfig) &&
       selectedPackages.length > 0 &&
       pricingArea &&
@@ -166,7 +170,7 @@ const CreateJobCard: React.FC = () => {
       setPriceBreakdown([]);
       setFormData((prev) => ({ ...prev, price: '0.00' }));
     }
-  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type, pricingConfig]);
+  }, [selectedPackages, pricingArea, pricingType, formData.commercial_type, pricingConfig, pricingConfigReady]);
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -224,27 +228,40 @@ const CreateJobCard: React.FC = () => {
     }
   }, [formData.master_state, masterStates.length]); // Added masterStates.length to ensure it runs after states are loaded
 
-  // 3. Load city-specific pricing when Service City changes
+  // 3. Load city-specific pricing when Service City changes (ignore stale responses)
   useEffect(() => {
     const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
+    if (!formData.master_city && !cityName) {
+      setPricingConfigReady(false);
+      return;
+    }
+
+    const fetchId = ++pricingFetchIdRef.current;
+    const controller = new AbortController();
     const params = formData.master_city
       ? { master_city: formData.master_city }
-      : cityName
-        ? { city: cityName }
-        : { city: 'Mumbai' };
+      : { city: cityName || 'Mumbai' };
+
+    setPricingConfigReady(false);
 
     enhancedApiService
-      .getPricingConfig(params)
+      .getPricingConfig(params, controller.signal)
       .then((config) => {
+        if (fetchId !== pricingFetchIdRef.current) return;
         setPricingConfig(config);
         setPricingArea('');
         setPriceBreakdown([]);
+        setPricingConfigReady(true);
       })
       .catch((err) => {
+        if (fetchId !== pricingFetchIdRef.current) return;
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
         console.error('Error fetching pricing config:', err);
-        setPricingConfig(MUMBAI_PRICING_CONFIG);
+        setPricingConfigReady(false);
       });
-  }, [formData.master_city, formData.city]);
+
+    return () => controller.abort();
+  }, [formData.master_city, formData.city, masterCities]);
 
   // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
@@ -645,7 +662,7 @@ const CreateJobCard: React.FC = () => {
                       Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
                     </label>
                     <div className="rounded-lg border border-gray-200 bg-white p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {SERVICE_PACKAGE_OPTIONS.map((service) => {
+                      {servicePackageOptions.map((service) => {
                         const checked = selectedPackages.includes(service);
                         return (
                           <label

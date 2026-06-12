@@ -22,6 +22,13 @@ export const MUMBAI_PRICING_CONFIG: PricingConfig = {
 
 export const SERVICE_PACKAGE_OPTIONS = Object.keys(PRICING_DATA);
 
+/** Service packages available for the active city pricing config. */
+export function getServicePackageOptions(
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  return Object.keys(config.pricing || {});
+}
+
 export const SERVICE_PACKAGE_TO_PESTS: Record<string, string[]> = {
   'Cockroach / Ants': ['Cockroach', 'Ants'],
   'Bed Bugs': ['Bed Bug'],

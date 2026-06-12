@@ -29,11 +29,11 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City } from '../types';
 
 import {
-  SERVICE_PACKAGE_OPTIONS,
   MUMBAI_PRICING_CONFIG,
   computeMultiServicePricing,
   getAreaOptions,
   getDefaultPricingType,
+  getServicePackageOptions,
   getSharedPricingTypes,
   parsePackagesFromServiceType,
   supportsAutoPricing,
@@ -69,6 +69,8 @@ const EditJobCard: React.FC = () => {
   const [pricingArea, setPricingArea] = useState('');
   const [pricingType, setPricingType] = useState('');
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
+  const [pricingConfigReady, setPricingConfigReady] = useState(false);
+  const pricingFetchIdRef = React.useRef(0);
 
   const getInitialFormData = (): JobCardFormData => ({
     client_name: '',
@@ -118,7 +120,7 @@ const EditJobCard: React.FC = () => {
     // 1. Skip if still loading from API
     // 2. Skip if it's the very first render cycle where states are being initialized
     // 3. Skip if the user has manually overridden the price in this session
-    if (loading || isInitialLoad.current || isPriceManuallyEdited) return;
+    if (loading || isInitialLoad.current || isPriceManuallyEdited || !pricingConfigReady) return;
 
     if (
       supportsAutoPricing(formData.commercial_type, pricingConfig) &&
@@ -141,6 +143,7 @@ const EditJobCard: React.FC = () => {
     loading,
     isPriceManuallyEdited,
     pricingConfig,
+    pricingConfigReady,
     formData.commercial_type,
   ]);
 
@@ -289,21 +292,37 @@ const EditJobCard: React.FC = () => {
   useEffect(() => {
     if (loading) return;
     const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
+    if (!formData.master_city && !cityName) {
+      setPricingConfigReady(false);
+      return;
+    }
+
+    const fetchId = ++pricingFetchIdRef.current;
+    const controller = new AbortController();
     const params = formData.master_city
       ? { master_city: formData.master_city }
-      : cityName
-        ? { city: cityName }
-        : { city: 'Mumbai' };
+      : { city: cityName || 'Mumbai' };
+
+    setPricingConfigReady(false);
 
     enhancedApiService
-      .getPricingConfig(params)
-      .then((config) => setPricingConfig(config))
+      .getPricingConfig(params, controller.signal)
+      .then((config) => {
+        if (fetchId !== pricingFetchIdRef.current) return;
+        setPricingConfig(config);
+        setPricingConfigReady(true);
+      })
       .catch((err) => {
+        if (fetchId !== pricingFetchIdRef.current) return;
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
         console.error('Error fetching pricing config:', err);
-        setPricingConfig(MUMBAI_PRICING_CONFIG);
+        setPricingConfigReady(false);
       });
-  }, [formData.master_city, formData.city, loading]);
 
+    return () => controller.abort();
+  }, [formData.master_city, formData.city, loading, masterCities]);
+
+  const servicePackageOptions = getServicePackageOptions(pricingConfig);
   const availablePricingTypes = getSharedPricingTypes(selectedPackages, pricingConfig);
   const pricingAreaOptions = getAreaOptions(
     selectedPackages,
@@ -738,7 +757,7 @@ const EditJobCard: React.FC = () => {
                         Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
                       </label>
                       <div className="rounded-lg border border-gray-200 bg-white p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {SERVICE_PACKAGE_OPTIONS.map((service) => {
+                        {servicePackageOptions.map((service) => {
                           const checked = selectedPackages.includes(service);
                           return (
                             <label
