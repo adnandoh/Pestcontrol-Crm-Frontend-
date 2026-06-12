@@ -120,6 +120,7 @@ const JobCards: React.FC = () => {
   
   // Unified Reminders state
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [reminderTotal, setReminderTotal] = useState(0);
   const [remindersLoading, setRemindersLoading] = useState(false);
   const [showEditReminderModal, setShowEditReminderModal] = useState(false);
   const [editReminderData, setEditReminderData] = useState<Reminder | null>(null);
@@ -247,7 +248,8 @@ const JobCards: React.FC = () => {
       setRemindersLoading(true);
       const params: any = {
         ordering: 'reminder_date,reminder_time',
-        status: 'pending' // Only show pending reminders by default
+        status: 'pending', // Only show pending reminders by default
+        page_size: 100,
       };
       
       if (currentFilters.search.trim()) {
@@ -256,6 +258,7 @@ const JobCards: React.FC = () => {
 
       const response = await enhancedApiService.getReminders(params);
       setReminders(response.results);
+      setReminderTotal(response.count ?? response.results.length);
     } catch (err) {
       console.error('Failed to load reminders:', err);
     } finally {
@@ -689,7 +692,7 @@ const JobCards: React.FC = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Bookings</h1>
             <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
-              Total {pagination.count} Records
+              Total {activeTab === 'reminders' ? reminderTotal : pagination.count} Records
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -1556,20 +1559,22 @@ const JobCards: React.FC = () => {
 
       <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] border border-gray-200 animate-fade-up delay-300">
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-           Viewing {activeTab === 'reminders' ? reminders.length : jobCards.length} of {pagination.count} Total {activeTab === 'reminders' ? 'Reminders' : 'Bookings'}
+           Viewing {activeTab === 'reminders' ? reminders.length : jobCards.length} of {activeTab === 'reminders' ? reminderTotal : pagination.count} Total {activeTab === 'reminders' ? 'Reminders' : 'Bookings'}
         </span>
-        <div className="flex items-center gap-1">
-           <Pagination
-             currentPage={pagination.current}
-             totalPages={Math.max(1, pagination.totalPages)}
-             totalItems={pagination.count}
-             itemsPerPage={pagination.pageSize}
-             onPageChange={handlePageChange}
-             onPageSizeChange={handlePageSizeChange}
-             showPageSizeSelector={false}
-             showGoToPage={true}
-           />
-        </div>
+        {activeTab !== 'reminders' && (
+          <div className="flex items-center gap-1">
+             <Pagination
+               currentPage={pagination.current}
+               totalPages={Math.max(1, pagination.totalPages)}
+               totalItems={pagination.count}
+               itemsPerPage={pagination.pageSize}
+               onPageChange={handlePageChange}
+               onPageSizeChange={handlePageSizeChange}
+               showPageSizeSelector={false}
+               showGoToPage={true}
+             />
+          </div>
+        )}
       </div>
 
       <AssignTechnicianModal
