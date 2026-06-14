@@ -693,6 +693,9 @@ const JobCards: React.FC = () => {
     return job.schedule_datetime || null;
   };
 
+  const bookingTableColSpan =
+    activeTab === 'upcoming_services' || activeTab === 'upcoming_renewals' ? 12 : 11;
+
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
       {/* 1. Header Area */}
@@ -840,7 +843,10 @@ const JobCards: React.FC = () => {
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Booking Date & Time</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
                     {activeTab === 'upcoming_services' && (
-                      <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Service</th>
+                      <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Visit</th>
+                    )}
+                    {activeTab === 'upcoming_renewals' && (
+                      <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-amber-700">Renewal Due</th>
                     )}
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Status</th>
                     <th className="px-4 py-3 text-center font-extrabold tracking-tighter w-10">Action</th>
@@ -854,7 +860,7 @@ const JobCards: React.FC = () => {
                  <TableSkeleton />
               ) : (activeTab === 'reminders' ? reminders : (jobCards || [])).length === 0 ? (
                  <tr>
-                    <td colSpan={activeTab === 'reminders' ? 8 : 11} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                    <td colSpan={activeTab === 'reminders' ? 8 : bookingTableColSpan} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                        No {activeTab === 'reminders' ? 'Reminders' : 'Bookings'} Found In This Category
                     </td>
                  </tr>
@@ -1018,7 +1024,7 @@ const JobCards: React.FC = () => {
                   <React.Fragment key={`jc-${job.id}`}>
                     {showPriorityHeader && (
                       <tr>
-                        <td colSpan={11} className={cn(
+                        <td colSpan={bookingTableColSpan} className={cn(
                           "py-1.5 px-4 text-[11px] font-black text-white uppercase tracking-[0.2em] text-center italic",
                           currentPriority === 1 ? "bg-emerald-600" : "bg-amber-500"
                         )}>
@@ -1237,11 +1243,41 @@ const JobCards: React.FC = () => {
                     </td>
                     {activeTab === 'upcoming_services' && (
                       <td className="px-4 py-4 bg-blue-50/30">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-0.5">
                           <span className="font-black text-blue-700 text-[11px]">
-                            {job.next_service_date ? new Date(job.next_service_date).toLocaleDateString('en-GB') : '---'}
+                            {job.schedule_datetime
+                              ? dayjs(job.schedule_datetime).tz('Asia/Kolkata').format('DD/MM/YYYY')
+                              : job.next_service_date
+                                ? dayjs(job.next_service_date).format('DD/MM/YYYY')
+                                : '---'}
                           </span>
-                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Follow-up due</span>
+                          {(job.service_cycle && job.max_cycle && job.max_cycle > 1) && (
+                            <span className="text-[9px] font-black text-violet-700 uppercase tracking-tighter">
+                              Visit {job.service_cycle} of {job.max_cycle}
+                            </span>
+                          )}
+                          {job.parent_job && (
+                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
+                              From booking #{job.parent_job}
+                            </span>
+                          )}
+                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">
+                            Auto follow-up visit
+                          </span>
+                        </div>
+                      </td>
+                    )}
+                    {activeTab === 'upcoming_renewals' && (
+                      <td className="px-4 py-4 bg-amber-50/30">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-black text-amber-800 text-[11px]">
+                            {job.next_service_date
+                              ? dayjs(job.next_service_date).format('DD/MM/YYYY')
+                              : '---'}
+                          </span>
+                          <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter italic">
+                            Contract renewal reminder
+                          </span>
                         </div>
                       </td>
                     )}
@@ -1528,7 +1564,7 @@ const JobCards: React.FC = () => {
                   </tr>
                   {expandedId === job.id && (
                     <tr className="animate-fade-in bg-[#fcfdfe]">
-                      <td colSpan={activeTab === 'upcoming_services' ? 10 : 9} className="p-0">
+                      <td colSpan={bookingTableColSpan} className="p-0">
                         <div className="px-12 py-6 border-b border-gray-100">
                           <div className="max-w-4xl border border-[#e2e8f0] rounded-sm overflow-hidden shadow-sm">
                             {job.cancellation_reason && (
