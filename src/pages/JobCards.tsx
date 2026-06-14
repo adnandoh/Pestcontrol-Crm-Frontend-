@@ -530,7 +530,13 @@ const JobCards: React.FC = () => {
       refreshCounts();
     } catch (error) {
       console.error('Failed to mark as done:', error);
-      alert('Failed to complete booking. Please check payment details and try again.');
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Failed to complete booking. Please check payment details and try again.';
+      alert(message);
+      loadJobCards(pagination.current, filters);
+      refreshCounts();
     } finally {
       setLoading(false);
     }
