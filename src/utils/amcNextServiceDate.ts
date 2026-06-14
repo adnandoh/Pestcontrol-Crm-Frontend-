@@ -19,7 +19,7 @@ function itemIsCockroachAmc(item: Pick<ServiceItemConfig, 'service' | 'plan'>): 
 
 function itemIsBedBug(item: Pick<ServiceItemConfig, 'service'>): boolean {
   const service = item.service.toLowerCase();
-  return service.includes('bed bug') || service.includes('bedbug');
+  return service.includes('bed bug') || service.includes('bedbug') || service.includes('bed bugs');
 }
 
 /**
@@ -51,7 +51,7 @@ export function computeNextServiceDate(params: {
 
   const labels = selectedPackages.join(' ').toLowerCase();
   const isCockroach = labels.includes('cockroach');
-  const isBedBug = labels.includes('bed bug') || labels.includes('bedbug');
+  const isBedBug = labels.includes('bed bug') || labels.includes('bedbug') || labels.includes('bed bugs');
   const isAmc = isAmcPlan(pricingType, serviceCategory);
 
   if (isCockroach && isAmc) {
@@ -74,7 +74,7 @@ export function shouldShowNextServiceField(
   }
   const labels = selectedPackages.join(' ').toLowerCase();
   const isCockroach = labels.includes('cockroach');
-  const isBedBug = labels.includes('bed bug') || labels.includes('bedbug');
+  const isBedBug = labels.includes('bed bug') || labels.includes('bedbug') || labels.includes('bed bugs');
   return (isCockroach && isAmcPlan(pricingType, serviceCategory)) || isBedBug;
 }
 
