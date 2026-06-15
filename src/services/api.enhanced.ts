@@ -64,26 +64,42 @@ import type {
   CollectPaymentPayload,
 } from '../types';
 
+function flattenValidationDetails(value: unknown, prefix = ''): string[] {
+  if (value == null) return [];
+  if (typeof value === 'string') return prefix ? [`${prefix}: ${value}`] : [value];
+  if (Array.isArray(value)) {
+    if (!value.length) return [];
+    const first = value[0];
+    if (typeof first === 'string') return prefix ? [`${prefix}: ${first}`] : [first];
+    return flattenValidationDetails(first, prefix);
+  }
+  if (typeof value !== 'object') return [];
+  const parts: string[] = [];
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    const label = prefix ? `${prefix} → ${key.replace(/_/g, ' ')}` : key.replace(/_/g, ' ');
+    parts.push(...flattenValidationDetails(val, label));
+  }
+  return parts;
+}
+
 function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
   if (!data) return fallback;
   if (typeof data.message === 'string' && data.message) return data.message;
-  if (typeof data.error === 'string' && data.error) return data.error;
-  const details = data.details;
-  if (details && typeof details === 'object') {
-    const parts: string[] = [];
-    for (const [key, val] of Object.entries(details as Record<string, unknown>)) {
-      if (Array.isArray(val) && val.length) parts.push(`${key}: ${val[0]}`);
-      else if (typeof val === 'string') parts.push(`${key}: ${val}`);
-    }
+  const nestedDetails = data.details;
+  if (nestedDetails) {
+    const parts = flattenValidationDetails(nestedDetails);
     if (parts.length) return parts.join('\n');
+  }
+  if (typeof data.error === 'string' && data.error && data.error !== 'Validation failed') {
+    return data.error;
   }
   const fieldParts: string[] = [];
   for (const [key, val] of Object.entries(data)) {
     if (['message', 'error', 'details', 'success', 'code'].includes(key)) continue;
-    if (Array.isArray(val) && val.length) fieldParts.push(`${key.replace(/_/g, ' ')}: ${val[0]}`);
-    else if (typeof val === 'string' && val) fieldParts.push(`${key.replace(/_/g, ' ')}: ${val}`);
+    fieldParts.push(...flattenValidationDetails(val, key.replace(/_/g, ' ')));
   }
   if (fieldParts.length) return fieldParts.join('\n');
+  if (typeof data.error === 'string' && data.error) return data.error;
   return fallback;
 }
 

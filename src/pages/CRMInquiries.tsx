@@ -197,8 +197,9 @@ const CRMInquiries: React.FC = () => {
       alert(`Successfully converted! Code: ${result.job_card_code}`);
       loadInquiries(pagination.current);
       refreshCounts();
-    } catch (err: any) {
-      alert(err.message || 'Conversion failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Conversion failed';
+      alert(message);
     } finally {
       setSubmitting(null);
     }

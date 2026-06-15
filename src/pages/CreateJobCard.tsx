@@ -473,14 +473,23 @@ const CreateJobCard: React.FC = () => {
       navigate('/jobcards');
     } catch (err: unknown) {
       console.error('Submission error:', err);
-      const apiErr = err as { message?: string; details?: Record<string, string[] | string> };
+      const apiErr = err as { message?: string; details?: Record<string, unknown> };
       let msg = apiErr.message || 'Failed to create booking. Please check all fields.';
-      if (apiErr.details && typeof apiErr.details === 'object') {
-        const lines = Object.entries(apiErr.details).map(([k, v]) => {
-          const text = Array.isArray(v) ? v[0] : String(v);
-          return `${k.replace(/_/g, ' ')}: ${text}`;
-        });
-        if (lines.length) msg = lines.join('\n');
+      if (apiErr.details?.details) {
+        const nested = apiErr.details.details;
+        if (typeof nested === 'object' && nested !== null) {
+          const lines = Object.entries(nested as Record<string, unknown>).flatMap(([k, v]) => {
+            if (Array.isArray(v) && v.length) return [`${k.replace(/_/g, ' ')}: ${v[0]}`];
+            if (typeof v === 'object' && v !== null) {
+              return Object.entries(v as Record<string, unknown>).map(([nk, nv]) => {
+                const text = Array.isArray(nv) ? nv[0] : String(nv);
+                return `${k.replace(/_/g, ' ')} → ${nk.replace(/_/g, ' ')}: ${text}`;
+              });
+            }
+            return [`${k.replace(/_/g, ' ')}: ${String(v)}`];
+          });
+          if (lines.length) msg = lines.join('\n');
+        }
       }
       alert(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
