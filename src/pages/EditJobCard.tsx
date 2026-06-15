@@ -36,8 +36,10 @@ import {
   getServicePackageOptions,
   legacyServiceConfigFromJob,
   parsePackagesFromServiceType,
+  priceLinesFromServiceItems,
   serviceItemsToConfigMap,
   supportsAutoPricing,
+  syncServiceItemAmountsToTotal,
   validateServiceConfigs,
   type PricingConfig,
   type ServiceConfigMap,
@@ -69,6 +71,7 @@ const EditJobCard: React.FC = () => {
     scrollToFirstError,
   } = useFormValidation(jobCardValidationRules);
   const isInitialLoad = React.useRef(true);
+  const savedPriceOnLoadRef = React.useRef<number | null>(null);
   const prevMasterStateRef = React.useRef<number | undefined>(undefined);
   const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
@@ -143,6 +146,31 @@ const EditJobCard: React.FC = () => {
       Object.keys(serviceConfigs).length > 0
     ) {
       const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
+
+      // Keep a manually saved price instead of overwriting with Pricing Master rates.
+      if (savedPriceOnLoadRef.current !== null) {
+        const savedPrice = savedPriceOnLoadRef.current;
+        savedPriceOnLoadRef.current = null;
+        if (savedPrice > 0 && Math.abs(savedPrice - total) > 0.009) {
+          setIsPriceManuallyEdited(true);
+          const syncedItems = syncServiceItemAmountsToTotal(
+            serviceItems.length ? serviceItems : items,
+            savedPrice,
+          );
+          setServiceItems(syncedItems);
+          setPriceBreakdown(priceLinesFromServiceItems(syncedItems, lines));
+          setFormData((prev) => ({
+            ...prev,
+            price: savedPrice.toFixed(2),
+            service_category: deriveServiceCategoryFromItems(syncedItems),
+          }));
+          setServiceConfigErrors(
+            validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig),
+          );
+          return;
+        }
+      }
+
       setPriceBreakdown(lines);
       setServiceItems(items);
       const category = deriveServiceCategoryFromItems(items);
@@ -196,6 +224,8 @@ const EditJobCard: React.FC = () => {
         prevMasterStateRef.current = data.master_state ?? undefined;
         
         const formattedDate = data.schedule_datetime ? dayjs(data.schedule_datetime).tz("Asia/Kolkata").format('YYYY-MM-DD') : '';
+        const savedPrice = Number.parseFloat(String(data.price ?? '0')) || 0;
+        savedPriceOnLoadRef.current = savedPrice;
 
         setFormData({
           client_name: data.client_name || '',
@@ -252,7 +282,19 @@ const EditJobCard: React.FC = () => {
         setSelectedPackages(packages);
         if (data.service_items?.length) {
           setServiceConfigs(serviceItemsToConfigMap(data.service_items));
-          setServiceItems(data.service_items);
+          const itemsSum = data.service_items.reduce(
+            (sum, item) => sum + (Number(item.amount) || 0),
+            0,
+          );
+          if (savedPrice > 0 && Math.abs(savedPrice - itemsSum) > 0.009) {
+            setIsPriceManuallyEdited(true);
+            savedPriceOnLoadRef.current = null;
+            const syncedItems = syncServiceItemAmountsToTotal(data.service_items, savedPrice);
+            setServiceItems(syncedItems);
+            setPriceBreakdown(priceLinesFromServiceItems(syncedItems));
+          } else {
+            setServiceItems(data.service_items);
+          }
         } else {
           let inferredType = data.service_category || '';
           if (inferredType === 'One-Time Service') inferredType = 'One Time Service';
@@ -433,10 +475,15 @@ const EditJobCard: React.FC = () => {
     try {
       setSubmitting(true);
       // Ensure schedule_datetime is in ISO format
+      const manualPrice = Number.parseFloat(String(formData.price || '0')) || 0;
+      const itemsForSubmit = isPriceManuallyEdited
+        ? syncServiceItemAmountsToTotal(serviceItems, manualPrice)
+        : serviceItems;
       const submitData = {
         ...formData,
-        service_items: serviceItems,
-        service_category: deriveServiceCategoryFromItems(serviceItems),
+        price: manualPrice > 0 ? manualPrice.toFixed(2) : formData.price,
+        service_items: itemsForSubmit,
+        service_category: deriveServiceCategoryFromItems(itemsForSubmit),
       };
       if (submitData.schedule_datetime) {
         // Create a dayjs object from the date part in IST
@@ -917,8 +964,15 @@ const EditJobCard: React.FC = () => {
                     type="number" 
                     value={formData.price} 
                     onChange={(e) => {
-                      handleInputChange('price', e.target.value);
+                      const nextPrice = e.target.value;
+                      handleInputChange('price', nextPrice);
                       setIsPriceManuallyEdited(true);
+                      const parsed = Number.parseFloat(nextPrice);
+                      if (!Number.isNaN(parsed) && serviceItems.length > 0) {
+                        const syncedItems = syncServiceItemAmountsToTotal(serviceItems, parsed);
+                        setServiceItems(syncedItems);
+                        setPriceBreakdown(priceLinesFromServiceItems(syncedItems, priceBreakdown));
+                      }
                     }} 
                     className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm" 
                     required 

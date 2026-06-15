@@ -328,6 +328,58 @@ export function serviceItemsToConfigMap(
   return map;
 }
 
+/** Align per-service line amounts with a manually overridden booking total. */
+export function syncServiceItemAmountsToTotal(
+  items: ServiceItemConfig[],
+  total: number,
+): ServiceItemConfig[] {
+  if (!items.length) return items;
+
+  const target = Math.round(total * 100) / 100;
+  if (items.length === 1) {
+    return [{ ...items[0], amount: target }];
+  }
+
+  const autoTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+  if (autoTotal <= 0) {
+    return items.map((item, index) => ({
+      ...item,
+      amount: index === 0 ? target : 0,
+    }));
+  }
+
+  const adjusted = items.map((item) => ({
+    ...item,
+    amount: Math.round(((item.amount || 0) / autoTotal) * target * 100) / 100,
+  }));
+  const sum = adjusted.reduce((s, item) => s + item.amount, 0);
+  const diff = Math.round((target - sum) * 100) / 100;
+  if (diff !== 0) {
+    const last = adjusted[adjusted.length - 1];
+    adjusted[adjusted.length - 1] = {
+      ...last,
+      amount: Math.round((last.amount + diff) * 100) / 100,
+    };
+  }
+  return adjusted;
+}
+
+export function priceLinesFromServiceItems(
+  items: ServiceItemConfig[],
+  templateLines: ServicePriceLine[] = [],
+): ServicePriceLine[] {
+  return items.map((item) => {
+    const template = templateLines.find((line) => line.service === item.service);
+    return {
+      service: item.service,
+      plan: item.plan,
+      area: item.area,
+      price: item.amount,
+      note: template?.note,
+    };
+  });
+}
+
 /** Backfill per-service config from legacy single plan/area bookings. */
 export function legacyServiceConfigFromJob(
   packages: string[],
