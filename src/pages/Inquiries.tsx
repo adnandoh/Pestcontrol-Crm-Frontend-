@@ -14,7 +14,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { PageLoading, Pagination, Badge } from '../components/ui';
-import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
+import { CrmTableShell, crmThCompactClass, crmTdCompactClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
@@ -364,23 +364,35 @@ const Inquiries: React.FC = () => {
         </div>
       )}
 
-      <p className="text-[10px] text-slate-400 lg:hidden">Swipe horizontally to see all columns →</p>
+      <p className="text-[10px] text-slate-400 xl:hidden">Swipe horizontally on smaller screens →</p>
 
-      <CrmTableShell>
+      <CrmTableShell compact>
         <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full table-fixed border-collapse">
+            <colgroup>
+              <col className="w-[3%]" />
+              <col className="w-[13%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[12%]" />
+              <col className="w-[8%]" />
+              <col className="w-[17%]" />
+              <col className="w-[7%]" />
+              <col className="w-[12%]" />
+            </colgroup>
             <thead className="sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
               <tr>
-                <th className={cn(crmThClass, 'w-12')}>ID</th>
-                <th className={cn(crmThClass, 'min-w-[130px]')}>Lead</th>
-                <th className={cn(crmThClass, 'min-w-[160px]')}>Location</th>
-                <th className={cn(crmThClass, 'w-28')}>Property</th>
-                <th className={cn(crmThClass, 'w-24')}>Plan / Rate</th>
-                <th className={cn(crmThClass, 'min-w-[120px]')}>Interest</th>
-                <th className={cn(crmThClass, 'w-24')}>Received</th>
-                <th className={cn(crmThClass, 'min-w-[200px]')}>Remark</th>
-                <th className={cn(crmThClass, 'w-24')}>Status</th>
-                <th className={cn(crmThClass, 'min-w-[130px] text-center')}>Actions</th>
+                <th className={crmThCompactClass}>ID</th>
+                <th className={crmThCompactClass}>Lead</th>
+                <th className={crmThCompactClass}>Location</th>
+                <th className={crmThCompactClass}>Property</th>
+                <th className={crmThCompactClass}>Plan / Rate</th>
+                <th className={crmThCompactClass}>Interest</th>
+                <th className={crmThCompactClass}>Received</th>
+                <th className={crmThCompactClass}>Remark</th>
+                <th className={crmThCompactClass}>Status</th>
+                <th className={cn(crmThCompactClass, 'text-center')}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -404,20 +416,20 @@ const Inquiries: React.FC = () => {
                     !inquiry.is_read && 'bg-blue-50/50 border-l-2 border-l-blue-500',
                   )}
                 >
-                  <td className={cn(crmTdClass, 'text-xs font-semibold text-slate-400 tabular-nums')}>
+                  <td className={cn(crmTdCompactClass, 'font-semibold text-slate-400 tabular-nums')}>
                     {inquiry.id}
                   </td>
-                  <td className={crmTdClass}>
-                    <div className="flex items-start gap-2 min-w-0">
+                  <td className={crmTdCompactClass}>
+                    <div className="flex items-start gap-1.5 min-w-0">
                       {!inquiry.is_read && (
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                       )}
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{inquiry.name}</p>
+                        <p className="font-semibold text-slate-900 truncate text-xs">{inquiry.name}</p>
                         <div className="mt-0.5">
                           <CopyablePhone
                             phone={inquiry.mobile}
-                            className="text-xs"
+                            className="text-[11px]"
                             onWhatsApp={() =>
                               openWhatsApp(
                                 inquiry.mobile,
@@ -429,7 +441,7 @@ const Inquiries: React.FC = () => {
                       </div>
                     </div>
                   </td>
-                  <td className={crmTdClass}>
+                  <td className={crmTdCompactClass}>
                     <LocationCell
                       primary={inquiry.city?.trim() || inquiry.state?.trim() || ''}
                       secondary={
@@ -443,13 +455,16 @@ const Inquiries: React.FC = () => {
                         inquiry.state,
                         inquiry.message,
                       )}
+                      className="max-w-none"
                     />
                   </td>
-                  <td className={crmTdClass}>
-                    <p className="text-xs font-medium text-slate-700">{inquiry.premise_type || 'Residential'}</p>
-                    <p className="text-[10px] text-slate-500">{inquiry.premise_size || '—'}</p>
+                  <td className={crmTdCompactClass}>
+                    <p className="text-[11px] font-medium text-slate-700 truncate capitalize">
+                      {inquiry.premise_type || 'Residential'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 truncate">{inquiry.premise_size || '—'}</p>
                   </td>
-                  <td className={crmTdClass}>
+                  <td className={crmTdCompactClass}>
                     {inquiry.is_inspection_required && !inquiry.service_rate_info?.display_total ? (
                       <Badge variant="warning" size="sm">Inspection</Badge>
                     ) : (
@@ -457,20 +472,23 @@ const Inquiries: React.FC = () => {
                         info={inquiry.service_rate_info}
                         fallbackPrice={inquiry.estimated_price}
                         fallbackFrequency={inquiry.service_frequency}
+                        compact
                       />
                     )}
                   </td>
-                  <td className={crmTdClass}>
-                    <p className="text-xs font-semibold text-indigo-700 truncate">{inquiry.service_interest}</p>
-                    <p className="text-[10px] text-slate-500 line-clamp-1">{inquiry.pest_problems || inquiry.message}</p>
+                  <td className={crmTdCompactClass}>
+                    <p className="text-[11px] font-semibold text-indigo-700 truncate">{inquiry.service_interest}</p>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      {inquiry.pest_problems || inquiry.message || '—'}
+                    </p>
                   </td>
-                  <td className={cn(crmTdClass, 'text-xs text-slate-500 tabular-nums')}>
+                  <td className={cn(crmTdCompactClass, 'text-slate-500 tabular-nums whitespace-nowrap')}>
                     {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
                   </td>
-                  <td className={crmTdClass} onClick={(e) => e.stopPropagation()}>
-                    <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} />
+                  <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
+                    <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} compact />
                   </td>
-                  <td className={crmTdClass}>
+                  <td className={crmTdCompactClass}>
                     <Badge
                       variant={
                         inquiry.status === 'Converted'
@@ -486,10 +504,11 @@ const Inquiries: React.FC = () => {
                       {inquiry.status}
                     </Badge>
                   </td>
-                  <td className={crmTdClass} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                  <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
+                        title="Set reminder"
                         onClick={() => {
                           setSelectedInquiry({
                             id: inquiry.id,
@@ -499,30 +518,28 @@ const Inquiries: React.FC = () => {
                           });
                           setShowReminderModal(true);
                         }}
-                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-600"
+                        className="inline-flex items-center justify-center rounded-md bg-amber-500 p-1.5 text-white hover:bg-amber-600"
                       >
-                        <Bell className="h-3 w-3" />
-                        Reminder
+                        <Bell className="h-3.5 w-3.5" />
                       </button>
                       {inquiry.status === 'New' && (
                         <button
                           type="button"
+                          title="Convert to booking"
                           onClick={() => handleConvertToJobCard(inquiry)}
-                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-blue-700"
+                          className="inline-flex items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                         >
-                          <ArrowRight className="h-3 w-3" />
-                          Convert
+                          <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {!inquiry.is_read ? (
                         <button
                           type="button"
-                          onClick={() => handleMarkAsRead(inquiry.id)}
-                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-[10px] font-bold text-white hover:bg-blue-700"
                           title="Mark as read"
+                          onClick={() => handleMarkAsRead(inquiry.id)}
+                          className="inline-flex items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                         >
-                          <CheckCircle className="h-3 w-3" />
-                          Read
+                          <CheckCircle className="h-3.5 w-3.5" />
                         </button>
                       ) : null}
                     </div>

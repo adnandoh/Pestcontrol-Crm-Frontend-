@@ -6,23 +6,26 @@ interface ServiceRateDisplayProps {
   info?: ServiceRateInfo | null;
   fallbackPrice?: number | string | null;
   fallbackFrequency?: string | null;
+  compact?: boolean;
 }
 
 const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
   info,
   fallbackPrice,
   fallbackFrequency,
+  compact = false,
 }) => {
   const planLabel =
     info?.plan ||
     (fallbackFrequency?.toLowerCase() === 'amc' ? 'AMC' : 'One-time');
 
   const isAmc = planLabel.toUpperCase() === 'AMC';
+  const wrapClass = cn('flex flex-col gap-1 min-w-0', !compact && 'min-w-[88px]');
 
   if (info?.items?.length) {
     const total = info.display_total ?? info.total;
     return (
-      <div className="flex flex-col gap-1 min-w-[88px]">
+      <div className={wrapClass}>
         <span
           className={cn(
             'inline-flex w-fit rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',
@@ -64,7 +67,7 @@ const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
     (fallbackPrice != null && fallbackPrice !== '' ? Number(fallbackPrice) : null);
 
   return (
-    <div className="flex flex-col gap-1 min-w-[88px]">
+    <div className={wrapClass}>
       <span
         className={cn(
           'inline-flex w-fit rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',

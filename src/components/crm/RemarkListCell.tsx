@@ -8,9 +8,10 @@ interface RemarkListCellProps {
   sourceType: 'crm' | 'website';
   row: RowEntity;
   onUpdate: (id: number, patch: Partial<RowEntity>) => void;
+  compact?: boolean;
 }
 
-const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpdate }) => {
+const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpdate, compact }) => {
   const handleRemarkAdded = (entry: InquiryRemarkEntry, newCount: number) => {
     onUpdate(row.id, {
       remark_count: newCount,
@@ -32,6 +33,7 @@ const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpda
       latestRemark={row.latest_remark}
       remarkCount={row.remark_count ?? (row.latest_remark ? 1 : 0)}
       variant="table"
+      compact={compact}
       onRemarkAdded={handleRemarkAdded}
     />
   );

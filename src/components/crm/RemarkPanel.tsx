@@ -17,6 +17,8 @@ interface RemarkPanelProps {
   remarkCount?: number;
   /** Table row: compact preview + modals. Detail: same but slightly wider. */
   variant?: 'table' | 'detail';
+  /** Tighter layout for dense data tables (e.g. website leads). */
+  compact?: boolean;
   onRemarkAdded?: (entry: InquiryRemarkEntry, newCount: number) => void;
 }
 
@@ -35,11 +37,13 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
   latestRemark,
   remarkCount = 0,
   variant = 'table',
+  compact = false,
   onRemarkAdded,
 }) => {
   const { user } = useAuth();
   const isAdmin = getUserRole(user) === 'admin' || getUserRole(user) === 'super_admin';
   const isTable = variant === 'table';
+  const isDense = isTable && compact;
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -103,7 +107,10 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
 
   return (
     <div
-      className={cn('relative', isTable ? 'w-full max-w-[260px]' : 'w-full max-w-md')}
+      className={cn(
+        'relative w-full',
+        isDense ? 'max-w-none' : isTable ? 'max-w-[260px]' : 'max-w-md',
+      )}
       onClick={(e) => e.stopPropagation()}
     >
       {toast && (
@@ -113,40 +120,64 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
       )}
 
       {/* Compact preview */}
-      <div className="rounded-lg border border-slate-200/80 bg-slate-50/50 px-2.5 py-2">
+      <div
+        className={cn(
+          'rounded-lg border border-slate-200/80 bg-slate-50/50',
+          isDense ? 'px-1.5 py-1.5' : 'px-2.5 py-2',
+        )}
+      >
         {previewText ? (
           <>
-            <p className="text-xs leading-snug text-slate-800 line-clamp-2">{previewText}</p>
-            <p className="mt-1 text-[10px] text-slate-500">
-              <span className="font-medium text-slate-600">
-                {latestRemark?.created_by_name || 'Staff'}
-              </span>
-              {latestRemark?.created_at && (
-                <span className="text-slate-400"> · {formatRemarkDate(latestRemark.created_at)}</span>
+            <p
+              className={cn(
+                'leading-snug text-slate-800',
+                isDense ? 'text-[11px] line-clamp-1' : 'text-xs line-clamp-2',
               )}
+            >
+              {previewText}
             </p>
+            {!isDense && (
+              <p className="mt-1 text-[10px] text-slate-500">
+                <span className="font-medium text-slate-600">
+                  {latestRemark?.created_by_name || 'Staff'}
+                </span>
+                {latestRemark?.created_at && (
+                  <span className="text-slate-400"> · {formatRemarkDate(latestRemark.created_at)}</span>
+                )}
+              </p>
+            )}
           </>
         ) : (
-          <p className="text-xs text-slate-400 italic">No remarks yet</p>
+          <p className={cn('text-slate-400 italic', isDense ? 'text-[10px]' : 'text-xs')}>
+            No remarks yet
+          </p>
         )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className={cn('flex flex-wrap items-center', isDense ? 'mt-1 gap-1' : 'mt-2 gap-1.5')}>
           <button
             type="button"
             onClick={() => setComposerOpen(true)}
-            className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 shadow-sm ring-1 ring-slate-200 hover:bg-blue-50"
+            title="Add remark"
+            className={cn(
+              'inline-flex items-center rounded-md bg-white font-semibold text-blue-700 shadow-sm ring-1 ring-slate-200 hover:bg-blue-50',
+              isDense ? 'gap-0.5 px-1.5 py-0.5 text-[9px]' : 'gap-1 px-2 py-1 text-[10px]',
+            )}
           >
-            <MessageSquarePlus className="h-3 w-3" />
+            <MessageSquarePlus className={isDense ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
             Add
           </button>
           {count > 0 && (
             <button
               type="button"
               onClick={openHistory}
-              className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100"
+              title="Remark history"
+              className={cn(
+                'inline-flex items-center rounded-md bg-white font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100',
+                isDense ? 'gap-0.5 px-1.5 py-0.5 text-[9px]' : 'gap-1 px-2 py-1 text-[10px]',
+              )}
             >
-              <History className="h-3 w-3" />
-              History ({count})
+              <History className={isDense ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+              {isDense ? count : `History (${count})`}
             </button>
           )}
         </div>
