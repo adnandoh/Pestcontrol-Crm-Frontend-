@@ -1,4 +1,4 @@
-import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES } from '../constants/pricing';
+import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES, COMMERCIAL_AREA_OPTION } from '../constants/pricing';
 
 export interface PricingConfig {
   region: 'mumbai' | 'lonavala';
@@ -29,6 +29,8 @@ export function getServicePackageOptions(
   return Object.keys(config.pricing || {});
 }
 
+export { COMMERCIAL_AREA_OPTION } from '../constants/pricing';
+
 export const SERVICE_PACKAGE_TO_PESTS: Record<string, string[]> = {
   'Cockroach / Ants': ['Cockroach', 'Ants'],
   'Bed Bugs': ['Bed Bug'],
@@ -37,6 +39,27 @@ export const SERVICE_PACKAGE_TO_PESTS: Record<string, string[]> = {
   'Mosquito': ['Mosquito'],
   'Hotel / Commercial': [],
 };
+
+/** Office/hotel/society/other commercial bookings get a Commercial area option. */
+export const COMMERCIAL_PROPERTY_TYPES = new Set(['office', 'other', 'hotel', 'society']);
+
+export function usesCommercialAreaOption(commercialType: string): boolean {
+  return COMMERCIAL_PROPERTY_TYPES.has(commercialType);
+}
+
+function appendCommercialAreaOption(
+  options: string[],
+  commercialType: string,
+  selectedServices: string[],
+): string[] {
+  if (!usesCommercialAreaOption(commercialType)) return options;
+  const residential = selectedServices.filter(
+    (s) => s !== 'Rodent' && s !== 'Hotel / Commercial',
+  );
+  if (residential.length === 0) return options;
+  if (options.includes(COMMERCIAL_AREA_OPTION)) return options;
+  return [...options, COMMERCIAL_AREA_OPTION];
+}
 
 export interface ServicePriceLine {
   service: string;
@@ -140,7 +163,11 @@ export function getAreaOptions(
       }
     }
 
-    return Array.from(new Set(options));
+    return appendCommercialAreaOption(
+      Array.from(new Set(options)),
+      commercialType,
+      selectedServices,
+    );
   }
 
   const hasRodent = selectedServices.includes('Rodent');
@@ -161,7 +188,11 @@ export function getAreaOptions(
     options.add('Commercial Space');
   }
 
-  return Array.from(options);
+  return appendCommercialAreaOption(
+    Array.from(options),
+    commercialType,
+    selectedServices,
+  );
 }
 
 /** Prefer one-time when multiple plan types are available (e.g. Cockroach). */
@@ -212,6 +243,7 @@ export function buildServiceConfigMap(
   selectedServices: string[],
   prev: ServiceConfigMap,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  commercialType = 'home',
 ): ServiceConfigMap {
   const next: ServiceConfigMap = {};
   for (const service of selectedServices) {
@@ -221,7 +253,7 @@ export function buildServiceConfigMap(
     if (!planTypes.includes(plan)) {
       plan = getDefaultPlanForService(service, config);
     }
-    const areas = getAreaOptionsForService(service, config);
+    const areas = getAreaOptionsForService(service, config, commercialType);
     let area = existing?.area || '';
     if (area && areas.length > 0 && !areas.includes(area)) {
       area = '';

@@ -12,6 +12,8 @@ export interface PricingData {
   };
 }
 
+export const COMMERCIAL_AREA_OPTION = 'Commercial';
+
 export const PRICING_DATA: any = {
   'Cockroach / Ants': {
     'AMC 3 Services': {
@@ -19,14 +21,16 @@ export const PRICING_DATA: any = {
       '1 BHK': 2200,
       '2 BHK': 2500,
       '3 BHK': 3000,
-      '4 BHK': 3500
+      '4 BHK': 3500,
+      [COMMERCIAL_AREA_OPTION]: 0,
     },
     'One Time Service': {
       '1 RK': 1000,
       '1 BHK': 1200,
       '2 BHK': 1500,
       '3 BHK': 1800,
-      '4 BHK': 2000
+      '4 BHK': 2000,
+      [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
   'Bed Bugs': {
@@ -35,7 +39,8 @@ export const PRICING_DATA: any = {
       '1 BHK': 2500,
       '2 BHK': 3000,
       '3 BHK': 3500,
-      '4 BHK': 4000
+      '4 BHK': 4000,
+      [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
   'Termite': {
@@ -44,13 +49,15 @@ export const PRICING_DATA: any = {
       '1 BHK': 2500,
       '2 BHK': 3000,
       '3 BHK': 3500,
-      '4 BHK': 4000
+      '4 BHK': 4000,
+      [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
   'Rodent': {
     'One Time Service': {
       'Windows': 1000,
-      'Society Area': 0 // Depends on visit
+      'Society Area': 0, // Depends on visit
+      [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
   'Mosquito': {
@@ -59,7 +66,8 @@ export const PRICING_DATA: any = {
       '1 BHK': 1000,
       '2 BHK': 1500,
       '3 BHK': 1800,
-      '4 BHK': 2000
+      '4 BHK': 2000,
+      [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
   'Hotel / Commercial': {

@@ -127,36 +127,52 @@ const CreateJobCard: React.FC = () => {
       return;
     }
     setServiceConfigs((prev) =>
-      buildServiceConfigMap(selectedPackages, prev, pricingConfig),
+      buildServiceConfigMap(selectedPackages, prev, pricingConfig, formData.commercial_type),
     );
   }, [selectedPackages.join('|'), pricingConfig, formData.commercial_type]);
 
   // Per-service pricing total (city-aware via pricingConfig)
   useEffect(() => {
     if (
-      pricingConfigReady &&
-      supportsAutoPricing(formData.commercial_type, pricingConfig) &&
-      selectedPackages.length > 0 &&
-      Object.keys(serviceConfigs).length > 0
+      !pricingConfigReady ||
+      selectedPackages.length === 0 ||
+      Object.keys(serviceConfigs).length === 0
     ) {
-      const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
+      if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
+        setPriceBreakdown([]);
+        setServiceItems([]);
+        setServiceConfigErrors([]);
+        setFormData((prev) => ({ ...prev, price: '0.00' }));
+      }
+      return;
+    }
+
+    const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
+    const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
+    setServiceConfigErrors(configErrors);
+
+    const category = deriveServiceCategoryFromItems(items);
+    const primaryArea = items.find((i) => i.area)?.area || '';
+
+    if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
       setPriceBreakdown(lines);
       setServiceItems(items);
-      const category = deriveServiceCategoryFromItems(items);
-      const primaryArea = items.find((i) => i.area)?.area || '';
       setFormData((prev) => ({
         ...prev,
         price: total.toFixed(2),
         service_category: category,
         bhk_size: primaryArea || prev.bhk_size,
       }));
-      setServiceConfigErrors(validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig));
-    } else if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
-      setPriceBreakdown([]);
-      setServiceItems([]);
-      setServiceConfigErrors([]);
-      setFormData((prev) => ({ ...prev, price: '0.00' }));
+      return;
     }
+
+    // Office/hotel/society/other: keep estimated price, still persist service_items + area.
+    setServiceItems(items);
+    setFormData((prev) => ({
+      ...prev,
+      service_category: category,
+      bhk_size: primaryArea || prev.bhk_size,
+    }));
   }, [
     selectedPackages,
     serviceConfigs,

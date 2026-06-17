@@ -8,6 +8,7 @@ export const BOOKING_REFERENCE_OPTIONS = [
   'YouTube',
   'LinkedIn',
   'SMS',
+  'Calling Data',
   'Instagram',
   'WhatsApp',
   'Justdial',

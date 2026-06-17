@@ -133,17 +133,17 @@ const EditJobCard: React.FC = () => {
       return;
     }
     setServiceConfigs((prev) =>
-      buildServiceConfigMap(selectedPackages, prev, pricingConfig),
+      buildServiceConfigMap(selectedPackages, prev, pricingConfig, formData.commercial_type),
     );
   }, [selectedPackages.join('|'), pricingConfig, formData.commercial_type, loading, pricingConfigReady]);
 
   useEffect(() => {
-    if (loading || isInitialLoad.current || isPriceManuallyEdited || !pricingConfigReady) return;
+    if (loading || isInitialLoad.current || !pricingConfigReady) return;
+    if (selectedPackages.length === 0 || Object.keys(serviceConfigs).length === 0) return;
 
     if (
       supportsAutoPricing(formData.commercial_type, pricingConfig) &&
-      selectedPackages.length > 0 &&
-      Object.keys(serviceConfigs).length > 0
+      !isPriceManuallyEdited
     ) {
       const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
 
@@ -182,6 +182,21 @@ const EditJobCard: React.FC = () => {
         bhk_size: primaryArea || prev.bhk_size,
       }));
       setServiceConfigErrors(validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig));
+      return;
+    }
+
+    if (!supportsAutoPricing(formData.commercial_type, pricingConfig)) {
+      const { items } = computePerServicePricing(serviceConfigs, pricingConfig);
+      const primaryArea = items.find((i) => i.area)?.area || '';
+      setServiceItems(items);
+      setFormData((prev) => ({
+        ...prev,
+        service_category: deriveServiceCategoryFromItems(items),
+        bhk_size: primaryArea || prev.bhk_size,
+      }));
+      setServiceConfigErrors(
+        validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig),
+      );
     }
   }, [
     selectedPackages,
