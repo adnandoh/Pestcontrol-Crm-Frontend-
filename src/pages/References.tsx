@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { enhancedApiService } from '../services/api.enhanced';
+import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import { FileText, Download, TrendingUp, Users, BarChart3, ArrowUpDown } from 'lucide-react';
 
 interface ReferenceData {
@@ -11,6 +12,33 @@ interface ReferenceReport {
   report_data: ReferenceData[];
   generated_at: string;
   total_entries: number;
+}
+
+/** Ensure every CRM reference option appears (incl. Calling Data), merge API counts case-insensitively. */
+function mergeReferenceReport(apiData: ReferenceData[]): ReferenceData[] {
+  const countsByLower = new Map<string, number>();
+
+  for (const row of apiData) {
+    const key = (row.reference_name || 'Other').trim().toLowerCase();
+    countsByLower.set(key, (countsByLower.get(key) || 0) + (row.reference_count || 0));
+  }
+
+  const merged: ReferenceData[] = BOOKING_REFERENCE_OPTIONS.map((name) => ({
+    reference_name: name,
+    reference_count: countsByLower.get(name.toLowerCase()) || 0,
+  }));
+
+  const known = new Set(BOOKING_REFERENCE_OPTIONS.map((n) => n.toLowerCase()));
+  for (const row of apiData) {
+    const key = (row.reference_name || '').trim().toLowerCase();
+    if (!key || known.has(key)) continue;
+    merged.push({
+      reference_name: row.reference_name,
+      reference_count: row.reference_count || 0,
+    });
+  }
+
+  return merged;
 }
 
 const References: React.FC = () => {
@@ -29,12 +57,13 @@ const References: React.FC = () => {
       setReportLoading(true);
       setReportError(null);
       const data = await enhancedApiService.getReferenceReport();
-      
-      // Transform the data to match our interface
+      const apiRows = Array.isArray(data) ? data : [];
+      const mergedRows = mergeReferenceReport(apiRows);
+
       const transformedData: ReferenceReport = {
-        report_data: Array.isArray(data) ? data : [],
+        report_data: mergedRows,
         generated_at: new Date().toISOString(),
-        total_entries: Array.isArray(data) ? data.length : 0
+        total_entries: mergedRows.length,
       };
       
       setReferenceReport(transformedData);
@@ -206,10 +235,10 @@ const References: React.FC = () => {
                       : '0.0';
                     
                     return (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      <tr key={reference.reference_name} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900 capitalize">
+                            <div className="text-sm font-medium text-gray-900">
                               {reference.reference_name}
                             </div>
                           </div>
