@@ -716,6 +716,76 @@ export interface StaffPerformance {
   conversion_rate: number;
 }
 
+export interface StaffTrackingLive {
+  profile_id: number;
+  technician_id: number;
+  name: string;
+  mobile: string;
+  city: string | null;
+  status: 'on_duty' | 'checked_in_idle' | 'off_duty' | string;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  last_ping_at: string | null;
+  battery_percent: number | null;
+  check_in_at: string | null;
+  distance_today_km: string | number | null;
+}
+
+export interface StaffTrackingProfile {
+  id: number;
+  technician_id: number;
+  name: string;
+  mobile: string;
+  city: string | null;
+  is_active: boolean;
+  tracking_enabled: boolean;
+}
+
+export interface StaffTrackingAttendance {
+  id: number;
+  technician_id: number;
+  staff_name: string;
+  date: string;
+  status: string;
+  check_in_at: string;
+  check_out_at: string | null;
+  check_in_latitude: string;
+  check_in_longitude: string;
+  check_out_latitude: string | null;
+  check_out_longitude: string | null;
+  total_distance_km: string;
+  is_late: boolean;
+}
+
+export interface StaffTrackingPing {
+  id: number;
+  latitude: string;
+  longitude: string;
+  accuracy_m: number | null;
+  speed_mps: number | null;
+  battery_percent: number | null;
+  recorded_at: string;
+  is_moving: boolean;
+}
+
+export interface StaffTrackingHistory {
+  technician_id: number;
+  name: string;
+  date: string;
+  session: StaffTrackingAttendance | null;
+  pings: StaffTrackingPing[];
+  distance_km: string | null;
+}
+
+export interface StaffTrackingDistanceRow {
+  technician_id: number;
+  name: string;
+  date: string;
+  distance_km: string;
+  check_in_at: string;
+  check_out_at: string | null;
+}
+
 export interface Feedback {
   id: number;
   booking: number;
@@ -1104,6 +1174,7 @@ export interface BookingPaymentRecord {
 export interface PendingPaymentStats {
   total_outstanding_amount: number | string;
   total_collected_amount: number | string;
+  lifetime_collected_amount?: number | string;
   total_pending_bookings: number;
   todays_collections: number | string;
 }

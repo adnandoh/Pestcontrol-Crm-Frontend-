@@ -21,6 +21,10 @@ import {
   Smartphone,
   Receipt,
   IndianRupee,
+  LocateFixed,
+  Map,
+  Clock,
+  Route,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -44,6 +48,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
   }
   const [isMasterOpen, setIsMasterOpen] = React.useState(() => {
     return location.pathname.startsWith('/master/');
+  });
+  const [isStaffTrackingOpen, setIsStaffTrackingOpen] = React.useState(() => {
+    return location.pathname.startsWith('/staff-tracking/');
   });
 
   const getBadgeCount = (name: string) => {
@@ -114,6 +121,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     { name: 'Master Cities', href: '/master/cities' },
     { name: 'Master Locations', href: '/master/locations' },
   ];
+
+  const staffTrackingItems = [
+    { name: 'Live Map', href: '/staff-tracking/live', icon: Map },
+    { name: 'Staff Directory', href: '/staff-tracking/staff', icon: Users },
+    { name: 'Attendance', href: '/staff-tracking/attendance', icon: Clock },
+    { name: 'Location History', href: '/staff-tracking/history', icon: Route },
+  ];
+
+  const isStaffTrackingActive = location.pathname.startsWith('/staff-tracking/');
 
   const pricingAdmin = isPricingAdmin(user);
   const showAdministration = Boolean(user?.is_superuser || pricingAdmin);
@@ -218,6 +234,73 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                       </Link>
                     );
                   })}
+
+                  {gIdx === 1 && (
+                    <div className="space-y-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsStaffTrackingOpen(!isStaffTrackingOpen)}
+                        className={cn(
+                          'w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-left',
+                          isStaffTrackingActive
+                            ? 'bg-crm-surface shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)] text-crm-text border border-crm-border'
+                            : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover border border-transparent',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'flex items-center justify-center transition-colors',
+                            isStaffTrackingActive ? 'text-blue-600' : 'text-crm-muted group-hover:text-crm-text',
+                          )}
+                        >
+                          <LocateFixed className="h-[18px] w-[18px] stroke-[2]" />
+                        </div>
+                        <span
+                          className={cn(
+                            'flex-1 text-[14px] font-semibold transition-colors',
+                            isStaffTrackingActive ? 'text-crm-text' : 'text-crm-text group-hover:text-crm-text',
+                          )}
+                        >
+                          Staff Tracking
+                        </span>
+                        {isStaffTrackingOpen ? (
+                          <ChevronDown className="h-4 w-4 text-crm-muted shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-crm-muted shrink-0" />
+                        )}
+                      </button>
+
+                      {isStaffTrackingOpen && (
+                        <div className="ml-2 space-y-0.5 border-l border-crm-border pl-2 animate-in slide-in-from-top-1 duration-200">
+                          {staffTrackingItems.map((item) => {
+                            const SubIcon = item.icon;
+                            const active = location.pathname === item.href;
+                            return (
+                              <Link
+                                key={item.name}
+                                to={item.href}
+                                onClick={onClose}
+                                className={cn(
+                                  'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all',
+                                  active
+                                    ? 'bg-crm-surface text-blue-600 border border-crm-border shadow-sm'
+                                    : 'text-crm-muted hover:text-crm-text hover:bg-crm-hover',
+                                )}
+                              >
+                                <SubIcon
+                                  className={cn(
+                                    'h-4 w-4 shrink-0 stroke-[2]',
+                                    active ? 'text-blue-600' : 'text-crm-muted group-hover:text-crm-text',
+                                  )}
+                                />
+                                <span className="truncate">{item.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

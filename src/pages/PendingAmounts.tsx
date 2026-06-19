@@ -58,21 +58,25 @@ const PendingAmounts: React.FC = () => {
     totalPages: 1,
   });
 
-  const loadData = async (page = 1) => {
+  const loadData = async (
+    page = 1,
+    filterOverrides?: Partial<typeof filters>,
+  ) => {
     try {
       setLoading(true);
+      const activeFilters = { ...filters, ...filterOverrides };
       const params: Record<string, string | number> = {
         page,
         page_size: pagination.pageSize,
-        ordering: '-created_at',
+        ordering: '-schedule_datetime',
       };
-      Object.entries(filters).forEach(([key, value]) => {
+      Object.entries(activeFilters).forEach(([key, value]) => {
         if (value) params[key] = value;
       });
 
       const [listRes, statsRes] = await Promise.all([
         enhancedApiService.getPendingPayments(params),
-        enhancedApiService.getPendingPaymentStats(),
+        enhancedApiService.getPendingPaymentStats(params),
       ]);
 
       setBookings(listRes.results);
@@ -103,7 +107,7 @@ const PendingAmounts: React.FC = () => {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setFilters((prev) => ({ ...prev, search: searchInput }));
-      loadData(1);
+      loadData(1, { search: searchInput });
     }, 400);
     return () => clearTimeout(timeout);
   }, [searchInput]);
@@ -158,7 +162,7 @@ const PendingAmounts: React.FC = () => {
             color: 'text-red-600 bg-red-50',
           },
           {
-            label: 'Total Collected',
+            label: 'Paid on Open Bookings',
             value: `₹${formatMoney(stats?.total_collected_amount)}`,
             icon: Wallet,
             color: 'text-emerald-600 bg-emerald-50',
@@ -283,7 +287,8 @@ const PendingAmounts: React.FC = () => {
               <th className="px-3 py-2">Paid</th>
               <th className="px-3 py-2">Pending</th>
               <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Booking Date</th>
+              <th className="px-3 py-2">Service Date</th>
+              <th className="px-3 py-2">Completed</th>
               <th className="px-3 py-2">Created By</th>
               <th className="px-3 py-2">Actions</th>
             </tr>
@@ -291,7 +296,7 @@ const PendingAmounts: React.FC = () => {
           <tbody>
             {bookings.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-3 py-10 text-center text-gray-500">
+                <td colSpan={13} className="px-3 py-10 text-center text-gray-500">
                   No outstanding balances found.
                 </td>
               </tr>
@@ -305,7 +310,7 @@ const PendingAmounts: React.FC = () => {
                   </td>
                   <td className="px-3 py-2">{job.service_type}</td>
                   <td className="px-3 py-2">{job.master_city_name || job.city || '—'}</td>
-                  <td className="px-3 py-2 font-bold">₹{formatMoney(job.total_amount || job.price)}</td>
+                  <td className="px-3 py-2 font-bold">₹{formatMoney(job.total_amount ?? job.price)}</td>
                   <td className="px-3 py-2 text-emerald-700 font-bold">₹{formatMoney(job.paid_amount)}</td>
                   <td className="px-3 py-2 text-amber-700 font-bold">₹{formatMoney(job.pending_amount)}</td>
                   <td className="px-3 py-2">
@@ -313,7 +318,16 @@ const PendingAmounts: React.FC = () => {
                       {job.payment_status_display || job.payment_status}
                     </span>
                   </td>
-                  <td className="px-3 py-2">{dayjs(job.created_at).format('DD MMM YYYY')}</td>
+                  <td className="px-3 py-2">
+                    {job.schedule_datetime
+                      ? dayjs(job.schedule_datetime).format('DD MMM YYYY')
+                      : '—'}
+                  </td>
+                  <td className="px-3 py-2">
+                    {job.completed_at
+                      ? dayjs(job.completed_at).format('DD MMM YYYY')
+                      : '—'}
+                  </td>
                   <td className="px-3 py-2">{job.created_by_name || '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">

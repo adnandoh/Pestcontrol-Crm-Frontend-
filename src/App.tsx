@@ -32,6 +32,10 @@ import CreateQuotation from './pages/CreateQuotation';
 import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
 import StaffPerformance from './pages/StaffPerformance';
+import StaffTrackingLiveMap from './pages/staff-tracking/LiveMap';
+import StaffTrackingDirectory from './pages/staff-tracking/Directory';
+import StaffTrackingAttendance from './pages/staff-tracking/Attendance';
+import StaffTrackingHistory from './pages/staff-tracking/History';
 import TechnicianSelfies from './pages/TechnicianSelfies';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
@@ -136,6 +140,10 @@ const AppContent: React.FC = () => {
                     <Route path="/technician-reports" element={<TechnicianReports />} />
                     <Route path="/technician-selfies" element={<TechnicianSelfies />} />
                     <Route path="/staff-performance" element={<StaffPerformance />} />
+                    <Route path="/staff-tracking/live" element={<StaffTrackingLiveMap />} />
+                    <Route path="/staff-tracking/staff" element={<StaffTrackingDirectory />} />
+                    <Route path="/staff-tracking/attendance" element={<StaffTrackingAttendance />} />
+                    <Route path="/staff-tracking/history" element={<StaffTrackingHistory />} />
                     <Route
                       path="/staff"
                       element={

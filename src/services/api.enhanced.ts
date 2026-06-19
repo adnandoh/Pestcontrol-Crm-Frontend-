@@ -62,6 +62,11 @@ import type {
   PendingPaymentStats,
   PendingPaymentFilters,
   CollectPaymentPayload,
+  StaffTrackingLive,
+  StaffTrackingProfile,
+  StaffTrackingAttendance,
+  StaffTrackingHistory,
+  StaffTrackingDistanceRow,
 } from '../types';
 
 function flattenValidationDetails(value: unknown, prefix = ''): string[] {
@@ -1243,9 +1248,15 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async getPendingPaymentStats(signal?: AbortSignal): Promise<PendingPaymentStats> {
+  async getPendingPaymentStats(
+    params?: PendingPaymentFilters,
+    signal?: AbortSignal,
+  ): Promise<PendingPaymentStats> {
     const result = await this.retryRequest(() =>
-      this.api.get<PendingPaymentStats>(`${API_ENDPOINTS.PENDING_PAYMENTS}stats/`, { signal }),
+      this.api.get<PendingPaymentStats>(`${API_ENDPOINTS.PENDING_PAYMENTS}stats/`, {
+        params,
+        signal,
+      }),
     );
     return result.data;
   }
@@ -1498,6 +1509,73 @@ class EnhancedApiService {
       params: { period }
     });
     return response.data;
+  }
+
+  // Staff Tracking
+  async getStaffTrackingLive(params?: { city?: string }): Promise<StaffTrackingLive[]> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.STAFF_TRACKING.LIVE, params);
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(cacheKey, () =>
+          this.api.get<StaffTrackingLive[]>(API_ENDPOINTS.STAFF_TRACKING.LIVE, { params }),
+        ),
+      ),
+      30 * 1000,
+    );
+  }
+
+  async getStaffTrackingProfiles(params?: { city?: string }): Promise<StaffTrackingProfile[]> {
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.STAFF_TRACKING.STAFF, params);
+    return this.cachedRequest(
+      cacheKey,
+      () => this.retryRequest(() =>
+        this.makeRequest(cacheKey, () =>
+          this.api.get<StaffTrackingProfile[]>(API_ENDPOINTS.STAFF_TRACKING.STAFF, { params }),
+        ),
+      ),
+      2 * 60 * 1000,
+    );
+  }
+
+  async getStaffTrackingAttendanceToday(): Promise<StaffTrackingAttendance[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<StaffTrackingAttendance[]>(API_ENDPOINTS.STAFF_TRACKING.ATTENDANCE_TODAY),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingAttendanceReport(params?: {
+    from?: string;
+    to?: string;
+    page_size?: number;
+  }): Promise<StaffTrackingAttendance[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<StaffTrackingAttendance[]>(API_ENDPOINTS.STAFF_TRACKING.ATTENDANCE_REPORT, { params }),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingHistory(
+    technicianId: number,
+    date?: string,
+  ): Promise<StaffTrackingHistory> {
+    const result = await this.retryRequest(() =>
+      this.api.get<StaffTrackingHistory>(
+        API_ENDPOINTS.STAFF_TRACKING.LOCATION_HISTORY(technicianId),
+        { params: date ? { date } : undefined },
+      ),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingDistance(date?: string): Promise<StaffTrackingDistanceRow[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<StaffTrackingDistanceRow[]>(API_ENDPOINTS.STAFF_TRACKING.DISTANCE, {
+        params: date ? { date } : undefined,
+      }),
+    );
+    return result.data;
   }
 
   // Feedback methods
