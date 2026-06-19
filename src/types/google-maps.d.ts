@@ -3,6 +3,71 @@ export {};
 declare global {
   namespace google.maps {
     function importLibrary(name: 'places' | string): Promise<unknown>;
+
+    class Map {
+      constructor(mapDiv: HTMLElement, opts?: MapOptions);
+      fitBounds(bounds: LatLngBounds, padding?: number): void;
+      setCenter(latLng: LatLngLiteral): void;
+      setZoom(zoom: number): void;
+    }
+
+    class Marker {
+      constructor(opts?: MarkerOptions);
+      setMap(map: Map | null): void;
+      addListener(eventName: string, handler: () => void): void;
+    }
+
+    class Polyline {
+      constructor(opts?: PolylineOptions);
+      setMap(map: Map | null): void;
+    }
+
+    class LatLngBounds {
+      constructor();
+      extend(latLng: LatLngLiteral): void;
+    }
+
+    enum SymbolPath {
+      CIRCLE = 0,
+    }
+
+    interface MapOptions {
+      center?: LatLngLiteral;
+      zoom?: number;
+      mapTypeControl?: boolean;
+      streetViewControl?: boolean;
+      fullscreenControl?: boolean;
+    }
+
+    interface MarkerOptions {
+      position?: LatLngLiteral;
+      map?: Map;
+      title?: string;
+      icon?: MarkerIcon;
+    }
+
+    interface MarkerIcon {
+      path?: SymbolPath | string;
+      scale?: number;
+      fillColor?: string;
+      fillOpacity?: number;
+      strokeColor?: string;
+      strokeWeight?: number;
+    }
+
+    interface PolylineOptions {
+      path?: LatLngLiteral[];
+      geodesic?: boolean;
+      strokeColor?: string;
+      strokeOpacity?: number;
+      strokeWeight?: number;
+      map?: Map;
+    }
+
+    interface LatLngLiteral {
+      lat: number;
+      lng: number;
+    }
   }
 
   namespace google.maps.places {
@@ -64,6 +129,11 @@ declare global {
   interface Window {
     google?: {
       maps?: {
+        Map?: typeof google.maps.Map;
+        Marker?: typeof google.maps.Marker;
+        Polyline?: typeof google.maps.Polyline;
+        LatLngBounds?: typeof google.maps.LatLngBounds;
+        SymbolPath?: typeof google.maps.SymbolPath;
         places?: typeof google.maps.places;
         importLibrary?: (name: string) => Promise<unknown>;
       };

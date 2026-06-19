@@ -5,7 +5,7 @@ const MAP_SCRIPT_ID = 'google-maps-tracking-sdk';
 let mapLoadPromise: Promise<void> | null = null;
 
 function mapReady(): boolean {
-  return Boolean(window.google?.maps?.Map);
+  return typeof window.google?.maps?.Map === 'function';
 }
 
 function waitForMapReady(timeoutMs = 15000): Promise<void> {
@@ -42,7 +42,7 @@ export async function loadGoogleMapsForTracking(): Promise<void> {
   }
 
   if (!mapLoadPromise) {
-    mapLoadPromise = new Promise((resolve, reject) => {
+    mapLoadPromise = new Promise<void>((resolve, reject) => {
       const existing = document.getElementById(MAP_SCRIPT_ID);
       if (existing) {
         waitForMapReady().then(resolve).catch(reject);
@@ -57,13 +57,13 @@ export async function loadGoogleMapsForTracking(): Promise<void> {
       script.onload = () => waitForMapReady().then(resolve).catch(reject);
       script.onerror = () => reject(new Error('Failed to load Google Maps'));
       document.head.appendChild(script);
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       mapLoadPromise = null;
       throw err;
     });
   }
 
-  return mapLoadPromise;
+  await mapLoadPromise;
 }
 
 export const STATUS_COLORS: Record<string, string> = {
