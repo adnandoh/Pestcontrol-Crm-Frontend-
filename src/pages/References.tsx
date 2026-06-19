@@ -229,7 +229,7 @@ const References: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.map((reference, index) => {
+                  {sortedData.map((reference) => {
                     const percentage = stats.totalReferences > 0 
                       ? ((reference.reference_count / stats.totalReferences) * 100).toFixed(1)
                       : '0.0';
