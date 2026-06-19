@@ -39,6 +39,7 @@ import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import FeedbackModal from '../components/crm/FeedbackModal';
 import CompleteJobModal, { type CompleteJobPaymentPayload } from '../components/crm/CompleteJobModal';
+import { requiresPaymentOnCompletion } from '../utils/bookingPayment';
 import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
 import { downloadInvoicePdf } from '../utils/invoicePdf';
@@ -540,6 +541,33 @@ const JobCards: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const completeBookingWithoutPayment = async (jobId: number) => {
+    try {
+      setLoading(true);
+      await enhancedApiService.updateJobCard(jobId, { status: 'Done' });
+      loadJobCards(pagination.current, filters);
+      refreshCounts();
+    } catch (error) {
+      console.error('Failed to complete booking:', error);
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Failed to complete booking. Please try again.';
+      alert(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompleteBookingClick = (job: JobCard) => {
+    setSelectedJobCard(job);
+    if (requiresPaymentOnCompletion(job)) {
+      setDoneId(job.id);
+      return;
+    }
+    void completeBookingWithoutPayment(job.id);
   };
 
   const handleDownloadInvoice = async (job: JobCard) => {
@@ -1377,10 +1405,7 @@ const JobCards: React.FC = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setSelectedJobCard(job);
-                                    setDoneId(job.id);
-                                  }}
+                                  onClick={() => handleCompleteBookingClick(job)}
                                   className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase rounded shadow-sm transition-all"
                                   title="Mark service complete"
                                 >
@@ -1433,10 +1458,7 @@ const JobCards: React.FC = () => {
                                 </button>
                                 
                                 <button 
-                                  onClick={() => {
-                                    setSelectedJobCard(job);
-                                    setDoneId(job.id);
-                                  }} 
+                                  onClick={() => handleCompleteBookingClick(job)} 
                                   className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
                                   title="Mark as Done"
                                 >
