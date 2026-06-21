@@ -100,6 +100,12 @@ export const API_ENDPOINTS = {
     LOCATION_HISTORY: (technicianId: number) => `/staff-tracking/location/history/${technicianId}/`,
     DISTANCE: '/staff-tracking/location/distance/',
     SETTINGS: '/staff-tracking/settings/',
+    VISITS: '/staff-tracking/visits/',
+    TASKS: '/staff-tracking/tasks/',
+    LEAVE_APPLICATIONS: '/staff-tracking/leave/applications/',
+    LEAVE_REVIEW: (id: number) => `/staff-tracking/leave/applications/${id}/review/`,
+    EXPENSES: '/staff-tracking/expenses/',
+    EXPENSE_REVIEW: (id: number) => `/staff-tracking/expenses/${id}/review/`,
   },
 } as const;
 

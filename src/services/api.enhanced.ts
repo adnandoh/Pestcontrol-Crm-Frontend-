@@ -66,7 +66,7 @@ import type {
   StaffTrackingProfile,
   StaffTrackingAttendance,
   StaffTrackingHistory,
-  StaffTrackingDistanceRow,
+  StaffTrackingDistanceRow, FieldVisit, StaffTask, LeaveApplication, ExpenseClaim,
 } from '../types';
 
 function flattenValidationDetails(value: unknown, prefix = ''): string[] {
@@ -1574,6 +1574,56 @@ class EnhancedApiService {
       this.api.get<StaffTrackingDistanceRow[]>(API_ENDPOINTS.STAFF_TRACKING.DISTANCE, {
         params: date ? { date } : undefined,
       }),
+    );
+    return result.data;
+  }
+
+
+  async getStaffTrackingVisits(params?: { status?: string; date?: string; profile_id?: number }): Promise<FieldVisit[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<FieldVisit[]>(API_ENDPOINTS.STAFF_TRACKING.VISITS, { params }),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingTasks(params?: { status?: string; assigned_to?: number }): Promise<StaffTask[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<StaffTask[]>(API_ENDPOINTS.STAFF_TRACKING.TASKS, { params }),
+    );
+    return result.data;
+  }
+
+  async createStaffTrackingTask(body: Partial<StaffTask>): Promise<StaffTask> {
+    const result = await this.retryRequest(() =>
+      this.api.post<StaffTask>(API_ENDPOINTS.STAFF_TRACKING.TASKS, body),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingLeaveApplications(params?: { status?: string }): Promise<LeaveApplication[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<LeaveApplication[]>(API_ENDPOINTS.STAFF_TRACKING.LEAVE_APPLICATIONS, { params }),
+    );
+    return result.data;
+  }
+
+  async reviewStaffTrackingLeave(id: number, body: { approved: boolean; comment?: string }): Promise<LeaveApplication> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<LeaveApplication>(API_ENDPOINTS.STAFF_TRACKING.LEAVE_REVIEW(id), body),
+    );
+    return result.data;
+  }
+
+  async getStaffTrackingExpenses(params?: { status?: string }): Promise<ExpenseClaim[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<ExpenseClaim[]>(API_ENDPOINTS.STAFF_TRACKING.EXPENSES, { params }),
+    );
+    return result.data;
+  }
+
+  async reviewStaffTrackingExpense(id: number, body: { approved: boolean; comment?: string }): Promise<ExpenseClaim> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<ExpenseClaim>(API_ENDPOINTS.STAFF_TRACKING.EXPENSE_REVIEW(id), body),
     );
     return result.data;
   }

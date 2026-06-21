@@ -25,6 +25,9 @@ import {
   Map,
   Clock,
   Route,
+  MapPin,
+  CheckSquare,
+  Calendar,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -125,7 +128,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
   const staffTrackingItems = [
     { name: 'Live Map', href: '/staff-tracking/live', icon: Map },
     { name: 'Staff Directory', href: '/staff-tracking/staff', icon: Users },
+    { name: 'Visits', href: '/staff-tracking/visits', icon: MapPin },
+    { name: 'Tasks', href: '/staff-tracking/tasks', icon: CheckSquare },
     { name: 'Attendance', href: '/staff-tracking/attendance', icon: Clock },
+    { name: 'Leave', href: '/staff-tracking/leave', icon: Calendar },
+    { name: 'Expenses', href: '/staff-tracking/expenses', icon: Receipt },
     { name: 'Location History', href: '/staff-tracking/history', icon: Route },
   ];
 

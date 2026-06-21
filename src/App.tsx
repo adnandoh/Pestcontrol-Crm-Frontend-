@@ -36,6 +36,10 @@ import StaffTrackingLiveMap from './pages/staff-tracking/LiveMap';
 import StaffTrackingDirectory from './pages/staff-tracking/Directory';
 import StaffTrackingAttendance from './pages/staff-tracking/Attendance';
 import StaffTrackingHistory from './pages/staff-tracking/History';
+import StaffTrackingVisits from './pages/staff-tracking/Visits';
+import StaffTrackingTasks from './pages/staff-tracking/Tasks';
+import StaffTrackingLeave from './pages/staff-tracking/Leave';
+import StaffTrackingExpenses from './pages/staff-tracking/Expenses';
 import TechnicianSelfies from './pages/TechnicianSelfies';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
@@ -144,6 +148,10 @@ const AppContent: React.FC = () => {
                     <Route path="/staff-tracking/staff" element={<StaffTrackingDirectory />} />
                     <Route path="/staff-tracking/attendance" element={<StaffTrackingAttendance />} />
                     <Route path="/staff-tracking/history" element={<StaffTrackingHistory />} />
+                    <Route path="/staff-tracking/visits" element={<StaffTrackingVisits />} />
+                    <Route path="/staff-tracking/tasks" element={<StaffTrackingTasks />} />
+                    <Route path="/staff-tracking/leave" element={<StaffTrackingLeave />} />
+                    <Route path="/staff-tracking/expenses" element={<StaffTrackingExpenses />} />
                     <Route
                       path="/staff"
                       element={

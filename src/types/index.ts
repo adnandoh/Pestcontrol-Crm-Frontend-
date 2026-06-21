@@ -1196,3 +1196,53 @@ export interface CollectPaymentPayload {
   payment_mode: 'Cash' | 'Online';
   remarks?: string;
 }
+
+
+export interface FieldVisit {
+  id: number;
+  profile: number;
+  staff_name: string;
+  jobcard: number | null;
+  job_code: string | null;
+  title: string;
+  client_name: string;
+  address: string;
+  scheduled_at: string;
+  status: string;
+  check_in_at: string | null;
+  check_out_at: string | null;
+  notes: string;
+}
+
+export interface StaffTask {
+  id: number;
+  title: string;
+  description: string;
+  assigned_to: number;
+  assignee_name: string;
+  priority: string;
+  status: string;
+  due_at: string | null;
+  completed_at: string | null;
+}
+
+export interface LeaveApplication {
+  id: number;
+  staff_name: string;
+  leave_type_name: string;
+  start_date: string;
+  end_date: string;
+  days_count: number;
+  reason: string;
+  status: string;
+}
+
+export interface ExpenseClaim {
+  id: number;
+  staff_name: string;
+  category_name: string;
+  expense_date: string;
+  amount: string | number;
+  status: string;
+  description: string;
+}
