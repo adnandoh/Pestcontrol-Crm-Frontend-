@@ -7,7 +7,6 @@ import {
   Search,
   CheckCircle,
   Ban,
-  Trash2,
   ChevronDown,
   UserMinus,
   CheckSquare,
@@ -108,7 +107,6 @@ const JobCards: React.FC = () => {
   const [partnerAppError, setPartnerAppError] = useState<string | null>(null);
   const [partnerAppLoading, setPartnerAppLoading] = useState(false);
   const [doneId, setDoneId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [removeTechId, setRemoveTechId] = useState<number | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -430,20 +428,6 @@ const JobCards: React.FC = () => {
     }
   };
 
-  const handleDeleteReminder = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this reminder?')) return;
-    try {
-      setLoading(true);
-      await enhancedApiService.deleteReminder(id);
-      loadReminders(filters);
-      refreshCounts();
-    } catch (error) {
-      console.error('Failed to delete reminder:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleOpenAssign = (job: JobCard) => {
     setSelectedJobCard(job);
     setShowAssignModal(true);
@@ -579,23 +563,6 @@ const JobCards: React.FC = () => {
       alert('Invoice download failed. Try again.');
     } finally {
       setInvoiceLoadingId(null);
-    }
-  };
-
-  const handleDeleteJobCard = async () => {
-    if (!deleteId) return;
-    try {
-      setLoading(true);
-      await enhancedApiService.deleteJobCard(deleteId);
-      setDeleteId(null);
-      alert('Booking deleted successfully');
-      loadJobCards(pagination.current, filters);
-      refreshCounts();
-    } catch (error) {
-      console.error('Failed to delete booking:', error);
-      alert('Failed to delete booking');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -1014,13 +981,6 @@ const JobCards: React.FC = () => {
                             title="Edit Reminder"
                           >
                             <Edit className="h-3.5 w-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteReminder(reminder.id)}
-                            className="p-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
-                            title="Delete Reminder"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
@@ -1555,14 +1515,6 @@ const JobCards: React.FC = () => {
                             )}
                             
                             <button 
-                              onClick={() => setDeleteId(job.id)} 
-                              className="p-2 bg-red-50 hover:bg-red-900 text-red-700 hover:text-white rounded shadow-xs border border-red-100 transition-all group/delete"
-                              title="Delete Permanently"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-
-                            <button 
                               onClick={() => navigate(`/jobcards/edit/${job.id}`)} 
                               className="p-2 bg-gray-50 hover:bg-blue-600 text-gray-400 hover:text-white rounded shadow-xs border border-gray-100 transition-all group/edit"
                               title="Edit Booking"
@@ -1721,15 +1673,6 @@ const JobCards: React.FC = () => {
         onConfirm={handleMarkAsDone}
         jobCard={selectedJobCard}
         isLoading={loading}
-      />
-      <ConfirmationModal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDeleteJobCard}
-        title="Delete Booking Permanently"
-        message="Are you sure you want to DELETE this booking forever? This action cannot be undone and the record will be removed from all tabs."
-        confirmText="Yes, Delete Permanently"
-        type="danger"
       />
       <FeedbackModal
         isOpen={showFeedbackModal}

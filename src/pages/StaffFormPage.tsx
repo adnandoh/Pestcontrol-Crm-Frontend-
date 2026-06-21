@@ -7,23 +7,19 @@ import {
   Key,
   Loader2,
   Save,
-  Trash2,
   UserPlus,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { ConfirmationModal } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { STAFF_ROLE_OPTIONS, type StaffRoleLabel } from '../constants/staffRoles';
 import type { StaffUser } from '../types';
 import { cn } from '../utils/cn';
-import { useAuth } from '../hooks/useAuth';
 
 const StaffFormPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
   const isEdit = Boolean(id);
   const staffId = id ? Number(id) : null;
 
@@ -33,7 +29,6 @@ const StaffFormPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -120,18 +115,6 @@ const StaffFormPage: React.FC = () => {
       alert(err.message || 'Failed to reset password');
     }
   };
-
-  const handleDelete = async () => {
-    if (!staffId) return;
-    try {
-      await enhancedApiService.deleteStaff(staffId);
-      navigate('/staff');
-    } catch {
-      alert('Could not delete staff member');
-    }
-  };
-
-  const isSelf = currentUser?.id === staffId;
 
   if (loading) {
     return (
@@ -344,33 +327,6 @@ const StaffFormPage: React.FC = () => {
           </div>
         </Card>
       )}
-
-      {isEdit && !isSelf && (
-        <Card className="p-6 border border-red-100">
-          <h3 className="text-sm font-bold text-red-800 mb-2">Danger zone</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Removing this user revokes all CRM access immediately.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="text-red-600 border-red-200 hover:bg-red-50 gap-2"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete employee
-          </Button>
-        </Card>
-      )}
-
-      <ConfirmationModal
-        isOpen={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleDelete}
-        title="Delete employee?"
-        message={`Remove ${member?.name}? This cannot be undone.`}
-        type="danger"
-      />
     </div>
   );
 };

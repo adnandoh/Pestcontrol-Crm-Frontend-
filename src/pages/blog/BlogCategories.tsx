@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Tag, FolderOpen, ArrowLeft } from 'lucide-react';
+import { Plus, Tag, FolderOpen, ArrowLeft } from 'lucide-react';
 import {
   getCategories, getTags, createCategory, createTag,
-  deleteCategory, deleteTag
 } from '../../services/blogApi';
 import type { BlogCategory, BlogTag } from '../../types';
 
@@ -15,8 +14,6 @@ const BlogCategories: React.FC = () => {
   const [newTagName, setNewTagName] = useState('');
   const [savingCat, setSavingCat] = useState(false);
   const [savingTag, setSavingTag] = useState(false);
-  const [deletingCatId, setDeletingCatId] = useState<number | null>(null);
-  const [deletingTagId, setDeletingTagId] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([getCategories(), getTags()])
@@ -47,26 +44,6 @@ const BlogCategories: React.FC = () => {
     finally { setSavingTag(false); }
   };
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!window.confirm('Delete this category? Blogs using it will have no category.')) return;
-    setDeletingCatId(id);
-    try {
-      await deleteCategory(id);
-      setCategories(prev => prev.filter(c => c.id !== id));
-    } catch (err) { console.error(err); }
-    finally { setDeletingCatId(null); }
-  };
-
-  const handleDeleteTag = async (id: number) => {
-    if (!window.confirm('Delete this tag?')) return;
-    setDeletingTagId(id);
-    try {
-      await deleteTag(id);
-      setTags(prev => prev.filter(t => t.id !== id));
-    } catch (err) { console.error(err); }
-    finally { setDeletingTagId(null); }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -77,7 +54,6 @@ const BlogCategories: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Link to="/blog" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <ArrowLeft className="h-4 w-4 text-gray-600" />
@@ -89,14 +65,12 @@ const BlogCategories: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Categories */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 bg-gray-50">
             <FolderOpen className="h-4 w-4 text-blue-600" />
             <h2 className="font-bold text-gray-900 text-sm">Categories ({categories.length})</h2>
           </div>
 
-          {/* Add Form */}
           <div className="px-4 py-3 border-b border-gray-100 space-y-2">
             <input
               type="text"
@@ -123,7 +97,6 @@ const BlogCategories: React.FC = () => {
             </button>
           </div>
 
-          {/* List */}
           <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
             {categories.length === 0 ? (
               <p className="text-center text-sm text-gray-400 py-6">No categories yet</p>
@@ -133,26 +106,17 @@ const BlogCategories: React.FC = () => {
                   <p className="text-sm font-semibold text-gray-900">{cat.name}</p>
                   <p className="text-xs text-gray-400">/{cat.slug} · {cat.blog_count ?? 0} posts</p>
                 </div>
-                <button
-                  onClick={() => handleDeleteCategory(cat.id)}
-                  disabled={deletingCatId === cat.id}
-                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Tags */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 bg-gray-50">
             <Tag className="h-4 w-4 text-purple-600" />
             <h2 className="font-bold text-gray-900 text-sm">Tags ({tags.length})</h2>
           </div>
 
-          {/* Add Form */}
           <div className="px-4 py-3 border-b border-gray-100 flex gap-2">
             <input
               type="text"
@@ -171,23 +135,15 @@ const BlogCategories: React.FC = () => {
             </button>
           </div>
 
-          {/* Tag Cloud */}
           <div className="px-4 py-3 flex flex-wrap gap-2 max-h-64 overflow-y-auto">
             {tags.length === 0 ? (
               <p className="text-sm text-gray-400 w-full text-center py-6">No tags yet</p>
             ) : tags.map(tag => (
-              <span key={tag.id} className="flex items-center gap-1.5 pl-2.5 pr-1 py-1 bg-gray-100 rounded-full text-xs font-semibold text-gray-700 group">
+              <span key={tag.id} className="flex items-center gap-1.5 pl-2.5 pr-2.5 py-1 bg-gray-100 rounded-full text-xs font-semibold text-gray-700">
                 {tag.name}
                 {tag.blog_count !== undefined && (
                   <span className="text-gray-400">({tag.blog_count})</span>
                 )}
-                <button
-                  onClick={() => handleDeleteTag(tag.id)}
-                  disabled={deletingTagId === tag.id}
-                  className="w-4 h-4 rounded-full bg-gray-200 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
-                >
-                  <Trash2 className="h-2.5 w-2.5" />
-                </button>
               </span>
             ))}
           </div>

@@ -3,7 +3,6 @@ import {
   Plus, 
   Search, 
   Edit2, 
-  Trash2, 
   CheckCircle2,
   XCircle,
   Shield,
@@ -16,7 +15,6 @@ import {
   Badge, 
   Modal,
   PageLoading,
-  ConfirmationModal
 } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -29,7 +27,6 @@ const MasterStates: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [bulkJson, setBulkJson] = useState('');
   const [bulkMode, setBulkMode] = useState<'json' | 'simple'>('simple');
@@ -121,19 +118,6 @@ const MasterStates: React.FC = () => {
     } catch (error: any) {
       console.error('Error bulk adding states:', error);
       alert('BULK ADD FAILED: ' + (error.message || 'CHECK FORMAT'));
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selectedState) return;
-    try {
-      await enhancedApiService.deleteState(selectedState.id);
-      setIsDeleteModalOpen(false);
-      fetchData();
-      alert('STATE DELETED');
-    } catch (error) {
-      console.error('Error deleting state:', error);
-      alert('FAILED TO DELETE STATE');
     }
   };
 
@@ -247,17 +231,6 @@ const MasterStates: React.FC = () => {
                           className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 rounded-lg"
                         >
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            setSelectedState(state);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
@@ -382,15 +355,6 @@ const MasterStates: React.FC = () => {
           </div>
         </form>
       </Modal>
-
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="DELETE STATE?"
-        message={`ARE YOU SURE YOU WANT TO REMOVE ${selectedState?.name}? THIS MAY AFFECT ASSOCIATED CITIES.`}
-        type="danger"
-      />
     </div>
   );
 };

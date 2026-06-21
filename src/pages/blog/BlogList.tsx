@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Plus, Search, Edit, Trash2, Eye, FileText,
+  Plus, Search, Edit, Eye, FileText,
   Clock, ToggleLeft, ToggleRight,
   ChevronLeft, ChevronRight, RefreshCw, Globe
 } from 'lucide-react';
-import { getBlogs, deleteBlog, togglePublish } from '../../services/blogApi';
+import { getBlogs, togglePublish } from '../../services/blogApi';
 import type { BlogListItem, BlogFilters } from '../../types';
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
@@ -19,9 +19,7 @@ const BlogList: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [pagination, setPagination] = useState({ count: 0, totalPages: 0, current: 1 });
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<BlogListItem | null>(null);
 
   const loadBlogs = useCallback(async (overrides?: Partial<BlogFilters>) => {
     try {
@@ -77,21 +75,6 @@ const BlogList: React.FC = () => {
       console.error('Toggle publish failed:', err);
     } finally {
       setTogglingId(null);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirmDelete) return;
-    setDeletingId(confirmDelete.id);
-    try {
-      await deleteBlog(confirmDelete.id);
-      setBlogs(prev => prev.filter(b => b.id !== confirmDelete.id));
-      setPagination(prev => ({ ...prev, count: prev.count - 1 }));
-    } catch (err) {
-      console.error('Delete failed:', err);
-    } finally {
-      setDeletingId(null);
-      setConfirmDelete(null);
     }
   };
 
@@ -179,7 +162,6 @@ const BlogList: React.FC = () => {
                       blog={blog}
                       isToggling={togglingId === blog.id}
                       onToggle={() => handleTogglePublish(blog)}
-                      onDeleteClick={() => setConfirmDelete(blog)}
                     />
                   ))}
                 </tbody>
@@ -230,36 +212,6 @@ const BlogList: React.FC = () => {
           </>
         )}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="h-5 w-5 text-red-600" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 text-center">Delete Blog?</h3>
-            <p className="text-sm text-gray-500 text-center mt-1 line-clamp-2">
-              "{confirmDelete.title}" will be permanently deleted.
-            </p>
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deletingId === confirmDelete.id}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
-              >
-                {deletingId === confirmDelete.id ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -268,10 +220,9 @@ interface BlogRowProps {
   blog: BlogListItem;
   isToggling: boolean;
   onToggle: () => void;
-  onDeleteClick: () => void;
 }
 
-const BlogRow: React.FC<BlogRowProps> = ({ blog, isToggling, onToggle, onDeleteClick }) => {
+const BlogRow: React.FC<BlogRowProps> = ({ blog, isToggling, onToggle }) => {
   const isPublished = blog.status === 'published';
 
   return (
@@ -370,15 +321,6 @@ const BlogRow: React.FC<BlogRowProps> = ({ blog, isToggling, onToggle, onDeleteC
           >
             <Edit className="h-4 w-4" />
           </Link>
-
-          {/* Delete */}
-          <button
-            onClick={onDeleteClick}
-            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
         </div>
       </td>
     </tr>

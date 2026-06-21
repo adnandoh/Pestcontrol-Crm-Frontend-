@@ -3,8 +3,6 @@ import { History, MessageSquarePlus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
-import { getUserRole } from '../../utils/roles';
-import { useAuth } from '../../hooks/useAuth';
 import { Modal } from '../ui/Modal';
 import type { InquiryRemarkEntry, LatestRemarkSummary, PaginatedResponse } from '../../types';
 
@@ -40,8 +38,6 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
   compact = false,
   onRemarkAdded,
 }) => {
-  const { user } = useAuth();
-  const isAdmin = getUserRole(user) === 'admin' || getUserRole(user) === 'super_admin';
   const isTable = variant === 'table';
   const isDense = isTable && compact;
 
@@ -262,23 +258,6 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
                   {r.created_by_name || 'Staff'}
                   {r.remark_type ? ` · ${r.remark_type}` : ''}
                 </p>
-                {isAdmin && idx > 0 && (
-                  <button
-                    type="button"
-                    className="mt-2 text-[10px] font-semibold text-red-600 hover:underline"
-                    onClick={async () => {
-                      if (!window.confirm('Delete this remark?')) return;
-                      if (sourceType === 'crm') {
-                        await enhancedApiService.deleteCRMInquiryRemark(r.id);
-                      } else {
-                        await enhancedApiService.deleteWebsiteLeadRemark(r.id);
-                      }
-                      await loadHistory();
-                    }}
-                  >
-                    Delete
-                  </button>
-                )}
               </div>
             ))
           )}

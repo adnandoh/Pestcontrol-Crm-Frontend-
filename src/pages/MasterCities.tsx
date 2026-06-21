@@ -4,7 +4,6 @@ import {
   Plus, 
   Search, 
   Edit2, 
-  Trash2, 
   CheckCircle2,
   XCircle,
   Shield
@@ -16,7 +15,6 @@ import {
   Badge, 
   Modal,
   PageLoading,
-  ConfirmationModal
 } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -30,7 +28,6 @@ const MasterCities: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [bulkJson, setBulkJson] = useState('');
   const { user } = useAuth();
@@ -151,17 +148,6 @@ const MasterCities: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedCity) return;
-    try {
-      await enhancedApiService.deleteCity(selectedCity.id);
-      setIsDeleteModalOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting city:', error);
-    }
-  };
-
   const openEditModal = (city: City) => {
     setSelectedCity(city);
     setFormData({
@@ -271,17 +257,6 @@ const MasterCities: React.FC = () => {
                           className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 rounded-lg"
                         >
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            setSelectedCity(city);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
@@ -437,15 +412,6 @@ const MasterCities: React.FC = () => {
           </div>
         </form>
       </Modal>
-
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="DELETE CITY?"
-        message={`ARE YOU SURE YOU WANT TO REMOVE ${selectedCity?.name}? THIS MAY AFFECT ASSOCIATED LOCATIONS.`}
-        type="danger"
-      />
     </div>
   );
 };

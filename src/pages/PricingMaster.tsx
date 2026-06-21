@@ -16,7 +16,6 @@ import {
   Badge,
   Modal,
   PageLoading,
-  ConfirmationModal,
 } from '../components/ui';
 import { Pagination } from '../components/ui/Pagination';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -82,7 +81,6 @@ const PricingMaster: React.FC = () => {
   const [filterActive, setFilterActive] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<PricingRate | null>(null);
   const [formData, setFormData] = useState<PricingRateFormData>(emptyForm());
   const [saving, setSaving] = useState(false);
@@ -196,19 +194,6 @@ const PricingMaster: React.FC = () => {
       alert('Failed to save pricing rate. Check all fields and try again.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDeactivate = async () => {
-    if (!selectedRate || !canEdit) return;
-    try {
-      await enhancedApiService.deletePricingRate(selectedRate.id);
-      setIsDeleteOpen(false);
-      setSelectedRate(null);
-      fetchRates();
-    } catch (err) {
-      console.error('Deactivate failed:', err);
-      alert('Failed to deactivate rate.');
     }
   };
 
@@ -386,16 +371,6 @@ const PricingMaster: React.FC = () => {
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
-                            {rate.is_active && (
-                              <button
-                                type="button"
-                                onClick={() => { setSelectedRate(rate); setIsDeleteOpen(true); }}
-                                className="p-2 rounded-lg hover:bg-red-50 text-red-500"
-                                title="Deactivate"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </button>
-                            )}
                           </div>
                         </td>
                       )}
@@ -588,16 +563,6 @@ const PricingMaster: React.FC = () => {
           </div>
         </form>
       </Modal>
-
-      <ConfirmationModal
-        isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
-        onConfirm={handleDeactivate}
-        title="Deactivate Rate?"
-        message={`Deactivate ${selectedRate?.service_package} — ${selectedRate?.area_key} for ${selectedRate?.region_name}? Existing bookings will not be affected.`}
-        confirmText="Deactivate"
-        type="danger"
-      />
     </div>
   );
 };

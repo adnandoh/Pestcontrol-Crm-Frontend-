@@ -7,7 +7,6 @@ import {
   Search,
   Key,
   Pencil,
-  Trash2,
   ShieldCheck,
   Smartphone,
   Filter,
@@ -15,7 +14,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { PageLoading, ConfirmationModal } from '../components/ui';
+import { PageLoading } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { StaffUser } from '../types';
 import { cn } from '../utils/cn';
@@ -26,7 +25,6 @@ const StaffManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [deleteTarget, setDeleteTarget] = useState<StaffUser | null>(null);
 
   const fetchStaff = async () => {
     try {
@@ -52,17 +50,6 @@ const StaffManagement: React.FC = () => {
     if (roleFilter === 'all') return true;
     return m.role_display === roleFilter;
   });
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await enhancedApiService.deleteStaff(deleteTarget.id);
-      setDeleteTarget(null);
-      fetchStaff();
-    } catch {
-      alert('Could not delete staff member');
-    }
-  };
 
   if (loading && staff.length === 0) {
     return <PageLoading />;
@@ -262,15 +249,6 @@ const StaffManagement: React.FC = () => {
                             <Key className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 w-9 p-0 text-red-600"
-                          title="Delete"
-                          onClick={() => setDeleteTarget(member)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -281,14 +259,6 @@ const StaffManagement: React.FC = () => {
         </div>
       </Card>
 
-      <ConfirmationModal
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="Delete employee?"
-        message={`Remove ${deleteTarget?.name}? They will lose CRM access immediately.`}
-        type="danger"
-      />
     </div>
   );
 };

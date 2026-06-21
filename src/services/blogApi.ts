@@ -102,10 +102,6 @@ export const updateBlog = async (id: number, formData: Partial<BlogFormData>): P
   return data;
 };
 
-export const deleteBlog = async (id: number): Promise<void> => {
-  await api.delete(`/blogs/${id}/delete/`);
-};
-
 export const togglePublish = async (id: number): Promise<{ status: string; publish_date: string }> => {
   const { data } = await api.patch(`/blogs/${id}/toggle-publish/`);
   return data;
@@ -146,10 +142,6 @@ export const createCategory = async (payload: { name: string; description?: stri
   return data;
 };
 
-export const deleteCategory = async (id: number): Promise<void> => {
-  await api.delete(`/blogs/categories/${id}/`);
-};
-
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
 export const getTags = async (): Promise<BlogTag[]> => {
@@ -160,10 +152,6 @@ export const getTags = async (): Promise<BlogTag[]> => {
 export const createTag = async (name: string): Promise<BlogTag> => {
   const { data } = await api.post('/blogs/tags/', { name });
   return data;
-};
-
-export const deleteTag = async (id: number): Promise<void> => {
-  await api.delete(`/blogs/tags/${id}/`);
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

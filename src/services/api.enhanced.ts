@@ -489,13 +489,6 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async deleteTechnician(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.TECHNICIANS}${id}/`),
-    );
-    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
-  }
-
   async approvePartnerApp(technicianId: number): Promise<Technician> {
     const result = await this.retryRequest(() =>
       this.api.post<{ technician: Technician }>(
@@ -599,13 +592,6 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async deleteCRMInquiry(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/`)
-    );
-    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
-  }
-
   async convertInquiryToBooking(id: number): Promise<{ job_card_id: number; job_card_code: string }> {
     const result = await this.retryRequest(() =>
       this.api.post<{ job_card_id: number; job_card_code: string }>(`${API_ENDPOINTS.CRM_INQUIRIES}${id}/convert/`)
@@ -673,13 +659,6 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async deleteCRMInquiryRemark(remarkId: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.CRM_INQUIRIES}remarks/${remarkId}/`),
-    );
-    apiCache.deletePattern(CACHE_KEYS.CRM_INQUIRIES);
-  }
-
   async getWebsiteLeadRemarks(
     leadId: number,
     params?: { page?: number; page_size?: number },
@@ -705,13 +684,6 @@ class EnhancedApiService {
     );
     apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
     return result.data;
-  }
-
-  async deleteWebsiteLeadRemark(remarkId: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.WEBSITE_LEADS}remarks/${remarkId}/`),
-    );
-    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
   }
 
   async getCRMInquiryReminders(params?: { from?: string; to?: string }): Promise<{ count: number; results: CRMInquiry[] }> {
@@ -795,16 +767,6 @@ class EnhancedApiService {
     apiCache.deletePattern(`${API_ENDPOINTS.CLIENTS}${id}`);
     
     return result.data;
-  }
-
-  async deleteClient(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.CLIENTS}${id}/`)
-    );
-
-    // Invalidate related caches
-    apiCache.deletePattern(CACHE_KEYS.CLIENTS);
-    apiCache.deletePattern(`${API_ENDPOINTS.CLIENTS}${id}`);
   }
 
   // Inquiry methods
@@ -921,16 +883,6 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
   }
 
-  async deleteInquiry(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.INQUIRIES}${id}/`)
-    );
-
-    // Invalidate related caches
-    apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
-    apiCache.deletePattern(`${API_ENDPOINTS.INQUIRIES}${id}`);
-  }
-
   // Reminder methods
   async getReminders(params?: ReminderFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<Reminder>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.REMINDERS, params);
@@ -961,13 +913,6 @@ class EnhancedApiService {
     );
     apiCache.deletePattern(CACHE_KEYS.REMINDERS);
     return result.data;
-  }
-
-  async deleteReminder(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.REMINDERS}${id}/`)
-    );
-    apiCache.deletePattern(CACHE_KEYS.REMINDERS);
   }
 
   async markReminderComplete(id: number): Promise<void> {
@@ -1283,17 +1228,6 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(API_ENDPOINTS.PENDING_PAYMENTS);
     return result.data;
-  }
-
-  async deleteJobCard(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.JOBCARDS}${id}/`)
-    );
-
-    // Invalidate related caches
-    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
-    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
-    apiCache.deletePattern(CACHE_KEYS.DASHBOARD_STATS);
   }
 
   async checkClientExists(mobile: string): Promise<{ exists: boolean; client?: Client }> {
@@ -1795,11 +1729,6 @@ class EnhancedApiService {
     return response.data;
   }
 
-  async deleteStaff(id: number): Promise<void> {
-    await this.api.delete(`/staff/${id}/`);
-    apiCache.deletePattern('/staff/');
-  }
-
   async resetStaffPassword(id: number, password: string): Promise<any> {
     const response = await this.api.post(`/staff/${id}/reset_password/`, { password });
     return response.data;
@@ -1830,10 +1759,6 @@ class EnhancedApiService {
     return this.api.patch<Country>(`/countries/${id}/`, data).then(r => r.data);
   }
 
-  async deleteCountry(id: number): Promise<void> {
-    await this.api.delete(`/countries/${id}/`);
-  }
-
   async bulkCreateCountries(data: any[]): Promise<Country[]> {
     return this.api.post<Country[]>('/countries/bulk-create/', data).then(r => r.data);
   }
@@ -1850,10 +1775,6 @@ class EnhancedApiService {
     return this.api.patch<State>(`/states/${id}/`, data).then(r => r.data);
   }
 
-  async deleteState(id: number): Promise<void> {
-    await this.api.delete(`/states/${id}/`);
-  }
-
   async bulkCreateStates(data: any[]): Promise<State[]> {
     return this.api.post<State[]>('/states/bulk-create/', data).then(r => r.data);
   }
@@ -1868,10 +1789,6 @@ class EnhancedApiService {
 
   async updateCity(id: number, data: any): Promise<City> {
     return this.api.patch<City>(`/cities/${id}/`, data).then(r => r.data);
-  }
-
-  async deleteCity(id: number): Promise<void> {
-    await this.api.delete(`/cities/${id}/`);
   }
 
   async bulkCreateCities(data: any[]): Promise<City[]> {
@@ -1892,10 +1809,6 @@ class EnhancedApiService {
 
   async updateMasterLocation(id: number, data: any): Promise<MasterLocation> {
     return this.api.patch<MasterLocation>(`/locations/${id}/`, data).then(r => r.data);
-  }
-
-  async deleteMasterLocation(id: number): Promise<void> {
-    await this.api.delete(`/locations/${id}/`);
   }
 
   async bulkCreateMasterLocations(data: any[]): Promise<MasterLocation[]> {
@@ -1933,11 +1846,6 @@ class EnhancedApiService {
     const result = await this.api.patch<PricingRate>(`${API_ENDPOINTS.PRICING_RATES}${id}/`, data);
     apiCache.deletePattern(CACHE_KEYS.PRICING_RATES);
     return result.data;
-  }
-
-  async deletePricingRate(id: number): Promise<void> {
-    await this.api.delete(`${API_ENDPOINTS.PRICING_RATES}${id}/`);
-    apiCache.deletePattern(CACHE_KEYS.PRICING_RATES);
   }
 
   async getPricingAuditLogs(params?: {
@@ -1998,13 +1906,6 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
     apiCache.deletePattern(`${API_ENDPOINTS.QUOTATIONS}${id}`);
     return result.data;
-  }
-
-  async deleteQuotation(id: number): Promise<void> {
-    await this.retryRequest(() =>
-      this.api.delete(`${API_ENDPOINTS.QUOTATIONS}${id}/`)
-    );
-    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
   }
 
   async convertQuotationToBooking(id: number): Promise<{ booking_id: number; booking_code: string }> {
