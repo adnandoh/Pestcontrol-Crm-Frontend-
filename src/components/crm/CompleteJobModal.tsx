@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, CheckCircle, Wallet, CreditCard } from 'lucide-react';
 import type { JobCard } from '../../types';
+import { getEffectiveServiceAmount } from '../../utils/bookingPayment';
 
 export type PaymentCollectionType = 'full' | 'half' | 'custom';
 
@@ -37,10 +38,8 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
   isLoading = false,
 }) => {
   const serviceAmount = useMemo(() => {
-    if (jobCard?.total_amount && Number(jobCard.total_amount) > 0) {
-      return parseAmount(jobCard.total_amount);
-    }
-    return parseAmount(jobCard?.price);
+    if (!jobCard) return 0;
+    return getEffectiveServiceAmount(jobCard);
   }, [jobCard]);
 
   const [collectionType, setCollectionType] = useState<PaymentCollectionType>('full');
