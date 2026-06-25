@@ -689,7 +689,7 @@ const JobCards: React.FC = () => {
   };
 
   const bookingTableColSpan =
-    activeTab === 'upcoming_services' || activeTab === 'upcoming_renewals' ? 12 : 11;
+    activeTab === 'upcoming_services' ? 13 : activeTab === 'upcoming_renewals' ? 12 : 11;
 
   return (
     <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full">
@@ -838,7 +838,10 @@ const JobCards: React.FC = () => {
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Booking Date & Time</th>
                     <th className="px-4 py-3 text-left font-extrabold tracking-tighter">Created By</th>
                     {activeTab === 'upcoming_services' && (
-                      <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Next Visit</th>
+                      <>
+                        <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-violet-700">Visit Type</th>
+                        <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-blue-700">Scheduled / Next</th>
+                      </>
                     )}
                     {activeTab === 'upcoming_renewals' && (
                       <th className="px-4 py-3 text-left font-extrabold tracking-tighter text-amber-700">Renewal Due</th>
@@ -1141,6 +1144,11 @@ const JobCards: React.FC = () => {
 
                         {(job.is_service_call || job.is_followup_visit || job.included_in_amc || ((job.status === 'On Process' || job.status === 'Done') && job.next_service_date)) && (
                           <div className="mt-1 flex flex-wrap gap-1">
+                            {job.visit_type && (
+                              <span className="bg-violet-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase">
+                                {job.visit_type}
+                              </span>
+                            )}
                             {job.included_in_amc && (
                               <span className="bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-tighter uppercase italic">
                                 AMC FOLLOW-UP
@@ -1230,30 +1238,40 @@ const JobCards: React.FC = () => {
                       </div>
                     </td>
                     {activeTab === 'upcoming_services' && (
-                      <td className="px-4 py-4 bg-blue-50/30">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-black text-blue-700 text-[11px]">
-                            {job.schedule_datetime
-                              ? dayjs(job.schedule_datetime).tz('Asia/Kolkata').format('DD/MM/YYYY')
-                              : job.next_service_date
-                                ? dayjs(job.next_service_date).format('DD/MM/YYYY')
-                                : '---'}
+                      <>
+                        <td className="px-4 py-4">
+                          <span className="inline-block text-[9px] font-black uppercase tracking-wider bg-violet-600 text-white px-2 py-1 rounded">
+                            {job.visit_type || (job.included_in_amc ? 'AMC VISIT' : 'SERVICE VISIT')}
                           </span>
                           {(job.service_cycle && job.max_cycle && job.max_cycle > 1) && (
-                            <span className="text-[9px] font-black text-violet-700 uppercase tracking-tighter">
+                            <p className="text-[9px] font-black text-violet-700 uppercase tracking-tighter mt-1">
                               Visit {job.service_cycle} of {job.max_cycle}
-                            </span>
+                            </p>
                           )}
-                          {job.parent_job && (
-                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
-                              From booking #{job.parent_job}
+                        </td>
+                        <td className="px-4 py-4 bg-blue-50/30">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-black text-blue-700 text-[11px]">
+                              {job.schedule_datetime
+                                ? dayjs(job.schedule_datetime).tz('Asia/Kolkata').format('DD/MM/YYYY')
+                                : '---'}
                             </span>
-                          )}
-                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">
-                            Auto follow-up visit
-                          </span>
-                        </div>
-                      </td>
+                            {job.next_service_date && (
+                              <span className="text-[9px] font-bold text-blue-500">
+                                Next: {dayjs(job.next_service_date).format('DD/MM/YYYY')}
+                              </span>
+                            )}
+                            {job.parent_job && (
+                              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
+                                Booking #{job.parent_job}
+                              </span>
+                            )}
+                            {job.source_service && (
+                              <span className="text-[9px] font-semibold text-gray-600">{job.source_service}</span>
+                            )}
+                          </div>
+                        </td>
+                      </>
                     )}
                     {activeTab === 'upcoming_renewals' && (
                       <td className="px-4 py-4 bg-amber-50/30">

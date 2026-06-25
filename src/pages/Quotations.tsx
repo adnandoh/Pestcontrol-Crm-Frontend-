@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
+import { getQuotationDisplayName } from '../constants/quotation';
 
 const Quotations: React.FC = () => {
   const navigate = useNavigate();
@@ -234,7 +235,7 @@ const Quotations: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-gray-900">{q.customer_name}</span>
+                        <span className="text-sm font-bold text-gray-900">{getQuotationDisplayName(q)}</span>
                         <div className="flex items-center gap-2">
                           <CopyablePhone phone={q.mobile} className="text-xs text-gray-500" />
                           <span className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">

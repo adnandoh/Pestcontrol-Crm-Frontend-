@@ -30,12 +30,12 @@ import type {
 } from '../types';
 import {
   COMPANY,
-  DEFAULT_TERMS,
   DEFAULT_PAYMENT_TERMS,
   DEFAULT_SCOPES_RESIDENTIAL,
   QUOTATION_TYPES,
   SERVICE_PRESETS,
   FREQUENCY_OPTIONS,
+  getQuotationDisplayName,
 } from '../constants/quotation';
 
 const defaultExpiry = () => {
@@ -72,7 +72,7 @@ const CreateQuotation: React.FC = () => {
     license_number: COMPANY.license,
     expiry_date: defaultExpiry(),
     notes: '',
-    terms_and_conditions: DEFAULT_TERMS,
+    terms_and_conditions: '',
     master_state: undefined,
     master_city: undefined,
     master_location: undefined,
@@ -206,8 +206,8 @@ const CreateQuotation: React.FC = () => {
     }
 
     const taxable = Math.max(0, total_amount - discount);
-    const tax_amount = taxable * 0.18;
-    const grand_total = taxable + tax_amount;
+    const tax_amount = 0;
+    const grand_total = taxable;
 
     setFormData((prev) => ({
       ...prev,
@@ -244,10 +244,16 @@ const CreateQuotation: React.FC = () => {
   const handleSubmit = (e: React.FormEvent, goPreview = false) => {
     e.preventDefault();
     setPreviewAfterSave(goPreview);
+    const grandTotal = Math.max(0, (formData.total_amount ?? 0) - (formData.discount ?? 0));
     const payload = {
       ...formData,
+      customer_name: getQuotationDisplayName(formData),
+      pincode: '',
+      terms_and_conditions: '',
+      tax_amount: 0,
+      grand_total: grandTotal,
       contract_amount: formData.is_amc
-        ? formData.contract_amount || formData.grand_total
+        ? formData.contract_amount || grandTotal
         : 0,
     };
     if (isEdit) {
@@ -362,16 +368,6 @@ const CreateQuotation: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Full Name</Label>
-                <Input 
-                  required
-                  placeholder="e.g. John Doe"
-                  value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  className="bg-gray-50/50 border-gray-200"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Mobile Number</Label>
                 <Input 
                   required
@@ -394,6 +390,7 @@ const CreateQuotation: React.FC = () => {
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Contact Person</Label>
                 <Input
+                  required
                   placeholder="e.g. Mr. Sharma"
                   value={formData.contact_person || ''}
                   onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
@@ -467,15 +464,6 @@ const CreateQuotation: React.FC = () => {
                       state: state ? state.name : prev.state
                     }));
                   }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Pincode</Label>
-                <Input 
-                  placeholder="e.g. 400001"
-                  value={formData.pincode}
-                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                  className="bg-gray-50/50 border-gray-200"
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
@@ -700,11 +688,6 @@ const CreateQuotation: React.FC = () => {
                   }}
                 />
               </div>
-              <div className="flex justify-between text-sm opacity-80">
-                <span>Tax (18% GST)</span>
-                <span>₹{(formData.tax_amount ?? 0).toLocaleString()}</span>
-              </div>
-              
               <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
                   <span className="text-xs font-bold uppercase opacity-60">Grand Total</span>
@@ -794,18 +777,10 @@ const CreateQuotation: React.FC = () => {
         </Card>
 
         <Card className="p-6 shadow-sm border-gray-100 lg:col-span-2">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Terms & Conditions</h2>
-          <textarea
-            className="w-full min-h-[140px] px-4 py-3 text-sm border border-gray-200 rounded-xl bg-gray-50/50"
-            value={formData.terms_and_conditions || ''}
-            onChange={(e) =>
-              setFormData({ ...formData, terms_and_conditions: e.target.value })
-            }
-          />
-          <div className="mt-4 space-y-2">
+          <div className="space-y-2">
             <Label className="text-xs font-bold uppercase text-gray-500">Notes (shown on quotation)</Label>
             <textarea
-              className="w-full min-h-[60px] px-4 py-3 text-sm border border-gray-200 rounded-xl bg-amber-50/50"
+              className="w-full min-h-[80px] px-4 py-3 text-sm border border-gray-200 rounded-xl bg-amber-50/50"
               placeholder="Special instructions for customer..."
               value={formData.notes || ''}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

@@ -6,7 +6,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import QuotationDocument from '../components/quotation/QuotationDocument';
-import { COMPANY } from '../constants/quotation';
+import { COMPANY, getQuotationDisplayName } from '../constants/quotation';
 import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
 
 const QuotationPreview: React.FC = () => {
@@ -60,7 +60,8 @@ const QuotationPreview: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     if (!quotation) return;
-    const message = `Hello ${quotation.customer_name},
+    const name = getQuotationDisplayName(quotation);
+    const message = `Hello ${name},
 
 Please find your quotation from ${COMPANY.name}.
 
@@ -108,7 +109,7 @@ ${COMPANY.website}`;
             </Button>
             <div>
               <h2 className="text-sm font-bold text-gray-900">{quotation.quotation_no}</h2>
-              <p className="text-xs text-gray-500">{quotation.customer_name}</p>
+              <p className="text-xs text-gray-500">{getQuotationDisplayName(quotation)}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

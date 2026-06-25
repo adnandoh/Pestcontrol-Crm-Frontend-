@@ -201,7 +201,11 @@ export interface JobCard {
   commercial_type: 'home' | 'hotel' | 'society' | 'villa' | 'office' | 'other';
   is_price_estimated: boolean;
   service_category?: 'One-Time Service' | 'AMC';
-  property_type?: 'Home / Flat' | 'Bungalow' | 'Hotel' | 'Office' | 'Commercial Space';
+  property_type?: string;
+  visit_type?: string | null;
+  source_service?: string | null;
+  is_auto_generated?: boolean;
+  service_timeline?: ServiceTimelineVisit[];
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
   contract_duration?: string;
   is_paused?: boolean;
@@ -490,6 +494,21 @@ export interface ServiceItemConfig {
   plan: string;
   area: string;
   amount: number;
+}
+
+export interface ServiceTimelineVisit {
+  id: number;
+  code: string;
+  service_name?: string | null;
+  visit_number?: number;
+  total_visits?: number;
+  visit_type?: string | null;
+  scheduled_date?: string | null;
+  next_scheduled_date?: string | null;
+  status: string;
+  technician_name?: string | null;
+  completed_at?: string | null;
+  is_auto_generated?: boolean;
 }
 
 export interface JobCardFormData {

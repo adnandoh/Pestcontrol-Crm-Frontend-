@@ -215,6 +215,7 @@ const getFieldDisplayName = (fieldName: string): string => {
     payment_status: 'Payment status',
     status: 'Status',
     reference: 'Reference',
+    property_type: 'Property type',
     master_location: 'Service location',
   };
 
@@ -294,6 +295,14 @@ export const jobCardValidationRules: ValidationRules = {
       if (!value?.trim()) return 'Service type is required';
       return null;
     }
+  },
+  property_type: {
+    required: true,
+    custom: (value, formData) => {
+      if (formData?.commercial_type === 'home') return null;
+      if (!value || !String(value).trim()) return 'Property type is required for commercial bookings';
+      return null;
+    },
   },
   reference: {
     required: true,

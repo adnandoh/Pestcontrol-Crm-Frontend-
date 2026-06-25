@@ -67,6 +67,15 @@ export const SERVICE_PRESETS = [
   'AMC Package',
 ];
 
+/** Display name for quotations (no separate "Full Name" field in UI). */
+export function getQuotationDisplayName(q: {
+  contact_person?: string | null;
+  company_name?: string | null;
+  customer_name?: string | null;
+}): string {
+  return (q.company_name || q.contact_person || q.customer_name || 'Customer').trim();
+}
+
 export const FREQUENCY_OPTIONS = [
   'One Time',
   'Weekly',

@@ -1,4 +1,5 @@
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES, COMMERCIAL_AREA_OPTION } from '../constants/pricing';
+import { getAllPlanValuesForService, oneTimePlanValue } from '../constants/bookingPropertyTypes';
 
 export interface PricingConfig {
   region: 'mumbai' | 'lonavala';
@@ -206,12 +207,20 @@ export function getDefaultPricingType(
   return types[0];
 }
 
-/** Plan types available for a single service package. */
+/** Plan types available for a single service package (PRD options + pricing API). */
 export function getPricingTypesForService(
   service: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string[] {
-  return Object.keys(config.pricing[service] || {});
+  const fromBooking = getAllPlanValuesForService(service);
+  const fromConfig = Object.keys(config.pricing[service] || {});
+  const merged = [...new Set([...fromBooking, ...fromConfig])];
+  const order = (p: string) => {
+    if (p.toLowerCase().includes('one time')) return 0;
+    const m = p.match(/(\d+)/);
+    return m ? Number(m[1]) : 99;
+  };
+  return merged.sort((a, b) => order(a) - order(b));
 }
 
 /** Area options for one service (not intersected across services). */
@@ -225,11 +234,10 @@ export function getAreaOptionsForService(
 
 export function getDefaultPlanForService(
   service: string,
-  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  _config?: PricingConfig,
 ): string {
-  const types = getPricingTypesForService(service, config);
-  if (types.includes('One Time Service')) return 'One Time Service';
-  return types[0] || '';
+  void _config;
+  return oneTimePlanValue(service);
 }
 
 export function createDefaultServiceConfig(
@@ -344,6 +352,11 @@ export function validateServiceConfigs(
     }
     const unit = getUnitPrice(service, cfg.plan, cfg.area, config);
     if (unit === null) {
+      const planL = cfg.plan.toLowerCase();
+      // AMC packages / termite may not exist in Pricing Master yet — allow manual total
+      if (planL.includes('amc') || planL.includes('one time treatment')) {
+        continue;
+      }
       errors.push(`${service}: pricing rate not found in Pricing Master.`);
     }
   }

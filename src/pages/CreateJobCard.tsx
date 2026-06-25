@@ -47,6 +47,12 @@ import {
   nextServiceDateHint,
   shouldShowNextServiceField,
 } from '../utils/amcNextServiceDate';
+import {
+  BOOKING_PROPERTY_TYPES,
+  bookingKindFromCommercialType,
+  commercialTypeFromPropertyType,
+  RESIDENTIAL_PROPERTY_TYPE,
+} from '../constants/bookingPropertyTypes';
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -451,6 +457,10 @@ const CreateJobCard: React.FC = () => {
       // Ensure schedule_datetime is in ISO format
       const submitData = {
         ...formData,
+        property_type:
+          formData.commercial_type === 'home'
+            ? RESIDENTIAL_PROPERTY_TYPE
+            : formData.property_type,
         service_items: serviceItems,
         service_category: deriveServiceCategoryFromItems(serviceItems),
       };
@@ -658,35 +668,110 @@ const CreateJobCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Section: Service Configuration & Pricing */}
+          {/* Section: Property, Schedule & Services */}
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
-             <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
-                <div className="flex-1 flex flex-col gap-4">
-                   <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Commercial Type *</label>
+             <div className="relative z-10 flex flex-col gap-5">
+                {/* Property + Booking date FIRST (needed for upcoming visit preview) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-4 border-b border-gray-200">
+                  <div>
+                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking For *</label>
+                    <select
+                      value={bookingKindFromCommercialType(formData.commercial_type)}
+                      onChange={(e) => {
+                        const kind = e.target.value as 'home' | 'commercial';
+                        if (kind === 'home') {
+                          setFormData((prev) => ({
+                            ...prev,
+                            commercial_type: 'home',
+                            property_type: RESIDENTIAL_PROPERTY_TYPE,
+                            is_price_estimated: !supportsAutoPricing('home', pricingConfig),
+                            price: supportsAutoPricing('home', pricingConfig) ? prev.price : '0.00',
+                          }));
+                        } else {
+                          setFormData((prev) => ({
+                            ...prev,
+                            commercial_type: 'other',
+                            property_type: '',
+                            is_price_estimated: true,
+                            price: '0.00',
+                          }));
+                        }
+                      }}
+                      className="w-full h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                    >
+                      <option value="home">Home (Residential)</option>
+                      <option value="commercial">Commercial Property</option>
+                    </select>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      {formData.commercial_type === 'home'
+                        ? 'Flat / home — choose BHK in each service.'
+                        : 'Select property type on the right (Society, Hotel, Office, etc.).'}
+                    </p>
+                  </div>
+
+                  {bookingKindFromCommercialType(formData.commercial_type) === 'commercial' ? (
+                    <div>
+                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Property Type *</label>
                       <select
-                        value={formData.commercial_type}
+                        value={formData.property_type || ''}
                         onChange={(e) => {
-                          const val = e.target.value as any;
-                          setFormData(prev => ({ 
-                            ...prev, 
-                            commercial_type: val,
-                            is_price_estimated: !supportsAutoPricing(val, pricingConfig),
-                            price: supportsAutoPricing(val, pricingConfig) ? prev.price : '0.00',
+                          const propertyType = e.target.value;
+                          const commercialType = commercialTypeFromPropertyType(propertyType);
+                          setFormData((prev) => ({
+                            ...prev,
+                            property_type: propertyType,
+                            commercial_type: commercialType,
+                            is_price_estimated: !supportsAutoPricing(commercialType, pricingConfig),
+                            price: supportsAutoPricing(commercialType, pricingConfig) ? prev.price : '0.00',
                           }));
                         }}
-                        className="w-full max-w-xs h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                        className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                        required
                       >
-                        <option value="home">Home (Residential)</option>
-                        <option value="hotel">Hotel</option>
-                        <option value="society">Society</option>
-                        <option value="villa">Villa</option>
-                        <option value="office">Office</option>
-                        <option value="other">Other Commercial</option>
+                        <option value="">Select property type</option>
+                        {BOOKING_PROPERTY_TYPES.map((pt) => (
+                          <option key={pt} value={pt}>{pt}</option>
+                        ))}
                       </select>
-                   </div>
+                      {errors.property_type && (
+                        <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.property_type}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="hidden lg:block" aria-hidden />
+                  )}
 
+                  <div>
+                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Date *</label>
+                    <Input
+                      id="schedule_datetime"
+                      name="schedule_datetime"
+                      type="date"
+                      value={formData.schedule_datetime}
+                      onChange={(e) => handleInputChange('schedule_datetime', e.target.value)}
+                      className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`}
+                      required
+                    />
+                    {errors.schedule_datetime && (
+                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Time Slot *</label>
+                    <ClockTimePicker
+                      value={formData.time_slot || ''}
+                      onChange={(val) => handleInputChange('time_slot', val)}
+                      placeholder="Select Time"
+                    />
+                    {errors.time_slot && (
+                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>
+                    )}
+                  </div>
+                </div>
+
+             <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                <div className="flex-1 flex flex-col gap-4">
                   <div>
                     <label className="text-[13px] font-bold text-gray-700 mb-2 block">
                       Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
@@ -729,11 +814,10 @@ const CreateJobCard: React.FC = () => {
                     serviceConfigs={serviceConfigs}
                     pricingConfig={pricingConfig}
                     commercialType={formData.commercial_type}
-                    priceBreakdown={priceBreakdown}
-                    totalPrice={formData.price?.toString() || '0'}
                     onPlanChange={handleServicePlanChange}
                     onAreaChange={handleServiceAreaChange}
                     validationErrors={serviceConfigErrors}
+                    scheduleDate={formData.schedule_datetime}
                   />
                 </div>
 
@@ -761,6 +845,7 @@ const CreateJobCard: React.FC = () => {
                    )}
                 </div>
              </div>
+             </div>
              
              {formData.commercial_type !== 'home' && (
                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
@@ -769,10 +854,10 @@ const CreateJobCard: React.FC = () => {
              )}
           </div>
 
-          {/* Section: Schedule & Assignment */}
+          {/* Section: Assignment & Payment */}
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
             <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
-              <Calendar className="h-4 w-4" /> Schedule & Assignment
+              <Calendar className="h-4 w-4" /> Assignment & Payment
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -831,22 +916,6 @@ const CreateJobCard: React.FC = () => {
                   <option value="complaint">Complaint Call</option>
                 </select>
               </div>
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Schedule Date *</label>
-                <Input id="schedule_datetime" name="schedule_datetime" type="date" value={formData.schedule_datetime} onChange={(e) => handleInputChange('schedule_datetime', e.target.value)} className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`} required />
-                {errors.schedule_datetime && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>}
-              </div>
-
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Available Time Slot *</label>
-                <ClockTimePicker
-                  value={formData.time_slot || ''}
-                  onChange={(val) => handleInputChange('time_slot', val)}
-                  placeholder="Select Time"
-                />
-                {errors.time_slot && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>}
-              </div>
-
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
                 <div className="relative">

@@ -629,6 +629,57 @@ const EditJobCard: React.FC = () => {
         </div>
       </div>
 
+      {jobCard.service_timeline && jobCard.service_timeline.length > 1 && (
+        <div className="max-w-6xl mx-auto bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h4 className="text-[13px] font-extrabold text-violet-700 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2">
+            Service Visit Timeline
+          </h4>
+          <div className="space-y-4">
+            {Object.entries(
+              jobCard.service_timeline.reduce<Record<string, typeof jobCard.service_timeline>>((acc, row) => {
+                const key = row.service_name || 'Service';
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(row);
+                return acc;
+              }, {}),
+            ).map(([serviceName, visits]) => (
+              <div key={serviceName} className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                <p className="text-sm font-black text-gray-900 mb-3">{serviceName}</p>
+                <ul className="space-y-2">
+                  {visits.map((v) => (
+                    <li key={v.id} className="flex flex-wrap items-center gap-3 text-[11px]">
+                      <span className="font-bold text-gray-700">
+                        Visit {v.visit_number}{v.total_visits ? ` of ${v.total_visits}` : ''}
+                      </span>
+                      {v.visit_type && (
+                        <span className="bg-violet-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">
+                          {v.visit_type}
+                        </span>
+                      )}
+                      <span className="text-gray-600">
+                        {v.scheduled_date ? dayjs(v.scheduled_date).format('DD MMM YYYY') : '—'}
+                      </span>
+                      <span className={`font-black uppercase ${
+                        v.status === 'Done' ? 'text-emerald-600' :
+                        v.status === 'Upcoming' ? 'text-violet-600' : 'text-orange-600'
+                      }`}>
+                        {v.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {visits.find((v) => v.status === 'Upcoming')?.scheduled_date && (
+                  <p className="mt-3 text-[11px] font-bold text-violet-800">
+                    Next scheduled visit:{' '}
+                    {dayjs(visits.find((v) => v.status === 'Upcoming')!.scheduled_date).format('DD MMM YYYY')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Section: Client & Location */}
@@ -863,11 +914,10 @@ const EditJobCard: React.FC = () => {
                      serviceConfigs={serviceConfigs}
                      pricingConfig={pricingConfig}
                      commercialType={formData.commercial_type}
-                     priceBreakdown={priceBreakdown}
-                     totalPrice={formData.price?.toString() || '0'}
                      onPlanChange={handleServicePlanChange}
                      onAreaChange={handleServiceAreaChange}
                      validationErrors={serviceConfigErrors}
+                     scheduleDate={formData.schedule_datetime}
                    />
                 </div>
 

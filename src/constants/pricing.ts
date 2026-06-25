@@ -24,6 +24,22 @@ export const PRICING_DATA: any = {
       '4 BHK': 3500,
       [COMMERCIAL_AREA_OPTION]: 0,
     },
+    'AMC 4 Services': {
+      '1 RK': 2200,
+      '1 BHK': 2600,
+      '2 BHK': 3000,
+      '3 BHK': 3600,
+      '4 BHK': 4200,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
+    'AMC 6 Services': {
+      '1 RK': 3000,
+      '1 BHK': 3600,
+      '2 BHK': 4200,
+      '3 BHK': 5000,
+      '4 BHK': 5800,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
     'One Time Service': {
       '1 RK': 1000,
       '1 BHK': 1200,
@@ -44,6 +60,14 @@ export const PRICING_DATA: any = {
     }
   },
   'Termite': {
+    'One Time Treatment': {
+      '1 RK': 2000,
+      '1 BHK': 2500,
+      '2 BHK': 3000,
+      '3 BHK': 3500,
+      '4 BHK': 4000,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
     'One Time Service': {
       '1 RK': 2000,
       '1 BHK': 2500,
@@ -54,6 +78,10 @@ export const PRICING_DATA: any = {
     }
   },
   'Rodent': {
+    'AMC 3 Services': { 'Windows': 2500, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
+    'AMC 4 Services': { 'Windows': 3200, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
+    'AMC 6 Services': { 'Windows': 4500, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
+    'AMC 12 Services': { 'Windows': 8000, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
     'One Time Service': {
       'Windows': 1000,
       'Society Area': 0, // Depends on visit
@@ -61,6 +89,22 @@ export const PRICING_DATA: any = {
     }
   },
   'Mosquito': {
+    'AMC 3 Services': {
+      '1 RK': 2000, '1 BHK': 2400, '2 BHK': 3500, '3 BHK': 4200, '4 BHK': 4800,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
+    'AMC 4 Services': {
+      '1 RK': 2600, '1 BHK': 3000, '2 BHK': 4200, '3 BHK': 5000, '4 BHK': 5600,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
+    'AMC 6 Services': {
+      '1 RK': 3600, '1 BHK': 4200, '2 BHK': 6000, '3 BHK': 7200, '4 BHK': 8000,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
+    'AMC 12 Services': {
+      '1 RK': 6000, '1 BHK': 7200, '2 BHK': 10000, '3 BHK': 12000, '4 BHK': 14000,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
     'One Time Service': {
       '1 RK': 800,
       '1 BHK': 1000,
@@ -86,10 +130,10 @@ export const PROPERTY_LOCATIONS = [
 ];
 
 export const SERVICE_TYPES: any = {
-  'Cockroach / Ants': ['One Time Service', 'AMC 3 Services'],
-  'Bed Bugs': ['One Time Service', 'AMC 3 Services'],
-  'Termite': ['One Time Service', 'AMC 3 Services'],
-  'Rodent': ['One Time Service', 'AMC 3 Services'],
-  'Mosquito': ['One Time Service', 'AMC 3 Services'],
-  'Hotel / Commercial': ['One Time Service', 'AMC 3 Services']
+  'Cockroach / Ants': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services'],
+  'Bed Bugs': ['One Time Service'],
+  'Termite': ['One Time Treatment'],
+  'Rodent': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
+  'Mosquito': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
+  'Hotel / Commercial': ['One Time Service'],
 };

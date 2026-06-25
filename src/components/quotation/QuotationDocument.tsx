@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { format } from 'date-fns';
 import type { Quotation } from '../../types';
-import { COMPANY, BANK_DETAILS, amountInWords } from '../../constants/quotation';
+import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName } from '../../constants/quotation';
 import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
 import './QuotationDocument.css';
 
@@ -23,7 +23,7 @@ interface QuotationDocumentProps {
 }
 
 const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, className = '' }) => {
-  const showGst = Number(quotation.tax_amount) > 0;
+  const displayName = getQuotationDisplayName(quotation);
   const items = quotation.items || [];
   const scopes = quotation.scopes || [];
   const paymentTerms = quotation.payment_terms || [];
@@ -97,11 +97,8 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
           <p className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-2">
             Bill To / Customer
           </p>
-          <p className="text-sm font-bold text-gray-900">{quotation.customer_name}</p>
-          {quotation.company_name && (
-            <p className="text-xs font-semibold text-gray-700 mt-0.5">{quotation.company_name}</p>
-          )}
-          {quotation.contact_person && (
+          <p className="text-sm font-bold text-gray-900">{displayName}</p>
+          {quotation.company_name && quotation.contact_person && (
             <p className="text-[10px] text-gray-600 mt-0.5">Contact: {quotation.contact_person}</p>
           )}
           <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
@@ -109,7 +106,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             {(quotation.master_location_name || quotation.city) && (
               <>
                 <br />
-                {[quotation.master_location_name, quotation.city, quotation.state, quotation.pincode]
+                {[quotation.master_location_name, quotation.city, quotation.state]
                   .filter(Boolean)
                   .join(', ')}
               </>
@@ -196,12 +193,6 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
               <span className="font-semibold">- Rs.{fmt(quotation.discount)}</span>
             </div>
           )}
-          {showGst && (
-            <div className="flex justify-between py-1 border-b border-gray-100">
-              <span className="text-gray-600">GST (18%)</span>
-              <span className="font-semibold">Rs.{fmt(quotation.tax_amount)}</span>
-            </div>
-          )}
           <div className="flex justify-between py-2 mt-1 bg-[#2d8a2f] text-white px-3 rounded font-bold text-sm">
             <span>Grand Total</span>
             <span>Rs.{fmt(quotation.grand_total)}</span>
@@ -271,15 +262,6 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="mb-6 border border-gray-200 rounded p-3 bg-gray-50/50">
-        <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-2">
-          Terms & Conditions
-        </h4>
-        <p className="text-[9px] text-gray-600 whitespace-pre-line leading-relaxed">
-          {quotation.terms_and_conditions || '-'}
-        </p>
       </div>
 
       <div className="flex justify-between items-end pt-4 border-t-2 border-gray-200">
