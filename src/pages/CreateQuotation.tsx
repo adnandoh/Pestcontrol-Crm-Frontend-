@@ -31,12 +31,18 @@ import type {
 import {
   COMPANY,
   DEFAULT_PAYMENT_TERMS,
-  DEFAULT_SCOPES_RESIDENTIAL,
-  QUOTATION_TYPES,
   SERVICE_PRESETS,
   FREQUENCY_OPTIONS,
   getQuotationDisplayName,
 } from '../constants/quotation';
+import {
+  QUOTATION_PROPERTY_TYPES,
+  QUOTATION_SERVICE_TYPES,
+  getQuotationTemplate,
+  templateToScopes,
+  propertyTypeToQuotationType,
+  STRUCTURED_SCOPE_TITLES,
+} from '../constants/quotationTemplates';
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -61,6 +67,8 @@ const CreateQuotation: React.FC = () => {
     company_name: '',
     contact_person: '',
     quotation_type: 'Residential',
+    property_type: '',
+    template_service_type: '',
     status: 'Draft',
     is_amc: false,
     visit_count: 1,
@@ -77,7 +85,7 @@ const CreateQuotation: React.FC = () => {
     master_city: undefined,
     master_location: undefined,
     items: [{ service_name: '', frequency: 'One Time', quantity: 1, rate: 0, total: 0 }],
-    scopes: [...DEFAULT_SCOPES_RESIDENTIAL],
+    scopes: [],
     payment_terms: [...DEFAULT_PAYMENT_TERMS],
   });
 
@@ -99,6 +107,41 @@ const CreateQuotation: React.FC = () => {
       } as QuotationFormData);
     }
   }, [existingQuotation]);
+
+  const updateTemplateSelection = (propertyType: string, serviceType: string) => {
+    const quotation_type = formData.is_amc
+      ? 'AMC Package'
+      : propertyType
+        ? propertyTypeToQuotationType(propertyType)
+        : formData.quotation_type;
+
+    if (!propertyType || !serviceType) {
+      setFormData((prev) => ({
+        ...prev,
+        property_type: propertyType,
+        template_service_type: serviceType,
+        quotation_type,
+      }));
+      return;
+    }
+
+    const template = getQuotationTemplate(propertyType, serviceType);
+    if (!template) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      property_type: propertyType,
+      template_service_type: serviceType,
+      quotation_type,
+      scopes: templateToScopes(template),
+      payment_terms: template.paymentTerms.map((t) => ({ ...t })),
+      items: prev.items.map((item, index) =>
+        index === 0 && !item.service_name.trim()
+          ? { ...item, service_name: serviceType }
+          : item,
+      ),
+    }));
+  };
 
   // 1. Initial State Fetch
   useEffect(() => {
@@ -575,20 +618,43 @@ const CreateQuotation: React.FC = () => {
             
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Quotation Type</Label>
+                <Label className="text-xs font-bold uppercase text-gray-500">Property Type</Label>
                 <select
                   className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium"
-                  value={formData.quotation_type}
+                  value={formData.property_type || ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, quotation_type: e.target.value as QuotationFormData['quotation_type'] })
+                    updateTemplateSelection(e.target.value, formData.template_service_type || '')
                   }
                 >
-                  {QUOTATION_TYPES.map((t) => (
+                  <option value="">Select property type</option>
+                  {QUOTATION_PROPERTY_TYPES.map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Service Type</Label>
+                <select
+                  className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium"
+                  value={formData.template_service_type || ''}
+                  onChange={(e) =>
+                    updateTemplateSelection(formData.property_type || '', e.target.value)
+                  }
+                >
+                  <option value="">Select service type</option>
+                  {QUOTATION_SERVICE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-500">
+                  Scope, area, pests, benefits, warranty and payment terms load automatically when
+                  both are selected.
+                </p>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-[#f0faf0] rounded-xl border border-[#c8e6c9]">
@@ -701,42 +767,64 @@ const CreateQuotation: React.FC = () => {
 
       {/* Scope, Payment, Terms */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6 shadow-sm border-gray-100">
+        <Card className="p-6 shadow-sm border-gray-100 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-[#1e5a9e]" />
-              <h2 className="text-lg font-bold text-gray-900">Scope of Work</h2>
+              <h2 className="text-lg font-bold text-gray-900">Quotation Details</h2>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={handleAddScope} className="gap-1">
-              <Plus className="h-3 w-3" /> Add
+              <Plus className="h-3 w-3" /> Add custom section
             </Button>
           </div>
-          <div className="space-y-3">
-            {(formData.scopes || []).map((scope, i) => (
-              <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100 relative">
-                <Input
-                  placeholder="Title"
-                  value={scope.title}
-                  onChange={(e) => handleScopeChange(i, 'title', e.target.value)}
-                  className="mb-2 bg-white font-semibold"
-                />
-                <textarea
-                  className="w-full min-h-[60px] px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
-                  placeholder="Description..."
-                  value={scope.content}
-                  onChange={(e) => handleScopeChange(i, 'content', e.target.value)}
-                />
-                {(formData.scopes?.length || 0) > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveScope(i)}
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
+
+          {!formData.property_type || !formData.template_service_type ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+              Select <strong>Property Type</strong> and <strong>Service Type</strong> in Settings to
+              auto-load scope of work, area covered, pest covered, benefits and warranty.
+            </p>
+          ) : null}
+
+          <div className="space-y-4">
+            {(formData.scopes || []).map((scope, i) => {
+              const isStructured = STRUCTURED_SCOPE_TITLES.includes(
+                scope.title as (typeof STRUCTURED_SCOPE_TITLES)[number],
+              );
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    'p-4 rounded-lg border relative',
+                    isStructured
+                      ? 'bg-[#f0f7ff] border-[#1e5a9e]/20'
+                      : 'bg-gray-50 border-gray-100',
+                  )}
+                >
+                  <Input
+                    placeholder="Section title"
+                    value={scope.title}
+                    onChange={(e) => handleScopeChange(i, 'title', e.target.value)}
+                    className="mb-2 bg-white font-semibold"
+                    readOnly={isStructured}
+                  />
+                  <textarea
+                    className="w-full min-h-[72px] px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                    placeholder="Content..."
+                    value={scope.content}
+                    onChange={(e) => handleScopeChange(i, 'content', e.target.value)}
+                  />
+                  {!isStructured && (formData.scopes?.length || 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveScope(i)}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
 

@@ -953,6 +953,8 @@ export interface Quotation {
   contact_person?: string;
   company_name?: string;
   quotation_type: QuotationType;
+  property_type?: string;
+  template_service_type?: string;
   status: QuotationStatus;
   total_amount: number;
   discount: number;

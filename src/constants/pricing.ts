@@ -40,6 +40,14 @@ export const PRICING_DATA: any = {
       '4 BHK': 5800,
       [COMMERCIAL_AREA_OPTION]: 0,
     },
+    'AMC 12 Services': {
+      '1 RK': 5200,
+      '1 BHK': 6200,
+      '2 BHK': 7200,
+      '3 BHK': 8600,
+      '4 BHK': 10000,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
     'One Time Service': {
       '1 RK': 1000,
       '1 BHK': 1200,
@@ -105,6 +113,14 @@ export const PRICING_DATA: any = {
       '1 RK': 6000, '1 BHK': 7200, '2 BHK': 10000, '3 BHK': 12000, '4 BHK': 14000,
       [COMMERCIAL_AREA_OPTION]: 0,
     },
+    'AMC 24 Services': {
+      '1 RK': 0, '1 BHK': 0, '2 BHK': 0, '3 BHK': 0, '4 BHK': 0,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
+    'AMC 48 Services': {
+      '1 RK': 0, '1 BHK': 0, '2 BHK': 0, '3 BHK': 0, '4 BHK': 0,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    },
     'One Time Service': {
       '1 RK': 800,
       '1 BHK': 1000,
@@ -130,10 +146,10 @@ export const PROPERTY_LOCATIONS = [
 ];
 
 export const SERVICE_TYPES: any = {
-  'Cockroach / Ants': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services'],
+  'Cockroach / Ants': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
   'Bed Bugs': ['One Time Service'],
   'Termite': ['One Time Treatment'],
   'Rodent': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
-  'Mosquito': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
+  'Mosquito': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services', 'AMC 24 Services', 'AMC 48 Services'],
   'Hotel / Commercial': ['One Time Service'],
 };

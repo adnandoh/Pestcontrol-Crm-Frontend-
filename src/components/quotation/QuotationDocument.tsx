@@ -2,6 +2,7 @@
 import { format } from 'date-fns';
 import type { Quotation } from '../../types';
 import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName } from '../../constants/quotation';
+import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
 import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
 import './QuotationDocument.css';
 
@@ -27,6 +28,14 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
   const items = quotation.items || [];
   const scopes = quotation.scopes || [];
   const paymentTerms = quotation.payment_terms || [];
+  const structured = hasStructuredScopes(scopes);
+  const scopeContent = (title: string) => scopes.find((s) => s.title === title)?.content;
+  const customScopes = scopes.filter(
+    (s) => !STRUCTURED_SCOPE_TITLES.includes(s.title as (typeof STRUCTURED_SCOPE_TITLES)[number]),
+  );
+  const propertyServiceLabel = [quotation.property_type, quotation.template_service_type]
+    .filter(Boolean)
+    .join(' — ');
 
   return (
     <div className={`quotation-doc ${className}`}>
@@ -84,7 +93,9 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                 </tr>
                 <tr>
                   <td className="font-semibold text-gray-500 pr-2 py-0.5">Type</td>
-                  <td className="font-bold">{quotation.quotation_type}</td>
+                  <td className="font-bold">
+                    {propertyServiceLabel || quotation.quotation_type}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -211,19 +222,44 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-2 border-b border-[#2d8a2f] pb-1">
-            Scope of Work
-          </h4>
-          {scopes.length > 0 ? (
-            <ol className="list-decimal list-inside space-y-1.5 text-[10px] text-gray-700">
-              {scopes.map((s, i) => (
-                <li key={i}>
-                  <span className="font-bold">{s.title}: </span>
-                  {s.content}
-                </li>
+        <div className="space-y-3">
+          {structured ? (
+            <>
+              {STRUCTURED_SCOPE_TITLES.map((title) => {
+                const content = scopeContent(title);
+                if (!content) return null;
+                return (
+                  <div key={title}>
+                    <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
+                      {title}
+                    </h4>
+                    <p className="text-[10px] text-gray-700 leading-relaxed">{content}</p>
+                  </div>
+                );
+              })}
+              {customScopes.map((s, i) => (
+                <div key={`custom-${i}`}>
+                  <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
+                    {s.title}
+                  </h4>
+                  <p className="text-[10px] text-gray-700 leading-relaxed">{s.content}</p>
+                </div>
               ))}
-            </ol>
+            </>
+          ) : scopes.length > 0 ? (
+            <div>
+              <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-2 border-b border-[#2d8a2f] pb-1">
+                Scope of Work
+              </h4>
+              <ol className="list-decimal list-inside space-y-1.5 text-[10px] text-gray-700">
+                {scopes.map((s, i) => (
+                  <li key={i}>
+                    <span className="font-bold">{s.title}: </span>
+                    {s.content}
+                  </li>
+                ))}
+              </ol>
+            </div>
           ) : (
             <p className="text-[10px] text-gray-500 italic">Standard pest management as agreed.</p>
           )}
