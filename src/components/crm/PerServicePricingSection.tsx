@@ -60,7 +60,7 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
           Selected Services Configuration
         </h4>
         <p className="text-[11px] text-gray-500 mb-3">
-          Choose <strong>One Time</strong> or <strong>AMC package</strong> per service. Set booking date above to preview upcoming visits.
+          Choose <strong>One Time</strong> or <strong>AMC package</strong> per service. Set booking date in Assignment & Payment to preview upcoming visits.
         </p>
         <div className="space-y-4">
           {selectedPackages.map((service) => {
@@ -181,7 +181,7 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
 
                     {!scheduleDate ? (
                       <p className="text-[11px] text-amber-700 font-semibold">
-                        ↑ Select <strong>Booking Date</strong> above to see upcoming visit dates.
+                        ↑ Set <strong>Booking Date</strong> in Assignment & Payment above to see upcoming visit dates.
                       </p>
                     ) : preview.upcomingVisits.length > 1 ? (
                       <div>

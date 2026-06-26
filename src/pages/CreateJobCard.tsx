@@ -115,7 +115,9 @@ const CreateJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
 
-  const servicePackageOptions = getServicePackageOptions(pricingConfig);
+  const servicePackageOptions = getServicePackageOptions(pricingConfig).filter(
+    (service) => service !== 'Hotel / Commercial',
+  );
 
   // Sync service_type from selected packages
   useEffect(() => {
@@ -668,12 +670,9 @@ const CreateJobCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Section: Property, Schedule & Services */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-             <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
-             <div className="relative z-10 flex flex-col gap-5">
-                {/* Property + Booking date FIRST (needed for upcoming visit preview) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-4 border-b border-gray-200">
+          {/* Section: Property */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking For *</label>
                     <select
@@ -738,38 +737,186 @@ const CreateJobCard: React.FC = () => {
                         <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.property_type}</p>
                       )}
                     </div>
-                  ) : (
-                    <div className="hidden lg:block" aria-hidden />
-                  )}
-
-                  <div>
-                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Date *</label>
-                    <Input
-                      id="schedule_datetime"
-                      name="schedule_datetime"
-                      type="date"
-                      value={formData.schedule_datetime}
-                      onChange={(e) => handleInputChange('schedule_datetime', e.target.value)}
-                      className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`}
-                      required
-                    />
-                    {errors.schedule_datetime && (
-                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Time Slot *</label>
-                    <ClockTimePicker
-                      value={formData.time_slot || ''}
-                      onChange={(val) => handleInputChange('time_slot', val)}
-                      placeholder="Select Time"
-                    />
-                    {errors.time_slot && (
-                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>
-                    )}
-                  </div>
+                  ) : null}
                 </div>
+          </div>
 
+          {/* Section: Assignment & Payment (schedule + booking type + payment) */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+              <Calendar className="h-4 w-4" /> Assignment & Payment
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Date *</label>
+                <Input
+                  id="schedule_datetime"
+                  name="schedule_datetime"
+                  type="date"
+                  value={formData.schedule_datetime}
+                  onChange={(e) => handleInputChange('schedule_datetime', e.target.value)}
+                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm ${errors.schedule_datetime ? 'border-red-500' : 'border-gray-300'}`}
+                  required
+                />
+                {errors.schedule_datetime && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Time Slot *</label>
+                <ClockTimePicker
+                  value={formData.time_slot || ''}
+                  onChange={(val) => handleInputChange('time_slot', val)}
+                  placeholder="Select Time"
+                />
+                {errors.time_slot && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Type *</label>
+                <select
+                  value={formData.is_amc_main_booking ? 'amc_main' : formData.is_followup_visit ? 'amc_followup' : formData.is_complaint_call ? 'complaint' : 'new'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'amc_main') {
+                      setFormData(prev => ({
+                        ...prev,
+                        is_amc_main_booking: true,
+                        is_followup_visit: false,
+                        included_in_amc: false,
+                        is_complaint_call: false,
+                        service_category: 'AMC',
+                      }));
+                    } else if (val === 'amc_followup') {
+                      setFormData(prev => ({
+                        ...prev,
+                        is_amc_main_booking: false,
+                        is_followup_visit: true,
+                        included_in_amc: true,
+                        is_complaint_call: false,
+                        price: '0',
+                        payment_status: 'Paid',
+                        service_category: 'AMC',
+                      }));
+                    } else if (val === 'complaint') {
+                      setFormData(prev => ({
+                        ...prev,
+                        is_amc_main_booking: false,
+                        is_followup_visit: false,
+                        included_in_amc: false,
+                        is_complaint_call: true,
+                        price: '0',
+                        payment_status: 'Paid',
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        is_amc_main_booking: false,
+                        is_followup_visit: false,
+                        included_in_amc: false,
+                        is_complaint_call: false,
+                      }));
+                    }
+                  }}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                  required
+                >
+                  <option value="new">New Booking</option>
+                  <option value="amc_main">AMC Main Booking</option>
+                  <option value="amc_followup">AMC Follow-up</option>
+                  <option value="complaint">Complaint Call</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', e.target.value)}
+                    className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              {shouldShowNextServiceField(
+                selectedPackages,
+                '',
+                formData.service_category,
+                serviceItems,
+              ) && (
+                <div className="animate-fade-in">
+                  <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
+                  <Input
+                    type="date"
+                    value={formData.next_service_date}
+                    onChange={(e) => {
+                      handleInputChange('next_service_date', e.target.value);
+                      setIsNextDateManual(true);
+                    }}
+                    className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
+                    {nextServiceDateHint(selectedPackages, '', formData.service_category, serviceItems)}
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Status</label>
+                <select
+                  value={formData.payment_status}
+                  onChange={(e) => handleInputChange('payment_status', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
+                >
+                  {paymentStatusOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Mode</label>
+                <select
+                  value={formData.payment_mode || ''}
+                  onChange={(e) => handleInputChange('payment_mode', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
+                >
+                  <option value="">Select Mode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Online">Online</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
+                <select
+                  name="reference"
+                  value={formData.reference}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleInputChange('reference', value);
+                    validateField('reference', value);
+                  }}
+                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none bg-white ${errors.reference ? 'border-red-500' : 'border-gray-300'}`}
+                  required
+                >
+                  <option value="">Select Reference</option>
+                  {BOOKING_REFERENCE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+                {errors.reference && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Service Selection */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+             <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
+             <div className="relative z-10 flex flex-col gap-5">
              <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                 <div className="flex-1 flex flex-col gap-4">
                   <div>
@@ -854,154 +1001,6 @@ const CreateJobCard: React.FC = () => {
              )}
           </div>
 
-          {/* Section: Assignment & Payment */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
-              <Calendar className="h-4 w-4" /> Assignment & Payment
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Type *</label>
-                <select
-                  value={formData.is_amc_main_booking ? 'amc_main' : formData.is_followup_visit ? 'amc_followup' : formData.is_complaint_call ? 'complaint' : 'new'}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === 'amc_main') {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        is_amc_main_booking: true, 
-                        is_followup_visit: false, 
-                        included_in_amc: false,
-                        is_complaint_call: false,
-                        service_category: 'AMC'
-                      }));
-                    } else if (val === 'amc_followup') {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        is_amc_main_booking: false, 
-                        is_followup_visit: true, 
-                        included_in_amc: true,
-                        is_complaint_call: false,
-                        price: '0',
-                        payment_status: 'Paid',
-                        service_category: 'AMC'
-                      }));
-                    } else if (val === 'complaint') {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        is_amc_main_booking: false, 
-                        is_followup_visit: false, 
-                        included_in_amc: false,
-                        is_complaint_call: true,
-                        price: '0',
-                        payment_status: 'Paid'
-                      }));
-                    } else {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        is_amc_main_booking: false, 
-                        is_followup_visit: false, 
-                        included_in_amc: false,
-                        is_complaint_call: false
-                      }));
-                    }
-                  }}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
-                  required
-                >
-                  <option value="new">New Booking</option>
-                  <option value="amc_main">AMC Main Booking</option>
-                  <option value="amc_followup">AMC Follow-up</option>
-                  <option value="complaint">Complaint Call</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
-                <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => handleInputChange('price', e.target.value)}
-                    className="w-full h-10 pl-9 pr-3 text-sm font-bold border-gray-300 rounded-lg outline-none text-blue-700 bg-white shadow-sm"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              {/* Next Service Date Field */}
-              {shouldShowNextServiceField(
-                selectedPackages,
-                '',
-                formData.service_category,
-                serviceItems,
-              ) && (
-                <div className="animate-fade-in md:col-span-1">
-                  <label className="text-[13px] font-bold text-blue-700 mb-1.5 block">Next Service Date (Auto-calculated)</label>
-                  <Input
-                    type="date"
-                    value={formData.next_service_date}
-                    onChange={(e) => {
-                      handleInputChange('next_service_date', e.target.value);
-                      setIsNextDateManual(true);
-                    }}
-                    className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
-                  />
-                  <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
-                    {nextServiceDateHint(selectedPackages, '', formData.service_category, serviceItems)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Status</label>
-                <select
-                  value={formData.payment_status}
-                  onChange={(e) => handleInputChange('payment_status', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
-                >
-                  {paymentStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Mode</label>
-                <select
-                  value={formData.payment_mode || ''}
-                  onChange={(e) => handleInputChange('payment_mode', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
-                >
-                  <option value="">Select Mode</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Online">Online</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
-                <select
-                  name="reference"
-                  value={formData.reference}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    handleInputChange('reference', value);
-                    validateField('reference', value);
-                  }}
-                  className={`w-full h-10 px-3 text-sm font-medium border rounded-lg shadow-sm outline-none bg-white ${errors.reference ? 'border-red-500' : 'border-gray-300'}`}
-                  required
-                >
-                  <option value="">Select Reference</option>
-                  {BOOKING_REFERENCE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-                {errors.reference && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>}
-              </div>
-            </div>
-          </div>
-          
           {/* Section: Reminders */}
           <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
             <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
