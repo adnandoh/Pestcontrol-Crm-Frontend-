@@ -1,6 +1,7 @@
 import html2pdf from "html2pdf.js";
 import type { JobCard } from "../types";
 import { COMPANY_LOGO_URL, COMPANY_SIGNATURE_STAMP_URL } from "../constants/companyAssets";
+import { COMPANY, INVOICE_DEFAULTS, formatCompanyPhone } from "../constants/quotation";
 import { waitForImagesInElement } from "./pdfImagePreload";
 
 const formatDate = (value?: string) => {
@@ -77,7 +78,8 @@ const buildSignatureBlockHtml = () => `
         alt="Authorised Signatory"
         style="height:76px;max-width:210px;width:auto;object-fit:contain;display:block;margin:0 auto"
       />
-      <div style="font-size:11px;font-weight:800;color:#1e5a9e;margin-top:8px">Pest Control 99</div>
+      <div style="font-size:11px;font-weight:800;color:#1e5a9e;margin-top:8px">${COMPANY.legalName}</div>
+      <div style="font-size:9px;color:#6b7280;margin-top:2px">${COMPANY.brandName}</div>
       <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Authorised Signatory</div>
     </div>
   </div>
@@ -196,7 +198,8 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
           <div>
             <div class="inv-muted" style="font-size:11px;color:#6b7280;font-weight:700">BILLED BY</div>
             <div style="font-size:14px;font-weight:700;margin-top:5px">${payload.billedByName}</div>
-            <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6">${payload.billedByAddress}</div>
+            <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6;white-space:pre-line">${payload.billedByAddress}</div>
+            <div class="inv-muted" style="font-size:11px;color:#4b5563;margin-top:4px">${COMPANY.brandName} | ${formatCompanyPhone()}</div>
           </div>
           <div>
             <div class="inv-muted" style="font-size:11px;color:#6b7280;font-weight:700">BILLED TO</div>
@@ -233,7 +236,7 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
         ${buildSignatureBlockHtml()}
       </div>
       <div class="inv-footer" style="padding:12px 22px;background:#f9fafb;font-size:11px;color:#6b7280;text-align:center">
-        Thank you for choosing Pest Control 99
+        Thank you for choosing ${COMPANY.brandName} — ${COMPANY.legalName}
       </div>
     </div>
   `;
@@ -292,8 +295,8 @@ export const downloadInvoicePdf = async (job: JobCard) => {
   const payload: RenderInvoicePayload = {
     invoiceNo: `INV-${job.code || job.id}`,
     invoiceDate: new Date().toLocaleDateString("en-GB"),
-    billedByName: "Pest Control 99",
-    billedByAddress: "Mumbai, Maharashtra, India",
+    billedByName: COMPANY.legalName,
+    billedByAddress: INVOICE_DEFAULTS.billedByAddress,
     billedToName: job.client_name || "-",
     billedToMobile: job.client_mobile || "-",
     billedToAddress: job.client_address || "-",
@@ -339,15 +342,15 @@ export const downloadManualInvoicePdf = async (data: ManualInvoiceInput) => {
   const payload: RenderInvoicePayload = {
     invoiceNo,
     invoiceDate: formatDate(data.invoiceDate) === "-" ? new Date().toLocaleDateString("en-GB") : formatDate(data.invoiceDate),
-    billedByName: data.billedByName?.trim() || "Pest Control 99",
-    billedByAddress: data.billedByAddress?.trim() || "Mumbai, Maharashtra, India",
+    billedByName: data.billedByName?.trim() || INVOICE_DEFAULTS.billedByName,
+    billedByAddress: data.billedByAddress?.trim() || INVOICE_DEFAULTS.billedByAddress,
     billedToName: data.billedToName.trim() || "-",
     billedToMobile: data.billedToMobile?.trim() || "-",
     billedToAddress: data.billedToAddress?.trim() || "-",
     bookingCode: data.bookingCode?.trim() || "-",
     bookingCreatedAt: formatDate(data.bookingCreatedAt),
     nextServiceDate: formatDate(data.nextServiceDate),
-    reference: data.reference?.trim() || "Manual",
+    reference: data.reference?.trim() || INVOICE_DEFAULTS.reference,
     notes: data.notes?.trim(),
     taxAmount,
     subtotal,
@@ -362,7 +365,7 @@ export const downloadManualInvoicePdf = async (data: ManualInvoiceInput) => {
           }))
         : [
             {
-              service: "-",
+              service: INVOICE_DEFAULTS.defaultServiceItem,
               schedule: "-",
               technician: "-",
               amount: formatMoney(0),

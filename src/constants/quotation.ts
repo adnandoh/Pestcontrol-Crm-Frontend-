@@ -1,18 +1,33 @@
-/** Pest Control 99 — quotation / invoice letterhead & defaults */
+/** Multi Pest Care LLP / Pest Control 99 — quotation & invoice letterhead */
 
 export const COMPANY = {
-  name: 'Pest Control 99',
+  legalName: 'Multi Pest Care LLP',
+  brandName: 'Pest Control 99',
+  /** Legal name on PDFs and invoices */
+  name: 'Multi Pest Care LLP',
   tagline: 'Professional Pest Management Solutions',
   website: 'https://www.pestcontrol99.com',
   email: 'info@pestcontrol99.com',
-  phones: ['8080748282', '7710032627'],
+  phones: ['8080748282'],
+  phoneDisplay: '8080 74 8282',
   license: 'LAID020185',
   address: 'Mumbai, Maharashtra, India',
   gstin: '', // add when available
 } as const;
 
+export function formatCompanyPhone(): string {
+  return `+91 ${COMPANY.phoneDisplay}`;
+}
+
+export const INVOICE_DEFAULTS = {
+  billedByName: COMPANY.legalName,
+  billedByAddress: `${COMPANY.address}\n${formatCompanyPhone()}\n${COMPANY.website}`,
+  reference: 'Quotation Management',
+  defaultServiceItem: 'Quotation Management',
+} as const;
+
 export const BANK_DETAILS = {
-  accountName: 'Pest Control 99',
+  accountName: COMPANY.legalName,
   bankName: '—',
   accountNo: '—',
   ifsc: '—',
@@ -25,7 +40,7 @@ export const DEFAULT_TERMS = `1. This quotation is valid for 30 days from the da
 4. Customer must provide access to all required areas at the scheduled time.
 5. Warranty / free revisit is as per service scope mentioned above.
 6. Payment terms as agreed in this quotation must be fulfilled before / after service as stated.
-7. Pest Control 99 is not liable for pre-existing structural damage or pest activity outside the treated area.`;
+7. ${COMPANY.legalName} is not liable for pre-existing structural damage or pest activity outside the treated area.`;
 
 export const DEFAULT_PAYMENT_TERMS = [
   { term: 'Advance', description: '50% advance before service; balance on completion.' },

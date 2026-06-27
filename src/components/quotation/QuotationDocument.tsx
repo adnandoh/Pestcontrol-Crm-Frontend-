@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { format } from 'date-fns';
 import type { Quotation } from '../../types';
-import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName } from '../../constants/quotation';
+import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName, formatCompanyPhone } from '../../constants/quotation';
 import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
 import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
 import { resolveQuotationTotals } from '../../utils/quotationTotals';
@@ -63,13 +63,12 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
               className="quotation-doc-logo"
             />
             <div className="quotation-doc-company-meta min-w-0">
-              <p className="text-[10px] font-semibold text-[#1e5a9e] uppercase tracking-wide">
-                {COMPANY.tagline}
+              <p className="text-[11px] font-bold text-gray-900 leading-snug">{COMPANY.legalName}</p>
+              <p className="text-[10px] font-semibold text-[#1e5a9e] uppercase tracking-wide mt-0.5">
+                {COMPANY.brandName} — {COMPANY.tagline}
               </p>
               <p className="text-[10px] text-gray-600 mt-1 leading-snug">{COMPANY.address}</p>
-              <p className="text-[10px] text-gray-600 leading-snug">
-                {COMPANY.phones.map((p) => `+91 ${p}`).join(' | ')}
-              </p>
+              <p className="text-[10px] text-gray-600 leading-snug">{formatCompanyPhone()}</p>
               <p className="text-[10px] font-semibold text-[#2d8a2f] leading-snug">
                 {COMPANY.website}
               </p>
@@ -341,7 +340,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         <div className="text-[9px] text-gray-500">
           <p>Thank you for choosing {COMPANY.name}.</p>
           <p className="mt-1">
-            {COMPANY.website} | +91 {COMPANY.phones[0]}
+            {COMPANY.website} | {formatCompanyPhone()}
           </p>
           {quotation.created_by_name && (
             <p className="mt-1 text-gray-400">Prepared by: {quotation.created_by_name}</p>
@@ -350,10 +349,11 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         <div className="text-center quotation-signature-block">
           <img
             src={COMPANY_SIGNATURE_STAMP_URL}
-            alt="Authorised Signatory — Pest Control 99"
+            alt={`Authorised Signatory — ${COMPANY.legalName}`}
             className="company-signature-stamp mx-auto object-contain"
           />
-          <p className="text-[10px] font-bold text-[#1e5a9e] mt-2">{COMPANY.name}</p>
+          <p className="text-[10px] font-bold text-[#1e5a9e] mt-2">{COMPANY.legalName}</p>
+          <p className="text-[8px] text-gray-500">{COMPANY.brandName}</p>
           <p className="text-[8px] text-gray-500 uppercase tracking-wide">Authorised Signatory</p>
         </div>
       </div>

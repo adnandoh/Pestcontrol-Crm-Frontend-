@@ -3,6 +3,7 @@ import { Download, Plus, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { downloadManualInvoicePdf, type ManualInvoiceInput } from "../utils/invoicePdf";
+import { INVOICE_DEFAULTS } from "../constants/quotation";
 
 type InvoiceItemForm = {
   service: string;
@@ -11,8 +12,8 @@ type InvoiceItemForm = {
   amount: string;
 };
 
-const createEmptyItem = (): InvoiceItemForm => ({
-  service: "",
+const createDefaultItem = (): InvoiceItemForm => ({
+  service: INVOICE_DEFAULTS.defaultServiceItem,
   schedule: "",
   technician: "",
   amount: "",
@@ -23,19 +24,19 @@ const Invoices: React.FC = () => {
   const [form, setForm] = useState({
     invoiceNo: "",
     invoiceDate: new Date().toISOString().slice(0, 10),
-    billedByName: "Pest Control 99",
-    billedByAddress: "Mumbai, Maharashtra, India",
+    billedByName: INVOICE_DEFAULTS.billedByName,
+    billedByAddress: INVOICE_DEFAULTS.billedByAddress,
     billedToName: "",
     billedToMobile: "",
     billedToAddress: "",
     bookingCode: "",
     bookingCreatedAt: "",
     nextServiceDate: "",
-    reference: "Manual",
+    reference: INVOICE_DEFAULTS.reference,
     tax: "0",
     notes: "",
   });
-  const [items, setItems] = useState<InvoiceItemForm[]>([createEmptyItem()]);
+  const [items, setItems] = useState<InvoiceItemForm[]>([createDefaultItem()]);
 
   const subtotal = useMemo(
     () =>
@@ -57,7 +58,7 @@ const Invoices: React.FC = () => {
   };
 
   const addItem = () => {
-    setItems((prev) => [...prev, createEmptyItem()]);
+    setItems((prev) => [...prev, createDefaultItem()]);
   };
 
   const removeItem = (index: number) => {
@@ -120,6 +121,7 @@ const Invoices: React.FC = () => {
             <p className="text-xs font-semibold text-gray-500 uppercase">Billed By</p>
             <input className="w-full px-3 py-2 border rounded-lg" placeholder="Company Name" value={form.billedByName} onChange={(e) => updateFormField("billedByName", e.target.value)} />
             <textarea className="w-full px-3 py-2 border rounded-lg min-h-[80px]" placeholder="Company Address" value={form.billedByAddress} onChange={(e) => updateFormField("billedByAddress", e.target.value)} />
+            <p className="text-[10px] text-gray-500">Default includes Multi Pest Care LLP, +91 8080 74 8282, and website.</p>
           </div>
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase">Billed To</p>
