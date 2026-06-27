@@ -614,18 +614,46 @@
 }
 
 .q-footer-terms {
-  font-size: 11px;
+  font-size: 9px;
   color: var(--q-gray-600);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .q-footer-terms h4 {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--q-blue);
-  margin: 0 0 6px;
+  margin: 0 0 5px;
+}
+
+.q-footer-terms p,
+.q-footer-terms ol,
+.q-footer-terms li {
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--q-gray-600);
+  margin: 0;
+}
+
+.q-footer-terms ol {
+  padding-left: 14px;
+  margin: 0;
+}
+
+.q-footer-terms li {
+  margin-bottom: 3px;
+}
+
+.q-footer-terms li:last-child {
+  margin-bottom: 0;
+}
+
+.q-footer-terms-meta {
+  margin-top: 6px !important;
+  font-size: 8px !important;
+  color: var(--q-gray-400) !important;
 }
 
 .q-signature-block {

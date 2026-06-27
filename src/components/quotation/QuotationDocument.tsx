@@ -440,14 +440,18 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
       <div className="q-footer-grid">
         <div className="q-footer-terms">
           <h4>Terms & Conditions</h4>
-          <p>
+          <ol>
             {(quotation.terms_and_conditions || DEFAULT_TERMS)
               .split('\n')
-              .slice(0, 4)
-              .join(' ')}
-          </p>
+              .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+              .filter(Boolean)
+              .slice(0, 5)
+              .map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+          </ol>
           {quotation.created_by_name && (
-            <p style={{ marginTop: 8 }}>
+            <p className="q-footer-terms-meta">
               Prepared by: <strong>{quotation.created_by_name}</strong> ·{' '}
               {fmtDate(quotation.created_at)}
             </p>
