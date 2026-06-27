@@ -29,11 +29,21 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
   const scopes = quotation.scopes || [];
   const paymentTerms = quotation.payment_terms || [];
   const structured = hasStructuredScopes(scopes);
+  const isPerServiceScope = (title: string) => title.includes(' — ') || title === 'Area Covered';
   const scopeContent = (title: string) => scopes.find((s) => s.title === title)?.content;
   const customScopes = scopes.filter(
-    (s) => !STRUCTURED_SCOPE_TITLES.includes(s.title as (typeof STRUCTURED_SCOPE_TITLES)[number]),
+    (s) =>
+      !STRUCTURED_SCOPE_TITLES.includes(s.title as (typeof STRUCTURED_SCOPE_TITLES)[number]) &&
+      !isPerServiceScope(s.title),
   );
-  const propertyServiceLabel = [quotation.property_type, quotation.template_service_type]
+  const propertyServiceLabel = [
+    quotation.property_type,
+    quotation.template_service_type
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(' + '),
+  ]
     .filter(Boolean)
     .join(' — ');
 
@@ -237,6 +247,14 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                   </div>
                 );
               })}
+              {scopes.filter((s) => isPerServiceScope(s.title)).map((s, i) => (
+                <div key={`ps-${i}`}>
+                  <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
+                    {s.title}
+                  </h4>
+                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{s.content}</p>
+                </div>
+              ))}
               {customScopes.map((s, i) => (
                 <div key={`custom-${i}`}>
                   <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
@@ -246,6 +264,17 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                 </div>
               ))}
             </>
+          ) : scopes.some((s) => isPerServiceScope(s.title)) ? (
+            <div className="space-y-3">
+              {scopes.map((s, i) => (
+                <div key={i}>
+                  <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
+                    {s.title}
+                  </h4>
+                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{s.content}</p>
+                </div>
+              ))}
+            </div>
           ) : scopes.length > 0 ? (
             <div>
               <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-2 border-b border-[#2d8a2f] pb-1">

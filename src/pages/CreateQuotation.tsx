@@ -37,12 +37,20 @@ import {
 } from '../constants/quotation';
 import {
   QUOTATION_PROPERTY_TYPES,
-  QUOTATION_SERVICE_TYPES,
-  getQuotationTemplate,
-  templateToScopes,
   propertyTypeToQuotationType,
-  STRUCTURED_SCOPE_TITLES,
 } from '../constants/quotationTemplates';
+import {
+  QUOTATION_SELECTABLE_SERVICES,
+  type QuotationServicePlanConfig,
+  buildItemsFromServicePlans,
+  configsFromQuotation,
+  defaultPlanForService,
+  deriveQuotationFlags,
+  getPaymentTermsForServicePlans,
+  getQuotationPlanOptions,
+  mergeScopesForServicePlans,
+  quotationSupportsAmc,
+} from '../constants/quotationServices';
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -90,6 +98,7 @@ const CreateQuotation: React.FC = () => {
   });
 
   const [previewAfterSave, setPreviewAfterSave] = useState(false);
+  const [servicePlans, setServicePlans] = useState<QuotationServicePlanConfig[]>([]);
 
   const [masterStates, setMasterStates] = useState<State[]>([]);
   const [masterCities, setMasterCities] = useState<City[]>([]);
@@ -102,46 +111,73 @@ const CreateQuotation: React.FC = () => {
 
   useEffect(() => {
     if (existingQuotation) {
+      const configs = configsFromQuotation(
+        existingQuotation.template_service_type,
+        existingQuotation.items || [],
+      );
+      setServicePlans(configs);
       setFormData({
         ...existingQuotation,
       } as QuotationFormData);
     }
   }, [existingQuotation]);
 
-  const updateTemplateSelection = (propertyType: string, serviceType: string) => {
-    const quotation_type = formData.is_amc
-      ? 'AMC Package'
-      : propertyType
-        ? propertyTypeToQuotationType(propertyType)
-        : formData.quotation_type;
-
-    if (!propertyType || !serviceType) {
-      setFormData((prev) => ({
-        ...prev,
-        property_type: propertyType,
-        template_service_type: serviceType,
-        quotation_type,
-      }));
-      return;
-    }
-
-    const template = getQuotationTemplate(propertyType, serviceType);
-    if (!template) return;
+  const applyQuotationFromConfigs = (
+    propertyType: string,
+    configs: QuotationServicePlanConfig[],
+    existingItems?: QuotationItem[],
+  ) => {
+    const flags = deriveQuotationFlags(configs);
+    const items = buildItemsFromServicePlans(configs, existingItems ?? formData.items);
+    const paymentTerms = propertyType && configs.length
+      ? getPaymentTermsForServicePlans(propertyType, configs)
+      : null;
 
     setFormData((prev) => ({
       ...prev,
       property_type: propertyType,
-      template_service_type: serviceType,
-      quotation_type,
-      scopes: templateToScopes(template),
-      payment_terms: template.paymentTerms.map((t) => ({ ...t })),
-      items: prev.items.map((item, index) =>
-        index === 0 && !item.service_name.trim()
-          ? { ...item, service_name: serviceType }
-          : item,
-      ),
+      template_service_type: configs.map((c) => c.service).join(', '),
+      quotation_type: propertyType
+        ? flags.is_amc
+          ? 'AMC Package'
+          : propertyTypeToQuotationType(propertyType)
+        : prev.quotation_type,
+      is_amc: flags.is_amc,
+      visit_count: flags.visit_count,
+      scopes: propertyType && configs.length
+        ? mergeScopesForServicePlans(propertyType, configs)
+        : [],
+      payment_terms: paymentTerms
+        ? paymentTerms.map((t) => ({ ...t }))
+        : prev.payment_terms,
+      items: configs.length ? items : [{ service_name: '', frequency: 'One Time', quantity: 1, rate: 0, total: 0 }],
+      contract_amount: flags.hasMixedPlans ? 0 : prev.contract_amount,
     }));
+
+    if (configs.length) {
+      calculateTotals(items, formData.discount ?? 0, {
+        is_amc: flags.is_amc && !flags.hasMixedPlans,
+        contract_amount: flags.hasMixedPlans ? 0 : formData.contract_amount,
+      });
+    }
   };
+
+  const toggleQuotationService = (service: QuotationServicePlanConfig['service']) => {
+    const exists = servicePlans.some((s) => s.service === service);
+    const next = exists
+      ? servicePlans.filter((s) => s.service !== service)
+      : [...servicePlans, { service, plan: defaultPlanForService(service) }];
+    setServicePlans(next);
+    applyQuotationFromConfigs(formData.property_type || '', next);
+  };
+
+  const changeServicePlan = (service: string, plan: string) => {
+    const next = servicePlans.map((s) => (s.service === service ? { ...s, plan } : s));
+    setServicePlans(next);
+    applyQuotationFromConfigs(formData.property_type || '', next);
+  };
+
+  const mixedPlans = deriveQuotationFlags(servicePlans).hasMixedPlans;
 
   // 1. Initial State Fetch
   useEffect(() => {
@@ -290,6 +326,7 @@ const CreateQuotation: React.FC = () => {
     const grandTotal = Math.max(0, (formData.total_amount ?? 0) - (formData.discount ?? 0));
     const payload = {
       ...formData,
+      template_service_type: servicePlans.map((c) => c.service).join(', ') || formData.template_service_type,
       customer_name: getQuotationDisplayName(formData),
       pincode: '',
       terms_and_conditions: '',
@@ -622,9 +659,11 @@ const CreateQuotation: React.FC = () => {
                 <select
                   className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium"
                   value={formData.property_type || ''}
-                  onChange={(e) =>
-                    updateTemplateSelection(e.target.value, formData.template_service_type || '')
-                  }
+                  onChange={(e) => {
+                    const propertyType = e.target.value;
+                    setFormData((prev) => ({ ...prev, property_type: propertyType }));
+                    applyQuotationFromConfigs(propertyType, servicePlans);
+                  }}
                 >
                   <option value="">Select property type</option>
                   {QUOTATION_PROPERTY_TYPES.map((t) => (
@@ -635,28 +674,82 @@ const CreateQuotation: React.FC = () => {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Service Type</Label>
-                <select
-                  className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium"
-                  value={formData.template_service_type || ''}
-                  onChange={(e) =>
-                    updateTemplateSelection(formData.property_type || '', e.target.value)
-                  }
-                >
-                  <option value="">Select service type</option>
-                  {QUOTATION_SERVICE_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-gray-500">Services (multi-select)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {QUOTATION_SELECTABLE_SERVICES.map((service) => {
+                    const selected = servicePlans.some((s) => s.service === service);
+                    return (
+                      <button
+                        key={service}
+                        type="button"
+                        onClick={() => toggleQuotationService(service)}
+                        className={cn(
+                          'px-3 py-2 rounded-lg text-[11px] font-bold border transition-all',
+                          selected
+                            ? 'bg-[#1e5a9e] text-white border-[#1e5a9e] shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#1e5a9e]/40',
+                        )}
+                      >
+                        {service}
+                      </button>
+                    );
+                  })}
+                </div>
                 <p className="text-[10px] text-gray-500">
-                  Scope, area, pests, benefits, warranty and payment terms load automatically when
-                  both are selected.
+                  Select one or more services — e.g. Bed Bug one-time + Mosquito AMC. Set plan per
+                  service below.
                 </p>
               </div>
 
+              {servicePlans.length > 0 && (
+                <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+                  <p className="text-xs font-black text-violet-800 uppercase tracking-wide">
+                    Plan per service
+                  </p>
+                  {servicePlans.map((cfg) => {
+                    const planOptions = getQuotationPlanOptions(cfg.service);
+                    const canAmc = quotationSupportsAmc(cfg.service);
+                    return (
+                      <div key={cfg.service} className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-gray-700">{cfg.service}</Label>
+                        <select
+                          className="w-full h-10 px-3 bg-white border border-violet-200 rounded-lg text-sm font-medium"
+                          value={cfg.plan}
+                          onChange={(e) => changeServicePlan(cfg.service, e.target.value)}
+                        >
+                          {planOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {!canAmc && (
+                          <p className="text-[10px] text-amber-700">One-time service only</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {mixedPlans && (
+                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Mixed quotation: one-time + AMC services. Enter rate for each line item; total is
+                  the sum of all services.
+                </p>
+              )}
+
+              {servicePlans.length > 0 ? (
+                <div className="p-4 bg-[#f0faf0] rounded-xl border border-[#c8e6c9] space-y-1">
+                  <p className="text-sm font-bold text-[#2d8a2f]">
+                    {formData.is_amc ? 'Includes AMC service(s)' : 'One-time services only'}
+                  </p>
+                  <p className="text-[10px] text-gray-600">
+                    {servicePlans.map((c) => c.service).join(' + ')}
+                  </p>
+                </div>
+              ) : (
               <div className="flex items-center justify-between p-4 bg-[#f0faf0] rounded-xl border border-[#c8e6c9]">
                 <div>
                   <p className="text-sm font-bold text-[#2d8a2f]">Is this AMC?</p>
@@ -687,8 +780,9 @@ const CreateQuotation: React.FC = () => {
                   )} />
                 </button>
               </div>
+              )}
 
-              {formData.is_amc && (
+              {formData.is_amc && !mixedPlans && (
                 <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase text-gray-500">Visit Count</Label>
@@ -778,24 +872,23 @@ const CreateQuotation: React.FC = () => {
             </Button>
           </div>
 
-          {!formData.property_type || !formData.template_service_type ? (
+          {!formData.property_type || servicePlans.length === 0 ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
-              Select <strong>Property Type</strong> and <strong>Service Type</strong> in Settings to
-              auto-load scope of work, area covered, pest covered, benefits and warranty.
+              Select <strong>Property Type</strong> and one or more <strong>Services</strong> in
+              Settings to auto-load scope, area, pests, benefits and warranty per service.
             </p>
           ) : null}
 
           <div className="space-y-4">
             {(formData.scopes || []).map((scope, i) => {
-              const isStructured = STRUCTURED_SCOPE_TITLES.includes(
-                scope.title as (typeof STRUCTURED_SCOPE_TITLES)[number],
-              );
+              const isSharedArea = scope.title === 'Area Covered';
+              const isPerService = scope.title.includes(' — ');
               return (
                 <div
                   key={i}
                   className={cn(
                     'p-4 rounded-lg border relative',
-                    isStructured
+                    isSharedArea || isPerService
                       ? 'bg-[#f0f7ff] border-[#1e5a9e]/20'
                       : 'bg-gray-50 border-gray-100',
                   )}
@@ -805,7 +898,7 @@ const CreateQuotation: React.FC = () => {
                     value={scope.title}
                     onChange={(e) => handleScopeChange(i, 'title', e.target.value)}
                     className="mb-2 bg-white font-semibold"
-                    readOnly={isStructured}
+                    readOnly={isSharedArea || isPerService}
                   />
                   <textarea
                     className="w-full min-h-[72px] px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
@@ -813,7 +906,7 @@ const CreateQuotation: React.FC = () => {
                     value={scope.content}
                     onChange={(e) => handleScopeChange(i, 'content', e.target.value)}
                   />
-                  {!isStructured && (formData.scopes?.length || 0) > 0 && (
+                  {!isSharedArea && !isPerService && (formData.scopes?.length || 0) > 0 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveScope(i)}

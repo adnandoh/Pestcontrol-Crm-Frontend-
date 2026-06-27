@@ -18,12 +18,18 @@ export type QuotationPropertyType = (typeof QUOTATION_PROPERTY_TYPES)[number];
 
 export const QUOTATION_SERVICE_TYPES = [
   'General Pest Control',
+  'Bed Bug Treatment',
   'Rodent Control',
   'Mosquito Control',
   'Termite Treatment',
 ] as const;
 
 export type QuotationServiceType = (typeof QUOTATION_SERVICE_TYPES)[number];
+
+/** All services available for multi-select on Create Quotation */
+export const QUOTATION_SELECTABLE_SERVICES = [...QUOTATION_SERVICE_TYPES] as const;
+
+export type QuotationSelectableService = (typeof QUOTATION_SELECTABLE_SERVICES)[number];
 
 export interface QuotationMasterTemplate {
   scopeOfWork: string;
@@ -77,6 +83,15 @@ const SERVICE_BASE: Record<
       'Gel & Spray Treatment | Trained Technicians | Digital Service Report | Odourless Treatment | 100% Service Warranty',
     warranty:
       '100% Service Warranty — free revisit within 30 days if covered pests reappear in treated areas.',
+  },
+  'Bed Bug Treatment': {
+    scopeOfWork:
+      'Targeted bed bug treatment using approved chemicals and methods for mattresses, furniture, cracks and harbourage areas. Includes inspection and follow-up guidance.',
+    pestCovered: 'Bed Bug | Eggs & Nymphs',
+    benefits:
+      'Targeted Treatment | Trained Technicians | Digital Service Report | Odourless Options | Follow-up Visit',
+    warranty:
+      'Free follow-up visit within 15 days if bed bug activity persists in treated areas.',
   },
   'Rodent Control': {
     scopeOfWork:
