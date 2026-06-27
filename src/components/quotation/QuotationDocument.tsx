@@ -4,10 +4,14 @@ import type { Quotation } from '../../types';
 import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName } from '../../constants/quotation';
 import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
 import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
+import { resolveQuotationTotals } from '../../utils/quotationTotals';
 import './QuotationDocument.css';
 
 const fmt = (n: number) =>
   Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+const fmtScopeContent = (content: string) =>
+  content.replace(/\s*\|\s*$/g, '').trim();
 
 const fmtDate = (d?: string) => {
   if (!d) return '-';
@@ -28,6 +32,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
   const items = quotation.items || [];
   const scopes = quotation.scopes || [];
   const paymentTerms = quotation.payment_terms || [];
+  const totals = resolveQuotationTotals(quotation);
   const structured = hasStructuredScopes(scopes);
   const isPerServiceScope = (title: string) => title.includes(' — ') || title === 'Area Covered';
   const scopeContent = (title: string) => scopes.find((s) => s.title === title)?.content;
@@ -49,21 +54,24 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
 
   return (
     <div className={`quotation-doc ${className}`}>
-      <div className="border-b-4 border-[#2d8a2f] pb-4 mb-5">
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex items-start gap-4">
+      <div className="quotation-doc-header border-b-4 border-[#2d8a2f] pb-4 mb-5">
+        <div className="quotation-doc-header-grid">
+          <div className="quotation-doc-brand">
             <img
               src="/pest-control-99-logo.png"
               alt={COMPANY.name}
-              className="h-16 w-auto object-contain"
+              className="quotation-doc-logo"
             />
-            <div>
+            <div className="quotation-doc-company-meta min-w-0">
               <p className="text-[10px] font-semibold text-[#1e5a9e] uppercase tracking-wide">
                 {COMPANY.tagline}
               </p>
-              <p className="text-[10px] text-gray-600 mt-1">{COMPANY.address}</p>
-              <p className="text-[10px] text-gray-600">
-                {COMPANY.phones.map((p) => `+91 ${p}`).join(' | ')} | {COMPANY.website}
+              <p className="text-[10px] text-gray-600 mt-1 leading-snug">{COMPANY.address}</p>
+              <p className="text-[10px] text-gray-600 leading-snug">
+                {COMPANY.phones.map((p) => `+91 ${p}`).join(' | ')}
+              </p>
+              <p className="text-[10px] font-semibold text-[#2d8a2f] leading-snug">
+                {COMPANY.website}
               </p>
               <p className="text-[10px] font-bold text-[#2d8a2f] mt-1">
                 Govt. License: {quotation.license_number || COMPANY.license}
@@ -71,7 +79,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             </div>
           </div>
 
-          <div className="text-right shrink-0 border-2 border-[#1e5a9e] rounded-lg px-4 py-2 min-w-[200px]">
+          <div className="quotation-doc-meta-box text-right shrink-0 border-2 border-[#1e5a9e] rounded-lg px-4 py-2">
             <h2 className="text-lg font-black text-[#1e5a9e] uppercase tracking-tight">Quotation</h2>
             <table className="w-full text-[10px] mt-2 text-left">
               <tbody>
@@ -149,7 +157,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
               visit(s) included.
             </p>
             <p className="text-lg font-black text-[#c41e3a] mt-2">
-              Contract Value: Rs.{fmt(quotation.contract_amount || quotation.grand_total)}
+              Contract Value: Rs.{fmt(totals.contract_amount || totals.grand_total)}
             </p>
             <p className="text-[9px] text-gray-500 mt-1 italic">
               Follow-up visits are included in contract; not billed separately.
@@ -206,7 +214,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         <div className="w-full max-w-xs text-[10px]">
           <div className="flex justify-between py-1 border-b border-gray-100">
             <span className="text-gray-600">Subtotal</span>
-            <span className="font-semibold">Rs.{fmt(quotation.total_amount)}</span>
+            <span className="font-semibold">Rs.{fmt(totals.total_amount)}</span>
           </div>
           {Number(quotation.discount) > 0 && (
             <div className="flex justify-between py-1 border-b border-gray-100 text-[#c41e3a]">
@@ -216,10 +224,10 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
           )}
           <div className="flex justify-between py-2 mt-1 bg-[#2d8a2f] text-white px-3 rounded font-bold text-sm">
             <span>Grand Total</span>
-            <span>Rs.{fmt(quotation.grand_total)}</span>
+            <span>Rs.{fmt(totals.grand_total)}</span>
           </div>
           <p className="text-[9px] text-gray-500 italic mt-2 text-right">
-            {amountInWords(Number(quotation.grand_total))}
+            {amountInWords(totals.grand_total)}
           </p>
         </div>
       </div>
@@ -243,7 +251,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                     <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
                       {title}
                     </h4>
-                    <p className="text-[10px] text-gray-700 leading-relaxed">{content}</p>
+                    <p className="text-[10px] text-gray-700 leading-relaxed">{fmtScopeContent(content)}</p>
                   </div>
                 );
               })}
@@ -252,7 +260,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                   <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
                     {s.title}
                   </h4>
-                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{s.content}</p>
+                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{fmtScopeContent(s.content)}</p>
                 </div>
               ))}
               {customScopes.map((s, i) => (
@@ -271,7 +279,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                   <h4 className="text-[9px] font-black text-[#1e5a9e] uppercase tracking-widest mb-1 border-b border-[#2d8a2f] pb-1">
                     {s.title}
                   </h4>
-                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{s.content}</p>
+                  <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-line">{fmtScopeContent(s.content)}</p>
                 </div>
               ))}
             </div>
@@ -284,7 +292,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                 {scopes.map((s, i) => (
                   <li key={i}>
                     <span className="font-bold">{s.title}: </span>
-                    {s.content}
+                    {fmtScopeContent(s.content)}
                   </li>
                 ))}
               </ol>
@@ -329,7 +337,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         </div>
       </div>
 
-      <div className="flex justify-between items-end pt-4 border-t-2 border-gray-200">
+      <div className="quotation-doc-footer flex justify-between items-end pt-4 border-t-2 border-gray-200 gap-6">
         <div className="text-[9px] text-gray-500">
           <p>Thank you for choosing {COMPANY.name}.</p>
           <p className="mt-1">

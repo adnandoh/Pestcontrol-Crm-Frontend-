@@ -51,6 +51,7 @@ import {
   mergeScopesForServicePlans,
   quotationSupportsAmc,
 } from '../constants/quotationServices';
+import { resolveQuotationTotalsFromForm } from '../utils/quotationTotals';
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -272,28 +273,26 @@ const CreateQuotation: React.FC = () => {
   const calculateTotals = (
     items: QuotationItem[],
     discount: number = formData.discount ?? 0,
-    opts?: { is_amc?: boolean; contract_amount?: number },
+    opts?: { is_amc?: boolean; contract_amount?: number; visit_count?: number },
   ) => {
     const isAmc = opts?.is_amc ?? formData.is_amc;
     const contractAmt = opts?.contract_amount ?? formData.contract_amount ?? 0;
+    const visitCount = opts?.visit_count ?? formData.visit_count ?? 1;
 
-    let total_amount: number;
-    if (isAmc && contractAmt > 0) {
-      total_amount = contractAmt;
-    } else {
-      total_amount = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
-    }
-
-    const taxable = Math.max(0, total_amount - discount);
-    const tax_amount = 0;
-    const grand_total = taxable;
+    const { total_amount, grand_total, contract_amount } = resolveQuotationTotalsFromForm(
+      items,
+      discount,
+      Boolean(isAmc),
+      contractAmt,
+      visitCount,
+    );
 
     setFormData((prev) => ({
       ...prev,
       total_amount,
-      tax_amount,
+      tax_amount: 0,
       grand_total,
-      contract_amount: isAmc ? contractAmt || grand_total : 0,
+      contract_amount,
     }));
   };
 
@@ -323,7 +322,13 @@ const CreateQuotation: React.FC = () => {
   const handleSubmit = (e: React.FormEvent, goPreview = false) => {
     e.preventDefault();
     setPreviewAfterSave(goPreview);
-    const grandTotal = Math.max(0, (formData.total_amount ?? 0) - (formData.discount ?? 0));
+    const resolved = resolveQuotationTotalsFromForm(
+      formData.items,
+      formData.discount ?? 0,
+      Boolean(formData.is_amc),
+      formData.contract_amount ?? 0,
+      formData.visit_count ?? 1,
+    );
     const payload = {
       ...formData,
       template_service_type: servicePlans.map((c) => c.service).join(', ') || formData.template_service_type,
@@ -331,10 +336,9 @@ const CreateQuotation: React.FC = () => {
       pincode: '',
       terms_and_conditions: '',
       tax_amount: 0,
-      grand_total: grandTotal,
-      contract_amount: formData.is_amc
-        ? formData.contract_amount || grandTotal
-        : 0,
+      total_amount: resolved.total_amount,
+      grand_total: resolved.grand_total,
+      contract_amount: resolved.contract_amount,
     };
     if (isEdit) {
       updateMutation.mutate(payload);
@@ -785,14 +789,22 @@ const CreateQuotation: React.FC = () => {
               {formData.is_amc && !mixedPlans && (
                 <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-gray-500">Visit Count</Label>
+                    <Label className="text-xs font-bold uppercase text-gray-500">
+                      Number of Visits (not price)
+                    </Label>
                     <Input
                       type="number"
                       min={1}
                       value={formData.visit_count}
-                      onChange={(e) =>
-                        setFormData({ ...formData, visit_count: Number(e.target.value) })
-                      }
+                      onChange={(e) => {
+                        const visit_count = Number(e.target.value);
+                        setFormData((prev) => ({ ...prev, visit_count }));
+                        calculateTotals(formData.items, formData.discount ?? 0, {
+                          is_amc: true,
+                          contract_amount: formData.contract_amount,
+                          visit_count,
+                        });
+                      }}
                       className="bg-white"
                     />
                   </div>
@@ -815,7 +827,8 @@ const CreateQuotation: React.FC = () => {
                       className="bg-white font-bold"
                     />
                     <p className="text-[10px] text-gray-500">
-                      Total contract value for all visits (not per visit).
+                      Optional package price. Leave blank to use the line-item total above. Do not
+                      enter visit count here.
                     </p>
                   </div>
                 </div>

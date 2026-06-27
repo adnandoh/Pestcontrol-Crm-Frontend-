@@ -8,7 +8,55 @@
   background: #fff;
   width: 100%;
   max-width: 100%;
-  overflow: visible;
+  overflow: hidden;
+}
+
+.quotation-doc-header-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+
+.quotation-doc-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.quotation-doc-logo {
+  height: 4rem;
+  width: auto;
+  max-width: 7rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.quotation-doc-company-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.quotation-doc-meta-box {
+  width: 13.5rem;
+  max-width: 42%;
+}
+
+.quotation-doc-footer {
+  page-break-inside: avoid;
+}
+
+@media (max-width: 640px) {
+  .quotation-doc-header-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quotation-doc-meta-box {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+  }
 }
 
 .quotation-doc * {

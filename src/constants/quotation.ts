@@ -3,7 +3,7 @@
 export const COMPANY = {
   name: 'Pest Control 99',
   tagline: 'Professional Pest Management Solutions',
-  website: 'www.pestcontrol99.com',
+  website: 'https://www.pestcontrol99.com',
   email: 'info@pestcontrol99.com',
   phones: ['8080748282', '7710032627'],
   license: 'LAID020185',

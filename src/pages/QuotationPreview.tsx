@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card';
 import QuotationDocument from '../components/quotation/QuotationDocument';
 import { COMPANY, getQuotationDisplayName } from '../constants/quotation';
 import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
+import { resolveQuotationTotals } from '../utils/quotationTotals';
 
 const QuotationPreview: React.FC = () => {
   const { id } = useParams();
@@ -61,18 +62,21 @@ const QuotationPreview: React.FC = () => {
   const handleShareWhatsApp = () => {
     if (!quotation) return;
     const name = getQuotationDisplayName(quotation);
+    const totals = resolveQuotationTotals(quotation);
     const message = `Hello ${name},
 
 Please find your quotation from ${COMPANY.name}.
 
 Quotation No: ${quotation.quotation_no}
-Amount: Rs.${Number(quotation.grand_total).toLocaleString('en-IN')}
+Amount: Rs.${totals.grand_total.toLocaleString('en-IN')}
 
 Thank you.
 ${COMPANY.website}`;
     const phone = quotation.mobile.replace(/\D/g, '').slice(-10);
     window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
+
+  const totals = quotation ? resolveQuotationTotals(quotation) : null;
 
   if (isLoading) {
     return (
@@ -169,7 +173,7 @@ ${COMPANY.website}`;
           <Card className="p-4 text-center">
             <p className="text-[10px] uppercase font-bold text-gray-400">Grand Total</p>
             <p className="text-lg font-black text-[#c41e3a] mt-1">
-              Rs.{Number(quotation.grand_total).toLocaleString('en-IN')}
+              Rs.{totals?.grand_total.toLocaleString('en-IN')}
             </p>
           </Card>
           <Card className="p-4 text-center">
