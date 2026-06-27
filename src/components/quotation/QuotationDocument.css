@@ -1,4 +1,4 @@
-/* Pest Control 99 — quotation document (screen + print) */
+/* Multi Pest Care LLP — quotation document (screen + print) */
 
 .quotation-doc {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -7,28 +7,33 @@
   color: #1a1a1a;
   background: #fff;
   width: 100%;
-  max-width: 100%;
-  overflow: hidden;
+  max-width: 210mm;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.quotation-doc * {
+  box-sizing: border-box;
 }
 
 .quotation-doc-header-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 1rem 1.25rem;
   align-items: start;
 }
 
 .quotation-doc-brand {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.875rem;
   min-width: 0;
 }
 
 .quotation-doc-logo {
-  height: 4rem;
+  height: 3.75rem;
   width: auto;
-  max-width: 7rem;
+  max-width: 6.5rem;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -39,8 +44,81 @@
 }
 
 .quotation-doc-meta-box {
-  width: 13.5rem;
-  max-width: 42%;
+  width: 250px;
+  min-width: 250px;
+  flex-shrink: 0;
+}
+
+.quotation-doc-meta-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.quotation-doc-meta-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.quotation-doc-meta-row .meta-label {
+  color: #6b7280;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.quotation-doc-meta-row .meta-value {
+  color: #111827;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.quotation-items-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.quotation-items-table th:nth-child(1),
+.quotation-items-table td:nth-child(1) {
+  width: 6%;
+}
+
+.quotation-items-table th:nth-child(2),
+.quotation-items-table td:nth-child(2) {
+  width: 34%;
+}
+
+.quotation-items-table th:nth-child(3),
+.quotation-items-table td:nth-child(3) {
+  width: 18%;
+}
+
+.quotation-items-table th:nth-child(4),
+.quotation-items-table td:nth-child(4) {
+  width: 8%;
+}
+
+.quotation-items-table th:nth-child(5),
+.quotation-items-table td:nth-child(5) {
+  width: 16%;
+}
+
+.quotation-items-table th:nth-child(6),
+.quotation-items-table td:nth-child(6) {
+  width: 18%;
+}
+
+.quotation-items-table td,
+.quotation-items-table th {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .quotation-doc-footer {
@@ -54,24 +132,8 @@
 
   .quotation-doc-meta-box {
     width: 100%;
-    max-width: none;
-    text-align: left;
+    min-width: 0;
   }
-}
-
-.quotation-doc * {
-  box-sizing: border-box;
-}
-
-.quotation-doc table {
-  table-layout: fixed;
-  width: 100%;
-}
-
-.quotation-doc td,
-.quotation-doc th {
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
 }
 
 /* ─── Preview mode: hide CRM chrome, full-width canvas ─── */
@@ -182,7 +244,16 @@ body.quotation-preview-mode .quotation-preview-page {
   .quotation-doc {
     box-shadow: none !important;
     border: none !important;
-    page-break-inside: avoid;
+    max-width: 100% !important;
+  }
+
+  .quotation-doc-header-grid {
+    grid-template-columns: minmax(0, 1fr) 250px !important;
+  }
+
+  .quotation-doc-meta-box {
+    width: 250px !important;
+    min-width: 250px !important;
   }
 
   .quotation-preview-canvas {

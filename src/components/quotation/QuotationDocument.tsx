@@ -78,44 +78,44 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             </div>
           </div>
 
-          <div className="quotation-doc-meta-box text-right shrink-0 border-2 border-[#1e5a9e] rounded-lg px-4 py-2">
-            <h2 className="text-lg font-black text-[#1e5a9e] uppercase tracking-tight">Quotation</h2>
-            <table className="w-full text-[10px] mt-2 text-left">
-              <tbody>
-                <tr>
-                  <td className="font-semibold text-gray-500 pr-2 py-0.5">Quotation No.</td>
-                  <td className="font-bold">{quotation.quotation_no}</td>
-                </tr>
-                {quotation.invoice_no && (
-                  <tr>
-                    <td className="font-semibold text-gray-500 pr-2 py-0.5">Invoice Ref.</td>
-                    <td className="font-bold">{quotation.invoice_no}</td>
-                  </tr>
-                )}
-                {quotation.reference_no && (
-                  <tr>
-                    <td className="font-semibold text-gray-500 pr-2 py-0.5">Reference</td>
-                    <td className="font-bold">{quotation.reference_no}</td>
-                  </tr>
-                )}
-                <tr>
-                  <td className="font-semibold text-gray-500 pr-2 py-0.5">Date</td>
-                  <td className="font-bold">{fmtDate(quotation.created_at)}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold text-gray-500 pr-2 py-0.5">Valid Until</td>
-                  <td className="font-bold text-[#c41e3a]">
-                    {quotation.expiry_date ? fmtDate(quotation.expiry_date) : '30 days'}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="font-semibold text-gray-500 pr-2 py-0.5">Type</td>
-                  <td className="font-bold">
-                    {propertyServiceLabel || quotation.quotation_type}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="quotation-doc-meta-box border-2 border-[#1e5a9e] rounded-lg px-4 py-3">
+            <h2 className="text-lg font-black text-[#1e5a9e] uppercase tracking-tight text-center">
+              Quotation
+            </h2>
+            <div className="quotation-doc-meta-rows mt-2">
+              <div className="quotation-doc-meta-row">
+                <span className="meta-label">Quotation No.</span>
+                <span className="meta-value">{quotation.quotation_no}</span>
+              </div>
+              {quotation.invoice_no && (
+                <div className="quotation-doc-meta-row">
+                  <span className="meta-label">Invoice Ref.</span>
+                  <span className="meta-value">{quotation.invoice_no}</span>
+                </div>
+              )}
+              {quotation.reference_no && (
+                <div className="quotation-doc-meta-row">
+                  <span className="meta-label">Reference</span>
+                  <span className="meta-value">{quotation.reference_no}</span>
+                </div>
+              )}
+              <div className="quotation-doc-meta-row">
+                <span className="meta-label">Date</span>
+                <span className="meta-value">{fmtDate(quotation.created_at)}</span>
+              </div>
+              <div className="quotation-doc-meta-row">
+                <span className="meta-label">Valid Until</span>
+                <span className="meta-value text-[#c41e3a]">
+                  {quotation.expiry_date ? fmtDate(quotation.expiry_date) : '30 days'}
+                </span>
+              </div>
+              <div className="quotation-doc-meta-row">
+                <span className="meta-label">Type</span>
+                <span className="meta-value">
+                  {propertyServiceLabel || quotation.quotation_type}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -165,7 +165,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         )}
       </div>
 
-      <table className="w-full border-collapse mb-4 text-[10px]">
+      <table className="quotation-items-table w-full border-collapse mb-4 text-[10px]">
         <thead>
           <tr className="bg-[#1e5a9e] text-white">
             <th className="border border-[#1e5a9e] px-2 py-2 w-8 text-center font-bold">#</th>

@@ -52,6 +52,7 @@ import {
   quotationSupportsAmc,
 } from '../constants/quotationServices';
 import { resolveQuotationTotalsFromForm } from '../utils/quotationTotals';
+import { formatMoneyInputValue, parseMoneyInput } from '../utils/moneyInput';
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -312,7 +313,9 @@ const CreateQuotation: React.FC = () => {
     newItems[index] = { ...newItems[index], [field]: value };
     
     if (field === 'rate' || field === 'quantity') {
-      newItems[index].total = Number(newItems[index].rate) * Number(newItems[index].quantity);
+      const q = Math.max(1, Number(newItems[index].quantity) || 0);
+      const r = Number(newItems[index].rate) || 0;
+      newItems[index].total = r * q;
     }
     
     setFormData({ ...formData, items: newItems });
@@ -393,10 +396,38 @@ const CreateQuotation: React.FC = () => {
 
   if (isEdit && isFetching) return <div className="p-8 text-center">Loading quotation...</div>;
 
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const formActions = (
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => navigate('/quotations')}>
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        className="gap-2 border-[#1e5a9e] text-[#1e5a9e]"
+        disabled={isSaving}
+        onClick={(e) => handleSubmit(e, true)}
+      >
+        <Eye className="h-4 w-4" />
+        {isEdit ? 'Update & Preview' : 'Save & Preview'}
+      </Button>
+      <Button
+        type="submit"
+        className="bg-[#2d8a2f] hover:bg-[#246b27] text-white shadow-lg gap-2 px-6"
+        disabled={isSaving}
+      >
+        <Save className="h-4 w-4" />
+        {isEdit ? 'Update' : 'Save'}
+      </Button>
+    </div>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="p-6 max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button 
             type="button" 
@@ -416,29 +447,7 @@ const CreateQuotation: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/quotations')}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2 border-[#1e5a9e] text-[#1e5a9e]"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            onClick={(e) => handleSubmit(e, true)}
-          >
-            <Eye className="h-4 w-4" />
-            {isEdit ? 'Update & Preview' : 'Save & Preview'}
-          </Button>
-          <Button
-            type="submit"
-            className="bg-[#2d8a2f] hover:bg-[#246b27] text-white shadow-lg gap-2 px-6"
-            disabled={createMutation.isPending || updateMutation.isPending}
-          >
-            <Save className="h-4 w-4" />
-            {isEdit ? 'Update' : 'Save'}
-          </Button>
-        </div>
+        {formActions}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -610,19 +619,26 @@ const CreateQuotation: React.FC = () => {
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-[10px] font-bold uppercase text-gray-400">Qty</Label>
-                    <Input 
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatMoneyInputValue(item.quantity)}
+                      onChange={(e) =>
+                        handleItemChange(index, 'quantity', parseMoneyInput(e.target.value) || 1)
+                      }
                       className="bg-white"
                     />
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-[10px] font-bold uppercase text-gray-400">Rate</Label>
-                    <Input 
-                      type="number"
-                      value={item.rate}
-                      onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={formatMoneyInputValue(item.rate)}
+                      onChange={(e) =>
+                        handleItemChange(index, 'rate', parseMoneyInput(e.target.value))
+                      }
                       className="bg-white"
                     />
                   </div>
@@ -981,6 +997,10 @@ const CreateQuotation: React.FC = () => {
             />
           </div>
         </Card>
+      </div>
+
+      <div className="sticky bottom-0 z-20 -mx-6 px-6 py-4 bg-white/95 backdrop-blur border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        {formActions}
       </div>
     </form>
   );
