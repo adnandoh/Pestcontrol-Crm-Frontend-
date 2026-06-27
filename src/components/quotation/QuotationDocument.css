@@ -599,32 +599,85 @@ body.quotation-preview-mode .quotation-preview-page {
   }
 
   .quotation-print-padding {
-    padding: 24px !important;
+    padding: 10px !important;
   }
 
   .quotation-doc {
     max-width: 100% !important;
-  }
-
-  .q-table tr {
-    page-break-inside: avoid;
-  }
-
-  .q-footer,
-  .q-bottom-grid {
-    page-break-inside: avoid;
+    font-size: 10px;
+    line-height: 1.35;
   }
 
   .q-logo {
-    height: 100px !important;
-    max-height: 100px !important;
-    max-width: 320px !important;
+    height: 72px !important;
+    max-height: 72px !important;
+    max-width: 220px !important;
+  }
+
+  .q-divider {
+    margin: 6px 0 !important;
+  }
+
+  .q-customer-grid {
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .q-bill-to,
+  .q-customer-side {
+    padding: 8px 10px !important;
+  }
+
+  .q-table th,
+  .q-table td {
+    padding: 4px 8px !important;
+  }
+
+  .q-totals {
+    margin-bottom: 8px !important;
+  }
+
+  .q-bottom-grid {
+    gap: 10px !important;
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+    page-break-inside: auto !important;
+  }
+
+  .q-bottom-left {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px 10px !important;
+  }
+
+  .q-scope-block {
+    margin-bottom: 0 !important;
+    page-break-inside: auto !important;
+  }
+
+  .q-scope-title {
+    font-size: 8px !important;
+  }
+
+  .q-scope-body,
+  .q-scope-line,
+  .q-scope-tag {
+    font-size: 8px !important;
+  }
+
+  .q-footer {
+    padding-top: 6px !important;
+    page-break-inside: auto !important;
   }
 
   .q-signature-stamp {
-    height: 90px !important;
-    max-height: 90px !important;
-    max-width: 190px !important;
+    height: 56px !important;
+    max-height: 56px !important;
+    max-width: 120px !important;
+  }
+
+  .q-table tr {
+    page-break-inside: auto;
   }
 }
 
@@ -647,4 +700,193 @@ body.quotation-preview-mode .quotation-preview-page {
   .q-totals {
     max-width: 100%;
   }
+}
+
+/* ── PDF export: single A4 page compact layout ── */
+.q-pdf-export.quotation-print-padding {
+  padding: 10px !important;
+}
+
+.q-pdf-export .quotation-doc {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.q-pdf-export .q-header {
+  gap: 10px;
+}
+
+.q-pdf-export .q-logo {
+  height: 72px;
+  max-height: 72px;
+  min-height: 0;
+  max-width: 220px;
+}
+
+.q-pdf-export .q-logo-col {
+  min-width: 0;
+}
+
+.q-pdf-export .q-meta-box {
+  padding: 8px 10px;
+  width: 185px;
+}
+
+.q-pdf-export .q-meta-title {
+  font-size: 11px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+.q-pdf-export .q-meta-row {
+  font-size: 9px;
+}
+
+.q-pdf-export .q-divider {
+  margin: 6px 0;
+}
+
+.q-pdf-export .q-customer-grid {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.q-pdf-export .q-bill-to,
+.q-pdf-export .q-customer-side {
+  padding: 8px 10px;
+}
+
+.q-pdf-export .q-section-label {
+  font-size: 9px;
+  margin-bottom: 3px;
+}
+
+.q-pdf-export .q-customer-name {
+  font-size: 11px;
+}
+
+.q-pdf-export .q-customer-detail {
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.q-pdf-export .q-table th,
+.q-pdf-export .q-table td {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.q-pdf-export .q-service-desc {
+  font-size: 8px;
+}
+
+.q-pdf-export .q-totals {
+  margin-bottom: 8px;
+}
+
+.q-pdf-export .q-totals-row {
+  padding: 3px 0;
+  font-size: 10px;
+}
+
+.q-pdf-export .q-grand-total {
+  font-size: 11px;
+  padding: 5px 10px;
+  margin-top: 3px;
+}
+
+.q-pdf-export .q-amount-words {
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.q-pdf-export .q-bottom-grid {
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  page-break-inside: auto !important;
+}
+
+.q-pdf-export .q-bottom-left {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  align-content: start;
+}
+
+.q-pdf-export .q-scope-block {
+  margin-bottom: 0;
+  page-break-inside: auto !important;
+}
+
+.q-pdf-export .q-scope-title {
+  font-size: 8px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+}
+
+.q-pdf-export .q-scope-body,
+.q-pdf-export .q-scope-line {
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.q-pdf-export .q-scope-tag {
+  font-size: 7px;
+  padding: 1px 4px;
+}
+
+.q-pdf-export .q-scope-tags {
+  gap: 2px;
+}
+
+.q-pdf-export .q-payment-label {
+  font-size: 8px;
+  margin-bottom: 3px;
+}
+
+.q-pdf-export .q-payment-list {
+  gap: 2px;
+}
+
+.q-pdf-export .q-payment-list li,
+.q-pdf-export .q-bank-rows p {
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.q-pdf-export .q-bank-divider {
+  margin: 6px 0;
+}
+
+.q-pdf-export .q-footer {
+  padding-top: 6px;
+  gap: 10px;
+  page-break-inside: auto !important;
+}
+
+.q-pdf-export .q-footer-left p {
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.q-pdf-export .q-signature-stamp {
+  height: 56px;
+  max-height: 56px;
+  min-height: 0;
+  max-width: 120px;
+  margin-bottom: 4px;
+}
+
+.q-pdf-export .q-signature-company {
+  font-size: 9px;
+}
+
+.q-pdf-export .q-signature-brand,
+.q-pdf-export .q-signature-role {
+  font-size: 8px;
+}
+
+.q-pdf-export .q-signature-block {
+  min-width: 140px;
 }
