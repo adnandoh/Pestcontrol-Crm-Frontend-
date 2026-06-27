@@ -28,9 +28,10 @@ export const INVOICE_DEFAULTS = {
 
 export const BANK_DETAILS = {
   accountName: COMPANY.legalName,
-  bankName: '—',
-  accountNo: '—',
-  ifsc: '—',
+  bankName: 'IDFC First Bank',
+  branch: 'Andheri West',
+  accountNo: '10267103928',
+  ifsc: 'IDFB0040115',
   upi: '—',
 } as const;
 

@@ -327,6 +327,9 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
               <span className="font-semibold">Bank:</span> {BANK_DETAILS.bankName}
             </p>
             <p>
+              <span className="font-semibold">Branch:</span> {BANK_DETAILS.branch}
+            </p>
+            <p>
               <span className="font-semibold">A/C No:</span> {BANK_DETAILS.accountNo}
             </p>
             <p>
