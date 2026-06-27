@@ -44,10 +44,20 @@
 
 .q-logo-col {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
   flex-shrink: 0;
   min-width: 280px;
+  gap: 4px;
+}
+
+.q-header-license {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--q-green);
+  letter-spacing: 0.2px;
 }
 
 .q-logo {
@@ -470,6 +480,13 @@
   margin-top: 4px !important;
 }
 
+.q-footer-license {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--q-green) !important;
+  margin-top: 2px !important;
+}
+
 .q-signature-block {
   text-align: center;
   min-width: 200px;
@@ -723,8 +740,16 @@ body.quotation-preview-mode .quotation-preview-page {
   max-width: 220px;
 }
 
+.q-pdf-export .q-header-license {
+  font-size: 8px;
+}
+
+.q-pdf-export .q-footer-license {
+  font-size: 8px !important;
+}
+
 .q-pdf-export .q-logo-col {
-  min-width: 0;
+  gap: 2px;
 }
 
 .q-pdf-export .q-meta-box {

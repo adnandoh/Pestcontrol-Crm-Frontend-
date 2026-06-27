@@ -93,6 +93,8 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
     .filter(Boolean)
     .join(', ');
 
+  const licenseNo = quotation.license_number || COMPANY.license;
+
   const renderScopeSections = () => {
     if (structured) {
       return (
@@ -207,6 +209,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             alt={`${COMPANY.brandName} — ${COMPANY.website}`}
             className="q-logo"
           />
+          <p className="q-header-license">License: {licenseNo}</p>
         </div>
 
         <div className="q-meta-box">
@@ -385,6 +388,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
           <p className="q-footer-contact">
             {COMPANY.website} · {formatCompanyPhone()}
           </p>
+          <p className="q-footer-license">License: {licenseNo}</p>
           {quotation.created_by_name && (
             <p className="q-footer-prepared">Prepared by: {quotation.created_by_name}</p>
           )}
