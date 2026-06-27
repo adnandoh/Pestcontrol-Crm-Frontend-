@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import type { Quotation } from '../../types';
 import { COMPANY, BANK_DETAILS, amountInWords, getQuotationDisplayName, formatCompanyPhone } from '../../constants/quotation';
 import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
-import { COMPANY_SIGNATURE_STAMP_URL } from '../../constants/companyAssets';
+import { COMPANY_SIGNATURE_STAMP_URL, COMPANY_LOGO_URL } from '../../constants/companyAssets';
 import { resolveQuotationTotals } from '../../utils/quotationTotals';
 import './QuotationDocument.css';
 
@@ -58,8 +58,8 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         <div className="quotation-doc-header-grid">
           <div className="quotation-doc-brand">
             <img
-              src="/pest-control-99-logo.png"
-              alt={COMPANY.name}
+              src={COMPANY_LOGO_URL}
+              alt={`${COMPANY.brandName} — ${COMPANY.website}`}
               className="quotation-doc-logo"
             />
             <div className="quotation-doc-company-meta min-w-0">
