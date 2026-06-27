@@ -128,6 +128,65 @@ export function mergeScopesForServicePlans(
   return scopes;
 }
 
+function scopeBaseTitle(title: string): string {
+  const idx = title.indexOf(' — ');
+  return idx >= 0 ? title.slice(0, idx) : title;
+}
+
+function hasScopeSection(scopes: QuotationScope[], baseTitle: string): boolean {
+  return scopes.some(
+    (s) => s.title === baseTitle || s.title.startsWith(`${baseTitle} —`),
+  );
+}
+
+/** Merge saved scopes with template defaults so preview always shows area / pests / benefits. */
+export function resolveQuotationDisplayScopes(quotation: {
+  scopes?: QuotationScope[];
+  property_type?: string;
+  template_service_type?: string;
+  items?: QuotationItem[];
+}): QuotationScope[] {
+  const saved = quotation.scopes ?? [];
+
+  if (!quotation.property_type || !quotation.template_service_type) {
+    return saved;
+  }
+
+  const configs = configsFromQuotation(
+    quotation.template_service_type,
+    quotation.items ?? [],
+  );
+  if (configs.length === 0) return saved;
+
+  const generated = mergeScopesForServicePlans(quotation.property_type, configs);
+  if (generated.length === 0) return saved;
+
+  const coreSections = ['Area Covered', 'Pest Covered', 'Benefits', 'Warranty', 'Scope of Work'];
+  const needsFill =
+    saved.length === 0 ||
+    coreSections.some(
+      (base) => generated.some((g) => scopeBaseTitle(g.title) === base) && !hasScopeSection(saved, base),
+    );
+
+  if (!needsFill) return saved;
+
+  const savedByTitle = new Map(saved.map((s) => [s.title, s]));
+  const merged: QuotationScope[] = [];
+  const seen = new Set<string>();
+
+  for (const gen of generated) {
+    const existing = savedByTitle.get(gen.title);
+    merged.push(existing?.content?.trim() ? existing : gen);
+    seen.add(gen.title);
+  }
+
+  for (const s of saved) {
+    if (!seen.has(s.title)) merged.push(s);
+  }
+
+  return merged;
+}
+
 export function getPaymentTermsForServicePlans(
   propertyType: string,
   configs: QuotationServicePlanConfig[],

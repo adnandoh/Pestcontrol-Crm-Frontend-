@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Download, Loader2, Printer, Share2, Zap, Pencil, X } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
 import QuotationDocument from '../components/quotation/QuotationDocument';
 import { COMPANY, getQuotationDisplayName } from '../constants/quotation';
 import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
@@ -76,8 +75,6 @@ ${COMPANY.website}`;
     window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  const totals = quotation ? resolveQuotationTotals(quotation) : null;
-
   if (isLoading) {
     return (
       <div className="quotation-preview-page flex min-h-[60vh] items-center justify-center text-gray-500">
@@ -96,8 +93,8 @@ ${COMPANY.website}`;
   return (
     <div className="quotation-preview-page min-h-full bg-slate-100 pb-8 print:bg-white print:pb-0">
       {/* Toolbar — hidden when printing */}
-      <div className="quotation-no-print sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div className="quotation-no-print sticky top-0 z-50 border-b border-[#E0E0E0] bg-white shadow-sm quotation-action-buttons">
+        <div className="mx-auto flex max-w-[794px] flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/quotations')} aria-label="Back">
               <ArrowLeft className="h-4 w-4" />
@@ -125,7 +122,7 @@ ${COMPANY.website}`;
               size="sm"
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
-              className="gap-1 border-[#1e5a9e] text-[#1e5a9e] hover:bg-blue-50"
+              className="gap-1 border-[#1A237E] text-[#1A237E] hover:bg-blue-50"
             >
               {downloadingPdf ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -145,7 +142,7 @@ ${COMPANY.website}`;
                 size="sm"
                 onClick={() => convertMutation.mutate(quotation.id)}
                 disabled={convertMutation.isPending}
-                className="bg-[#2d8a2f] hover:bg-[#246b27] text-white gap-1"
+                className="bg-[#2E7D32] hover:bg-[#256628] text-white gap-1"
               >
                 <Zap className="h-3.5 w-3.5" /> Convert to Booking
               </Button>
@@ -154,35 +151,15 @@ ${COMPANY.website}`;
         </div>
       </div>
 
-      {/* Document — full width, A4-sized, solid white (no sidebar bleed) */}
-      <div className="quotation-preview-canvas mx-auto w-full max-w-[210mm] px-3 py-6 sm:px-4 print:max-w-none print:px-0 print:py-0">
-        <div
-          ref={previewRef}
-          className="quotation-print-area rounded-lg bg-white shadow-lg print:rounded-none print:shadow-none"
-        >
-          <div className="quotation-print-padding p-6 sm:p-8 md:p-10 print:p-0">
+      {/* Document — 794px A4 width */}
+      <div className="quotation-preview-canvas mx-auto w-full max-w-[794px] px-3 py-6 sm:px-4 print:max-w-none print:px-0 print:py-0">
+        <div ref={previewRef} className="quotation-print-area quotation-document-card print:rounded-none print:shadow-none">
+          <div className="quotation-print-padding print:!p-6">
             <QuotationDocument quotation={quotation} />
           </div>
         </div>
 
-        <div className="quotation-no-print mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Card className="p-4 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-400">Status</p>
-            <p className="text-sm font-black text-gray-800 mt-1">{quotation.status}</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-400">Grand Total</p>
-            <p className="text-lg font-black text-[#c41e3a] mt-1">
-              Rs.{totals?.grand_total.toLocaleString('en-IN')}
-            </p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-400">Type</p>
-            <p className="text-sm font-bold text-gray-800 mt-1">{quotation.quotation_type}</p>
-          </Card>
-        </div>
-
-        <p className="quotation-no-print mt-4 text-center text-[10px] text-gray-400">
+        <p className="quotation-no-print mt-4 text-center text-[11px] text-[#555]">
           Download PDF saves directly to your device. Print opens the browser print dialog.
         </p>
       </div>

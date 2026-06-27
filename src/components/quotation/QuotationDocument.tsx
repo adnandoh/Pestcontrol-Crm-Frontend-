@@ -1,15 +1,15 @@
 ﻿import React from 'react';
 import { format } from 'date-fns';
-import type { Quotation, QuotationStatus } from '../../types';
+import type { Quotation } from '../../types';
 import {
   COMPANY,
   BANK_DETAILS,
   amountInWords,
   getQuotationDisplayName,
   formatCompanyPhone,
-  DEFAULT_TERMS,
 } from '../../constants/quotation';
 import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
+import { resolveQuotationDisplayScopes } from '../../constants/quotationServices';
 import { COMPANY_SIGNATURE_STAMP_URL, COMPANY_LOGO_URL } from '../../constants/companyAssets';
 import { resolveQuotationTotals } from '../../utils/quotationTotals';
 import './QuotationDocument.css';
@@ -20,6 +20,35 @@ const fmt = (n: number) =>
 const fmtScopeContent = (content: string) =>
   content.replace(/\s*\|\s*$/g, '').trim();
 
+const renderScopeBody = (content: string) => {
+  const cleaned = fmtScopeContent(content);
+  const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  return (
+    <div className="q-scope-body">
+      {lines.map((line, idx) => {
+        if (line.includes('|')) {
+          const parts = line.split('|').map((p) => p.trim()).filter(Boolean);
+          return (
+            <div key={idx} className="q-scope-tags">
+              {parts.map((part, pi) => (
+                <span key={pi} className="q-scope-tag">
+                  {part}
+                </span>
+              ))}
+            </div>
+          );
+        }
+        return (
+          <p key={idx} className="q-scope-line">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 const fmtDate = (d?: string) => {
   if (!d) return '-';
   try {
@@ -29,17 +58,6 @@ const fmtDate = (d?: string) => {
   }
 };
 
-const STATUS_CLASS: Record<QuotationStatus, string> = {
-  Draft: 'q-status-draft',
-  Sent: 'q-status-sent',
-  Approved: 'q-status-approved',
-  Rejected: 'q-status-rejected',
-  Converted: 'q-status-converted',
-  Expired: 'q-status-expired',
-};
-
-const PAYMENT_ICONS = ['💳', '🏦', '📋', '✓', '📅'];
-
 interface QuotationDocumentProps {
   quotation: Quotation;
   className?: string;
@@ -48,7 +66,7 @@ interface QuotationDocumentProps {
 const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, className = '' }) => {
   const displayName = getQuotationDisplayName(quotation);
   const items = quotation.items || [];
-  const scopes = quotation.scopes || [];
+  const scopes = resolveQuotationDisplayScopes(quotation);
   const paymentTerms = quotation.payment_terms || [];
   const totals = resolveQuotationTotals(quotation);
   const structured = hasStructuredScopes(scopes);
@@ -75,10 +93,6 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
     .filter(Boolean)
     .join(', ');
 
-  const gstAmount = Number(quotation.tax_amount || 0);
-  const discount = Number(quotation.discount || 0);
-  const isDraft = quotation.status === 'Draft';
-
   const renderScopeSections = () => {
     if (structured) {
       return (
@@ -87,22 +101,24 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             const content = scopeContent(title);
             if (!content) return null;
             return (
-              <div key={title} className="q-scope-section">
-                <h4 className="q-scope-heading">{title}</h4>
-                <p className="q-scope-body">{fmtScopeContent(content)}</p>
+              <div key={title} className="q-scope-block">
+                <h4 className="q-scope-title">{title}</h4>
+                {renderScopeBody(content)}
               </div>
             );
           })}
-          {scopes.filter((s) => isPerServiceScope(s.title)).map((s, i) => (
-            <div key={`ps-${i}`} className="q-scope-section">
-              <h4 className="q-scope-heading">{s.title}</h4>
-              <p className="q-scope-body">{fmtScopeContent(s.content)}</p>
-            </div>
-          ))}
+          {scopes
+            .filter((s) => isPerServiceScope(s.title))
+            .map((s, i) => (
+              <div key={`ps-${i}`} className="q-scope-block">
+                <h4 className="q-scope-title">{s.title}</h4>
+                {renderScopeBody(s.content)}
+              </div>
+            ))}
           {customScopes.map((s, i) => (
-            <div key={`custom-${i}`} className="q-scope-section">
-              <h4 className="q-scope-heading">{s.title}</h4>
-              <p className="q-scope-body">{s.content}</p>
+            <div key={`custom-${i}`} className="q-scope-block">
+              <h4 className="q-scope-title">{s.title}</h4>
+              <p className="q-scope-line">{s.content}</p>
             </div>
           ))}
         </>
@@ -111,350 +127,266 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
 
     if (scopes.some((s) => isPerServiceScope(s.title))) {
       return scopes.map((s, i) => (
-        <div key={i} className="q-scope-section">
-          <h4 className="q-scope-heading">{s.title}</h4>
-          <p className="q-scope-body">{fmtScopeContent(s.content)}</p>
+        <div key={i} className="q-scope-block">
+          <h4 className="q-scope-title">{s.title}</h4>
+          {renderScopeBody(s.content)}
         </div>
       ));
     }
 
     if (scopes.length > 0) {
       return (
-        <ol className="q-scope-list">
-          {scopes.map((s, i) => (
-            <li key={i}>
-              <strong>{s.title}:</strong> {fmtScopeContent(s.content)}
-            </li>
-          ))}
-        </ol>
+        <div className="q-scope-block">
+          <h4 className="q-scope-title">Scope of Work</h4>
+          <ol className="q-scope-list">
+            {scopes.map((s, i) => (
+              <li key={i}>
+                <strong>{s.title}:</strong> {fmtScopeContent(s.content)}
+              </li>
+            ))}
+          </ol>
+        </div>
       );
     }
 
-    return <p className="q-scope-body">Standard pest management as per industry standards and agreed scope.</p>;
+    return (
+      <p className="q-placeholder">
+        Standard pest management as agreed.
+      </p>
+    );
+  };
+
+  const renderCustomerRight = () => {
+    if (quotation.notes) {
+      return (
+        <div className="q-customer-side">
+          <p className="q-section-label">Notes</p>
+          <p className="q-customer-detail">{quotation.notes}</p>
+        </div>
+      );
+    }
+
+    if (quotation.property_type || quotation.template_service_type) {
+      return (
+        <div className="q-customer-side">
+          <p className="q-section-label">Service Details</p>
+          {quotation.property_type && (
+            <p className="q-customer-detail">
+              <strong>Property:</strong> {quotation.property_type}
+            </p>
+          )}
+          {quotation.template_service_type && (
+            <p className="q-customer-detail">
+              <strong>Services:</strong> {quotation.template_service_type}
+            </p>
+          )}
+          {quotation.reference_no && (
+            <p className="q-customer-detail">
+              <strong>Reference:</strong> {quotation.reference_no}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="q-customer-side">
+        <p className="q-section-label">Notes</p>
+        <p className="q-placeholder">No additional notes.</p>
+      </div>
+    );
   };
 
   return (
-    <div className={`quotation-doc ${isDraft ? 'is-draft' : ''} ${className}`}>
-      {/* ── Header ── */}
+    <div className={`quotation-doc ${className}`}>
+      {/* 1. Header */}
       <header className="q-header">
-        <div className="q-company-block">
+        <div className="q-logo-col">
           <img
             src={COMPANY_LOGO_URL}
             alt={`${COMPANY.brandName} — ${COMPANY.website}`}
             className="q-logo"
           />
-          <div className="q-company-info">
-            <h1 className="q-company-name">{COMPANY.legalName}</h1>
-            <p className="q-company-tagline">
-              {COMPANY.brandName} · {COMPANY.tagline}
-            </p>
-            <p className="q-company-line">{COMPANY.address}</p>
-            <p className="q-company-line">
-              {formatCompanyPhone()} ·{' '}
-              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
-            </p>
-            <p className="q-company-line">
-              <a href={COMPANY.website}>{COMPANY.website}</a>
-            </p>
-            {COMPANY.gstin ? (
-              <p className="q-company-line">GSTIN: {COMPANY.gstin}</p>
-            ) : null}
-            <span className="q-license">
-              Govt. License: {quotation.license_number || COMPANY.license}
-            </span>
-          </div>
         </div>
 
-        <div className="q-meta-card">
-          <div className="q-meta-top">
-            <h2 className="q-meta-title">Quotation</h2>
-            <span className={`q-status-badge ${STATUS_CLASS[quotation.status] || 'q-status-draft'}`}>
-              {quotation.status}
-            </span>
-          </div>
-          <div className="q-meta-grid">
+        <div className="q-meta-box">
+          <h2 className="q-meta-title">Quotation</h2>
+          <div className="q-meta-rows">
             <div className="q-meta-row">
               <span className="q-meta-label">Quotation No.</span>
-              <span className="q-meta-value">{quotation.quotation_no}</span>
+              <span className="q-meta-value q-nowrap">{quotation.quotation_no}</span>
             </div>
             {quotation.invoice_no && (
               <div className="q-meta-row">
                 <span className="q-meta-label">Invoice Ref.</span>
-                <span className="q-meta-value">{quotation.invoice_no}</span>
-              </div>
-            )}
-            {quotation.reference_no && (
-              <div className="q-meta-row">
-                <span className="q-meta-label">Reference</span>
-                <span className="q-meta-value">{quotation.reference_no}</span>
+                <span className="q-meta-value q-nowrap">{quotation.invoice_no}</span>
               </div>
             )}
             <div className="q-meta-row">
               <span className="q-meta-label">Date</span>
-              <span className="q-meta-value">{fmtDate(quotation.created_at)}</span>
+              <span className="q-meta-value q-nowrap">{fmtDate(quotation.created_at)}</span>
             </div>
             <div className="q-meta-row">
               <span className="q-meta-label">Valid Until</span>
-              <span className="q-meta-value is-urgent">
+              <span className="q-meta-value q-nowrap is-urgent">
                 {quotation.expiry_date ? fmtDate(quotation.expiry_date) : '30 days'}
               </span>
             </div>
             <div className="q-meta-row">
-              <span className="q-meta-label">Customer Type</span>
-              <span className="q-meta-value">
-                {propertyServiceLabel || quotation.quotation_type}
-              </span>
+              <span className="q-meta-label">Type</span>
+              <span className="q-meta-value">{propertyServiceLabel || quotation.quotation_type}</span>
             </div>
-          </div>
-          <div className="q-meta-footer">
-            {quotation.created_by_name && (
-              <span>Prepared by {quotation.created_by_name}</span>
-            )}
-            {quotation.updated_at && quotation.updated_at !== quotation.created_at && (
-              <span>
-                {quotation.created_by_name ? ' · ' : ''}
-                Updated {fmtDate(quotation.updated_at)}
-              </span>
-            )}
           </div>
         </div>
       </header>
 
-      {/* ── Customer + AMC ── */}
-      <div className={`q-customer-row ${quotation.is_amc ? '' : 'is-single'}`}>
-        <div className="q-card">
-          <h3 className="q-card-title">
-            <span className="q-card-title-dot" />
-            Bill To / Customer
-          </h3>
-          <div className="q-field-grid">
-            <div className="q-field is-full">
-              <div className="q-field-label">Customer / Company</div>
-              <div className="q-field-value is-name">{displayName}</div>
-            </div>
-            {quotation.contact_person && (
-              <div className="q-field">
-                <div className="q-field-label">Contact Person</div>
-                <div className="q-field-value">{quotation.contact_person}</div>
-              </div>
-            )}
-            <div className="q-field">
-              <div className="q-field-label">Mobile</div>
-              <div className="q-field-value">{quotation.mobile}</div>
-            </div>
-            {quotation.email && (
-              <div className="q-field">
-                <div className="q-field-label">Email</div>
-                <div className="q-field-value">{quotation.email}</div>
-              </div>
-            )}
-            {quotation.property_type && (
-              <div className="q-field">
-                <div className="q-field-label">Property Type</div>
-                <div className="q-field-value">{quotation.property_type}</div>
-              </div>
-            )}
-            {quotation.template_service_type && (
-              <div className="q-field">
-                <div className="q-field-label">Services</div>
-                <div className="q-field-value">{quotation.template_service_type}</div>
-              </div>
-            )}
-            <div className="q-field is-full">
-              <div className="q-field-label">Service Address</div>
-              <div className="q-field-value">
-                {quotation.address}
-                {locationLine ? `, ${locationLine}` : ''}
-                {quotation.pincode ? ` — ${quotation.pincode}` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
+      <hr className="q-divider" />
 
-        {quotation.is_amc && (
-          <div className="q-amc-card">
-            <h3 className="q-card-title">
-              <span className="q-card-title-dot" />
-              AMC Contract
-            </h3>
-            <p className="q-scope-body">
-              Annual Maintenance Contract with{' '}
-              <strong>{quotation.visit_count}</strong> scheduled visit(s) included.
-              Follow-up visits are part of the contract and not billed separately.
-            </p>
-            <div className="q-amc-value">
-              Rs.{fmt(totals.contract_amount || totals.grand_total)}
-            </div>
-            <p className="q-scope-body" style={{ marginTop: 6, fontSize: 11 }}>
-              Total contract value for all visits
-            </p>
+      {/* 3. Bill To */}
+      <section className="q-customer-grid">
+        <div className="q-bill-to">
+          <p className="q-section-label">Bill To / Customer</p>
+          <p className="q-customer-name">{displayName}</p>
+          {quotation.contact_person && (
+            <p className="q-customer-detail">Contact: {quotation.contact_person}</p>
+          )}
+          <p className="q-customer-detail">
+            {quotation.address}
+            {locationLine ? `, ${locationLine}` : ''}
+            {quotation.pincode ? ` — ${quotation.pincode}` : ''}
+          </p>
+          <p className="q-customer-detail">
+            Mobile: {quotation.mobile}
+            {quotation.email ? ` · Email: ${quotation.email}` : ''}
+          </p>
+        </div>
+        {renderCustomerRight()}
+      </section>
+
+      {/* 4. Line items */}
+      <div className="q-table-wrap">
+        <table className="q-table">
+          <colgroup>
+            <col className="col-num" />
+            <col className="col-desc" />
+            <col className="col-freq" />
+            <col className="col-qty" />
+            <col className="col-rate" />
+            <col className="col-amt" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="col-center">#</th>
+              <th>Description</th>
+              <th className="col-center">Frequency</th>
+              <th className="col-right">Qty</th>
+              <th className="col-right">Rate</th>
+              <th className="col-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="q-empty-cell">
+                  No line items
+                </td>
+              </tr>
+            ) : (
+              items.map((item, i) => (
+                <tr key={i}>
+                  <td className="col-center q-num">{i + 1}</td>
+                  <td>
+                    <span className="q-service-name">{item.service_name}</span>
+                    {item.description && (
+                      <span className="q-service-desc">{item.description}</span>
+                    )}
+                  </td>
+                  <td className="col-center q-nowrap">{item.frequency}</td>
+                  <td className="col-right q-num">{item.quantity}</td>
+                  <td className="col-right q-num">
+                    {quotation.is_amc && item.total === 0 ? '—' : fmt(item.rate)}
+                  </td>
+                  <td className="col-right q-num">
+                    <strong>
+                      {quotation.is_amc && item.total === 0 ? 'Included' : fmt(item.total)}
+                    </strong>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 5. Totals */}
+      <div className="q-totals">
+        <div className="q-totals-row">
+          <span>Subtotal</span>
+          <span className="q-num">Rs.{fmt(totals.total_amount)}</span>
+        </div>
+        {Number(quotation.discount) > 0 && (
+          <div className="q-totals-row is-discount">
+            <span>Discount</span>
+            <span className="q-num">- Rs.{fmt(quotation.discount)}</span>
           </div>
         )}
+        <div className="q-grand-total">
+          <span>Grand Total</span>
+          <span className="q-num">Rs.{fmt(totals.grand_total)}</span>
+        </div>
+        <p className="q-amount-words">{amountInWords(totals.grand_total)}</p>
       </div>
 
-      {/* ── Services table + Summary ── */}
-      <div className="q-services-block">
-        <div className="q-table-wrap">
-          <table className="q-items-table">
-            <thead>
-              <tr>
-                <th className="num">#</th>
-                <th>Service / Description</th>
-                <th>Frequency</th>
-                <th className="num">Qty</th>
-                <th className="right">Rate</th>
-                <th className="right">Disc.</th>
-                <th className="right">GST</th>
-                <th className="right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr className="q-empty-row">
-                  <td colSpan={8}>No line items added</td>
-                </tr>
-              ) : (
-                items.map((item, i) => (
-                  <tr key={i}>
-                    <td className="num">{i + 1}</td>
-                    <td>
-                      <span className="q-service-name">{item.service_name}</span>
-                      {item.description && (
-                        <span className="q-service-desc">{item.description}</span>
-                      )}
-                    </td>
-                    <td>{item.frequency}</td>
-                    <td className="num">{item.quantity}</td>
-                    <td className="right">
-                      {quotation.is_amc && item.total === 0 ? '—' : fmt(item.rate)}
-                    </td>
-                    <td className="right">—</td>
-                    <td className="right">—</td>
-                    <td className="right">
-                      <strong>
-                        {quotation.is_amc && item.total === 0 ? 'Included' : fmt(item.total)}
-                      </strong>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* 6. Bottom: scopes + payment/bank */}
+      <section className="q-bottom-grid">
+        <div className="q-bottom-left">{renderScopeSections()}</div>
 
-        <div className="q-summary-card">
-          <h3 className="q-summary-title">Amount Summary</h3>
-          <div className="q-summary-line">
-            <span>Subtotal</span>
-            <span>Rs.{fmt(totals.total_amount)}</span>
-          </div>
-          {discount > 0 && (
-            <div className="q-summary-line is-discount">
-              <span>Discount</span>
-              <span>- Rs.{fmt(discount)}</span>
-            </div>
-          )}
-          {gstAmount > 0 && (
-            <div className="q-summary-line">
-              <span>GST / Tax</span>
-              <span>Rs.{fmt(gstAmount)}</span>
-            </div>
-          )}
-          <div className="q-grand-total">
-            <span className="q-grand-total-label">Grand Total</span>
-            <span className="q-grand-total-value">Rs.{fmt(totals.grand_total)}</span>
-          </div>
-          <p className="q-amount-words">{amountInWords(totals.grand_total)}</p>
-        </div>
-      </div>
-
-      {quotation.notes && (
-        <div className="q-notes-banner">
-          <strong>Important Note:</strong> {quotation.notes}
-        </div>
-      )}
-
-      {/* ── Scope + Payment/Bank ── */}
-      <div className="q-bottom-grid">
-        <div className="q-card q-scope-card">
-          <h3 className="q-card-title">
-            <span className="q-card-title-dot" />
-            Scope & Service Details
-          </h3>
-          {renderScopeSections()}
-        </div>
-
-        <div className="q-card">
-          <h3 className="q-card-title">
-            <span className="q-card-title-dot" />
-            Payment Terms
-          </h3>
+        <div className="q-bottom-right">
+          <p className="q-payment-label">Payment Terms</p>
           {paymentTerms.length > 0 ? (
             <ul className="q-payment-list">
               {paymentTerms.map((p, i) => (
-                <li key={i} className="q-payment-item">
-                  <span className="q-payment-icon">{PAYMENT_ICONS[i % PAYMENT_ICONS.length]}</span>
-                  <span>
-                    <span className="q-payment-term">{p.term}</span>
-                    {p.description && (
-                      <span className="q-payment-desc">{p.description}</span>
-                    )}
-                  </span>
+                <li key={i}>
+                  <strong>{p.term}:</strong> {p.description}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="q-scope-body">Payment as mutually agreed between both parties.</p>
+            <p className="q-placeholder">As mutually agreed.</p>
           )}
 
-          <h3 className="q-card-title" style={{ marginTop: 18 }}>
-            <span className="q-card-title-dot" />
-            Bank Details
-          </h3>
-          <div className="q-bank-grid">
-            <div className="q-bank-field">
-              <div className="q-field-label">Account Name</div>
-              <div className="q-field-value">{BANK_DETAILS.accountName}</div>
-            </div>
-            <div className="q-bank-field">
-              <div className="q-field-label">Bank</div>
-              <div className="q-field-value">{BANK_DETAILS.bankName}</div>
-            </div>
-            <div className="q-bank-field">
-              <div className="q-field-label">Branch</div>
-              <div className="q-field-value">{BANK_DETAILS.branch}</div>
-            </div>
-            <div className="q-bank-field">
-              <div className="q-field-label">IFSC Code</div>
-              <div className="q-field-value">{BANK_DETAILS.ifsc}</div>
-            </div>
-            <div className="q-bank-field is-full">
-              <div className="q-field-label">Account Number</div>
-              <div className="q-field-value">{BANK_DETAILS.accountNo}</div>
-            </div>
+          <hr className="q-bank-divider" />
+
+          <p className="q-payment-label">Bank Details</p>
+          <div className="q-bank-rows">
+            <p>
+              <strong>Account:</strong> {BANK_DETAILS.accountName}
+            </p>
+            <p>
+              <strong>Bank:</strong> {BANK_DETAILS.bankName}
+            </p>
+            <p>
+              <strong>Branch:</strong> {BANK_DETAILS.branch}
+            </p>
+            <p>
+              <strong>A/C No:</strong> {BANK_DETAILS.accountNo}
+            </p>
+            <p>
+              <strong>IFSC:</strong> {BANK_DETAILS.ifsc}
+            </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── Footer: Terms + Signature ── */}
-      <div className="q-footer-grid">
-        <div className="q-footer-terms">
-          <h4>Terms & Conditions</h4>
-          <ol>
-            {(quotation.terms_and_conditions || DEFAULT_TERMS)
-              .split('\n')
-              .map((line) => line.replace(/^\d+\.\s*/, '').trim())
-              .filter(Boolean)
-              .slice(0, 5)
-              .map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-          </ol>
+      {/* 7. Footer */}
+      <footer className="q-footer">
+        <div className="q-footer-left">
+          <p>Thank you for choosing {COMPANY.legalName}.</p>
+          <p className="q-footer-contact">
+            {COMPANY.website} · {formatCompanyPhone()}
+          </p>
           {quotation.created_by_name && (
-            <p className="q-footer-terms-meta">
-              Prepared by: <strong>{quotation.created_by_name}</strong> ·{' '}
-              {fmtDate(quotation.created_at)}
-            </p>
+            <p className="q-footer-prepared">Prepared by: {quotation.created_by_name}</p>
           )}
         </div>
         <div className="q-signature-block">
@@ -463,20 +395,10 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
             alt={`Authorised Signatory — ${COMPANY.legalName}`}
             className="q-signature-stamp"
           />
-          <p className="q-signature-name">{COMPANY.legalName}</p>
+          <p className="q-signature-company">{COMPANY.legalName}</p>
+          <p className="q-signature-brand">{COMPANY.brandName}</p>
           <p className="q-signature-role">Authorised Signatory</p>
-          <p className="q-signature-date">Date: {fmtDate(quotation.created_at)}</p>
         </div>
-      </div>
-
-      <footer className="q-footer-bar">
-        <span className="q-footer-thanks">
-          Thank you for choosing {COMPANY.brandName}
-        </span>
-        <span>
-          <strong>{COMPANY.website}</strong> · {formatCompanyPhone()} · {COMPANY.email}
-        </span>
-        <span>© {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved.</span>
       </footer>
     </div>
   );

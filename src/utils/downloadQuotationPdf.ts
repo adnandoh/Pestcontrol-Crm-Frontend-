@@ -33,6 +33,7 @@ export async function downloadQuotationPdf({
   const clone = element.cloneNode(true) as HTMLElement;
   clone.style.width = `${captureWidth}px`;
   clone.style.maxWidth = `${captureWidth}px`;
+  clone.querySelectorAll('.quotation-no-print').forEach((el) => el.remove());
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
@@ -61,7 +62,7 @@ export async function downloadQuotationPdf({
       },
       pagebreak: {
         mode: ['css', 'legacy'] as const,
-        avoid: ['.quotation-doc-header', '.quotation-doc-footer', 'tr'],
+        avoid: ['.q-header', '.q-footer', '.q-bottom-grid', 'tr'],
       },
     };
 

@@ -49,6 +49,7 @@ import {
   getPaymentTermsForServicePlans,
   getQuotationPlanOptions,
   mergeScopesForServicePlans,
+  resolveQuotationDisplayScopes,
   quotationSupportsAmc,
 } from '../constants/quotationServices';
 import { resolveQuotationTotalsFromForm } from '../utils/quotationTotals';
@@ -118,8 +119,10 @@ const CreateQuotation: React.FC = () => {
         existingQuotation.items || [],
       );
       setServicePlans(configs);
+      const resolvedScopes = resolveQuotationDisplayScopes(existingQuotation);
       setFormData({
         ...existingQuotation,
+        scopes: resolvedScopes,
       } as QuotationFormData);
     }
   }, [existingQuotation]);
@@ -332,8 +335,17 @@ const CreateQuotation: React.FC = () => {
       formData.contract_amount ?? 0,
       formData.visit_count ?? 1,
     );
+    const scopes =
+      formData.property_type && servicePlans.length
+        ? resolveQuotationDisplayScopes({
+            ...formData,
+            scopes: formData.scopes,
+            items: formData.items,
+          })
+        : formData.scopes;
     const payload = {
       ...formData,
+      scopes,
       template_service_type: servicePlans.map((c) => c.service).join(', ') || formData.template_service_type,
       customer_name: getQuotationDisplayName(formData),
       pincode: '',
