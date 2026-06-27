@@ -80,6 +80,31 @@ export interface ServiceItemConfig {
 
 export type ServiceConfigMap = Record<string, { plan: string; area: string }>;
 
+/** Termite uses "One Time Treatment" in booking UI; pricing master uses "One Time Service". */
+export function pricingPlanCandidates(service: string, plan: string): string[] {
+  const svc = (service || '').toLowerCase();
+  const candidates = [plan];
+  if (plan === 'One Time Treatment') candidates.push('One Time Service');
+  if (plan === 'One Time Service' && svc.includes('termite')) {
+    candidates.push('One Time Treatment');
+  }
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+export function resolvePlanForPricing(
+  service: string,
+  plan: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string {
+  const serviceData = config.pricing[service];
+  if (!serviceData) return plan;
+  if (serviceData[plan]) return plan;
+  for (const candidate of pricingPlanCandidates(service, plan)) {
+    if (serviceData[candidate]) return candidate;
+  }
+  return plan;
+}
+
 export function getUnitPrice(
   service: string,
   pricingType: string,
@@ -87,12 +112,16 @@ export function getUnitPrice(
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): number | null {
   const serviceData = config.pricing[service];
-  if (!serviceData?.[pricingType]) return null;
-  const typeData = serviceData[pricingType];
-  if (typeof typeData === 'number') return typeData;
-  if (typeof typeData === 'object' && pricingArea in typeData) {
-    const value = (typeData as Record<string, number>)[pricingArea];
-    return typeof value === 'number' ? value : null;
+  if (!serviceData) return null;
+
+  for (const planKey of pricingPlanCandidates(service, pricingType)) {
+    const typeData = serviceData[planKey];
+    if (typeData === undefined) continue;
+    if (typeof typeData === 'number') return typeData;
+    if (typeof typeData === 'object' && pricingArea in typeData) {
+      const value = (typeData as Record<string, number>)[pricingArea];
+      if (typeof value === 'number') return value;
+    }
   }
   return null;
 }
@@ -259,7 +288,10 @@ export function buildServiceConfigMap(
     const planTypes = getPricingTypesForService(service, config);
     let plan = existing?.plan || getDefaultPlanForService(service, config);
     if (!planTypes.includes(plan)) {
-      plan = getDefaultPlanForService(service, config);
+      const resolved = resolvePlanForPricing(service, plan, config);
+      plan = planTypes.includes(resolved)
+        ? resolved
+        : planTypes.find((p) => p.toLowerCase().includes('one time')) || planTypes[0] || plan;
     }
     const areas = getAreaOptionsForService(service, config, commercialType);
     let area = existing?.area || '';
