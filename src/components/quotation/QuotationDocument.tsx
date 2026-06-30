@@ -20,6 +20,21 @@ const fmt = (n: number) =>
 const fmtScopeContent = (content: string) =>
   content.replace(/\s*\|\s*$/g, '').trim();
 
+/** Compact frequency label for table cells — prevents column overflow. */
+const shortFrequencyDisplay = (frequency: string): string => {
+  const f = frequency.trim();
+  const amcMatch = f.match(/AMC\s+(\d+)\s+Services/i);
+  if (amcMatch) {
+    const count = amcMatch[1];
+    if (/every month/i.test(f)) return `AMC ${count} · Monthly`;
+    if (/every 4 months/i.test(f)) return `AMC ${count} · Every 4 Mo`;
+    if (/yearly/i.test(f)) return `AMC ${count} · Yearly`;
+    return `AMC ${count} Services`;
+  }
+  if (/one time/i.test(f)) return 'One Time';
+  return f.replace(/\s*\([^)]+\)\s*$/, '').trim();
+};
+
 const renderScopeBody = (content: string) => {
   const cleaned = fmtScopeContent(content);
   const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -30,13 +45,9 @@ const renderScopeBody = (content: string) => {
         if (line.includes('|')) {
           const parts = line.split('|').map((p) => p.trim()).filter(Boolean);
           return (
-            <div key={idx} className="q-scope-tags">
-              {parts.map((part, pi) => (
-                <span key={pi} className="q-scope-tag">
-                  {part}
-                </span>
-              ))}
-            </div>
+            <p key={idx} className="q-scope-line q-scope-comma-list">
+              {parts.join(', ')}
+            </p>
           );
         }
         return (
@@ -269,7 +280,8 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         {renderCustomerRight()}
       </section>
 
-      {/* 4. Line items */}
+      {/* 4. Line items + totals (kept together for PDF) */}
+      <div className="q-pricing-block">
       <div className="q-table-wrap">
         <table className="q-table">
           <colgroup>
@@ -309,7 +321,9 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                       <span className="q-service-desc">{item.description}</span>
                     )}
                   </td>
-                  <td className="q-freq-cell">{item.frequency}</td>
+                  <td className="q-freq-cell" title={item.frequency}>
+                    {shortFrequencyDisplay(item.frequency)}
+                  </td>
                   <td className="col-right q-num">{item.quantity}</td>
                   <td className="col-right q-num">
                     {quotation.is_amc && item.total === 0 ? '—' : fmt(item.rate)}
@@ -328,28 +342,34 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
 
       {/* 5. Totals */}
       <div className="q-totals">
-        <div className="q-totals-row">
-          <span>Subtotal</span>
-          <span className="q-num">Rs.{fmt(totals.total_amount)}</span>
-        </div>
-        {Number(quotation.discount) > 0 && (
-          <div className="q-totals-row is-discount">
-            <span>Discount</span>
-            <span className="q-num">- Rs.{fmt(quotation.discount)}</span>
-          </div>
-        )}
-        <div className="q-grand-total">
-          <span>Grand Total</span>
-          <span className="q-num">Rs.{fmt(totals.grand_total)}</span>
-        </div>
+        <table className="q-totals-table">
+          <tbody>
+            <tr>
+              <td className="q-totals-label">Subtotal</td>
+              <td className="q-totals-value q-num">Rs.{fmt(totals.total_amount)}</td>
+            </tr>
+            {Number(quotation.discount) > 0 && (
+              <tr className="q-totals-discount">
+                <td className="q-totals-label">Discount</td>
+                <td className="q-totals-value q-num">- Rs.{fmt(quotation.discount)}</td>
+              </tr>
+            )}
+            <tr className="q-grand-total-row">
+              <td className="q-grand-total-label">Grand Total</td>
+              <td className="q-grand-total-value q-num">Rs.{fmt(totals.grand_total)}</td>
+            </tr>
+          </tbody>
+        </table>
         <p className="q-amount-words">{amountInWords(totals.grand_total)}</p>
       </div>
+      </div>
 
-      {/* 6. Bottom: scopes + payment/bank */}
-      <section className="q-bottom-grid">
-        <div className="q-bottom-left">{renderScopeSections()}</div>
+      {/* 6. Scopes — full width so text does not overlap payment column */}
+      <section className="q-scopes-section">{renderScopeSections()}</section>
 
-        <div className="q-bottom-right">
+      {/* 7. Payment + Bank */}
+      <section className="q-payment-bank-grid">
+        <div className="q-payment-col">
           <p className="q-payment-label">Payment Terms</p>
           {paymentTerms.length > 0 ? (
             <ul className="q-payment-list">
@@ -362,9 +382,9 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
           ) : (
             <p className="q-placeholder">As mutually agreed.</p>
           )}
+        </div>
 
-          <hr className="q-bank-divider" />
-
+        <div className="q-bank-col">
           <p className="q-payment-label">Bank Details</p>
           <div className="q-bank-rows">
             <p>
@@ -386,7 +406,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
         </div>
       </section>
 
-      {/* 7. Footer */}
+      {/* 8. Footer */}
       <footer className="q-footer">
         <div className="q-footer-left">
           <p>Thank you for choosing {COMPANY.legalName}.</p>

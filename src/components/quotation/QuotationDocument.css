@@ -220,7 +220,11 @@
   margin: 0;
 }
 
-/* ── 4. Table ── */
+/* ── 4. Table + totals block ── */
+.q-pricing-block {
+  margin-bottom: 12px;
+}
+
 .q-table-wrap {
   margin-bottom: 0;
 }
@@ -231,12 +235,12 @@
   table-layout: fixed;
 }
 
-.q-table col.col-num { width: 36px; }
-.q-table col.col-desc { width: auto; }
-.q-table col.col-freq { width: 168px; }
-.q-table col.col-qty { width: 48px; }
-.q-table col.col-rate { width: 72px; }
-.q-table col.col-amt { width: 80px; }
+.q-table col.col-num { width: 6%; }
+.q-table col.col-desc { width: 34%; }
+.q-table col.col-freq { width: 20%; }
+.q-table col.col-qty { width: 8%; }
+.q-table col.col-rate { width: 16%; }
+.q-table col.col-amt { width: 16%; }
 
 .q-table thead tr {
   background: var(--q-navy);
@@ -275,6 +279,18 @@
   padding: 8px 12px;
   border-bottom: 1px solid #f0f0f0;
   vertical-align: middle;
+  overflow: hidden;
+}
+
+.q-freq-cell {
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  vertical-align: middle;
+  text-align: center;
+  max-width: 0;
 }
 
 .q-service-name {
@@ -289,21 +305,11 @@
   display: block;
 }
 
-.q-freq-cell {
-  font-size: 9px;
-  line-height: 1.3;
-  white-space: normal;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
-  vertical-align: top;
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
-}
-
 .q-service-cell {
   word-wrap: break-word;
-  overflow-wrap: anywhere;
-  vertical-align: top;
+  overflow-wrap: break-word;
+  vertical-align: middle;
+  max-width: 0;
 }
 
 .q-empty-cell {
@@ -313,39 +319,62 @@
   padding: 16px;
 }
 
-/* ── 5. Totals ── */
+/* ── 5. Totals (table layout — reliable in PDF export) ── */
+.q-pricing-block .q-totals {
+  max-width: 280px;
+  margin-left: auto;
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
 .q-totals {
-  max-width: 260px;
+  max-width: 280px;
   margin-left: auto;
   margin-top: 0;
   margin-bottom: 16px;
 }
 
-.q-totals-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: var(--q-muted);
-  padding: 6px 0;
-  border-bottom: 1px solid var(--q-border);
+.q-totals-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.q-totals-row.is-discount {
+.q-totals-label,
+.q-totals-value {
+  font-size: 12px;
+  color: var(--q-muted);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--q-border);
+  vertical-align: middle;
+}
+
+.q-totals-value {
+  text-align: right;
+  width: 50%;
+}
+
+.q-totals-discount .q-totals-label,
+.q-totals-discount .q-totals-value {
   color: #c62828;
 }
 
-.q-grand-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.q-grand-total-row td {
+  border-bottom: none;
   background: var(--q-green);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
   padding: 8px 12px;
-  border-radius: 4px;
-  margin-top: 6px;
+}
+
+.q-grand-total-label {
+  border-radius: 4px 0 0 4px;
+}
+
+.q-grand-total-value {
+  text-align: right;
+  border-radius: 0 4px 4px 0;
 }
 
 .q-amount-words {
@@ -353,24 +382,37 @@
   color: var(--q-muted);
   font-style: italic;
   text-align: right;
-  margin-top: 4px;
+  margin: 4px 0 0;
 }
 
-/* ── 6. Bottom section ── */
-.q-bottom-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-top: 16px;
-  margin-bottom: 16px;
+/* ── 6. Scopes (full width) ── */
+/* Use flex two-column layout instead of CSS column-count.
+   CSS multi-column doesn't render reliably with html2canvas. */
+.q-scopes-section {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  width: 100%;
 }
 
 .q-scope-block {
-  margin-bottom: 10px;
+  break-inside: avoid;
+  margin-bottom: 0;
+  display: block;
+  width: calc(50% - 10px);
+  min-width: 0;
 }
 
 .q-scope-block:last-child {
   margin-bottom: 0;
+}
+
+/* Single-scope (no structured sections): full width */
+.q-scopes-section:has(.q-scope-list) .q-scope-block,
+.q-scopes-section.q-single-scope .q-scope-block {
+  width: 100%;
 }
 
 .q-scope-title {
@@ -382,35 +424,25 @@
   margin: 0 0 4px;
   padding-bottom: 3px;
   border-bottom: 1px solid var(--q-border);
+  line-height: 1.3;
 }
 
 .q-scope-body {
   font-size: 11px;
   color: var(--q-muted);
-  line-height: 1.55;
-}
-
-.q-scope-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.q-scope-tag {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--q-navy);
-  background: #eef0fa;
-  border-radius: 3px;
-  padding: 2px 6px;
+  line-height: 1.5;
 }
 
 .q-scope-line {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 11px;
   color: var(--q-muted);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.q-scope-comma-list {
+  line-height: 1.45;
 }
 
 .q-scope-list {
@@ -422,6 +454,23 @@
 
 .q-scope-list li {
   margin-bottom: 4px;
+}
+
+/* Use flex layout — CSS Grid 1fr columns cause left-column text clipping in html2canvas */
+.q-payment-bank-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--q-border);
+}
+
+.q-payment-col,
+.q-bank-col {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: visible;
 }
 
 .q-payment-label {
@@ -668,35 +717,41 @@ body.quotation-preview-mode .quotation-preview-page {
   }
 
   .q-totals {
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
   }
 
-  .q-bottom-grid {
-    gap: 10px !important;
+  .q-scopes-section {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px 12px !important;
     margin-top: 8px !important;
     margin-bottom: 8px !important;
-    page-break-inside: auto !important;
-  }
-
-  .q-bottom-left {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 6px 10px !important;
   }
 
   .q-scope-block {
-    margin-bottom: 0 !important;
-    page-break-inside: auto !important;
+    width: calc(50% - 6px) !important;
+  }
+
+  .q-payment-bank-grid {
+    gap: 12px !important;
+    margin-bottom: 8px !important;
+    padding-top: 8px !important;
+  }
+
+  .q-scope-block {
+    margin-bottom: 6px !important;
+    break-inside: avoid !important;
   }
 
   .q-scope-title {
     font-size: 8px !important;
+    margin-bottom: 2px !important;
   }
 
   .q-scope-body,
-  .q-scope-line,
-  .q-scope-tag {
+  .q-scope-line {
     font-size: 8px !important;
+    line-height: 1.35 !important;
   }
 
   .q-footer {
@@ -726,9 +781,17 @@ body.quotation-preview-mode .quotation-preview-page {
   }
 
   .q-customer-grid,
-  .q-bottom-grid,
+  .q-payment-bank-grid,
   .q-footer {
     grid-template-columns: 1fr;
+  }
+
+  .q-scopes-section {
+    flex-direction: column;
+  }
+
+  .q-scope-block {
+    width: 100%;
   }
 
   .q-totals {
@@ -737,6 +800,75 @@ body.quotation-preview-mode .quotation-preview-page {
 }
 
 /* ── PDF export: single A4 page compact layout ── */
+.q-pdf-export .q-pricing-block {
+  margin-bottom: 4px;
+}
+
+.q-pdf-export .q-pricing-block .q-totals {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.q-pdf-export .q-totals-label,
+.q-pdf-export .q-totals-value {
+  font-size: 10px;
+  padding: 3px 0;
+}
+
+.q-pdf-export .q-grand-total-row td {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+.q-pdf-export .q-amount-words {
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.q-pdf-export .q-scopes-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.q-pdf-export .q-scope-block {
+  margin-bottom: 0;
+  break-inside: avoid;
+  width: calc(50% - 6px);
+  min-width: 0;
+}
+
+.q-pdf-export .q-scope-title {
+  font-size: 8px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+}
+
+.q-pdf-export .q-scope-body,
+.q-pdf-export .q-scope-line,
+.q-pdf-export .q-scope-comma-list {
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.q-pdf-export .q-payment-bank-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding-top: 6px;
+}
+
+.q-pdf-export .q-payment-col,
+.q-pdf-export .q-bank-col {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: visible;
+}
+
 .q-pdf-export.quotation-print-padding {
   padding: 10px !important;
 }
@@ -814,72 +946,20 @@ body.quotation-preview-mode .quotation-preview-page {
 
 .q-pdf-export .q-table th,
 .q-pdf-export .q-table td {
-  padding: 4px 8px;
+  padding: 4px 6px;
   font-size: 10px;
+  overflow: hidden;
+}
+
+.q-pdf-export .q-freq-cell {
+  font-size: 9px;
+  max-width: 0;
+  vertical-align: middle;
+  text-align: center;
 }
 
 .q-pdf-export .q-service-desc {
   font-size: 8px;
-}
-
-.q-pdf-export .q-totals {
-  margin-bottom: 8px;
-}
-
-.q-pdf-export .q-totals-row {
-  padding: 3px 0;
-  font-size: 10px;
-}
-
-.q-pdf-export .q-grand-total {
-  font-size: 11px;
-  padding: 5px 10px;
-  margin-top: 3px;
-}
-
-.q-pdf-export .q-amount-words {
-  font-size: 9px;
-  margin-top: 2px;
-}
-
-.q-pdf-export .q-bottom-grid {
-  gap: 10px;
-  margin-top: 8px;
-  margin-bottom: 8px;
-  page-break-inside: auto !important;
-}
-
-.q-pdf-export .q-bottom-left {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 10px;
-  align-content: start;
-}
-
-.q-pdf-export .q-scope-block {
-  margin-bottom: 0;
-  page-break-inside: auto !important;
-}
-
-.q-pdf-export .q-scope-title {
-  font-size: 8px;
-  margin-bottom: 2px;
-  padding-bottom: 2px;
-}
-
-.q-pdf-export .q-scope-body,
-.q-pdf-export .q-scope-line {
-  font-size: 8px;
-  line-height: 1.3;
-}
-
-.q-pdf-export .q-scope-tag {
-  font-size: 7px;
-  padding: 1px 4px;
-}
-
-.q-pdf-export .q-scope-tags {
-  gap: 2px;
 }
 
 .q-pdf-export .q-payment-label {
