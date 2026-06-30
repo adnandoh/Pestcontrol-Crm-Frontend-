@@ -231,11 +231,11 @@
   table-layout: fixed;
 }
 
-.q-table col.col-num { width: 40px; }
+.q-table col.col-num { width: 36px; }
 .q-table col.col-desc { width: auto; }
-.q-table col.col-freq { width: 110px; }
-.q-table col.col-qty { width: 60px; }
-.q-table col.col-rate { width: 80px; }
+.q-table col.col-freq { width: 168px; }
+.q-table col.col-qty { width: 48px; }
+.q-table col.col-rate { width: 72px; }
 .q-table col.col-amt { width: 80px; }
 
 .q-table thead tr {
@@ -287,6 +287,23 @@
   color: var(--q-muted);
   margin-top: 2px;
   display: block;
+}
+
+.q-freq-cell {
+  font-size: 9px;
+  line-height: 1.3;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.q-service-cell {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  vertical-align: top;
 }
 
 .q-empty-cell {

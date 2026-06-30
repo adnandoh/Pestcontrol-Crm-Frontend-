@@ -51,6 +51,7 @@ import {
   mergeScopesForServicePlans,
   resolveQuotationDisplayScopes,
   quotationSupportsAmc,
+  sortItemsByServiceOrder,
 } from '../constants/quotationServices';
 import { resolveQuotationTotalsFromForm } from '../utils/quotationTotals';
 import { formatMoneyInputValue, parseMoneyInput } from '../utils/moneyInput';
@@ -120,8 +121,13 @@ const CreateQuotation: React.FC = () => {
       );
       setServicePlans(configs);
       const resolvedScopes = resolveQuotationDisplayScopes(existingQuotation);
+      const sortedItems = sortItemsByServiceOrder(
+        existingQuotation.items || [],
+        existingQuotation.template_service_type,
+      );
       setFormData({
         ...existingQuotation,
+        items: sortedItems,
         scopes: resolvedScopes,
       } as QuotationFormData);
     }

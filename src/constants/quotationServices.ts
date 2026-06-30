@@ -149,17 +149,21 @@ export function resolveQuotationDisplayScopes(quotation: {
   const saved = quotation.scopes ?? [];
 
   if (!quotation.property_type || !quotation.template_service_type) {
-    return saved;
+    return sortScopesByServiceOrder(saved, quotation.template_service_type);
   }
 
   const configs = configsFromQuotation(
     quotation.template_service_type,
     quotation.items ?? [],
   );
-  if (configs.length === 0) return saved;
+  if (configs.length === 0) {
+    return sortScopesByServiceOrder(saved, quotation.template_service_type);
+  }
 
   const generated = mergeScopesForServicePlans(quotation.property_type, configs);
-  if (generated.length === 0) return saved;
+  if (generated.length === 0) {
+    return sortScopesByServiceOrder(saved, quotation.template_service_type);
+  }
 
   const coreSections = ['Area Covered', 'Pest Covered', 'Benefits', 'Warranty', 'Scope of Work'];
   const needsFill =
@@ -168,7 +172,9 @@ export function resolveQuotationDisplayScopes(quotation: {
       (base) => generated.some((g) => scopeBaseTitle(g.title) === base) && !hasScopeSection(saved, base),
     );
 
-  if (!needsFill) return saved;
+  if (!needsFill) {
+    return sortScopesByServiceOrder(saved, quotation.template_service_type);
+  }
 
   const savedByTitle = new Map(saved.map((s) => [s.title, s]));
   const merged: QuotationScope[] = [];
@@ -184,7 +190,7 @@ export function resolveQuotationDisplayScopes(quotation: {
     if (!seen.has(s.title)) merged.push(s);
   }
 
-  return merged;
+  return sortScopesByServiceOrder(merged, quotation.template_service_type);
 }
 
 export function getPaymentTermsForServicePlans(
@@ -255,6 +261,48 @@ function inferPlanFromFrequency(service: string, frequency: string): string {
   }
   if (f.includes('one time treatment')) return 'One Time Treatment';
   return defaultPlanForService(service);
+}
+
+export function sortItemsByServiceOrder(
+  items: QuotationItem[],
+  templateServiceType?: string,
+): QuotationItem[] {
+  const order = (templateServiceType || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (order.length === 0) return items;
+  const rank = new Map(order.map((service, index) => [service, index]));
+  return [...items].sort((a, b) => {
+    const rankA = rank.get(a.service_name) ?? order.length;
+    const rankB = rank.get(b.service_name) ?? order.length;
+    return rankA - rankB;
+  });
+}
+
+export function sortScopesByServiceOrder(
+  scopes: QuotationScope[],
+  templateServiceType?: string,
+): QuotationScope[] {
+  const order = (templateServiceType || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (order.length === 0) return scopes;
+
+  const rankForTitle = (title: string): number => {
+    if (title === 'Area Covered') return -1;
+    for (let i = 0; i < order.length; i += 1) {
+      if (title === order[i] || title.endsWith(` — ${order[i]}`)) return i;
+    }
+    return order.length;
+  };
+
+  return [...scopes].sort((a, b) => {
+    const diff = rankForTitle(a.title) - rankForTitle(b.title);
+    if (diff !== 0) return diff;
+    return a.title.localeCompare(b.title);
+  });
 }
 
 export { QUOTATION_SELECTABLE_SERVICES };

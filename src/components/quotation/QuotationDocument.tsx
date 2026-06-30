@@ -9,7 +9,7 @@ import {
   formatCompanyPhone,
 } from '../../constants/quotation';
 import { hasStructuredScopes, STRUCTURED_SCOPE_TITLES } from '../../constants/quotationTemplates';
-import { resolveQuotationDisplayScopes } from '../../constants/quotationServices';
+import { resolveQuotationDisplayScopes, sortItemsByServiceOrder } from '../../constants/quotationServices';
 import { COMPANY_SIGNATURE_STAMP_URL, COMPANY_LOGO_URL } from '../../constants/companyAssets';
 import { resolveQuotationTotals } from '../../utils/quotationTotals';
 import './QuotationDocument.css';
@@ -65,7 +65,10 @@ interface QuotationDocumentProps {
 
 const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, className = '' }) => {
   const displayName = getQuotationDisplayName(quotation);
-  const items = quotation.items || [];
+  const items = sortItemsByServiceOrder(
+    quotation.items || [],
+    quotation.template_service_type,
+  );
   const scopes = resolveQuotationDisplayScopes(quotation);
   const paymentTerms = quotation.payment_terms || [];
   const totals = resolveQuotationTotals(quotation);
@@ -298,13 +301,15 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
               items.map((item, i) => (
                 <tr key={i}>
                   <td className="col-center q-num">{i + 1}</td>
-                  <td>
+                  <td className="q-service-cell">
                     <span className="q-service-name">{item.service_name}</span>
-                    {item.description && (
+                    {item.description &&
+                      item.description !== item.frequency &&
+                      !item.frequency.includes(item.description) && (
                       <span className="q-service-desc">{item.description}</span>
                     )}
                   </td>
-                  <td className="col-center q-nowrap">{item.frequency}</td>
+                  <td className="q-freq-cell">{item.frequency}</td>
                   <td className="col-right q-num">{item.quantity}</td>
                   <td className="col-right q-num">
                     {quotation.is_amc && item.total === 0 ? '—' : fmt(item.rate)}
