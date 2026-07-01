@@ -51,7 +51,9 @@ import {
   BOOKING_PROPERTY_TYPES,
   bookingKindFromCommercialType,
   commercialTypeFromPropertyType,
+  isSocietyBooking,
   RESIDENTIAL_PROPERTY_TYPE,
+  deriveSocietyContractDuration,
 } from '../constants/bookingPropertyTypes';
 
 const CreateJobCard: React.FC = () => {
@@ -82,6 +84,7 @@ const CreateJobCard: React.FC = () => {
       client_notes: '',
       job_type: 'Customer',
       commercial_type: 'home',
+      society_billing_type: 'Paid',
       is_price_estimated: false,
       service_category: 'One-Time Service',
       property_type: 'Home / Flat',
@@ -463,6 +466,13 @@ const CreateJobCard: React.FC = () => {
           formData.commercial_type === 'home'
             ? RESIDENTIAL_PROPERTY_TYPE
             : formData.property_type,
+        job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
+        contract_duration: isSocietyBooking(formData)
+          ? (formData.contract_duration || deriveSocietyContractDuration(serviceItems))
+          : formData.contract_duration,
+        society_billing_type: isSocietyBooking(formData)
+          ? (formData.society_billing_type || 'Paid')
+          : null,
         service_items: serviceItems,
         service_category: deriveServiceCategoryFromItems(serviceItems),
       };
@@ -679,11 +689,13 @@ const CreateJobCard: React.FC = () => {
                       value={bookingKindFromCommercialType(formData.commercial_type)}
                       onChange={(e) => {
                         const kind = e.target.value as 'home' | 'commercial';
-                        if (kind === 'home') {
+        if (kind === 'home') {
                           setFormData((prev) => ({
                             ...prev,
                             commercial_type: 'home',
                             property_type: RESIDENTIAL_PROPERTY_TYPE,
+                            job_type: 'Customer',
+                            society_billing_type: 'Paid',
                             is_price_estimated: !supportsAutoPricing('home', pricingConfig),
                             price: supportsAutoPricing('home', pricingConfig) ? prev.price : '0.00',
                           }));
@@ -692,6 +704,8 @@ const CreateJobCard: React.FC = () => {
                             ...prev,
                             commercial_type: 'other',
                             property_type: '',
+                            job_type: 'Customer',
+                            society_billing_type: 'Paid',
                             is_price_estimated: true,
                             price: '0.00',
                           }));
@@ -717,10 +731,13 @@ const CreateJobCard: React.FC = () => {
                         onChange={(e) => {
                           const propertyType = e.target.value;
                           const commercialType = commercialTypeFromPropertyType(propertyType);
+                          const society = propertyType === 'Society';
                           setFormData((prev) => ({
                             ...prev,
                             property_type: propertyType,
                             commercial_type: commercialType,
+                            job_type: society ? 'Society' : 'Customer',
+                            society_billing_type: society ? (prev.society_billing_type || 'Paid') : 'Paid',
                             is_price_estimated: !supportsAutoPricing(commercialType, pricingConfig),
                             price: supportsAutoPricing(commercialType, pricingConfig) ? prev.price : '0.00',
                           }));
@@ -739,6 +756,43 @@ const CreateJobCard: React.FC = () => {
                     </div>
                   ) : null}
                 </div>
+
+                {isSocietyBooking(formData) && (
+                  <div className="mt-4 pt-4 border-t border-purple-100">
+                    <label className="text-[13px] font-bold text-gray-700 mb-2 block">
+                      Society Service Billing *
+                    </label>
+                    <div className="flex flex-wrap gap-4">
+                      {(['Paid', 'Free'] as const).map((option) => (
+                        <label
+                          key={option}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-bold cursor-pointer transition-colors ${
+                            formData.society_billing_type === option
+                              ? option === 'Free'
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                : 'bg-blue-50 border-blue-300 text-blue-800'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="society_billing_type"
+                            value={option}
+                            checked={formData.society_billing_type === option}
+                            onChange={() =>
+                              setFormData((prev) => ({ ...prev, society_billing_type: option }))
+                            }
+                            className="sr-only"
+                          />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2">
+                      Mark whether this society contract is a paid service or a free service for staff reference.
+                    </p>
+                  </div>
+                )}
           </div>
 
           {/* Section: Assignment & Payment (schedule + booking type + payment) */}

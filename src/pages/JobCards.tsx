@@ -42,6 +42,7 @@ import { requiresPaymentOnCompletion } from '../utils/bookingPayment';
 import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
 import { downloadInvoicePdf } from '../utils/invoicePdf';
+import { isSocietyBooking } from '../constants/bookingPropertyTypes';
 
 const TableSkeleton: React.FC = () => (
   <>
@@ -1058,6 +1059,18 @@ const JobCards: React.FC = () => {
                             'bg-indigo-100 text-indigo-700 border border-indigo-200'
                           }`}>
                             {job.commercial_type.toUpperCase()}
+                          </span>
+                        )}
+                        {(activeTab === 'upcoming_services' || activeTab === 'upcoming_renewals') &&
+                          isSocietyBooking(job) && (
+                          <span
+                            className={`text-[8px] font-black px-1.5 py-0.5 rounded w-fit tracking-tighter border ${
+                              (job.society_billing_type || 'Paid') === 'Free'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                : 'bg-sky-100 text-sky-800 border-sky-200'
+                            }`}
+                          >
+                            {job.society_billing_type || 'Paid'}
                           </span>
                         )}
                       </div>

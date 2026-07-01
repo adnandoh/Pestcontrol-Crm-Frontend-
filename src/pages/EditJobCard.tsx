@@ -56,6 +56,7 @@ import {
   nextServiceDateHint,
   shouldShowNextServiceField,
 } from '../utils/amcNextServiceDate';
+import { isSocietyBooking, deriveSocietyContractDuration } from '../constants/bookingPropertyTypes';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ const EditJobCard: React.FC = () => {
     contract_duration: '',
     notes: '',
     commercial_type: 'home',
+    society_billing_type: 'Paid',
     is_price_estimated: false,
     cancellation_reason: '',
     reminder_date: '',
@@ -251,6 +253,7 @@ const EditJobCard: React.FC = () => {
           client_notes: data.client_notes || '',
           job_type: data.job_type || 'Customer',
           commercial_type: data.commercial_type || 'home',
+          society_billing_type: data.society_billing_type || 'Paid',
           is_price_estimated: data.is_price_estimated || false,
           service_category: data.service_category || 'One-Time Service',
           property_type: data.property_type || 'Home / Flat',
@@ -497,6 +500,13 @@ const EditJobCard: React.FC = () => {
       const submitData = {
         ...formData,
         price: manualPrice > 0 ? manualPrice.toFixed(2) : formData.price,
+        job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
+        contract_duration: isSocietyBooking(formData)
+          ? (formData.contract_duration || deriveSocietyContractDuration(itemsForSubmit))
+          : formData.contract_duration,
+        society_billing_type: isSocietyBooking(formData)
+          ? (formData.society_billing_type || 'Paid')
+          : null,
         service_items: itemsForSubmit,
         service_category: deriveServiceCategoryFromItems(itemsForSubmit),
       };
@@ -784,6 +794,7 @@ const EditJobCard: React.FC = () => {
                     setFormData(prev => ({ 
                       ...prev, 
                       commercial_type: val,
+                      society_billing_type: val === 'society' ? (prev.society_billing_type || 'Paid') : 'Paid',
                       is_price_estimated: !supportsAutoPricing(val, pricingConfig),
                       price: supportsAutoPricing(val, pricingConfig) ? prev.price : '0.00'
                     }));
@@ -799,6 +810,40 @@ const EditJobCard: React.FC = () => {
                   <option value="other">Other Commercial</option>
                 </select>
               </div>
+
+              {isSocietyBooking(formData) && (
+                <div className="lg:col-span-2">
+                  <label className="text-[13px] font-bold text-gray-700 mb-2 block">
+                    Society Service Billing *
+                  </label>
+                  <div className="flex flex-wrap gap-4">
+                    {(['Paid', 'Free'] as const).map((option) => (
+                      <label
+                        key={option}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-bold cursor-pointer transition-colors ${
+                          formData.society_billing_type === option
+                            ? option === 'Free'
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                              : 'bg-blue-50 border-blue-300 text-blue-800'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="society_billing_type"
+                          value={option}
+                          checked={formData.society_billing_type === option}
+                          onChange={() =>
+                            setFormData((prev) => ({ ...prev, society_billing_type: option }))
+                          }
+                          className="sr-only"
+                        />
+                        {option}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Status *</label>

@@ -208,6 +208,7 @@ export interface JobCard {
   service_timeline?: ServiceTimelineVisit[];
   bhk_size?: '1 RK' | '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK';
   contract_duration?: string;
+  society_billing_type?: 'Free' | 'Paid' | null;
   is_paused?: boolean;
   is_service_call?: boolean;
   is_amc_main_booking?: boolean;
@@ -553,6 +554,7 @@ export interface JobCardFormData {
   max_cycle?: number;
   parent_job?: number | null;
   contract_duration?: string;
+  society_billing_type?: 'Free' | 'Paid' | null;
   reference?: string;
   notes?: string;
   extra_notes?: string;

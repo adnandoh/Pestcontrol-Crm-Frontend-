@@ -68,6 +68,7 @@ import type {
   StaffTrackingHistory,
   StaffTrackingDistanceRow, FieldVisit, StaffTask, LeaveApplication, ExpenseClaim,
 } from '../types';
+import { isSocietyBooking } from '../constants/bookingPropertyTypes';
 
 function flattenValidationDetails(value: unknown, prefix = ''): string[] {
   if (value == null) return [];
@@ -126,7 +127,7 @@ function normalizeServiceCategory(value: unknown): string | null | undefined {
 function sanitizeJobCardPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const out = { ...payload };
   const emptyToNull = [
-    'bhk_size', 'property_type', 'contract_duration', 'payment_mode',
+    'bhk_size', 'property_type', 'contract_duration', 'society_billing_type', 'payment_mode',
     'reminder_date', 'reminder_time', 'reminder_note', 'next_service_date',
     'assigned_to', 'notes', 'extra_notes', 'cancellation_reason', 'removal_remarks',
     'technician', 'master_country', 'master_state', 'master_city', 'master_location',
@@ -1007,6 +1008,7 @@ class EnhancedApiService {
       master_location: data.master_location ?? null,
       full_address: data.full_address ?? null,
       commercial_type: data.commercial_type || 'home',
+      society_billing_type: isSocietyBooking(data) ? (data.society_billing_type ?? 'Paid') : null,
       is_price_estimated: data.is_price_estimated ?? false,
       is_amc_main_booking: data.is_amc_main_booking ?? false,
       is_followup_visit: data.is_followup_visit ?? false,
@@ -1104,6 +1106,9 @@ class EnhancedApiService {
     if (data.full_address !== undefined) requestData.full_address = data.full_address ?? null;
 
     if (data.commercial_type !== undefined) requestData.commercial_type = data.commercial_type;
+    if (data.society_billing_type !== undefined) {
+      requestData.society_billing_type = data.society_billing_type ?? null;
+    }
     if (data.is_price_estimated !== undefined) requestData.is_price_estimated = data.is_price_estimated;
     if (data.is_amc_main_booking !== undefined) requestData.is_amc_main_booking = data.is_amc_main_booking;
     if (data.is_followup_visit !== undefined) requestData.is_followup_visit = data.is_followup_visit;
