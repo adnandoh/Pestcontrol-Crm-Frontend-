@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { showAlert } from '../utils/notify';
 
 /**
  * When global search navigates with ?focus=<id>, load that record on page 1
@@ -36,7 +37,7 @@ export function useInquiryFocusFromSearch(onFocus: (focusId: string) => Promise<
       } catch (err) {
         handledRef.current = null;
         const msg = err instanceof Error ? err.message : 'Record not found';
-        window.alert(`Could not open inquiry: ${msg}`);
+        showAlert(`Could not open inquiry: ${msg}`);
       }
     })();
 

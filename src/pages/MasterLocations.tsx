@@ -21,6 +21,7 @@ import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { City, Location as MasterLocation } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const MasterLocations: React.FC = () => {
   const [locations, setLocations] = useState<MasterLocation[]>([]);
@@ -116,7 +117,7 @@ const MasterLocations: React.FC = () => {
       fetchData();
     } catch (error: any) {
       console.error('Error saving location:', error);
-      alert('FAILED TO SAVE LOCATION');
+      showAlert('FAILED TO SAVE LOCATION');
     }
   };
 
@@ -130,18 +131,18 @@ const MasterLocations: React.FC = () => {
         try {
           parsed = JSON.parse(bulkJson);
         } catch {
-          alert('INVALID JSON FORMAT. PLEASE CHECK YOUR INPUT.');
+          showAlert('INVALID JSON FORMAT. PLEASE CHECK YOUR INPUT.');
           return;
         }
         if (!Array.isArray(parsed)) {
-          alert('JSON DATA MUST BE AN ARRAY. USE [ ... ]');
+          showAlert('JSON DATA MUST BE AN ARRAY. USE [ ... ]');
           return;
         }
 
         // Auto-detect: if array of strings, convert to objects
         if (parsed.length > 0 && typeof parsed[0] === 'string') {
           if (!defaultCityId) {
-            alert('YOU PASTED A LIST OF NAMES. PLEASE SELECT A DEFAULT CITY FIRST.');
+            showAlert('YOU PASTED A LIST OF NAMES. PLEASE SELECT A DEFAULT CITY FIRST.');
             return;
           }
           data = parsed
@@ -152,7 +153,7 @@ const MasterLocations: React.FC = () => {
           // Validate each item is an object
           const invalidItems = parsed.filter((item: any) => typeof item !== 'object' || item === null || Array.isArray(item));
           if (invalidItems.length > 0) {
-            alert(`${invalidItems.length} ITEMS ARE NOT VALID OBJECTS. EACH ITEM MUST BE {"name": "...", "city": 1}`);
+            showAlert(`${invalidItems.length} ITEMS ARE NOT VALID OBJECTS. EACH ITEM MUST BE {"name": "...", "city": 1}`);
             return;
           }
           data = parsed;
@@ -161,11 +162,11 @@ const MasterLocations: React.FC = () => {
         // Simple mode: split by lines
         const names = bulkJson.split('\n').map(n => n.trim()).filter(n => n.length > 0);
         if (names.length === 0) {
-          alert('PLEASE ENTER AT LEAST ONE LOCATION NAME');
+          showAlert('PLEASE ENTER AT LEAST ONE LOCATION NAME');
           return;
         }
         if (!defaultCityId) {
-          alert('PLEASE SELECT A DEFAULT CITY');
+          showAlert('PLEASE SELECT A DEFAULT CITY');
           return;
         }
         data = names.map(name => ({
@@ -176,7 +177,7 @@ const MasterLocations: React.FC = () => {
       }
 
       if (data.length === 0) {
-        alert('NO VALID LOCATIONS TO ADD.');
+        showAlert('NO VALID LOCATIONS TO ADD.');
         return;
       }
 
@@ -184,11 +185,11 @@ const MasterLocations: React.FC = () => {
       setIsBulkModalOpen(false);
       setBulkJson('');
       fetchData();
-      alert(`SUCCESSFULLY ADDED ${data.length} LOCATIONS`);
+      showAlert(`SUCCESSFULLY ADDED ${data.length} LOCATIONS`);
     } catch (error: any) {
       console.error('Error bulk adding locations:', error);
       const msg = error?.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : error.message;
-      alert('BULK ADD FAILED: ' + (msg || 'PLEASE CHECK YOUR DATA'));
+      showAlert('BULK ADD FAILED: ' + (msg || 'PLEASE CHECK YOUR DATA'));
     }
   };
 

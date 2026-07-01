@@ -12,6 +12,7 @@ import {
 import type { BlogFormData, BlogCategory, BlogTag, BlogSchemaType } from '../../types';
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { showAlert } from '../../utils/notify';
 
 const SCHEMA_OPTIONS: { value: BlogSchemaType; label: string }[] = [
   { value: 'Article', label: 'Article' },
@@ -129,11 +130,11 @@ const BlogEditor: React.FC = () => {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
-      alert('Only JPG, PNG, and WebP images are allowed.');
+      showAlert('Only JPG, PNG, and WebP images are allowed.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image must be under 10 MB.');
+      showAlert('Image must be under 10 MB.');
       return;
     }
     set('featured_image', file);
@@ -173,9 +174,9 @@ const BlogEditor: React.FC = () => {
   };
 
   const handleSave = async (statusOverride?: 'draft' | 'published') => {
-    if (!form.title.trim()) { alert('Title is required'); return; }
+    if (!form.title.trim()) { showAlert('Title is required'); return; }
     const contentText = form.content.replace(/<[^>]+>/g, '').trim();
-    if (!contentText) { alert('Content is required'); return; }
+    if (!contentText) { showAlert('Content is required'); return; }
     setSaving(true);
     setSaveMsg('');
     try {

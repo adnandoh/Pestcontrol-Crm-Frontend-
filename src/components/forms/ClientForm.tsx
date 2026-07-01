@@ -4,6 +4,7 @@ import { Button, Input } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
 import type { Client, ClientFormData } from '../../types';
+import { showAlert } from '../../utils/notify';
 
 interface ClientFormProps {
   client?: Client;
@@ -169,7 +170,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
         });
         setErrors(serverErrors);
       } else {
-        alert('Failed to save client: ' + error.message);
+        showAlert('Failed to save client: ' + error.message);
       }
     } finally {
       setLoading(false);
@@ -414,4 +415,4 @@ const ClientForm: React.FC<ClientFormProps> = ({
   );
 };
 
-export default ClientForm;
+export default ClientForm;

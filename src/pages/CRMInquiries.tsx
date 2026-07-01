@@ -31,6 +31,7 @@ import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
+import { showAlert } from '../utils/notify';
 
 const CRM_DATE_FILTER_KEY = 'crm-inquiries-date-filter';
 
@@ -169,7 +170,7 @@ const CRMInquiries: React.FC = () => {
       );
       refreshCounts();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to mark as read');
+      showAlert(err instanceof Error ? err.message : 'Failed to mark as read');
     }
   };
 
@@ -182,7 +183,7 @@ const CRMInquiries: React.FC = () => {
       setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
       refreshCounts();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to mark all as read');
+      showAlert(err instanceof Error ? err.message : 'Failed to mark all as read');
     } finally {
       setMarkingAllRead(false);
     }
@@ -194,12 +195,12 @@ const CRMInquiries: React.FC = () => {
     try {
       setSubmitting(id);
       const result = await enhancedApiService.convertInquiryToBooking(id);
-      alert(`Successfully converted! Code: ${result.job_card_code}`);
+      showAlert(`Successfully converted! Code: ${result.job_card_code}`);
       loadInquiries(pagination.current);
       refreshCounts();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Conversion failed';
-      alert(message);
+      showAlert(message);
     } finally {
       setSubmitting(null);
     }

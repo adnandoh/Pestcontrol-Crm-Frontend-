@@ -57,12 +57,16 @@ import {
   shouldShowNextServiceField,
 } from '../utils/amcNextServiceDate';
 import { isSocietyBooking, deriveSocietyContractDuration } from '../constants/bookingPropertyTypes';
+import { getErrorMessage, logErrorForDev } from '../utils/errors';
+import { showAlert, notify } from '../utils/notify';
+import { FormErrorBanner } from '../components/errors';
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   
   const {
@@ -70,6 +74,7 @@ const EditJobCard: React.FC = () => {
     validateForm,
     clearError,
     scrollToFirstError,
+    applyServerErrors,
   } = useFormValidation(jobCardValidationRules);
   const isInitialLoad = React.useRef(true);
   const savedPriceOnLoadRef = React.useRef<number | null>(null);
@@ -473,25 +478,26 @@ const EditJobCard: React.FC = () => {
     e.preventDefault();
     if (!id) return;
     if (selectedPackages.length === 0) {
-      alert('Please select at least one service.');
+      showAlert('Please select at least one service.');
       return;
     }
     const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
     if (configErrors.length > 0) {
       setServiceConfigErrors(configErrors);
-      alert(configErrors.join('\n'));
+      showAlert(configErrors.join('\n'));
       return;
     }
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       console.error('Validation errors:', validationErrors);
       const errorFields = Object.keys(validationErrors).map(field => field.replace('_', ' ')).join(', ');
-      alert(`Please fix the following errors: ${errorFields}`);
+      showAlert(`Please fix the following errors: ${errorFields}`);
       setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
     try {
       setSubmitting(true);
+      setSubmitError('');
       // Ensure schedule_datetime is in ISO format
       const manualPrice = Number.parseFloat(String(formData.price || '0')) || 0;
       const itemsForSubmit = isPriceManuallyEdited
@@ -546,17 +552,15 @@ const EditJobCard: React.FC = () => {
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
       navigate('/jobcards');
     } catch (err: unknown) {
-      console.error('Update error:', err);
-      const apiErr = err as { message?: string; details?: Record<string, string[] | string> };
-      let msg = apiErr.message || 'Failed to update booking. Please check all fields.';
-      if (apiErr.details && typeof apiErr.details === 'object') {
-        const lines = Object.entries(apiErr.details).map(([k, v]) => {
-          const text = Array.isArray(v) ? v[0] : String(v);
-          return `${k.replace(/_/g, ' ')}: ${text}`;
-        });
-        if (lines.length) msg = lines.join('\n');
+      logErrorForDev('EditJobCard', err);
+      const applied = applyServerErrors(err);
+      const msg = getErrorMessage(err, 'Failed to update booking. Please check all fields.');
+      if (applied) {
+        notify.warning('Please correct the highlighted fields.');
+        setTimeout(() => scrollToFirstError(), 100);
+      } else {
+        setSubmitError(msg);
       }
-      alert(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -692,6 +696,7 @@ const EditJobCard: React.FC = () => {
 
       <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-5">
+          <FormErrorBanner message={submitError} />
           {/* Section: Client & Location */}
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
             <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">

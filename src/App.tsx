@@ -1,11 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useEffect } from 'react';
 import { enhancedApiService } from './services/api.enhanced';
 import { Layout } from './components/layout';
 import { FullScreenLoading } from './components/ui';
+import { ToastProvider } from './components/ui/toast/ToastProvider';
+import { ErrorBoundary, NotifyBridge } from './components/errors';
+import { notify } from './utils/notify';
+import { logErrorForDev } from './utils/errors';
 import BlogCMSLayout from './components/layout/BlogCMSLayout';
 import { ProtectedRoute, SuperAdminRoute, AdminRoute } from './components/auth';
 import StaffFormPage from './pages/StaffFormPage';
@@ -56,10 +60,29 @@ import BlogEditor from './pages/blog/BlogEditor';
 import BlogCategories from './pages/blog/BlogCategories';
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      logErrorForDev(`Query:${query.queryHash}`, error);
+      if (query.meta?.silentError) return;
+      notify.apiError(error, `Query:${String(query.queryKey[0] ?? 'unknown')}`);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _vars, _ctx, mutation) => {
+      logErrorForDev('Mutation', error);
+      if (mutation.meta?.silentError) return;
+      notify.apiError(error, 'Mutation');
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error) => {
+        logErrorForDev('MutationDefault', error);
+      },
     },
   },
 });
@@ -222,11 +245,16 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <NotifyBridge />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

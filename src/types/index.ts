@@ -380,7 +380,7 @@ export interface PaginatedResponse<T> {
   status_counts?: InquiryStatusCounts;
 }
 
-export interface ApiError {
+export interface ApiErrorResponse {
   detail?: string;
   message?: string;
   errors?: Record<string, string[]>;

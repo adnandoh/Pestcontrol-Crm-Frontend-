@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { Country } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const MasterCountries: React.FC = () => {
   const [countries, setCountries] = useState<Country[]>([]);
@@ -63,10 +64,10 @@ const MasterCountries: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchData();
-      alert('COUNTRY SAVED SUCCESSFULLY');
+      showAlert('COUNTRY SAVED SUCCESSFULLY');
     } catch (error: any) {
       console.error('Error saving country:', error);
-      alert('FAILED TO SAVE COUNTRY');
+      showAlert('FAILED TO SAVE COUNTRY');
     }
   };
 

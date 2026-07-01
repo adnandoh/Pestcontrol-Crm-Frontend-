@@ -47,6 +47,9 @@ import {
   nextServiceDateHint,
   shouldShowNextServiceField,
 } from '../utils/amcNextServiceDate';
+import { getErrorMessage, logErrorForDev } from '../utils/errors';
+import { showAlert, notify } from '../utils/notify';
+import { FormErrorBanner } from '../components/errors';
 import {
   BOOKING_PROPERTY_TYPES,
   bookingKindFromCommercialType,
@@ -60,6 +63,7 @@ const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [savingInquiry, setSavingInquiry] = useState(false);
   
   // Pricing selector states
@@ -325,6 +329,7 @@ const CreateJobCard: React.FC = () => {
     validateForm,
     clearError,
     scrollToFirstError,
+    applyServerErrors,
   } = useFormValidation(jobCardValidationRules);
 
   // Payment status options
@@ -440,25 +445,26 @@ const CreateJobCard: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedPackages.length === 0) {
-      alert('Please select at least one service.');
+      showAlert('Please select at least one service.');
       return;
     }
     const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
     if (configErrors.length > 0) {
       setServiceConfigErrors(configErrors);
-      alert(configErrors.join('\n'));
+      showAlert(configErrors.join('\n'));
       return;
     }
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       console.error('Validation errors:', validationErrors);
       const errorFields = Object.keys(validationErrors).map(field => field.replace('_', ' ')).join(', ');
-      alert(`Please fix the following errors: ${errorFields}`);
+      showAlert(`Please fix the following errors: ${errorFields}`);
       setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
     try {
       setSubmitting(true);
+      setSubmitError('');
       // Ensure schedule_datetime is in ISO format
       const submitData = {
         ...formData,
@@ -510,26 +516,15 @@ const CreateJobCard: React.FC = () => {
       await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
       navigate('/jobcards');
     } catch (err: unknown) {
-      console.error('Submission error:', err);
-      const apiErr = err as { message?: string; details?: Record<string, unknown> };
-      let msg = apiErr.message || 'Failed to create booking. Please check all fields.';
-      if (apiErr.details?.details) {
-        const nested = apiErr.details.details;
-        if (typeof nested === 'object' && nested !== null) {
-          const lines = Object.entries(nested as Record<string, unknown>).flatMap(([k, v]) => {
-            if (Array.isArray(v) && v.length) return [`${k.replace(/_/g, ' ')}: ${v[0]}`];
-            if (typeof v === 'object' && v !== null) {
-              return Object.entries(v as Record<string, unknown>).map(([nk, nv]) => {
-                const text = Array.isArray(nv) ? nv[0] : String(nv);
-                return `${k.replace(/_/g, ' ')} → ${nk.replace(/_/g, ' ')}: ${text}`;
-              });
-            }
-            return [`${k.replace(/_/g, ' ')}: ${String(v)}`];
-          });
-          if (lines.length) msg = lines.join('\n');
-        }
+      logErrorForDev('CreateJobCard', err);
+      const applied = applyServerErrors(err);
+      const msg = getErrorMessage(err, 'Failed to create booking. Please check all fields.');
+      if (applied) {
+        notify.warning('Please correct the highlighted fields.');
+        setTimeout(() => scrollToFirstError(), 100);
+      } else {
+        setSubmitError(msg);
       }
-      alert(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -551,6 +546,7 @@ const CreateJobCard: React.FC = () => {
 
       <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-5">
+          <FormErrorBanner message={submitError} />
           
           {/* Section: Client & Location */}
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
@@ -1115,7 +1111,7 @@ const CreateJobCard: React.FC = () => {
                   disabled={savingInquiry || submitting}
                   onClick={async () => {
                     if (!formData.client_mobile || !formData.client_name) {
-                      alert('Please fill in Client Name and Mobile Number before saving as inquiry.');
+                      showAlert('Please fill in Client Name and Mobile Number before saving as inquiry.');
                       return;
                     }
                     try {
@@ -1142,7 +1138,7 @@ const CreateJobCard: React.FC = () => {
                       } as any);
                       navigate('/crm-inquiries');
                     } catch (err: any) {
-                      alert(err.message || 'Failed to save inquiry. Please try again.');
+                      showAlert(err.message || 'Failed to save inquiry. Please try again.');
                     } finally {
                       setSavingInquiry(false);
                     }

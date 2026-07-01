@@ -4,6 +4,7 @@ import { Modal, Button, Input, Textarea, Loading } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import dayjs from 'dayjs';
+import { showAlert } from '../../utils/notify';
 
 interface ComplaintModalProps {
   isOpen: boolean;
@@ -70,12 +71,12 @@ const ComplaintModal: React.FC<ComplaintModalProps> = ({ isOpen, onClose, bookin
         revisit_date: formData.revisit_date,
         technician_id: formData.technician_id ? Number(formData.technician_id) : null
       });
-      alert('Complaint registered successfully');
+      showAlert('Complaint registered successfully');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Error creating complaint:', err);
-      alert('Failed to register complaint');
+      showAlert('Failed to register complaint');
     } finally {
       setLoading(false);
     }

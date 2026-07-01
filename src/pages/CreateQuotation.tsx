@@ -55,6 +55,7 @@ import {
 } from '../constants/quotationServices';
 import { resolveQuotationTotalsFromForm } from '../utils/quotationTotals';
 import { formatMoneyInputValue, parseMoneyInput } from '../utils/moneyInput';
+import { showAlert } from '../utils/notify';
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -262,7 +263,7 @@ const CreateQuotation: React.FC = () => {
       }
     },
     onError: (error: unknown) =>
-      alert(error instanceof Error ? error.message : 'Error creating quotation'),
+      showAlert(error instanceof Error ? error.message : 'Error creating quotation'),
   });
 
   const updateMutation = useMutation({
@@ -277,7 +278,7 @@ const CreateQuotation: React.FC = () => {
       }
     },
     onError: (error: unknown) =>
-      alert(error instanceof Error ? error.message : 'Error updating quotation'),
+      showAlert(error instanceof Error ? error.message : 'Error updating quotation'),
   });
 
   const calculateTotals = (

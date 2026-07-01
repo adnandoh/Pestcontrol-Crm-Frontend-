@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { extractFieldErrors } from '../utils/errors';
 
 // Validation rule interface
 export interface ValidationRule {
@@ -29,6 +30,7 @@ export interface UseFormValidationReturn {
   scrollToFirstError: () => void;
   hasErrors: boolean;
   setFieldError: (fieldName: string, error: string) => void;
+  applyServerErrors: (error: unknown) => boolean;
 }
 
 // Auto-scroll utility function
@@ -142,6 +144,14 @@ export const useFormValidation = (rules: ValidationRules): UseFormValidationRetu
     errorFieldsRef.current.add(fieldName);
   }, []);
 
+  const applyServerErrors = useCallback((error: unknown): boolean => {
+    const fieldErrors = extractFieldErrors(error);
+    const keys = Object.keys(fieldErrors);
+    if (!keys.length) return false;
+    keys.forEach((key) => setFieldError(key, fieldErrors[key]));
+    return true;
+  }, [setFieldError]);
+
   // Scroll to first error field
   const scrollToFirstError = useCallback(() => {
     const errorFields = Array.from(errorFieldsRef.current);
@@ -196,7 +206,8 @@ export const useFormValidation = (rules: ValidationRules): UseFormValidationRetu
     clearAllErrors,
     scrollToFirstError,
     hasErrors,
-    setFieldError
+    setFieldError,
+    applyServerErrors,
   };
 };
 

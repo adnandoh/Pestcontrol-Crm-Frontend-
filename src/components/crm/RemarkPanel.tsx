@@ -5,6 +5,7 @@ import { enhancedApiService } from '../../services/api.enhanced';
 import { cn } from '../../utils/cn';
 import { Modal } from '../ui/Modal';
 import type { InquiryRemarkEntry, LatestRemarkSummary, PaginatedResponse } from '../../types';
+import { showAlert } from '../../utils/notify';
 
 export type RemarkSourceType = 'crm' | 'website';
 
@@ -95,7 +96,7 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
       showToast('Remark added');
       onRemarkAdded?.(entry, newCount);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Failed to save remark');
+      showAlert(e instanceof Error ? e.message : 'Failed to save remark');
     } finally {
       setSaving(false);
     }

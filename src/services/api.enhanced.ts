@@ -69,45 +69,10 @@ import type {
   StaffTrackingDistanceRow, FieldVisit, StaffTask, LeaveApplication, ExpenseClaim,
 } from '../types';
 import { isSocietyBooking } from '../constants/bookingPropertyTypes';
-
-function flattenValidationDetails(value: unknown, prefix = ''): string[] {
-  if (value == null) return [];
-  if (typeof value === 'string') return prefix ? [`${prefix}: ${value}`] : [value];
-  if (Array.isArray(value)) {
-    if (!value.length) return [];
-    const first = value[0];
-    if (typeof first === 'string') return prefix ? [`${prefix}: ${first}`] : [first];
-    return flattenValidationDetails(first, prefix);
-  }
-  if (typeof value !== 'object') return [];
-  const parts: string[] = [];
-  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-    const label = prefix ? `${prefix} → ${key.replace(/_/g, ' ')}` : key.replace(/_/g, ' ');
-    parts.push(...flattenValidationDetails(val, label));
-  }
-  return parts;
-}
-
-function formatApiErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
-  if (!data) return fallback;
-  if (typeof data.message === 'string' && data.message) return data.message;
-  const nestedDetails = data.details;
-  if (nestedDetails) {
-    const parts = flattenValidationDetails(nestedDetails);
-    if (parts.length) return parts.join('\n');
-  }
-  if (typeof data.error === 'string' && data.error && data.error !== 'Validation failed') {
-    return data.error;
-  }
-  const fieldParts: string[] = [];
-  for (const [key, val] of Object.entries(data)) {
-    if (['message', 'error', 'details', 'success', 'code'].includes(key)) continue;
-    fieldParts.push(...flattenValidationDetails(val, key.replace(/_/g, ' ')));
-  }
-  if (fieldParts.length) return fieldParts.join('\n');
-  if (typeof data.error === 'string' && data.error) return data.error;
-  return fallback;
-}
+import {
+  formatApiErrorMessage,
+  ApiError,
+} from '../utils/errors';
 
 function nullIfEmpty(value: unknown): unknown {
   if (value === '' || value === undefined) return null;
@@ -144,22 +109,8 @@ function sanitizeJobCardPayload(payload: Record<string, unknown>): Record<string
   return out;
 }
 
-// Enhanced API Error class
-export class ApiError extends Error {
-  public status: number;
-  public details?: any;
-  
-  constructor(
-    message: string,
-    status: number,
-    details?: any
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.details = details;
-  }
-}
+// Re-export for backward compatibility
+export { ApiError };
 
 // Request/Response logging
 const logRequest = (config: AxiosRequestConfig) => {

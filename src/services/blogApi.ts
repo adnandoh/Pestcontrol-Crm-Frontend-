@@ -5,6 +5,7 @@ import {
   refreshAccessTokenFromStorage,
   SESSION_EXPIRED_MESSAGE,
 } from './authSession';
+import { createApiErrorFromAxios } from '../utils/errors';
 import type {
   Blog,
   BlogListItem,
@@ -55,7 +56,7 @@ api.interceptors.response.use(
         forceSessionLogout(SESSION_EXPIRED_MESSAGE);
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(createApiErrorFromAxios(error));
   },
 );
 

@@ -8,6 +8,7 @@ import QuotationDocument from '../components/quotation/QuotationDocument';
 import { COMPANY, getQuotationDisplayName } from '../constants/quotation';
 import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
 import { resolveQuotationTotals } from '../utils/quotationTotals';
+import { showAlert } from '../utils/notify';
 
 const QuotationPreview: React.FC = () => {
   const { id } = useParams();
@@ -31,12 +32,8 @@ const QuotationPreview: React.FC = () => {
     mutationFn: (quotationId: number) => enhancedApiService.convertQuotationToBooking(quotationId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      alert(`Converted to booking: ${data.booking_code}`);
+      showAlert(`Converted to booking: ${data.booking_code}`);
       navigate('/jobcards');
-    },
-    onError: (error: unknown) => {
-      const msg = error instanceof Error ? error.message : 'Conversion failed';
-      alert(msg);
     },
   });
 
@@ -52,7 +49,7 @@ const QuotationPreview: React.FC = () => {
       });
     } catch (err) {
       console.error('PDF download failed:', err);
-      alert('Could not generate PDF. Please use Print / PDF, or try again in a moment.');
+      showAlert('Could not generate PDF. Please use Print / PDF, or try again in a moment.');
     } finally {
       setDownloadingPdf(false);
     }

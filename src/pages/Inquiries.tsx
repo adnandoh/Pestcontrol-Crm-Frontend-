@@ -32,6 +32,7 @@ import RemarkListCell from '../components/crm/RemarkListCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import { showAlert } from '../utils/notify';
 
 const WEBSITE_LEADS_DATE_FILTER_KEY = 'website-leads-date-filter';
 
@@ -193,7 +194,7 @@ const Inquiries: React.FC = () => {
       );
       refreshCounts();
     } catch (err: any) {
-      alert('Failed to mark inquiry as read: ' + err.message);
+      showAlert('Failed to mark inquiry as read: ' + err.message);
     }
   };
 
@@ -206,7 +207,7 @@ const Inquiries: React.FC = () => {
       setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
       refreshCounts();
     } catch (err: any) {
-      alert('Failed to mark all as read: ' + (err.message || 'Unknown error'));
+      showAlert('Failed to mark all as read: ' + (err.message || 'Unknown error'));
     } finally {
       setMarkingAllRead(false);
     }
@@ -245,12 +246,12 @@ const Inquiries: React.FC = () => {
       };
 
       const jobCard = await enhancedApiService.convertInquiry(inquiry.id, jobCardData);
-      alert(`Successfully converted to Job Card #${jobCard.code}`);
+      showAlert(`Successfully converted to Job Card #${jobCard.code}`);
       loadInquiries(pagination.current);
       refreshCounts();
     } catch (err: any) {
       console.error('Conversion error:', err);
-      alert(err.message || 'Failed to convert inquiry to booking.');
+      showAlert(err.message || 'Failed to convert inquiry to booking.');
     }
   };
 

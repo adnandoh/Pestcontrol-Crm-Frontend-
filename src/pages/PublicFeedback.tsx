@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Star, CheckCircle, Smartphone, User, Calendar, ShieldCheck, MessageSquare } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
 import dayjs from 'dayjs';
+import { showAlert } from '../utils/notify';
 
 const PublicFeedback: React.FC = () => {
   const { id, token } = useParams<{ id: string; token: string }>();
@@ -56,7 +57,7 @@ const PublicFeedback: React.FC = () => {
       setSubmitted(true);
     } catch (err: any) {
       console.error('Failed to submit feedback:', err);
-      alert('Failed to submit feedback. Please try again.');
+      showAlert('Failed to submit feedback. Please try again.');
     } finally {
       setSubmitting(false);
     }

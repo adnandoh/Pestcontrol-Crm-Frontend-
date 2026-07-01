@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { City, State } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const MasterCities: React.FC = () => {
   const [cities, setCities] = useState<City[]>([]);
@@ -74,7 +75,7 @@ const MasterCities: React.FC = () => {
       fetchData();
     } catch (error: any) {
       console.error('Error saving city:', error);
-      alert('FAILED TO SAVE CITY');
+      showAlert('FAILED TO SAVE CITY');
     }
   };
 
@@ -88,17 +89,17 @@ const MasterCities: React.FC = () => {
         try {
           parsed = JSON.parse(bulkJson);
         } catch {
-          alert('INVALID JSON FORMAT. PLEASE CHECK YOUR INPUT.');
+          showAlert('INVALID JSON FORMAT. PLEASE CHECK YOUR INPUT.');
           return;
         }
         if (!Array.isArray(parsed)) {
-          alert('JSON DATA MUST BE AN ARRAY. USE [ ... ]');
+          showAlert('JSON DATA MUST BE AN ARRAY. USE [ ... ]');
           return;
         }
         // Auto-detect: if array of strings, convert to objects
         if (parsed.length > 0 && typeof parsed[0] === 'string') {
           if (!defaultStateId) {
-            alert('YOU PASTED A LIST OF NAMES. PLEASE SELECT A DEFAULT STATE FIRST.');
+            showAlert('YOU PASTED A LIST OF NAMES. PLEASE SELECT A DEFAULT STATE FIRST.');
             return;
           }
           data = parsed
@@ -108,7 +109,7 @@ const MasterCities: React.FC = () => {
         } else {
           const invalidItems = parsed.filter((item: any) => typeof item !== 'object' || item === null || Array.isArray(item));
           if (invalidItems.length > 0) {
-            alert(`${invalidItems.length} ITEMS ARE NOT VALID OBJECTS. EACH ITEM MUST BE {"name": "...", "state": 1}`);
+            showAlert(`${invalidItems.length} ITEMS ARE NOT VALID OBJECTS. EACH ITEM MUST BE {"name": "...", "state": 1}`);
             return;
           }
           data = parsed;
@@ -117,11 +118,11 @@ const MasterCities: React.FC = () => {
         // Simple mode: split by lines
         const names = bulkJson.split('\n').map(n => n.trim()).filter(n => n.length > 0);
         if (names.length === 0) {
-          alert('PLEASE ENTER AT LEAST ONE CITY NAME');
+          showAlert('PLEASE ENTER AT LEAST ONE CITY NAME');
           return;
         }
         if (!defaultStateId) {
-          alert('PLEASE SELECT A DEFAULT STATE');
+          showAlert('PLEASE SELECT A DEFAULT STATE');
           return;
         }
         data = names.map(name => ({
@@ -132,7 +133,7 @@ const MasterCities: React.FC = () => {
       }
 
       if (data.length === 0) {
-        alert('NO VALID CITIES TO ADD.');
+        showAlert('NO VALID CITIES TO ADD.');
         return;
       }
 
@@ -140,11 +141,11 @@ const MasterCities: React.FC = () => {
       setIsBulkModalOpen(false);
       setBulkJson('');
       fetchData();
-      alert(`SUCCESSFULLY ADDED ${data.length} CITIES`);
+      showAlert(`SUCCESSFULLY ADDED ${data.length} CITIES`);
     } catch (error: any) {
       console.error('Error bulk adding cities:', error);
       const msg = error?.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : error.message;
-      alert('BULK ADD FAILED: ' + (msg || 'PLEASE CHECK YOUR DATA'));
+      showAlert('BULK ADD FAILED: ' + (msg || 'PLEASE CHECK YOUR DATA'));
     }
   };
 

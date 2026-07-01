@@ -4,6 +4,7 @@ import 'quill/dist/quill.snow.css';
 import { uploadBlogImage } from '../../services/blogApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './QuillEditor.css';
+import { showAlert } from '../../utils/notify';
 
 /** Quill can strip/block image URLs during insertEmbed — keep https URLs intact. */
 const ImageFormat = Quill.import('formats/image') as {
@@ -110,11 +111,11 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
       if (!file) return;
 
       if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        alert('Only JPG, PNG, and WebP images are allowed.');
+        showAlert('Only JPG, PNG, and WebP images are allowed.');
         return;
       }
       if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-        alert(`Image must be under ${MAX_IMAGE_MB}MB.`);
+        showAlert(`Image must be under ${MAX_IMAGE_MB}MB.`);
         return;
       }
 
@@ -124,7 +125,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
         const result = await uploadBlogImage(file, '', '', (pct) => setUploadProgress(pct));
         const url = resolveMediaUrl(result.url) || result.url;
         if (!url) {
-          alert('Upload succeeded but no image URL was returned.');
+          showAlert('Upload succeeded but no image URL was returned.');
           return;
         }
         const quill = quillRef.current;
@@ -137,7 +138,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
           ax?.response?.data?.error ||
           ax?.response?.data?.image?.[0] ||
           'Failed to upload image.';
-        alert(typeof msg === 'string' ? msg : 'Failed to upload image.');
+        showAlert(typeof msg === 'string' ? msg : 'Failed to upload image.');
       } finally {
         setImageUploading(false);
         setUploadProgress(0);
@@ -157,7 +158,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
     );
     if (!match) {
-      alert('Invalid YouTube URL');
+      showAlert('Invalid YouTube URL');
       return;
     }
 

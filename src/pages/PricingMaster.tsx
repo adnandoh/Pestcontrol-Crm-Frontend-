@@ -29,6 +29,7 @@ import type {
   PricingPropertyCategory,
 } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const PAGE_SIZE = 10;
 
@@ -191,7 +192,7 @@ const PricingMaster: React.FC = () => {
       fetchRates();
     } catch (err: unknown) {
       console.error('Save failed:', err);
-      alert('Failed to save pricing rate. Check all fields and try again.');
+      showAlert('Failed to save pricing rate. Check all fields and try again.');
     } finally {
       setSaving(false);
     }

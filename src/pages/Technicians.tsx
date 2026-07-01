@@ -20,6 +20,7 @@ import {
 import { enhancedApiService } from '../services/api.enhanced';
 import type { PaginatedResponse, Technician } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const PAGE_SIZE = 10;
 
@@ -160,7 +161,7 @@ const Technicians: React.FC = () => {
           : String(apiErr.details.mobile);
         msg = mobileErr;
       }
-      alert(msg);
+      showAlert(msg);
     } finally {
       setSubmitting(false);
     }
@@ -305,7 +306,7 @@ const Technicians: React.FC = () => {
                             await enhancedApiService.approvePartnerApp(tech.id);
                             await loadTechnicians(pagination.current, searchInput);
                           } catch {
-                            alert('Could not approve partner app');
+                            showAlert('Could not approve partner app');
                           }
                         }}
                         className="text-[9px] font-black uppercase text-amber-700 underline"

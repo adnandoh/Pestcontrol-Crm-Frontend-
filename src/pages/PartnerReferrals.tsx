@@ -6,6 +6,7 @@ import { Pagination } from '../components/ui';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { cn } from '../utils/cn';
 import type { CRMInquiryStatus, PartnerReferral } from '../types';
+import { showAlert } from '../utils/notify';
 
 const statusColors: Record<CRMInquiryStatus, string> = {
   New: 'bg-blue-50 text-blue-700 ring-blue-600/20',
@@ -79,7 +80,7 @@ const PartnerReferrals: React.FC = () => {
       const updated = await enhancedApiService.updatePartnerReferralStatus(id, newStatus);
       setReferrals((prev) => prev.map((r) => (r.id === id ? updated : r)));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Status update failed');
+      showAlert(err instanceof Error ? err.message : 'Status update failed');
     } finally {
       setSubmitting(null);
     }

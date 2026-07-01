@@ -4,6 +4,7 @@ import { Button, Input, PageLoading } from '../components/ui';
 import { Card } from '../components/ui/Card';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { PartnerAppVersionConfig } from '../types';
+import { showAlert } from '../utils/notify';
 
 const PartnerAppVersion: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -17,7 +18,7 @@ const PartnerAppVersion: React.FC = () => {
       setForm(data);
     } catch (e) {
       console.error(e);
-      alert('Could not load partner app version settings');
+      showAlert('Could not load partner app version settings');
     } finally {
       setLoading(false);
     }
@@ -39,10 +40,10 @@ const PartnerAppVersion: React.FC = () => {
         update_message: form.update_message.trim(),
       });
       setForm(updated);
-      alert('Partner app version settings saved');
+      showAlert('Partner app version settings saved');
     } catch (e) {
       console.error(e);
-      alert('Save failed');
+      showAlert('Save failed');
     } finally {
       setSaving(false);
     }

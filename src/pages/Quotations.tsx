@@ -22,6 +22,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
 import { getQuotationDisplayName } from '../constants/quotation';
+import { showAlert } from '../utils/notify';
 
 const Quotations: React.FC = () => {
   const navigate = useNavigate();
@@ -49,12 +50,9 @@ const Quotations: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
       queryClient.invalidateQueries({ queryKey: ['quotation-stats'] });
       queryClient.invalidateQueries({ queryKey: ['jobcards'] });
-      alert(`Successfully converted to Booking: ${data.booking_code}`);
+      showAlert(`Successfully converted to Booking: ${data.booking_code}`);
       navigate(`/jobcards`);
     },
-    onError: (error: any) => {
-      alert(`Error converting: ${error.message || 'Something went wrong'}`);
-    }
   });
 
   const getStatusBadge = (status: QuotationStatus) => {

@@ -16,6 +16,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { STAFF_ROLE_OPTIONS, type StaffRoleLabel } from '../constants/staffRoles';
 import type { StaffUser } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const StaffFormPage: React.FC = () => {
   const { id } = useParams();
@@ -98,7 +99,7 @@ const StaffFormPage: React.FC = () => {
         d?.password?.[0] ||
         err.message ||
         'Could not save staff member';
-      alert(msg);
+      showAlert(msg);
     } finally {
       setSaving(false);
     }
@@ -109,10 +110,10 @@ const StaffFormPage: React.FC = () => {
     try {
       await enhancedApiService.resetStaffPassword(staffId, newPassword);
       setNewPassword('');
-      alert('Password updated successfully');
+      showAlert('Password updated successfully');
     } catch (error: unknown) {
       const err = error as { message?: string };
-      alert(err.message || 'Failed to reset password');
+      showAlert(err.message || 'Failed to reset password');
     }
   };
 

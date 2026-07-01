@@ -14,6 +14,7 @@ import CopyablePhone from '../components/crm/CopyablePhone';
 import CollectPaymentModal, { type CollectPaymentFormData } from '../components/crm/CollectPaymentModal';
 import PaymentHistoryModal from '../components/crm/PaymentHistoryModal';
 import { enhancedApiService } from '../services/api.enhanced';
+import { showAlert } from '../utils/notify';
 import type {
   City,
   JobCard,
@@ -127,7 +128,7 @@ const PendingAmounts: React.FC = () => {
       loadData(pagination.current);
     } catch (err) {
       console.error('Collection failed:', err);
-      alert('Failed to collect payment. Please try again.');
+      showAlert('Failed to collect payment. Please try again.');
     } finally {
       setActionLoading(false);
     }

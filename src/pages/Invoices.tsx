@@ -4,6 +4,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { downloadManualInvoicePdf, type ManualInvoiceInput } from "../utils/invoicePdf";
 import { INVOICE_DEFAULTS } from "../constants/quotation";
+import { showAlert } from '../utils/notify';
 
 type InvoiceItemForm = {
   service: string;
@@ -67,7 +68,7 @@ const Invoices: React.FC = () => {
 
   const onGenerate = async () => {
     if (!form.billedToName.trim()) {
-      window.alert("Customer name is required.");
+      showAlert("Customer name is required.");
       return;
     }
 

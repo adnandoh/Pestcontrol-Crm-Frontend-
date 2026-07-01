@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { isBlogUser, blogUserDefaultPath } from '../utils/roles';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
 import type { LoginCredentials } from '../types';
+import { getErrorMessage, logErrorForDev } from '../utils/errors';
+import { ErrorAlert } from '../components/errors';
 
 const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading, user } = useAuth();
@@ -43,13 +45,9 @@ const Login: React.FC = () => {
       console.log('Attempting login with:', { username: formData.username });
       await login(formData);
       console.log('Login successful');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      const errorMessage = err.response?.data?.detail || 
-                          err.response?.data?.message || 
-                          err.message || 
-                          'Login failed. Please check your credentials and try again.';
-      setError(errorMessage);
+    } catch (err: unknown) {
+      logErrorForDev('Login', err);
+      setError(getErrorMessage(err, 'Login failed. Please check your credentials and try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -91,11 +89,7 @@ const Login: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
+              {error ? <ErrorAlert message={error} title="Sign in failed" /> : null}
 
               <Input
                 label="Mobile Number"

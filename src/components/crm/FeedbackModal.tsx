@@ -3,6 +3,7 @@ import { Star, MessageSquare, Link as LinkIcon, Send, Copy, Check } from 'lucide
 import { Button, Modal } from '../ui';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard } from '../../types';
+import { showAlert } from '../../utils/notify';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, jobCard,
       setGeneratedLink({ link: result.link, token: result.token });
     } catch (error) {
       console.error('Failed to generate feedback link:', error);
-      alert('Failed to generate feedback link');
+      showAlert('Failed to generate feedback link');
     } finally {
       setLoading(false);
     }
@@ -62,12 +63,12 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, jobCard,
         booking: jobCard.id,
         ...manualData
       });
-      alert('Feedback saved successfully!');
+      showAlert('Feedback saved successfully!');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Failed to save manual feedback:', error);
-      alert('Failed to save manual feedback');
+      showAlert('Failed to save manual feedback');
     } finally {
       setLoading(false);
     }

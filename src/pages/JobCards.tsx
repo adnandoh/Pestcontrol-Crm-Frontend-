@@ -43,6 +43,7 @@ import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
 import { downloadInvoicePdf } from '../utils/invoicePdf';
 import { isSocietyBooking } from '../constants/bookingPropertyTypes';
+import { showAlert } from '../utils/notify';
 
 const TableSkeleton: React.FC = () => (
   <>
@@ -451,7 +452,7 @@ const JobCards: React.FC = () => {
     try {
       const { message } = await enhancedApiService.sendJobToPartnerApp(partnerAppAction.job.id);
       setPartnerAppAction(null);
-      alert(message);
+      showAlert(message);
       loadJobCards(pagination.current, filters);
       refreshCounts();
     } catch (err: unknown) {
@@ -494,7 +495,7 @@ const JobCards: React.FC = () => {
       refreshCounts();
     } catch (err) {
       console.error('Failed to update booking status:', err);
-      alert('Failed to update booking status. Please try again.');
+      showAlert('Failed to update booking status. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -520,7 +521,7 @@ const JobCards: React.FC = () => {
         error instanceof ApiError
           ? error.message
           : 'Failed to complete booking. Please check payment details and try again.';
-      alert(message);
+      showAlert(message);
       loadJobCards(pagination.current, filters);
       refreshCounts();
     } finally {
@@ -540,7 +541,7 @@ const JobCards: React.FC = () => {
         error instanceof ApiError
           ? error.message
           : 'Failed to complete booking. Please try again.';
-      alert(message);
+      showAlert(message);
     } finally {
       setLoading(false);
     }
@@ -561,7 +562,7 @@ const JobCards: React.FC = () => {
       await downloadInvoicePdf(job);
     } catch (error) {
       console.error('Failed to download invoice:', error);
-      alert('Invoice download failed. Try again.');
+      showAlert('Invoice download failed. Try again.');
     } finally {
       setInvoiceLoadingId(null);
     }

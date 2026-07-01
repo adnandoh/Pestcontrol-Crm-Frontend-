@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { State } from '../types';
 import { cn } from '../utils/cn';
+import { showAlert } from '../utils/notify';
 
 const MasterStates: React.FC = () => {
   const [states, setStates] = useState<State[]>([]);
@@ -69,10 +70,10 @@ const MasterStates: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchData();
-      alert('STATE SAVED SUCCESSFULLY');
+      showAlert('STATE SAVED SUCCESSFULLY');
     } catch (error: any) {
       console.error('Error saving state:', error);
-      alert('FAILED TO SAVE STATE');
+      showAlert('FAILED TO SAVE STATE');
     }
   };
 
@@ -84,17 +85,17 @@ const MasterStates: React.FC = () => {
       if (bulkMode === 'json') {
         data = JSON.parse(bulkJson);
         if (!Array.isArray(data)) {
-          alert('JSON DATA MUST BE AN ARRAY');
+          showAlert('JSON DATA MUST BE AN ARRAY');
           return;
         }
       } else {
         const names = bulkJson.split('\n').map(n => n.trim()).filter(n => n.length > 0);
         if (names.length === 0) {
-          alert('PLEASE ENTER AT LEAST ONE STATE NAME');
+          showAlert('PLEASE ENTER AT LEAST ONE STATE NAME');
           return;
         }
         if (!defaultCountryId) {
-          alert('PLEASE SELECT A DEFAULT COUNTRY');
+          showAlert('PLEASE SELECT A DEFAULT COUNTRY');
           return;
         }
         data = names.map(name => ({
@@ -106,7 +107,7 @@ const MasterStates: React.FC = () => {
 
       const invalidItems = data.filter(item => typeof item !== 'object' || item === null);
       if (invalidItems.length > 0) {
-        alert(`ERROR: ${invalidItems.length} ITEMS ARE INVALID. PLEASE CHECK FORMAT.`);
+        showAlert(`ERROR: ${invalidItems.length} ITEMS ARE INVALID. PLEASE CHECK FORMAT.`);
         return;
       }
 
@@ -114,10 +115,10 @@ const MasterStates: React.FC = () => {
       setIsBulkModalOpen(false);
       setBulkJson('');
       fetchData();
-      alert(`SUCCESSFULLY ADDED ${data.length} STATES`);
+      showAlert(`SUCCESSFULLY ADDED ${data.length} STATES`);
     } catch (error: any) {
       console.error('Error bulk adding states:', error);
-      alert('BULK ADD FAILED: ' + (error.message || 'CHECK FORMAT'));
+      showAlert('BULK ADD FAILED: ' + (error.message || 'CHECK FORMAT'));
     }
   };
 
