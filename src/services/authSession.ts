@@ -5,6 +5,7 @@
 import axios from 'axios';
 import { apiConfig, API_ENDPOINTS } from '../config/api.config';
 import { apiCache } from './apiCache';
+import { clearWhatsAppInboxTokens } from './whatsappInboxApi';
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresh 5 min before access expiry
 const MIN_SCHEDULE_MS = 60 * 1000;
@@ -48,6 +49,7 @@ export function clearStoredAuthSession(): void {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user_info');
+  clearWhatsAppInboxTokens();
   apiCache.clear();
 }
 

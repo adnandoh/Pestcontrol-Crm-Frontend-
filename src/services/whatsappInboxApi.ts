@@ -1,11 +1,23 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
+import type { AuthUser } from '../types';
 import { ApiError, createApiErrorFromAxios } from '../utils/errors';
+import { getUserRole } from '../utils/roles';
 
-const DEFAULT_API_BASE = 'https://www.driveronhire.ai';
-const DEFAULT_WS_BASE = 'wss://www.driveronhire.ai';
+const DEFAULT_API_BASE = 'https://api.driveronhire.ai';
 
-const API_BASE = (import.meta.env.VITE_WHATSFLOW_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
-const WS_BASE = (import.meta.env.VITE_WHATSFLOW_WS_BASE_URL || DEFAULT_WS_BASE).replace(/\/$/, '');
+const API_BASE = (
+  import.meta.env.VITE_WHATSAPP_API_URL ||
+  import.meta.env.VITE_WHATSFLOW_API_BASE_URL ||
+  DEFAULT_API_BASE
+).replace(/\/$/, '');
+
+const WS_BASE = (
+  import.meta.env.VITE_WHATSAPP_WS_URL ||
+  import.meta.env.VITE_WHATSFLOW_WS_BASE_URL ||
+  API_BASE.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:')
+).replace(/\/$/, '');
+
+const WHATSAPP_API_KEY = (import.meta.env.VITE_WHATSAPP_API_KEY || '').trim();
 
 const ACCESS_KEY = 'whatsflow_access_token';
 const REFRESH_KEY = 'whatsflow_refresh_token';
@@ -71,6 +83,39 @@ interface SendTemplatePayload {
   conversation_id: string;
   template_id: string;
   variables?: Record<string, string>;
+}
+
+interface SsoLoginResponse {
+  access_token: string;
+  refresh_token?: string;
+  organization?: Record<string, unknown>;
+  permissions?: Record<string, unknown>;
+}
+
+function readCrmUserFromStorage(): AuthUser | null {
+  const raw = localStorage.getItem('user_info');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+function buildExternalUser(user: AuthUser): { id: string; name: string; role: string } {
+  const crmRole = getUserRole(user);
+  const role = crmRole === 'super_admin' || crmRole === 'admin' ? 'admin' : 'staff';
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username;
+  return {
+    id: String(user.id),
+    name,
+    role,
+  };
+}
+
+export function clearWhatsAppInboxTokens(): void {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 class WhatsAppInboxApi {
@@ -151,9 +196,10 @@ class WhatsAppInboxApi {
       const refresh = this.getRefreshToken();
       if (refresh) {
         try {
-          const response = await this.client.post<{ access_token: string; refresh_token?: string }>(
-            '/api/auth/refresh/',
+          const response = await axios.post<SsoLoginResponse>(
+            `${API_BASE}/api/auth/refresh/`,
             { refresh_token: refresh },
+            { headers: { 'Content-Type': 'application/json' } },
           );
           this.setTokens(response.data.access_token, response.data.refresh_token);
           return response.data.access_token;
@@ -170,17 +216,26 @@ class WhatsAppInboxApi {
   }
 
   async ssoLogin(): Promise<string> {
-    const crmAccess = localStorage.getItem('access_token');
-    if (!crmAccess) {
+    if (!WHATSAPP_API_KEY) {
+      throw new ApiError(
+        'WhatsApp API key is not configured. Set VITE_WHATSAPP_API_KEY in your environment.',
+        500,
+      );
+    }
+
+    const crmUser = readCrmUserFromStorage();
+    if (!crmUser) {
       throw new ApiError('CRM session not found. Please login again.', 401);
     }
 
-    const response = await axios.post<{ access_token: string; refresh_token?: string }>(
+    const response = await axios.post<SsoLoginResponse>(
       `${API_BASE}/api/auth/sso-login/`,
-      {},
+      {
+        api_key: WHATSAPP_API_KEY,
+        external_user: buildExternalUser(crmUser),
+      },
       {
         headers: {
-          Authorization: `Bearer ${crmAccess}`,
           'Content-Type': 'application/json',
         },
       },
