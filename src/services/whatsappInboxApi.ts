@@ -5,11 +5,11 @@ import { getUserRole } from '../utils/roles';
 
 const DEFAULT_API_BASE = 'https://api.driveronhire.ai';
 
-const API_BASE = (
+const API_BASE = normalizeApiBase(
   import.meta.env.VITE_WHATSAPP_API_URL ||
-  import.meta.env.VITE_WHATSFLOW_API_BASE_URL ||
-  DEFAULT_API_BASE
-).replace(/\/$/, '');
+    import.meta.env.VITE_WHATSFLOW_API_BASE_URL ||
+    DEFAULT_API_BASE,
+);
 
 const WS_BASE = (
   import.meta.env.VITE_WHATSAPP_WS_URL ||
@@ -18,6 +18,10 @@ const WS_BASE = (
 ).replace(/\/$/, '');
 
 const WHATSAPP_API_KEY = (import.meta.env.VITE_WHATSAPP_API_KEY || '').trim();
+
+export function isWhatsAppApiKeyConfigured(): boolean {
+  return WHATSAPP_API_KEY.length > 0;
+}
 
 const ACCESS_KEY = 'whatsflow_access_token';
 const REFRESH_KEY = 'whatsflow_refresh_token';
@@ -92,6 +96,103 @@ interface SsoLoginResponse {
   permissions?: Record<string, unknown>;
 }
 
+type WhatsFlowEnvelope<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+};
+
+function normalizeApiBase(url: string): string {
+  return url.replace(/\/api\/?$/i, '').replace(/\/$/, '');
+}
+
+function unwrapWhatsFlowPayload<T>(payload: unknown): T {
+  if (!payload || typeof payload !== 'object') {
+    throw new ApiError('Invalid WhatsFlow API response.', 502);
+  }
+  const record = payload as WhatsFlowEnvelope<T>;
+  if (record.data !== undefined && record.data !== null) {
+    return record.data;
+  }
+  return payload as T;
+}
+
+function parseAuthTokens(payload: unknown): SsoLoginResponse {
+  const data = unwrapWhatsFlowPayload<Partial<SsoLoginResponse>>(payload);
+  const access_token = data.access_token?.trim();
+  if (!access_token) {
+    throw new ApiError('WhatsFlow SSO did not return an access token.', 502);
+  }
+  return {
+    access_token,
+    refresh_token: data.refresh_token,
+    organization: data.organization,
+    permissions: data.permissions,
+  };
+}
+
+function mapConversation(raw: Record<string, unknown>): InboxConversation {
+  return {
+    id: String(raw.id ?? ''),
+    customer_name: String(raw.customer_name ?? raw.customer ?? ''),
+    phone: String(raw.phone ?? ''),
+    last_message: String(raw.last_message ?? ''),
+    last_message_time: String(raw.last_message_time ?? ''),
+    unread_count: Number(raw.unread_count ?? 0),
+    assigned_to_me: typeof raw.assigned_to_me === 'boolean' ? raw.assigned_to_me : undefined,
+  };
+}
+
+function mapConversationPage(payload: unknown): ConversationPage {
+  const data = unwrapWhatsFlowPayload<{
+    results?: Record<string, unknown>[];
+    count?: number;
+    next?: string | null;
+    previous?: string | null;
+  }>(payload);
+  const results = (data.results ?? []).map(mapConversation);
+  return {
+    count: data.count ?? results.length,
+    next: data.next ?? null,
+    previous: data.previous ?? null,
+    results,
+  };
+}
+
+function mapConversationDetail(payload: unknown): ConversationDetail {
+  const data = unwrapWhatsFlowPayload<Record<string, unknown>>(payload);
+  const rawMessages = Array.isArray(data.messages) ? data.messages : [];
+  const messages = rawMessages.map((message) => {
+    const item = message as Record<string, unknown>;
+    return {
+      id: String(item.id ?? ''),
+      conversation_id: String(item.conversation_id ?? data.id ?? ''),
+      direction: (item.direction as InboxMessage['direction']) ?? 'inbound',
+      message_type: (item.message_type as InboxMessage['message_type']) ?? 'text',
+      content: String(item.content ?? item.text ?? ''),
+      media_url: item.media_url ? String(item.media_url) : undefined,
+      created_at: String(item.created_at ?? ''),
+      status: item.status as InboxMessage['status'] | undefined,
+      sender_name: item.sender_name ? String(item.sender_name) : undefined,
+    };
+  });
+
+  return {
+    id: String(data.id ?? ''),
+    customer_name: String(data.customer_name ?? data.customer ?? ''),
+    phone: String(data.phone ?? ''),
+    messages,
+    has_older_messages:
+      typeof data.has_older_messages === 'boolean' ? data.has_older_messages : undefined,
+  };
+}
+
+function isStoredAccessTokenValid(token: string | null): boolean {
+  if (!token) return false;
+  const trimmed = token.trim();
+  return trimmed.length > 0 && trimmed !== 'undefined' && trimmed !== 'null';
+}
+
 function readCrmUserFromStorage(): AuthUser | null {
   const raw = localStorage.getItem('user_info');
   if (!raw) return null;
@@ -147,8 +248,12 @@ class WhatsAppInboxApi {
           throw createApiErrorFromAxios(error);
         }
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (
+          (error.response?.status === 401 || error.response?.status === 403) &&
+          !originalRequest._retry
+        ) {
           originalRequest._retry = true;
+          clearWhatsAppInboxTokens();
           const refreshed = await this.tryRefreshOrSso();
           if (originalRequest.headers) {
             (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${refreshed}`;
@@ -196,13 +301,14 @@ class WhatsAppInboxApi {
       const refresh = this.getRefreshToken();
       if (refresh) {
         try {
-          const response = await axios.post<SsoLoginResponse>(
+          const response = await axios.post(
             `${API_BASE}/api/auth/refresh/`,
             { refresh_token: refresh },
             { headers: { 'Content-Type': 'application/json' } },
           );
-          this.setTokens(response.data.access_token, response.data.refresh_token);
-          return response.data.access_token;
+          const tokens = parseAuthTokens(response.data);
+          this.setTokens(tokens.access_token, tokens.refresh_token);
+          return tokens.access_token;
         } catch {
           // fall through to sso login
         }
@@ -228,7 +334,7 @@ class WhatsAppInboxApi {
       throw new ApiError('CRM session not found. Please login again.', 401);
     }
 
-    const response = await axios.post<SsoLoginResponse>(
+    const response = await axios.post(
       `${API_BASE}/api/auth/sso-login/`,
       {
         api_key: WHATSAPP_API_KEY,
@@ -241,12 +347,14 @@ class WhatsAppInboxApi {
       },
     );
 
-    this.setTokens(response.data.access_token, response.data.refresh_token);
-    return response.data.access_token;
+    const tokens = parseAuthTokens(response.data);
+    this.setTokens(tokens.access_token, tokens.refresh_token);
+    return tokens.access_token;
   }
 
   async ensureAuthenticated(): Promise<void> {
-    if (!this.getAccessToken()) {
+    if (!isStoredAccessTokenValid(this.getAccessToken())) {
+      clearWhatsAppInboxTokens();
       await this.ssoLogin();
     }
   }
@@ -259,7 +367,7 @@ class WhatsAppInboxApi {
   }): Promise<ConversationPage> {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
-      const res = await this.client.get<ConversationPage>('/api/inbox/conversations/', {
+      const res = await this.client.get('/api/inbox/conversations/', {
         params: {
           page: params.page ?? 1,
           page_size: params.page_size ?? 20,
@@ -267,17 +375,17 @@ class WhatsAppInboxApi {
           search: params.search ?? '',
         },
       });
-      return res.data;
+      return mapConversationPage(res.data);
     });
   }
 
   async getConversation(conversationId: string, before?: string): Promise<ConversationDetail> {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
-      const res = await this.client.get<ConversationDetail>(`/api/inbox/conversations/${conversationId}/`, {
+      const res = await this.client.get(`/api/inbox/conversations/${conversationId}/`, {
         params: before ? { before } : undefined,
       });
-      return res.data;
+      return mapConversationDetail(res.data);
     });
   }
 
@@ -319,7 +427,7 @@ class WhatsAppInboxApi {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
       const res = await this.client.get(`/api/customers/${encodeURIComponent(phone)}/`);
-      return (res.data as Record<string, unknown>) ?? null;
+      return unwrapWhatsFlowPayload<Record<string, unknown>>(res.data);
     });
   }
 

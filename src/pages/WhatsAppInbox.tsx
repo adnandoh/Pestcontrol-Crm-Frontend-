@@ -22,6 +22,7 @@ import { Button, Drawer, Input, PageLoading } from '../components/ui';
 import { ErrorAlert, FormErrorBanner } from '../components/errors';
 import {
   whatsappInboxApi,
+  isWhatsAppApiKeyConfigured,
   type ConversationDetail,
   type InboxConversation,
   type InboxMessage,
@@ -359,6 +360,18 @@ const WhatsAppInbox: React.FC = () => {
         connectSocket();
       } catch (error) {
         logErrorForDev('WhatsAppInbox.bootstrap', error);
+        const msg = getErrorMessage(error, 'Failed to connect to WhatsApp.');
+        const missingApiKey =
+          !isWhatsAppApiKeyConfigured() ||
+          msg.toLowerCase().includes('api key') ||
+          msg.toLowerCase().includes('vite_whatsapp_api_key');
+        if (missingApiKey) {
+          setServiceUnavailable(true);
+          setListError(
+            'WhatsApp Embed API key is not configured.\n\nSet VITE_WHATSAPP_API_KEY on Vercel (Production), then redeploy the CRM.',
+          );
+          return;
+        }
         setServiceUnavailable(true);
         setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
       }
