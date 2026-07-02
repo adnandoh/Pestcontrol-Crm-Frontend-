@@ -67,7 +67,6 @@ const WhatsAppInbox: React.FC = () => {
   const [listError, setListError] = useState('');
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -118,6 +117,9 @@ const WhatsAppInbox: React.FC = () => {
 
   const wsCleanupRef = useRef<(() => void) | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  const socketEnabledRef = useRef(false);
+  const reconnectAttemptRef = useRef(0);
+  const pageRef = useRef(1);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const initialMessagesScrollRef = useRef(true);
 
@@ -163,8 +165,9 @@ const WhatsAppInbox: React.FC = () => {
           setLoading(true);
           setListError('');
           setServiceUnavailable(false);
+          pageRef.current = 1;
         }
-        const nextPage = reset ? 1 : page;
+        const nextPage = reset ? 1 : pageRef.current;
         const response = await whatsappInboxApi.getConversations({
           page: nextPage,
           page_size: 20,
@@ -173,7 +176,7 @@ const WhatsAppInbox: React.FC = () => {
         });
         setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
         setHasMoreConversations(Boolean(response.next));
-        setPage(nextPage + 1);
+        pageRef.current = nextPage + 1;
       } catch (error) {
         logErrorForDev('WhatsAppInbox.loadConversations', error);
         const msg = getErrorMessage(error, 'Failed to load conversations.');
@@ -190,7 +193,7 @@ const WhatsAppInbox: React.FC = () => {
         setLoading(false);
       }
     },
-    [filter, page, search],
+    [filter, search],
   );
 
   const mergeIncomingMessage = useCallback((message: InboxMessage) => {
@@ -246,27 +249,56 @@ const WhatsAppInbox: React.FC = () => {
     [mergeIncomingMessage, selectedConversationId],
   );
 
+  const handleSocketEventRef = useRef(handleSocketEvent);
+  handleSocketEventRef.current = handleSocketEvent;
+
+  const disconnectSocket = useCallback(() => {
+    socketEnabledRef.current = false;
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (wsCleanupRef.current) {
+      wsCleanupRef.current();
+      wsCleanupRef.current = null;
+    }
+    setSocketConnected(false);
+  }, []);
+
   const connectSocket = useCallback(async () => {
     try {
-      if (wsCleanupRef.current) wsCleanupRef.current();
+      disconnectSocket();
+      socketEnabledRef.current = true;
       wsCleanupRef.current = await whatsappInboxApi.connectInboxSocket({
-        onOpen: () => setSocketConnected(true),
+        onOpen: () => {
+          reconnectAttemptRef.current = 0;
+          setSocketConnected(true);
+        },
         onClose: () => {
           setSocketConnected(false);
+          if (!socketEnabledRef.current) return;
+          const delay = Math.min(2500 * 2 ** reconnectAttemptRef.current, 30000);
+          reconnectAttemptRef.current += 1;
           reconnectTimerRef.current = window.setTimeout(() => {
-            connectSocket();
-          }, 2500);
+            void connectSocket();
+          }, delay);
         },
         onError: () => {
           setSocketConnected(false);
         },
-        onEvent: handleSocketEvent,
+        onEvent: (event) => handleSocketEventRef.current(event),
       });
     } catch (error) {
       logErrorForDev('WhatsAppInbox.connectSocket', error);
       setSocketConnected(false);
+      if (!socketEnabledRef.current) return;
+      const delay = Math.min(2500 * 2 ** reconnectAttemptRef.current, 30000);
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = window.setTimeout(() => {
+        void connectSocket();
+      }, delay);
     }
-  }, [handleSocketEvent]);
+  }, [disconnectSocket]);
 
   const loadConversationDetail = useCallback(
     async (conversationId: string, before?: string) => {
@@ -355,9 +387,7 @@ const WhatsAppInbox: React.FC = () => {
       try {
         await whatsappInboxApi.ensureAuthenticated();
         if (!active) return;
-        setPage(1);
         await loadConversations(true);
-        connectSocket();
       } catch (error) {
         logErrorForDev('WhatsAppInbox.bootstrap', error);
         const msg = getErrorMessage(error, 'Failed to connect to WhatsApp.');
@@ -379,15 +409,17 @@ const WhatsAppInbox: React.FC = () => {
     bootstrap();
     return () => {
       active = false;
-      if (wsCleanupRef.current) wsCleanupRef.current();
-      if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
     };
-  }, [connectSocket, loadConversations, user]);
+  }, [loadConversations, user]);
 
   useEffect(() => {
-    setPage(1);
-    loadConversations(true);
-  }, [filter, search, loadConversations]);
+    if (!isCRMOperationalUser(user)) return;
+    reconnectAttemptRef.current = 0;
+    void connectSocket();
+    return () => {
+      disconnectSocket();
+    };
+  }, [connectSocket, disconnectSocket, user]);
 
   useEffect(() => {
     if (!conversationDetail || !messagesContainerRef.current || !initialMessagesScrollRef.current) return;
@@ -628,7 +660,6 @@ const WhatsAppInbox: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setFilter(f);
-                    setPage(1);
                   }}
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${
                     filter === f

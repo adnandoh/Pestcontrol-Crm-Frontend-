@@ -248,12 +248,11 @@ class WhatsAppInboxApi {
           throw createApiErrorFromAxios(error);
         }
 
-        if (
-          (error.response?.status === 401 || error.response?.status === 403) &&
-          !originalRequest._retry
-        ) {
+        if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-          clearWhatsAppInboxTokens();
+          if (!isStoredAccessTokenValid(this.getAccessToken())) {
+            clearWhatsAppInboxTokens();
+          }
           const refreshed = await this.tryRefreshOrSso();
           if (originalRequest.headers) {
             (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${refreshed}`;
@@ -470,7 +469,13 @@ class WhatsAppInboxApi {
 
     return () => {
       if (heartbeat) window.clearInterval(heartbeat);
-      ws.close();
+      ws.onopen = null;
+      ws.onclose = null;
+      ws.onerror = null;
+      ws.onmessage = null;
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
     };
   }
 }
