@@ -13,7 +13,7 @@ import {
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { Button, Input, PageLoading } from '../components/ui';
+import { Button, PageLoading } from '../components/ui';
 import { ErrorAlert } from '../components/errors';
 import {
   whatsappInboxApi,
@@ -60,7 +60,6 @@ const WhatsAppInbox: React.FC = () => {
   const [chatError, setChatError] = useState('');
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [composerText, setComposerText] = useState('');
-  const [templateId, setTemplateId] = useState('');
   const [sending, setSending] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [typingState, setTypingState] = useState('');
@@ -330,23 +329,6 @@ const WhatsAppInbox: React.FC = () => {
     }
   };
 
-  const handleSendTemplate = async () => {
-    if (!selectedConversationId || !templateId.trim()) return;
-    try {
-      setSending(true);
-      await whatsappInboxApi.sendTemplate({
-        conversation_id: selectedConversationId,
-        template_id: templateId.trim(),
-      });
-      setTemplateId('');
-      notify.success('Template sent.');
-    } catch (error) {
-      notify.apiError(error, 'WhatsAppInbox.sendTemplate', 'Failed to send template.');
-    } finally {
-      setSending(false);
-    }
-  };
-
   const handleSendMedia = async (file: File | null) => {
     if (!selectedConversationId || !file) return;
     try {
@@ -572,17 +554,6 @@ const WhatsAppInbox: React.FC = () => {
               </div>
 
               <div className="border-t border-gray-200 bg-[#f0f2f5] p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={templateId}
-                    onChange={(e) => setTemplateId(e.target.value)}
-                    placeholder="Template ID (optional)"
-                    className="h-9 text-sm bg-white"
-                  />
-                  <Button type="button" variant="outline" onClick={handleSendTemplate} disabled={!templateId || sending}>
-                    Send Template
-                  </Button>
-                </div>
                 <div className="flex items-center gap-1">
                   {EMOJIS.map((emoji) => (
                     <button
