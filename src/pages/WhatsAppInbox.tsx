@@ -9,17 +9,12 @@ import {
   Circle,
   Paperclip,
   Send,
-  Plus,
-  FileText,
-  Receipt,
-  UserCheck,
-  ExternalLink,
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { Button, Drawer, Input, PageLoading } from '../components/ui';
-import { ErrorAlert, FormErrorBanner } from '../components/errors';
+import { Button, Input, PageLoading } from '../components/ui';
+import { ErrorAlert } from '../components/errors';
 import {
   whatsappInboxApi,
   isWhatsAppApiKeyConfigured,
@@ -28,12 +23,8 @@ import {
   type InboxMessage,
   type InboxSocketEvent,
 } from '../services/whatsappInboxApi';
-import { enhancedApiService } from '../services/api.enhanced';
-import type { Client, CustomerHistory, JobCard, QuotationFormData, JobCardFormData } from '../types';
 import { getErrorMessage, logErrorForDev } from '../utils/errors';
 import { notify } from '../utils/notify';
-import { downloadManualInvoicePdf } from '../utils/invoicePdf';
-import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
 import { useAuth } from '../hooks/useAuth';
 import { isCRMOperationalUser } from '../utils/roles';
 
@@ -42,13 +33,7 @@ dayjs.extend(timezone);
 
 type ConversationFilter = 'all' | 'unread' | 'assigned';
 
-interface CustomerPanelData {
-  client: Client | null;
-  history: CustomerHistory | null;
-  pendingAmount: number;
-}
-
-const EMOJIS = ['🙂', '👍', '🙏', '✅', '📍', '📞', '💰', '🧾', '🪳', '🐀'];
+const EMOJIS = ['🙂', '👍', '🙏', '✅', '📍', '📞'];
 
 const statusIcon = (status?: string) => {
   if (status === 'read') return <CheckCheck className="h-3.5 w-3.5 text-blue-600" aria-label="Read" />;
@@ -79,41 +64,6 @@ const WhatsAppInbox: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [typingState, setTypingState] = useState('');
-  const [customerPanel, setCustomerPanel] = useState<CustomerPanelData>({
-    client: null,
-    history: null,
-    pendingAmount: 0,
-  });
-  const [rightPanelLoading, setRightPanelLoading] = useState(false);
-  const [rightPanelError, setRightPanelError] = useState('');
-
-  const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
-  const [bookingSubmitError, setBookingSubmitError] = useState('');
-  const [bookingSubmitting, setBookingSubmitting] = useState(false);
-  const [quotationDrawerOpen, setQuotationDrawerOpen] = useState(false);
-  const [quotationSubmitting, setQuotationSubmitting] = useState(false);
-  const [quotationSubmitError, setQuotationSubmitError] = useState('');
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-
-  const [bookingForm, setBookingForm] = useState({
-    client_name: '',
-    client_mobile: '',
-    client_address: '',
-    client_city: '',
-    service_type: 'General Pest Control',
-    schedule_date: dayjs().format('YYYY-MM-DD'),
-    notes: '',
-  });
-  const [quotationForm, setQuotationForm] = useState({
-    customer_name: '',
-    mobile: '',
-    address: '',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    service_name: 'General Pest Control',
-    amount: '0',
-  });
 
   const wsCleanupRef = useRef<(() => void) | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -128,34 +78,9 @@ const WhatsAppInbox: React.FC = () => {
     [conversations, selectedConversationId],
   );
 
-  const selectedPrimaryBooking: JobCard | null = useMemo(() => {
-    if (!customerPanel.history) return null;
-    return customerPanel.history.upcoming?.[0] || customerPanel.history.bookings?.[0] || null;
-  }, [customerPanel.history]);
-
-  const prefillActionForms = useCallback(
-    (conversation: InboxConversation, client: Client | null) => {
-      const name = client?.full_name || conversation.customer_name || '';
-      const phone = client?.mobile || conversation.phone || '';
-      const address = client?.address || '';
-      const city = client?.city || '';
-
-      setBookingForm((prev) => ({
-        ...prev,
-        client_name: name,
-        client_mobile: phone,
-        client_address: address,
-        client_city: city,
-      }));
-      setQuotationForm((prev) => ({
-        ...prev,
-        customer_name: name,
-        mobile: phone,
-        address,
-        city: city || prev.city,
-      }));
-    },
-    [],
+  const unreadTotal = useMemo(
+    () => conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0),
+    [conversations],
   );
 
   const loadConversations = useCallback(
@@ -240,10 +165,6 @@ const WhatsAppInbox: React.FC = () => {
           setTypingState('Typing…');
           window.setTimeout(() => setTypingState(''), 1500);
         }
-        return;
-      }
-      if (event.type === 'presence') {
-        // optional future use
       }
     },
     [mergeIncomingMessage, selectedConversationId],
@@ -339,47 +260,6 @@ const WhatsAppInbox: React.FC = () => {
     [],
   );
 
-  const loadCustomerPanel = useCallback(
-    async (conversation: InboxConversation) => {
-      setRightPanelLoading(true);
-      setRightPanelError('');
-      try {
-        const phone = conversation.phone?.replace(/[^\d+]/g, '') || '';
-        const clientRes = await enhancedApiService.checkClientExists(phone.replace(/\D/g, '').slice(-10));
-        const client = clientRes.exists ? clientRes.client || null : null;
-
-        let history: CustomerHistory | null = null;
-        if (client?.id) {
-          history = await enhancedApiService.getCustomerHistory(client.id);
-        }
-
-        const pendingRes = await enhancedApiService.getPendingPayments({
-          search: phone,
-          page_size: 50,
-          ordering: '-schedule_datetime',
-        });
-        const pendingAmount = pendingRes.results.reduce((sum, job) => {
-          const v = Number.parseFloat(String((job as { pending_amount?: number | string }).pending_amount ?? 0));
-          return sum + (Number.isFinite(v) ? v : 0);
-        }, 0);
-
-        setCustomerPanel({
-          client,
-          history,
-          pendingAmount,
-        });
-        prefillActionForms(conversation, client);
-      } catch (error) {
-        logErrorForDev('WhatsAppInbox.loadCustomerPanel', error);
-        setRightPanelError(getErrorMessage(error, 'Could not load customer CRM information.'));
-        setCustomerPanel({ client: null, history: null, pendingAmount: 0 });
-      } finally {
-        setRightPanelLoading(false);
-      }
-    },
-    [prefillActionForms],
-  );
-
   useEffect(() => {
     if (!isCRMOperationalUser(user)) return;
     let active = true;
@@ -431,10 +311,7 @@ const WhatsAppInbox: React.FC = () => {
     setSelectedConversationId(conversation.id);
     setConversationDetail(null);
     setChatError('');
-    await Promise.all([
-      loadConversationDetail(conversation.id),
-      loadCustomerPanel(conversation),
-    ]);
+    await loadConversationDetail(conversation.id);
   };
 
   const handleSendText = async () => {
@@ -486,119 +363,6 @@ const WhatsAppInbox: React.FC = () => {
     }
   };
 
-  const handleCreateBooking = async () => {
-    try {
-      setBookingSubmitError('');
-      setBookingSubmitting(true);
-      const payload: JobCardFormData = {
-        client_name: bookingForm.client_name.trim(),
-        client_mobile: bookingForm.client_mobile.trim(),
-        client_email: customerPanel.client?.email || '',
-        client_city: bookingForm.client_city.trim() || customerPanel.client?.city || 'Mumbai',
-        client_address: bookingForm.client_address.trim(),
-        client_notes: bookingForm.notes.trim(),
-        job_type: 'Customer',
-        commercial_type: 'home',
-        is_price_estimated: false,
-        service_category: 'One-Time Service',
-        property_type: 'Home / Flat',
-        bhk_size: '',
-        is_paused: false,
-        service_type: bookingForm.service_type.trim(),
-        schedule_datetime: bookingForm.schedule_date,
-        time_slot: '10:00 AM',
-        state: customerPanel.client?.state || 'Maharashtra',
-        city: bookingForm.client_city.trim() || customerPanel.client?.city || 'Mumbai',
-        status: 'Pending',
-        payment_status: 'Unpaid',
-        assigned_to: '',
-        technician: null,
-        price: '0',
-        reference: 'WhatsApp',
-      };
-      await enhancedApiService.createJobCard(payload, Boolean(customerPanel.client));
-      notify.success('Booking created successfully.');
-      setBookingDrawerOpen(false);
-    } catch (error) {
-      const msg = getErrorMessage(error, 'Failed to create booking.');
-      setBookingSubmitError(msg);
-      notify.apiError(error, 'WhatsAppInbox.createBooking', msg);
-    } finally {
-      setBookingSubmitting(false);
-    }
-  };
-
-  const handleCreateQuotation = async () => {
-    try {
-      setQuotationSubmitting(true);
-      setQuotationSubmitError('');
-      const amount = Number.parseFloat(quotationForm.amount || '0') || 0;
-      const payload: QuotationFormData = {
-        customer_name: quotationForm.customer_name.trim(),
-        mobile: quotationForm.mobile.trim(),
-        address: quotationForm.address.trim(),
-        city: quotationForm.city.trim() || 'Mumbai',
-        state: quotationForm.state.trim() || 'Maharashtra',
-        quotation_type: 'Residential',
-        status: 'Draft',
-        discount: 0,
-        tax_amount: 0,
-        total_amount: amount,
-        grand_total: amount,
-        is_amc: false,
-        visit_count: 1,
-        contract_amount: amount,
-        items: [
-          {
-            service_name: quotationForm.service_name || 'General Pest Control',
-            frequency: 'One Time',
-            quantity: 1,
-            rate: amount,
-            total: amount,
-          },
-        ],
-        scopes: [],
-        payment_terms: [],
-      };
-      await enhancedApiService.createQuotation(payload);
-      notify.success('Quotation created successfully.');
-      setQuotationDrawerOpen(false);
-    } catch (error) {
-      const msg = getErrorMessage(error, 'Failed to create quotation.');
-      setQuotationSubmitError(msg);
-      notify.apiError(error, 'WhatsAppInbox.createQuotation', msg);
-    } finally {
-      setQuotationSubmitting(false);
-    }
-  };
-
-  const handleCreateInvoice = async () => {
-    const customerName = customerPanel.client?.full_name || selectedConversation?.customer_name || 'Customer';
-    const phone = customerPanel.client?.mobile || selectedConversation?.phone || '';
-    const address = customerPanel.client?.address || selectedConversation?.phone || '';
-    const booking = selectedPrimaryBooking;
-
-    await downloadManualInvoicePdf({
-      billedToName: customerName,
-      billedToMobile: phone,
-      billedToAddress: address,
-      bookingCode: booking?.code || '',
-      bookingCreatedAt: booking?.created_at || '',
-      nextServiceDate: booking?.next_service_date || booking?.schedule_datetime || '',
-      reference: 'WhatsApp Inbox',
-      tax: 0,
-      items: [
-        {
-          service: booking?.service_type || 'Service Charge',
-          schedule: booking?.schedule_datetime || dayjs().format('YYYY-MM-DD'),
-          technician: booking?.technician_name || '',
-          amount: Number.parseFloat(String(booking?.price || 0)) || 0,
-        },
-      ],
-    });
-    notify.success('Invoice generated.');
-  };
-
   const handleMessagesScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     if (
@@ -624,13 +388,20 @@ const WhatsAppInbox: React.FC = () => {
 
   return (
     <div className="h-[calc(100vh-5.5rem)] flex flex-col gap-3">
-      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-50 text-green-700 rounded-lg">
+          <div className="p-2 bg-teal-50 text-teal-700 rounded-lg">
             <MessageCircle className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-gray-900">WhatsApp Inbox</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-black text-gray-900">Inbox</h1>
+              {unreadTotal > 0 ? (
+                <span className="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-teal-600 text-white text-[11px] items-center justify-center font-bold">
+                  {unreadTotal}
+                </span>
+              ) : null}
+            </div>
             <p className="text-xs text-gray-500">
               {socketConnected ? 'Real-time connected' : 'Reconnecting…'}
             </p>
@@ -649,25 +420,23 @@ const WhatsAppInbox: React.FC = () => {
         />
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr_340px] gap-3 min-h-0 flex-1">
-        {/* Left panel */}
-        <section className="bg-white border border-gray-200 rounded-xl flex flex-col min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-0 min-h-0 flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        {/* Conversation list — WhatsFlow style */}
+        <section className="border-r border-gray-200 flex flex-col min-h-0 bg-white">
           <div className="p-3 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
               {(['all', 'unread', 'assigned'] as ConversationFilter[]).map((f) => (
                 <button
                   key={f}
                   type="button"
-                  onClick={() => {
-                    setFilter(f);
-                  }}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${
+                  onClick={() => setFilter(f)}
+                  className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide rounded-md ${
                     filter === f
-                      ? 'bg-green-100 text-green-800 border-green-300'
-                      : 'bg-white text-gray-600 border-gray-200'
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Assigned to Me'}
+                  {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Assigned'}
                 </button>
               ))}
             </div>
@@ -676,8 +445,8 @@ const WhatsAppInbox: React.FC = () => {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or mobile"
-                className="w-full h-9 pl-8 pr-3 text-sm border border-gray-300 rounded-lg"
+                placeholder="Search conversations…"
+                className="w-full h-9 pl-8 pr-3 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30"
               />
             </div>
           </div>
@@ -689,26 +458,29 @@ const WhatsAppInbox: React.FC = () => {
                   key={conv.id}
                   type="button"
                   onClick={() => onSelectConversation(conv)}
-                  className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 ${
-                    active ? 'bg-green-50' : ''
+                  className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                    active ? 'bg-teal-50/80 border-l-4 border-l-teal-600' : 'border-l-4 border-l-transparent'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-gray-900 truncate">{conv.customer_name || 'Unknown'}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-sm shrink-0">
+                      {(conv.customer_name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-gray-900 truncate">{conv.customer_name || 'Unknown'}</p>
+                        <p className="text-[11px] text-gray-400 shrink-0">
+                          {conv.last_message_time ? dayjs(conv.last_message_time).format('ddd') : ''}
+                        </p>
+                      </div>
                       <p className="text-xs text-gray-500 truncate">{conv.phone}</p>
-                      <p className="text-xs text-gray-600 mt-1 truncate">{conv.last_message || 'No messages yet'}</p>
+                      <p className="text-xs text-gray-600 mt-0.5 truncate">{conv.last_message || 'No messages yet'}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[11px] text-gray-400">
-                        {conv.last_message_time ? dayjs(conv.last_message_time).format('hh:mm A') : '--'}
-                      </p>
-                      {conv.unread_count > 0 && (
-                        <span className="inline-flex mt-1 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[10px] items-center justify-center font-bold">
-                          {conv.unread_count}
-                        </span>
-                      )}
-                    </div>
+                    {conv.unread_count > 0 ? (
+                      <span className="inline-flex min-w-[18px] h-[18px] px-1 rounded-full bg-teal-600 text-white text-[10px] items-center justify-center font-bold shrink-0">
+                        {conv.unread_count}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -723,28 +495,44 @@ const WhatsAppInbox: React.FC = () => {
           </div>
         </section>
 
-        {/* Center panel */}
-        <section className="bg-white border border-gray-200 rounded-xl flex flex-col min-h-0">
+        {/* Chat panel — WhatsFlow style */}
+        <section className="flex flex-col min-h-0 bg-[#efeae2]">
           {!selectedConversationId ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              Select a conversation to start.
+            <div className="flex-1 flex items-center justify-center text-gray-500 bg-[#f0f2f5]">
+              <div className="text-center">
+                <MessageCircle className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <p className="font-medium">Select a conversation to start messaging</p>
+              </div>
             </div>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
-                <div>
-                  <p className="font-black text-gray-900">{selectedConversation?.customer_name}</p>
-                  <p className="text-xs text-gray-500">{selectedConversation?.phone}</p>
+              <div className="px-4 py-3 bg-[#f0f2f5] border-b border-gray-200 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-sm shrink-0">
+                    {(selectedConversation?.customer_name || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 truncate">{selectedConversation?.customer_name}</p>
+                    <p className="text-xs text-gray-500">{selectedConversation?.phone}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
-                  {typingState ? <span className="text-blue-600 font-semibold">{typingState}</span> : null}
+                <div className="flex items-center gap-2 text-xs shrink-0">
+                  {typingState ? <span className="text-teal-700 font-semibold">{typingState}</span> : null}
                   <span className={socketConnected ? 'text-emerald-600' : 'text-amber-600'}>
                     {socketConnected ? 'Live' : 'Offline'}
                   </span>
                 </div>
               </div>
 
-              <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="flex-1 overflow-y-auto p-4 space-y-2"
+                style={{
+                  backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0)',
+                  backgroundSize: '18px 18px',
+                }}
+              >
                 {chatLoading ? (
                   <div className="h-full flex items-center justify-center text-gray-500">
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading chat...
@@ -761,8 +549,8 @@ const WhatsAppInbox: React.FC = () => {
                       return (
                         <div key={msg.id} className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
                           <div
-                            className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm ${
-                              isOut ? 'bg-green-100 text-gray-900' : 'bg-white border border-gray-200 text-gray-800'
+                            className={`max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm ${
+                              isOut ? 'bg-[#d9fdd3] text-gray-900' : 'bg-white text-gray-800'
                             }`}
                           >
                             <p className="whitespace-pre-line break-words">{msg.content}</p>
@@ -783,15 +571,15 @@ const WhatsAppInbox: React.FC = () => {
                 )}
               </div>
 
-              <div className="border-t border-gray-100 p-3 space-y-2">
+              <div className="border-t border-gray-200 bg-[#f0f2f5] p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <Input
                     value={templateId}
                     onChange={(e) => setTemplateId(e.target.value)}
-                    placeholder="Template ID"
-                    className="h-9 text-sm"
+                    placeholder="Template ID (optional)"
+                    className="h-9 text-sm bg-white"
                   />
-                  <Button type="button" onClick={handleSendTemplate} disabled={!templateId || sending}>
+                  <Button type="button" variant="outline" onClick={handleSendTemplate} disabled={!templateId || sending}>
                     Send Template
                   </Button>
                 </div>
@@ -800,7 +588,7 @@ const WhatsAppInbox: React.FC = () => {
                     <button
                       key={emoji}
                       type="button"
-                      className="text-lg hover:bg-gray-100 rounded p-1"
+                      className="text-lg hover:bg-white/80 rounded p-1"
                       onClick={() => setComposerText((prev) => `${prev}${emoji}`)}
                       aria-label={`Insert ${emoji}`}
                     >
@@ -808,8 +596,8 @@ const WhatsAppInbox: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50">
+                <div className="flex items-end gap-2">
+                  <label className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-white border border-gray-200 cursor-pointer hover:bg-gray-50 shrink-0">
                     <Paperclip className="h-4 w-4 text-gray-600" />
                     <input
                       type="file"
@@ -821,178 +609,32 @@ const WhatsAppInbox: React.FC = () => {
                   <textarea
                     value={composerText}
                     onChange={(e) => setComposerText(e.target.value)}
-                    placeholder="Type a message…"
-                    className="flex-1 h-10 resize-none px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSendText();
+                      }
+                    }}
+                    placeholder="Message customer on WhatsApp…"
+                    className="flex-1 min-h-[40px] max-h-28 resize-none px-4 py-2.5 text-sm border border-gray-200 rounded-3xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                   />
                   <Button
                     type="button"
                     onClick={handleSendText}
                     disabled={!composerText.trim() || sending}
-                    className="gap-1"
+                    className="h-10 w-10 rounded-full p-0 shrink-0 bg-teal-600 hover:bg-teal-700"
+                    aria-label="Send message"
                   >
-                    <Send className="h-4 w-4" />
-                    Send
+                    <Send className="h-4 w-4 mx-auto" />
                   </Button>
                 </div>
               </div>
             </>
           )}
         </section>
-
-        {/* Right panel */}
-        <section className="bg-white border border-gray-200 rounded-xl flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-sm font-black text-gray-900">CRM Customer Panel</h2>
-            <p className="text-[11px] text-gray-500">PestControl99 business context</p>
-          </div>
-          <div className="px-3 py-3 flex flex-wrap gap-2 border-b border-gray-100">
-            <Button type="button" size="sm" className="gap-1" onClick={() => setBookingDrawerOpen(true)} disabled={!selectedConversation}>
-              <Plus className="h-3.5 w-3.5" /> Create Booking
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setQuotationDrawerOpen(true)} disabled={!selectedConversation}>
-              <FileText className="h-3.5 w-3.5" /> Create Quotation
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={handleCreateInvoice} disabled={!selectedConversation}>
-              <Receipt className="h-3.5 w-3.5" /> Create Invoice
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setAssignModalOpen(true)} disabled={!selectedPrimaryBooking}>
-              <UserCheck className="h-3.5 w-3.5" /> Assign Technician
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setHistoryDrawerOpen(true)} disabled={!customerPanel.client}>
-              <ExternalLink className="h-3.5 w-3.5" /> Open Customer
-            </Button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 text-sm">
-            {rightPanelLoading ? (
-              <div className="text-gray-500 flex items-center">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading customer details...
-              </div>
-            ) : rightPanelError ? (
-              <ErrorAlert title="Customer panel" message={rightPanelError} />
-            ) : (
-              <>
-                <Field label="Customer Name" value={customerPanel.client?.full_name || selectedConversation?.customer_name || '--'} />
-                <Field label="Phone Number" value={customerPanel.client?.mobile || selectedConversation?.phone || '--'} />
-                <Field label="Address" value={customerPanel.client?.address || '--'} />
-                <Field
-                  label="Service Type"
-                  value={customerPanel.history?.bookings?.[0]?.service_type || '--'}
-                />
-                <Field label="Lead Status" value={customerPanel.client ? 'Existing Customer' : 'Lead'} />
-                <Field
-                  label="Booking Status"
-                  value={customerPanel.history?.upcoming?.[0]?.status || customerPanel.history?.bookings?.[0]?.status || '--'}
-                />
-                <Field label="Previous Bookings" value={String(customerPanel.history?.bookings?.length || 0)} />
-                <Field
-                  label="Upcoming Booking"
-                  value={
-                    customerPanel.history?.upcoming?.[0]
-                      ? `${customerPanel.history.upcoming[0].service_type} (${dayjs(customerPanel.history.upcoming[0].schedule_datetime).format('DD MMM')})`
-                      : '--'
-                  }
-                />
-                <Field label="Pending Amount" value={`₹${customerPanel.pendingAmount.toFixed(2)}`} />
-                <Field
-                  label="AMC Status"
-                  value={
-                    customerPanel.history?.bookings?.some((b) => b.service_category === 'AMC')
-                      ? 'AMC Customer'
-                      : 'Not AMC'
-                  }
-                />
-                <Field label="Notes" value={customerPanel.client?.notes || '--'} />
-              </>
-            )}
-          </div>
-        </section>
       </div>
-
-      <Drawer isOpen={bookingDrawerOpen} onClose={() => setBookingDrawerOpen(false)} title="Create Booking" width="w-full md:w-[560px]">
-        <div className="p-4 space-y-3">
-          <FormErrorBanner message={bookingSubmitError} />
-          <Input label="Customer Name" value={bookingForm.client_name} onChange={(e) => setBookingForm((p) => ({ ...p, client_name: e.target.value }))} />
-          <Input label="Phone Number" value={bookingForm.client_mobile} onChange={(e) => setBookingForm((p) => ({ ...p, client_mobile: e.target.value }))} />
-          <Input label="Address" value={bookingForm.client_address} onChange={(e) => setBookingForm((p) => ({ ...p, client_address: e.target.value }))} />
-          <Input label="City" value={bookingForm.client_city} onChange={(e) => setBookingForm((p) => ({ ...p, client_city: e.target.value }))} />
-          <Input label="Service Type" value={bookingForm.service_type} onChange={(e) => setBookingForm((p) => ({ ...p, service_type: e.target.value }))} />
-          <Input label="Schedule Date" type="date" value={bookingForm.schedule_date} onChange={(e) => setBookingForm((p) => ({ ...p, schedule_date: e.target.value }))} />
-          <textarea
-            value={bookingForm.notes}
-            onChange={(e) => setBookingForm((p) => ({ ...p, notes: e.target.value }))}
-            className="w-full min-h-[90px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Notes"
-          />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setBookingDrawerOpen(false)}>Cancel</Button>
-            <Button type="button" onClick={handleCreateBooking} disabled={bookingSubmitting} className="gap-2">
-              {bookingSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save Booking
-            </Button>
-          </div>
-        </div>
-      </Drawer>
-
-      <Drawer isOpen={quotationDrawerOpen} onClose={() => setQuotationDrawerOpen(false)} title="Create Quotation" width="w-full md:w-[560px]">
-        <div className="p-4 space-y-3">
-          <FormErrorBanner message={quotationSubmitError} />
-          <Input label="Customer Name" value={quotationForm.customer_name} onChange={(e) => setQuotationForm((p) => ({ ...p, customer_name: e.target.value }))} />
-          <Input label="Phone Number" value={quotationForm.mobile} onChange={(e) => setQuotationForm((p) => ({ ...p, mobile: e.target.value }))} />
-          <Input label="Address" value={quotationForm.address} onChange={(e) => setQuotationForm((p) => ({ ...p, address: e.target.value }))} />
-          <Input label="City" value={quotationForm.city} onChange={(e) => setQuotationForm((p) => ({ ...p, city: e.target.value }))} />
-          <Input label="State" value={quotationForm.state} onChange={(e) => setQuotationForm((p) => ({ ...p, state: e.target.value }))} />
-          <Input label="Service Name" value={quotationForm.service_name} onChange={(e) => setQuotationForm((p) => ({ ...p, service_name: e.target.value }))} />
-          <Input label="Amount (INR)" value={quotationForm.amount} onChange={(e) => setQuotationForm((p) => ({ ...p, amount: e.target.value }))} />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setQuotationDrawerOpen(false)}>Cancel</Button>
-            <Button type="button" onClick={handleCreateQuotation} disabled={quotationSubmitting} className="gap-2">
-              {quotationSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save Quotation
-            </Button>
-          </div>
-        </div>
-      </Drawer>
-
-      <AssignTechnicianModal
-        isOpen={assignModalOpen}
-        onClose={() => setAssignModalOpen(false)}
-        onSuccess={() => {
-          notify.success('Technician assigned.');
-          if (selectedConversationId) loadCustomerPanel(selectedConversation!);
-        }}
-        jobCard={selectedPrimaryBooking}
-      />
-
-      <Drawer isOpen={historyDrawerOpen} onClose={() => setHistoryDrawerOpen(false)} title="Customer History" width="w-full md:w-[680px]">
-        <div className="p-4 space-y-3">
-          {!customerPanel.history ? (
-            <p className="text-sm text-gray-500">No customer history found.</p>
-          ) : (
-            <>
-              <h3 className="text-sm font-black text-gray-800">Previous Bookings</h3>
-              <div className="space-y-2">
-                {customerPanel.history.bookings.slice(0, 10).map((booking) => (
-                  <div key={booking.id} className="border border-gray-200 rounded-lg p-2 text-xs">
-                    <p className="font-bold">{booking.code} · {booking.service_type}</p>
-                    <p className="text-gray-500">
-                      {dayjs(booking.schedule_datetime).format('DD MMM YYYY')} · {booking.status}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </Drawer>
     </div>
   );
 };
-
-const Field: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="grid grid-cols-[118px_1fr] gap-2">
-    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{label}</span>
-    <span className="text-sm text-gray-800 break-words">{value || '--'}</span>
-  </div>
-);
 
 export default WhatsAppInbox;
