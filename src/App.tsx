@@ -28,6 +28,7 @@ import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
 import PartnerReferrals from './pages/PartnerReferrals';
+import WhatsAppInbox from './pages/WhatsAppInbox';
 import Feedbacks from './pages/Feedbacks';
 import Quotations from './pages/Quotations';
 import Invoices from './pages/Invoices';
@@ -157,6 +158,7 @@ const AppContent: React.FC = () => {
                     <Route path="/technicians" element={<Technicians />} />
                     <Route path="/crm-inquiries" element={<CRMInquiries />} />
                     <Route path="/partner-referrals" element={<PartnerReferrals />} />
+                    <Route path="/whatsapp/inbox" element={<WhatsAppInbox />} />
                     <Route path="/quotations" element={<Quotations />} />
                     <Route path="/invoices" element={<Invoices />} />
                     <Route path="/pending-amounts" element={<PendingAmounts />} />

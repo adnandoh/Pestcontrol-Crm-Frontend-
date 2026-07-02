@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MessageSquare,
+  MessageCircle,
   ClipboardList,
   RefreshCw,
   FileText,
@@ -86,6 +87,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]
+    },
+    {
+      items: [
+        { name: 'WhatsApp Inbox', href: '/whatsapp/inbox', icon: MessageCircle },
+      ],
     },
     {
       items: [
