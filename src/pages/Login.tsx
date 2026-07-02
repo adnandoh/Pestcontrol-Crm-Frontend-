@@ -38,13 +38,12 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError('');
     setIsSubmitting(true);
 
     try {
-      console.log('Attempting login with:', { username: formData.username });
       await login(formData);
-      console.log('Login successful');
     } catch (err: unknown) {
       logErrorForDev('Login', err);
       setError(getErrorMessage(err, 'Login failed. Please check your credentials and try again.'));

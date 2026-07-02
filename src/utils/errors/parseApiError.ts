@@ -127,6 +127,14 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
   if (isAxiosError(error)) {
     const status = error.response?.status ?? 0;
     const data = error.response?.data as Record<string, unknown> | undefined;
+    if (status === 429) {
+      const retryAfter = error.response?.headers?.['retry-after'];
+      const seconds = retryAfter ? Number.parseInt(String(retryAfter), 10) : NaN;
+      if (Number.isFinite(seconds) && seconds > 0) {
+        return `Too many login attempts. Please wait ${seconds} seconds and try again.`;
+      }
+      return 'Too many login attempts. Please wait a minute and try again.';
+    }
     const formatted = formatApiErrorMessage(data, error.message || fallback);
     if (formatted && formatted !== error.message) return formatted;
     if (status === 401) return 'Your session has expired. Please sign in again.';

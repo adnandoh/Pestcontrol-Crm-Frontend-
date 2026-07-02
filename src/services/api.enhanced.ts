@@ -318,9 +318,7 @@ class EnhancedApiService {
 
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<{ user: AuthUser; access: string; refresh: string }> {
-    const response = await this.retryRequest(() =>
-      this.api.post<AuthTokens>(API_ENDPOINTS.AUTH.LOGIN, credentials)
-    );
+    const response = await this.api.post<AuthTokens>(API_ENDPOINTS.AUTH.LOGIN, credentials);
 
     // Store tokens
     localStorage.setItem('access_token', response.data.access);
