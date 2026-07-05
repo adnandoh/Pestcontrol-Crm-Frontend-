@@ -71,6 +71,14 @@ const WhatsAppInbox: React.FC = () => {
   const pageRef = useRef(1);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const initialMessagesScrollRef = useRef(true);
+  const bootstrapInitializedRef = useRef(false);
+  const socketInitializedRef = useRef(false);
+  const filterSearchInitializedRef = useRef(false);
+  const filterRef = useRef(filter);
+  const searchRef = useRef(search);
+
+  filterRef.current = filter;
+  searchRef.current = search;
 
   const selectedConversation = useMemo(
     () => conversations.find((c) => c.id === selectedConversationId) || null,
@@ -82,43 +90,40 @@ const WhatsAppInbox: React.FC = () => {
     [conversations],
   );
 
-  const loadConversations = useCallback(
-    async (reset = false) => {
-      try {
-        if (reset) {
-          setLoading(true);
-          setListError('');
-          setServiceUnavailable(false);
-          pageRef.current = 1;
-        }
-        const nextPage = reset ? 1 : pageRef.current;
-        const response = await whatsappInboxApi.getConversations({
-          page: nextPage,
-          page_size: 20,
-          filter,
-          search,
-        });
-        setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
-        setHasMoreConversations(Boolean(response.next));
-        pageRef.current = nextPage + 1;
-      } catch (error) {
-        logErrorForDev('WhatsAppInbox.loadConversations', error);
-        const msg = getErrorMessage(error, 'Failed to load conversations.');
-        setListError(msg);
-        const isUnavailable =
-          msg.toLowerCase().includes('server') ||
-          msg.toLowerCase().includes('unavailable') ||
-          msg.toLowerCase().includes('unable to reach');
-        if (isUnavailable) {
-          setServiceUnavailable(true);
-          setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
-        }
-      } finally {
-        setLoading(false);
+  const loadConversations = useCallback(async (reset = false) => {
+    try {
+      if (reset) {
+        setLoading(true);
+        setListError('');
+        setServiceUnavailable(false);
+        pageRef.current = 1;
       }
-    },
-    [filter, search],
-  );
+      const nextPage = reset ? 1 : pageRef.current;
+      const response = await whatsappInboxApi.getConversations({
+        page: nextPage,
+        page_size: 20,
+        filter: filterRef.current,
+        search: searchRef.current,
+      });
+      setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
+      setHasMoreConversations(Boolean(response.next));
+      pageRef.current = nextPage + 1;
+    } catch (error) {
+      logErrorForDev('WhatsAppInbox.loadConversations', error);
+      const msg = getErrorMessage(error, 'Failed to load conversations.');
+      setListError(msg);
+      const isUnavailable =
+        msg.toLowerCase().includes('server') ||
+        msg.toLowerCase().includes('unavailable') ||
+        msg.toLowerCase().includes('unable to reach');
+      if (isUnavailable) {
+        setServiceUnavailable(true);
+        setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const mergeIncomingMessage = useCallback((message: InboxMessage) => {
     setConversationDetail((prev) => {
@@ -261,6 +266,9 @@ const WhatsAppInbox: React.FC = () => {
 
   useEffect(() => {
     if (!isCRMOperationalUser(user)) return;
+    if (bootstrapInitializedRef.current) return;
+    bootstrapInitializedRef.current = true;
+
     let active = true;
     const bootstrap = async () => {
       try {
@@ -289,16 +297,36 @@ const WhatsAppInbox: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [loadConversations, user]);
+  }, [loadConversations, user?.id]);
 
   useEffect(() => {
     if (!isCRMOperationalUser(user)) return;
+    if (!filterSearchInitializedRef.current) {
+      filterSearchInitializedRef.current = true;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void loadConversations(true);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [filter, search, loadConversations, user?.id]);
+
+  useEffect(() => {
+    if (!isCRMOperationalUser(user)) return;
+    if (socketInitializedRef.current) return;
+    socketInitializedRef.current = true;
+
     reconnectAttemptRef.current = 0;
     void connectSocket();
+    const unsubscribe = whatsappInboxApi.onTokenRefreshed(() => {
+      reconnectAttemptRef.current = 0;
+      void connectSocket();
+    });
     return () => {
+      unsubscribe();
       disconnectSocket();
     };
-  }, [connectSocket, disconnectSocket, user]);
+  }, [connectSocket, disconnectSocket, user?.id]);
 
   useEffect(() => {
     if (!conversationDetail || !messagesContainerRef.current || !initialMessagesScrollRef.current) return;

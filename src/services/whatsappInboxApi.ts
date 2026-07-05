@@ -19,6 +19,11 @@ const WS_BASE = (
 
 const WHATSAPP_API_KEY = (import.meta.env.VITE_WHATSAPP_API_KEY || '').trim();
 
+/** Refresh ~5 min before the 30-minute access token expires. */
+const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const MIN_SCHEDULE_MS = 60 * 1000;
+const FALLBACK_PROACTIVE_REFRESH_MS = 25 * 60 * 1000;
+
 export function isWhatsAppApiKeyConfigured(): boolean {
   return WHATSAPP_API_KEY.length > 0;
 }
@@ -27,6 +32,7 @@ const ACCESS_KEY = 'whatsflow_access_token';
 const REFRESH_KEY = 'whatsflow_refresh_token';
 
 type InboxFilter = 'all' | 'unread' | 'assigned';
+type TokenRefreshListener = (accessToken: string) => void;
 
 export interface InboxConversation {
   id: string;
@@ -91,7 +97,7 @@ interface SendTemplatePayload {
 
 interface SsoLoginResponse {
   access_token: string;
-  refresh_token?: string;
+  refresh_token: string;
   organization?: Record<string, unknown>;
   permissions?: Record<string, unknown>;
 }
@@ -117,18 +123,65 @@ function unwrapWhatsFlowPayload<T>(payload: unknown): T {
   return payload as T;
 }
 
-function parseAuthTokens(payload: unknown): SsoLoginResponse {
+function parseSsoTokens(payload: unknown): SsoLoginResponse {
   const data = unwrapWhatsFlowPayload<Partial<SsoLoginResponse>>(payload);
   const access_token = data.access_token?.trim();
+  const refresh_token = data.refresh_token?.trim();
   if (!access_token) {
     throw new ApiError('WhatsFlow SSO did not return an access token.', 502);
   }
+  if (!refresh_token) {
+    throw new ApiError('WhatsFlow SSO did not return a refresh token.', 502);
+  }
   return {
     access_token,
-    refresh_token: data.refresh_token,
+    refresh_token,
     organization: data.organization,
     permissions: data.permissions,
   };
+}
+
+function parseRefreshTokens(payload: unknown): { access: string; refresh: string } {
+  const data = unwrapWhatsFlowPayload<Record<string, unknown>>(payload);
+  const nested = data.tokens as Record<string, unknown> | undefined;
+  if (nested) {
+    const access = String(nested.access ?? nested.access_token ?? '').trim();
+    const refresh = String(nested.refresh ?? nested.refresh_token ?? '').trim();
+    if (access && refresh) return { access, refresh };
+  }
+
+  const access = String(data.access ?? data.access_token ?? '').trim();
+  const refresh = String(data.refresh ?? data.refresh_token ?? '').trim();
+  if (access && refresh) return { access, refresh };
+
+  throw new ApiError('WhatsFlow refresh did not return rotated tokens.', 502);
+}
+
+function isAuthTokenError(error: AxiosError): boolean {
+  const status = error.response?.status;
+  if (status !== 401 && status !== 403) return false;
+
+  const data = error.response?.data;
+  if (!data || typeof data !== 'object') return status === 401;
+
+  const record = data as Record<string, unknown>;
+  if (record.code === 'token_not_valid') return true;
+
+  const detail = String(record.detail ?? '').toLowerCase();
+  if (detail.includes('token') || detail.includes('expired') || detail.includes('not valid')) {
+    return true;
+  }
+
+  const messages = record.messages;
+  if (Array.isArray(messages)) {
+    return messages.some((item) => {
+      const message = item as Record<string, unknown>;
+      const text = String(message.message ?? '').toLowerCase();
+      return text.includes('expired') || text.includes('token');
+    });
+  }
+
+  return status === 401;
 }
 
 function mapConversation(raw: Record<string, unknown>): InboxConversation {
@@ -187,10 +240,32 @@ function mapConversationDetail(payload: unknown): ConversationDetail {
   };
 }
 
+function decodeJwtExp(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    let payload = parts[1];
+    const mod = payload.length % 4;
+    if (mod > 0) payload += '='.repeat(4 - mod);
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    if (typeof json.exp === 'number') return json.exp * 1000;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 function isStoredAccessTokenValid(token: string | null): boolean {
   if (!token) return false;
   const trimmed = token.trim();
   return trimmed.length > 0 && trimmed !== 'undefined' && trimmed !== 'null';
+}
+
+function shouldRefreshWhatsAppAccessToken(access: string | null): boolean {
+  if (!isStoredAccessTokenValid(access)) return true;
+  const expMs = decodeJwtExp(access!);
+  if (!expMs) return false;
+  return Date.now() >= expMs - REFRESH_BUFFER_MS;
 }
 
 function readCrmUserFromStorage(): AuthUser | null {
@@ -214,14 +289,20 @@ function buildExternalUser(user: AuthUser): { id: string; name: string; role: st
   };
 }
 
+let inboxApiRef: WhatsAppInboxApi | null = null;
+
 export function clearWhatsAppInboxTokens(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  inboxApiRef?.stopProactiveRefresh();
 }
 
 class WhatsAppInboxApi {
   private client: AxiosInstance;
+  /** Single in-flight refresh/SSO for concurrent 401s. */
   private refreshPromise: Promise<string> | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private tokenRefreshListeners = new Set<TokenRefreshListener>();
 
   constructor() {
     this.client = axios.create({
@@ -229,6 +310,43 @@ class WhatsAppInboxApi {
       timeout: 30000,
     });
     this.setupInterceptors();
+  }
+
+  onTokenRefreshed(listener: TokenRefreshListener): () => void {
+    this.tokenRefreshListeners.add(listener);
+    return () => {
+      this.tokenRefreshListeners.delete(listener);
+    };
+  }
+
+  stopProactiveRefresh(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  private notifyTokenRefreshed(access: string): void {
+    this.tokenRefreshListeners.forEach((listener) => listener(access));
+  }
+
+  private scheduleProactiveRefresh(): void {
+    this.stopProactiveRefresh();
+
+    const access = this.getAccessToken();
+    const refresh = this.getRefreshToken();
+    if (!access || !refresh) return;
+
+    const expMs = decodeJwtExp(access);
+    const delay = expMs
+      ? Math.max(expMs - Date.now() - REFRESH_BUFFER_MS, MIN_SCHEDULE_MS)
+      : FALLBACK_PROACTIVE_REFRESH_MS;
+
+    this.refreshTimer = setTimeout(() => {
+      void this.tryRefreshOrSso().catch(() => {
+        // Next API call or socket reconnect will retry.
+      });
+    }, delay);
   }
 
   private setupInterceptors(): void {
@@ -248,11 +366,8 @@ class WhatsAppInboxApi {
           throw createApiErrorFromAxios(error);
         }
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (isAuthTokenError(error) && !originalRequest._retry) {
           originalRequest._retry = true;
-          if (!isStoredAccessTokenValid(this.getAccessToken())) {
-            clearWhatsAppInboxTokens();
-          }
           const refreshed = await this.tryRefreshOrSso();
           if (originalRequest.headers) {
             (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${refreshed}`;
@@ -273,11 +388,11 @@ class WhatsAppInboxApi {
     return localStorage.getItem(REFRESH_KEY);
   }
 
-  private setTokens(access: string, refresh?: string | null): void {
+  private setTokens(access: string, refresh: string): void {
     localStorage.setItem(ACCESS_KEY, access);
-    if (refresh) {
-      localStorage.setItem(REFRESH_KEY, refresh);
-    }
+    localStorage.setItem(REFRESH_KEY, refresh);
+    this.scheduleProactiveRefresh();
+    this.notifyTokenRefreshed(access);
   }
 
   private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
@@ -293,23 +408,32 @@ class WhatsAppInboxApi {
     }
   }
 
+  private async refreshAccessToken(): Promise<string> {
+    const refresh = this.getRefreshToken();
+    if (!refresh) {
+      throw new ApiError('WhatsFlow refresh token missing.', 401);
+    }
+
+    const response = await axios.post(
+      `${API_BASE}/api/v1/auth/refresh/`,
+      { refresh },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+
+    const tokens = parseRefreshTokens(response.data);
+    this.setTokens(tokens.access, tokens.refresh);
+    return tokens.access;
+  }
+
   private async tryRefreshOrSso(): Promise<string> {
     if (this.refreshPromise) return this.refreshPromise;
 
     this.refreshPromise = (async () => {
-      const refresh = this.getRefreshToken();
-      if (refresh) {
+      if (this.getRefreshToken()) {
         try {
-          const response = await axios.post(
-            `${API_BASE}/api/auth/refresh/`,
-            { refresh_token: refresh },
-            { headers: { 'Content-Type': 'application/json' } },
-          );
-          const tokens = parseAuthTokens(response.data);
-          this.setTokens(tokens.access_token, tokens.refresh_token);
-          return tokens.access_token;
+          return await this.refreshAccessToken();
         } catch {
-          // fall through to sso login
+          // Refresh failed — fall through to SSO.
         }
       }
       return this.ssoLogin();
@@ -346,15 +470,25 @@ class WhatsAppInboxApi {
       },
     );
 
-    const tokens = parseAuthTokens(response.data);
+    const tokens = parseSsoTokens(response.data);
     this.setTokens(tokens.access_token, tokens.refresh_token);
     return tokens.access_token;
   }
 
   async ensureAuthenticated(): Promise<void> {
-    if (!isStoredAccessTokenValid(this.getAccessToken())) {
+    const access = this.getAccessToken();
+    const refresh = this.getRefreshToken();
+
+    if (!isStoredAccessTokenValid(access) || !refresh) {
       clearWhatsAppInboxTokens();
       await this.ssoLogin();
+      return;
+    }
+
+    if (shouldRefreshWhatsAppAccessToken(access)) {
+      await this.tryRefreshOrSso();
+    } else {
+      this.scheduleProactiveRefresh();
     }
   }
 
@@ -436,7 +570,12 @@ class WhatsAppInboxApi {
     onOpen?: () => void;
     onClose?: () => void;
   }): Promise<() => void> {
-    const token = this.getAccessToken() || (await this.ssoLogin());
+    await this.ensureAuthenticated();
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new ApiError('WhatsFlow access token missing after authentication.', 401);
+    }
+
     const ws = new WebSocket(`${WS_BASE}/ws/inbox/?token=${encodeURIComponent(token)}`);
     let heartbeat: number | null = null;
 
@@ -481,3 +620,4 @@ class WhatsAppInboxApi {
 }
 
 export const whatsappInboxApi = new WhatsAppInboxApi();
+inboxApiRef = whatsappInboxApi;
