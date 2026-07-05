@@ -20,6 +20,7 @@ import {
   isWhatsAppApiKeyConfigured,
   type ConversationDetail,
   type InboxConversation,
+  type InboxCounts,
   type InboxMessage,
   type InboxSocketEvent,
 } from '../services/whatsappInboxApi';
@@ -34,6 +35,7 @@ dayjs.extend(timezone);
 type ConversationFilter = 'all' | 'unread' | 'assigned';
 
 const EMOJIS = ['🙂', '👍', '🙏', '✅', '📍', '📞'];
+const SEARCH_DEBOUNCE_MS = 500;
 
 const statusIcon = (status?: string) => {
   if (status === 'read') return <CheckCheck className="h-3.5 w-3.5 text-blue-600" aria-label="Read" />;
@@ -43,6 +45,34 @@ const statusIcon = (status?: string) => {
 };
 
 const getFileAccept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.mp3,.wav,.aac,.ogg';
+
+function bumpConversation(
+  conversations: InboxConversation[],
+  message: InboxMessage,
+  selectedConversationId: string | null,
+): InboxConversation[] {
+  const idx = conversations.findIndex((c) => c.id === message.conversation_id);
+  if (idx < 0) return conversations;
+
+  const conv = conversations[idx];
+  const isSelected = conv.id === selectedConversationId;
+  const unread =
+    message.direction === 'inbound' && !isSelected
+      ? (conv.unread_count || 0) + 1
+      : isSelected
+        ? 0
+        : conv.unread_count || 0;
+
+  const updated: InboxConversation = {
+    ...conv,
+    last_message: message.content || conv.last_message,
+    last_message_time: message.created_at || conv.last_message_time,
+    unread_count: unread,
+  };
+
+  const rest = conversations.filter((c) => c.id !== message.conversation_id);
+  return [updated, ...rest];
+}
 
 const WhatsAppInbox: React.FC = () => {
   const { user } = useAuth();
@@ -54,6 +84,7 @@ const WhatsAppInbox: React.FC = () => {
   const [search, setSearch] = useState('');
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
+  const [inboxCounts, setInboxCounts] = useState<InboxCounts | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversationDetail, setConversationDetail] = useState<ConversationDetail | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
@@ -64,68 +95,119 @@ const WhatsAppInbox: React.FC = () => {
   const [socketConnected, setSocketConnected] = useState(false);
   const [typingState, setTypingState] = useState('');
 
+  const abortRef = useRef<AbortController | null>(null);
   const wsCleanupRef = useRef<(() => void) | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  const searchDebounceRef = useRef<number | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
   const socketEnabledRef = useRef(false);
+  const intentionalCloseRef = useRef(false);
   const reconnectAttemptRef = useRef(0);
   const pageRef = useRef(1);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const initialMessagesScrollRef = useRef(true);
-  const bootstrapInitializedRef = useRef(false);
-  const socketInitializedRef = useRef(false);
-  const filterSearchInitializedRef = useRef(false);
+  const initStartedRef = useRef(false);
   const filterRef = useRef(filter);
   const searchRef = useRef(search);
+  const selectedConversationIdRef = useRef(selectedConversationId);
 
   filterRef.current = filter;
   searchRef.current = search;
+  selectedConversationIdRef.current = selectedConversationId;
 
   const selectedConversation = useMemo(
     () => conversations.find((c) => c.id === selectedConversationId) || null,
     [conversations, selectedConversationId],
   );
 
-  const unreadTotal = useMemo(
-    () => conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0),
-    [conversations],
-  );
+  const unreadTotal = inboxCounts?.unread ?? conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
-  const loadConversations = useCallback(async (reset = false) => {
-    try {
-      if (reset) {
-        setLoading(true);
-        setListError('');
-        setServiceUnavailable(false);
-        pageRef.current = 1;
-      }
-      const nextPage = reset ? 1 : pageRef.current;
-      const response = await whatsappInboxApi.getConversations({
-        page: nextPage,
-        page_size: 20,
-        filter: filterRef.current,
-        search: searchRef.current,
-      });
-      setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
-      setHasMoreConversations(Boolean(response.next));
-      pageRef.current = nextPage + 1;
-    } catch (error) {
-      logErrorForDev('WhatsAppInbox.loadConversations', error);
-      const msg = getErrorMessage(error, 'Failed to load conversations.');
-      setListError(msg);
-      const isUnavailable =
-        msg.toLowerCase().includes('server') ||
-        msg.toLowerCase().includes('unavailable') ||
-        msg.toLowerCase().includes('unable to reach');
-      if (isUnavailable) {
-        setServiceUnavailable(true);
-        setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
-      }
-    } finally {
-      setLoading(false);
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
     }
   }, []);
 
-  const mergeIncomingMessage = useCallback((message: InboxMessage) => {
+  const clearSearchDebounce = useCallback(() => {
+    if (searchDebounceRef.current) {
+      window.clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
+  }, []);
+
+  const clearTypingTimer = useCallback(() => {
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+  }, []);
+
+  const cancelPendingRequests = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  const getAbortSignal = useCallback((): AbortSignal => {
+    abortRef.current ??= new AbortController();
+    return abortRef.current.signal;
+  }, []);
+
+  const loadConversations = useCallback(
+    async (reset = false) => {
+      const signal = getAbortSignal();
+      try {
+        if (reset) {
+          setLoading(true);
+          setListError('');
+          setServiceUnavailable(false);
+          pageRef.current = 1;
+        }
+        const nextPage = reset ? 1 : pageRef.current;
+        const response = await whatsappInboxApi.getConversations(
+          {
+            page: nextPage,
+            page_size: 20,
+            filter: filterRef.current,
+            search: searchRef.current,
+          },
+          signal,
+        );
+        setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
+        setHasMoreConversations(Boolean(response.next));
+        pageRef.current = nextPage + 1;
+      } catch (error) {
+        if (signal.aborted) return;
+        logErrorForDev('WhatsAppInbox.loadConversations', error);
+        const msg = getErrorMessage(error, 'Failed to load conversations.');
+        setListError(msg);
+        const isUnavailable =
+          msg.toLowerCase().includes('server') ||
+          msg.toLowerCase().includes('unavailable') ||
+          msg.toLowerCase().includes('unable to reach');
+        if (isUnavailable) {
+          setServiceUnavailable(true);
+          setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
+        }
+      } finally {
+        if (!signal.aborted) setLoading(false);
+      }
+    },
+    [getAbortSignal],
+  );
+
+  const loadCounts = useCallback(async () => {
+    const signal = getAbortSignal();
+    try {
+      const counts = await whatsappInboxApi.getCounts(signal);
+      if (!signal.aborted) setInboxCounts(counts);
+    } catch (error) {
+      if (signal.aborted) return;
+      logErrorForDev('WhatsAppInbox.loadCounts', error);
+    }
+  }, [getAbortSignal]);
+
+  const applyNewMessage = useCallback((message: InboxMessage) => {
     setConversationDetail((prev) => {
       if (!prev || prev.id !== message.conversation_id) return prev;
       const exists = prev.messages.some((m) => m.id === message.id);
@@ -135,65 +217,81 @@ const WhatsAppInbox: React.FC = () => {
           messages: prev.messages.map((m) => (m.id === message.id ? { ...m, ...message } : m)),
         };
       }
-      return {
-        ...prev,
-        messages: [...prev.messages, message],
-      };
+      return { ...prev, messages: [...prev.messages, message] };
     });
     setConversations((prev) =>
-      prev.map((conv) => {
-        if (conv.id !== message.conversation_id) return conv;
-        const unread = message.direction === 'inbound' ? (conv.unread_count || 0) + 1 : conv.unread_count || 0;
-        return {
-          ...conv,
-          last_message: message.content || conv.last_message,
-          last_message_time: message.created_at || conv.last_message_time,
-          unread_count: conv.id === selectedConversationId ? 0 : unread,
-        };
-      }),
+      bumpConversation(prev, message, selectedConversationIdRef.current),
     );
-  }, [selectedConversationId]);
+  }, []);
+
+  const applyMessageStatus = useCallback((message: InboxMessage) => {
+    setConversationDetail((prev) => {
+      if (!prev || prev.id !== message.conversation_id) return prev;
+      return {
+        ...prev,
+        messages: prev.messages.map((m) =>
+          m.id === message.id ? { ...m, status: message.status } : m,
+        ),
+      };
+    });
+  }, []);
 
   const handleSocketEvent = useCallback(
     (event: InboxSocketEvent) => {
       if (event.type === 'new_message' && event.message) {
-        mergeIncomingMessage(event.message);
+        applyNewMessage(event.message);
         return;
       }
-      if ((event.type === 'message_sent' || event.type === 'message_delivered' || event.type === 'message_read') && event.message) {
-        mergeIncomingMessage(event.message);
+      if (
+        (event.type === 'message_sent' ||
+          event.type === 'message_delivered' ||
+          event.type === 'message_read') &&
+        event.message
+      ) {
+        applyMessageStatus(event.message);
         return;
       }
       if (event.type === 'typing') {
-        if (event.conversation_id === selectedConversationId) {
+        if (event.conversation_id === selectedConversationIdRef.current) {
+          clearTypingTimer();
           setTypingState('Typing…');
-          window.setTimeout(() => setTypingState(''), 1500);
+          typingTimerRef.current = window.setTimeout(() => setTypingState(''), 1500);
         }
       }
     },
-    [mergeIncomingMessage, selectedConversationId],
+    [applyMessageStatus, applyNewMessage, clearTypingTimer],
   );
 
   const handleSocketEventRef = useRef(handleSocketEvent);
   handleSocketEventRef.current = handleSocketEvent;
 
-  const disconnectSocket = useCallback(() => {
-    socketEnabledRef.current = false;
-    if (reconnectTimerRef.current) {
-      window.clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
+  const disconnectSocket = useCallback(
+    (intentional = true) => {
+      intentionalCloseRef.current = intentional;
+      socketEnabledRef.current = false;
+      clearReconnectTimer();
+      if (wsCleanupRef.current) {
+        wsCleanupRef.current();
+        wsCleanupRef.current = null;
+      }
+      setSocketConnected(false);
+    },
+    [clearReconnectTimer],
+  );
+
+  const connectSocket = useCallback(async () => {
+    if (document.hidden) return;
+
+    clearReconnectTimer();
+    intentionalCloseRef.current = true;
     if (wsCleanupRef.current) {
       wsCleanupRef.current();
       wsCleanupRef.current = null;
     }
-    setSocketConnected(false);
-  }, []);
+    intentionalCloseRef.current = false;
+    socketEnabledRef.current = true;
 
-  const connectSocket = useCallback(async () => {
     try {
-      disconnectSocket();
-      socketEnabledRef.current = true;
       wsCleanupRef.current = await whatsappInboxApi.connectInboxSocket({
         onOpen: () => {
           reconnectAttemptRef.current = 0;
@@ -201,9 +299,11 @@ const WhatsAppInbox: React.FC = () => {
         },
         onClose: () => {
           setSocketConnected(false);
-          if (!socketEnabledRef.current) return;
+          if (intentionalCloseRef.current || !socketEnabledRef.current) return;
+          if (document.hidden) return;
           const delay = Math.min(2500 * 2 ** reconnectAttemptRef.current, 30000);
           reconnectAttemptRef.current += 1;
+          clearReconnectTimer();
           reconnectTimerRef.current = window.setTimeout(() => {
             void connectSocket();
           }, delay);
@@ -216,17 +316,19 @@ const WhatsAppInbox: React.FC = () => {
     } catch (error) {
       logErrorForDev('WhatsAppInbox.connectSocket', error);
       setSocketConnected(false);
-      if (!socketEnabledRef.current) return;
+      if (!socketEnabledRef.current || document.hidden) return;
       const delay = Math.min(2500 * 2 ** reconnectAttemptRef.current, 30000);
       reconnectAttemptRef.current += 1;
+      clearReconnectTimer();
       reconnectTimerRef.current = window.setTimeout(() => {
         void connectSocket();
       }, delay);
     }
-  }, [disconnectSocket]);
+  }, [clearReconnectTimer]);
 
   const loadConversationDetail = useCallback(
     async (conversationId: string, before?: string) => {
+      const signal = getAbortSignal();
       try {
         if (!before) {
           setChatLoading(true);
@@ -234,7 +336,9 @@ const WhatsAppInbox: React.FC = () => {
         } else {
           setLoadingOlder(true);
         }
-        const detail = await whatsappInboxApi.getConversation(conversationId, before);
+        const detail = await whatsappInboxApi.getConversation(conversationId, before, signal);
+        if (signal.aborted) return;
+
         if (before) {
           setConversationDetail((prev) => {
             if (!prev) return detail;
@@ -254,28 +358,86 @@ const WhatsAppInbox: React.FC = () => {
           );
         }
       } catch (error) {
+        if (signal.aborted) return;
         logErrorForDev('WhatsAppInbox.loadConversationDetail', error);
         setChatError(getErrorMessage(error, 'Failed to load conversation.'));
       } finally {
-        setChatLoading(false);
-        setLoadingOlder(false);
+        if (!signal.aborted) {
+          setChatLoading(false);
+          setLoadingOlder(false);
+        }
       }
     },
-    [],
+    [getAbortSignal],
   );
+
+  const handleManualRefresh = useCallback(async () => {
+    cancelPendingRequests();
+    await Promise.all([loadConversations(true), loadCounts()]);
+  }, [cancelPendingRequests, loadConversations, loadCounts]);
+
+  const handleFilterChange = useCallback(
+    (nextFilter: ConversationFilter) => {
+      if (nextFilter === filterRef.current) return;
+      filterRef.current = nextFilter;
+      setFilter(nextFilter);
+      cancelPendingRequests();
+      void loadConversations(true);
+    },
+    [cancelPendingRequests, loadConversations],
+  );
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearch(value);
+      searchRef.current = value;
+      clearSearchDebounce();
+      searchDebounceRef.current = window.setTimeout(() => {
+        cancelPendingRequests();
+        void loadConversations(true);
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [cancelPendingRequests, clearSearchDebounce, loadConversations],
+  );
+
+  const handleLoadMore = useCallback(() => {
+    void loadConversations(false);
+  }, [loadConversations]);
 
   useEffect(() => {
     if (!isCRMOperationalUser(user)) return;
-    if (bootstrapInitializedRef.current) return;
-    bootstrapInitializedRef.current = true;
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
 
     let active = true;
+    abortRef.current = new AbortController();
+
     const bootstrap = async () => {
       try {
         await whatsappInboxApi.ensureAuthenticated();
         if (!active) return;
-        await loadConversations(true);
+
+        const signal = abortRef.current?.signal;
+        const [convPage, counts] = await Promise.all([
+          whatsappInboxApi.getConversations(
+            { page: 1, page_size: 20, filter: filterRef.current, search: searchRef.current },
+            signal,
+          ),
+          whatsappInboxApi.getCounts(signal),
+        ]);
+        if (!active) return;
+
+        setConversations(convPage.results);
+        setHasMoreConversations(Boolean(convPage.next));
+        pageRef.current = 2;
+        setInboxCounts(counts);
+        setLoading(false);
+
+        if (!document.hidden) {
+          await connectSocket();
+        }
       } catch (error) {
+        if (!active || abortRef.current?.signal.aborted) return;
         logErrorForDev('WhatsAppInbox.bootstrap', error);
         const msg = getErrorMessage(error, 'Failed to connect to WhatsApp.');
         const missingApiKey =
@@ -291,42 +453,50 @@ const WhatsAppInbox: React.FC = () => {
         }
         setServiceUnavailable(true);
         setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
+        setLoading(false);
       }
     };
-    bootstrap();
-    return () => {
-      active = false;
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        disconnectSocket(true);
+        return;
+      }
+      if (socketEnabledRef.current) return;
+      socketEnabledRef.current = true;
+      reconnectAttemptRef.current = 0;
+      void connectSocket();
     };
-  }, [loadConversations, user?.id]);
 
-  useEffect(() => {
-    if (!isCRMOperationalUser(user)) return;
-    if (!filterSearchInitializedRef.current) {
-      filterSearchInitializedRef.current = true;
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      void loadConversations(true);
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [filter, search, loadConversations, user?.id]);
-
-  useEffect(() => {
-    if (!isCRMOperationalUser(user)) return;
-    if (socketInitializedRef.current) return;
-    socketInitializedRef.current = true;
-
-    reconnectAttemptRef.current = 0;
-    void connectSocket();
-    const unsubscribe = whatsappInboxApi.onTokenRefreshed(() => {
+    const unsubscribeToken = whatsappInboxApi.onTokenRefreshed(() => {
+      if (!active || document.hidden) return;
       reconnectAttemptRef.current = 0;
       void connectSocket();
     });
+
+    void bootstrap();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
-      unsubscribe();
-      disconnectSocket();
+      active = false;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      unsubscribeToken();
+      clearSearchDebounce();
+      clearTypingTimer();
+      clearReconnectTimer();
+      disconnectSocket(true);
+      cancelPendingRequests();
+      whatsappInboxApi.teardown();
     };
-  }, [connectSocket, disconnectSocket, user?.id]);
+  }, [
+    cancelPendingRequests,
+    clearReconnectTimer,
+    clearSearchDebounce,
+    clearTypingTimer,
+    connectSocket,
+    disconnectSocket,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (!conversationDetail || !messagesContainerRef.current || !initialMessagesScrollRef.current) return;
@@ -341,15 +511,36 @@ const WhatsAppInbox: React.FC = () => {
     await loadConversationDetail(conversation.id);
   };
 
+  const appendLocalOutboundMessage = (text: string): string => {
+    const conversationId = selectedConversationIdRef.current;
+    if (!conversationId) return '';
+
+    const localId = `local-${Date.now()}`;
+    const message: InboxMessage = {
+      id: localId,
+      conversation_id: conversationId,
+      direction: 'outbound',
+      message_type: 'text',
+      content: text,
+      created_at: new Date().toISOString(),
+      status: 'sent',
+    };
+    applyNewMessage(message);
+    return localId;
+  };
+
   const handleSendText = async () => {
     if (!selectedConversationId || !composerText.trim()) return;
+    const text = composerText.trim();
+    setComposerText('');
+    appendLocalOutboundMessage(text);
+
     try {
       setSending(true);
       await whatsappInboxApi.sendText({
         conversation_id: selectedConversationId,
-        text: composerText.trim(),
+        text,
       });
-      setComposerText('');
     } catch (error) {
       notify.apiError(error, 'WhatsAppInbox.sendText', 'Failed to send message.');
     } finally {
@@ -359,13 +550,24 @@ const WhatsAppInbox: React.FC = () => {
 
   const handleSendMedia = async (file: File | null) => {
     if (!selectedConversationId || !file) return;
+    const localId = `local-${Date.now()}`;
+    const message: InboxMessage = {
+      id: localId,
+      conversation_id: selectedConversationId,
+      direction: 'outbound',
+      message_type: 'image',
+      content: file.name,
+      created_at: new Date().toISOString(),
+      status: 'sent',
+    };
+    applyNewMessage(message);
+
     try {
       setSending(true);
       await whatsappInboxApi.sendMedia({
         conversation_id: selectedConversationId,
         file,
       });
-      notify.success('Media sent.');
     } catch (error) {
       notify.apiError(error, 'WhatsAppInbox.sendMedia', 'Failed to send media.');
     } finally {
@@ -413,11 +615,11 @@ const WhatsAppInbox: React.FC = () => {
               ) : null}
             </div>
             <p className="text-xs text-gray-500">
-              {socketConnected ? 'Real-time connected' : 'Reconnecting…'}
+              {socketConnected ? 'Real-time connected' : document.hidden ? 'Paused (tab in background)' : 'Reconnecting…'}
             </p>
           </div>
         </div>
-        <Button type="button" variant="outline" onClick={() => loadConversations(true)} className="gap-2">
+        <Button type="button" variant="outline" onClick={() => void handleManualRefresh()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
@@ -431,7 +633,6 @@ const WhatsAppInbox: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-0 min-h-0 flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        {/* Conversation list — WhatsFlow style */}
         <section className="border-r border-gray-200 flex flex-col min-h-0 bg-white">
           <div className="p-3 border-b border-gray-100">
             <div className="flex flex-wrap items-center gap-1.5 mb-3">
@@ -439,7 +640,7 @@ const WhatsAppInbox: React.FC = () => {
                 <button
                   key={f}
                   type="button"
-                  onClick={() => setFilter(f)}
+                  onClick={() => handleFilterChange(f)}
                   className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide rounded-md ${
                     filter === f
                       ? 'bg-teal-600 text-white'
@@ -454,7 +655,7 @@ const WhatsAppInbox: React.FC = () => {
               <Search className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search conversations…"
                 className="w-full h-9 pl-8 pr-3 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30"
               />
@@ -497,7 +698,7 @@ const WhatsAppInbox: React.FC = () => {
             })}
             {hasMoreConversations && (
               <div className="p-3">
-                <Button type="button" variant="outline" className="w-full" onClick={() => loadConversations(false)}>
+                <Button type="button" variant="outline" className="w-full" onClick={handleLoadMore}>
                   Load more
                 </Button>
               </div>
@@ -505,7 +706,6 @@ const WhatsAppInbox: React.FC = () => {
           </div>
         </section>
 
-        {/* Chat panel — WhatsFlow style */}
         <section className="flex flex-col min-h-0 bg-[#efeae2]">
           {!selectedConversationId ? (
             <div className="flex-1 flex items-center justify-center text-gray-500 bg-[#f0f2f5]">

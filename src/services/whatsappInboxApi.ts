@@ -71,6 +71,12 @@ export interface ConversationPage {
   results: InboxConversation[];
 }
 
+export interface InboxCounts {
+  total: number;
+  unread: number;
+  assigned: number;
+}
+
 export interface InboxSocketEvent {
   type:
     | 'new_message'
@@ -193,6 +199,15 @@ function mapConversation(raw: Record<string, unknown>): InboxConversation {
     last_message_time: String(raw.last_message_time ?? ''),
     unread_count: Number(raw.unread_count ?? 0),
     assigned_to_me: typeof raw.assigned_to_me === 'boolean' ? raw.assigned_to_me : undefined,
+  };
+}
+
+function mapInboxCounts(payload: unknown): InboxCounts {
+  const data = unwrapWhatsFlowPayload<Record<string, unknown>>(payload);
+  return {
+    total: Number(data.total ?? data.all ?? 0),
+    unread: Number(data.unread ?? 0),
+    assigned: Number(data.assigned ?? 0),
   };
 }
 
@@ -326,6 +341,10 @@ class WhatsAppInboxApi {
     }
   }
 
+  teardown(): void {
+    this.stopProactiveRefresh();
+  }
+
   private notifyTokenRefreshed(access: string): void {
     this.tokenRefreshListeners.forEach((listener) => listener(access));
   }
@@ -344,7 +363,7 @@ class WhatsAppInboxApi {
 
     this.refreshTimer = setTimeout(() => {
       void this.tryRefreshOrSso().catch(() => {
-        // Next API call or socket reconnect will retry.
+        // Next user action or WebSocket reconnect will retry.
       });
     }, delay);
   }
@@ -492,12 +511,15 @@ class WhatsAppInboxApi {
     }
   }
 
-  async getConversations(params: {
-    page?: number;
-    page_size?: number;
-    filter?: InboxFilter;
-    search?: string;
-  }): Promise<ConversationPage> {
+  async getConversations(
+    params: {
+      page?: number;
+      page_size?: number;
+      filter?: InboxFilter;
+      search?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<ConversationPage> {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
       const res = await this.client.get('/api/inbox/conversations/', {
@@ -507,16 +529,30 @@ class WhatsAppInboxApi {
           filter: params.filter ?? 'all',
           search: params.search ?? '',
         },
+        signal,
       });
       return mapConversationPage(res.data);
     });
   }
 
-  async getConversation(conversationId: string, before?: string): Promise<ConversationDetail> {
+  async getCounts(signal?: AbortSignal): Promise<InboxCounts> {
+    await this.ensureAuthenticated();
+    return this.withRetry(async () => {
+      const res = await this.client.get('/api/inbox/counts/', { signal });
+      return mapInboxCounts(res.data);
+    });
+  }
+
+  async getConversation(
+    conversationId: string,
+    before?: string,
+    signal?: AbortSignal,
+  ): Promise<ConversationDetail> {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
       const res = await this.client.get(`/api/inbox/conversations/${conversationId}/`, {
         params: before ? { before } : undefined,
+        signal,
       });
       return mapConversationDetail(res.data);
     });
