@@ -526,6 +526,7 @@ const WhatsAppInbox: React.FC = () => {
       disconnectSocket(true);
       cancelPendingRequests();
       whatsappInboxApi.teardown();
+      initStartedRef.current = false;
     };
   }, [
     cancelPendingRequests,
