@@ -52,7 +52,20 @@ function bumpConversation(
   selectedConversationId: string | null,
 ): InboxConversation[] {
   const idx = conversations.findIndex((c) => c.id === message.conversation_id);
-  if (idx < 0) return conversations;
+  if (idx < 0) {
+    const isSelected = message.conversation_id === selectedConversationId;
+    return [
+      {
+        id: message.conversation_id,
+        customer_name: message.sender_name || 'Unknown',
+        phone: '',
+        last_message: message.content,
+        last_message_time: message.created_at,
+        unread_count: message.direction === 'inbound' && !isSelected ? 1 : 0,
+      },
+      ...conversations,
+    ];
+  }
 
   const conv = conversations[idx];
   const isSelected = conv.id === selectedConversationId;
@@ -218,14 +231,66 @@ const WhatsAppInbox: React.FC = () => {
   const applyMessageStatus = useCallback((message: InboxMessage) => {
     setConversationDetail((prev) => {
       if (!prev || prev.id !== message.conversation_id) return prev;
-      return {
-        ...prev,
-        messages: prev.messages.map((m) =>
-          m.id === message.id ? { ...m, status: message.status } : m,
-        ),
-      };
+
+      const byId = prev.messages.find((m) => m.id === message.id);
+      if (byId) {
+        return {
+          ...prev,
+          messages: prev.messages.map((m) =>
+            m.id === message.id ? { ...m, status: message.status } : m,
+          ),
+        };
+      }
+
+      const localIdx = prev.messages.findIndex(
+        (m) =>
+          m.id.startsWith('local-') &&
+          m.direction === 'outbound' &&
+          m.content === message.content,
+      );
+      if (localIdx >= 0) {
+        const messages = [...prev.messages];
+        messages[localIdx] = { ...messages[localIdx], ...message };
+        return { ...prev, messages };
+      }
+
+      return prev;
     });
   }, []);
+
+  const applyOutboundSocketMessage = useCallback(
+    (message: InboxMessage) => {
+      setConversationDetail((prev) => {
+        if (!prev || prev.id !== message.conversation_id) return prev;
+
+        const byId = prev.messages.find((m) => m.id === message.id);
+        if (byId) {
+          return {
+            ...prev,
+            messages: prev.messages.map((m) => (m.id === message.id ? { ...m, ...message } : m)),
+          };
+        }
+
+        const localIdx = prev.messages.findIndex(
+          (m) =>
+            m.id.startsWith('local-') &&
+            m.direction === 'outbound' &&
+            m.content === message.content,
+        );
+        if (localIdx >= 0) {
+          const messages = [...prev.messages];
+          messages[localIdx] = message;
+          return { ...prev, messages };
+        }
+
+        return { ...prev, messages: [...prev.messages, message] };
+      });
+      setConversations((prev) =>
+        bumpConversation(prev, message, selectedConversationIdRef.current),
+      );
+    },
+    [],
+  );
 
   const handleSocketEvent = useCallback(
     (event: InboxSocketEvent) => {
@@ -233,10 +298,12 @@ const WhatsAppInbox: React.FC = () => {
         applyNewMessage(event.message);
         return;
       }
+      if (event.type === 'message_sent' && event.message) {
+        applyOutboundSocketMessage(event.message);
+        return;
+      }
       if (
-        (event.type === 'message_sent' ||
-          event.type === 'message_delivered' ||
-          event.type === 'message_read') &&
+        (event.type === 'message_delivered' || event.type === 'message_read') &&
         event.message
       ) {
         applyMessageStatus(event.message);
@@ -250,7 +317,7 @@ const WhatsAppInbox: React.FC = () => {
         }
       }
     },
-    [applyMessageStatus, applyNewMessage, clearTypingTimer],
+    [applyMessageStatus, applyNewMessage, applyOutboundSocketMessage, clearTypingTimer],
   );
 
   const handleSocketEventRef = useRef(handleSocketEvent);
