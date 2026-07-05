@@ -24,7 +24,7 @@ import {
   type InboxMessage,
   type InboxSocketEvent,
 } from '../services/whatsappInboxApi';
-import { getErrorMessage, logErrorForDev } from '../utils/errors';
+import { formatWhatsFlowError, logWhatsFlowError } from '../utils/whatsappInboxErrors';
 import { notify } from '../utils/notify';
 import { useAuth } from '../hooks/useAuth';
 import { isCRMOperationalUser } from '../utils/roles';
@@ -78,8 +78,8 @@ const WhatsAppInbox: React.FC = () => {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [listError, setListError] = useState('');
+  const [countsWarning, setCountsWarning] = useState('');
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [search, setSearch] = useState('');
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
@@ -160,7 +160,6 @@ const WhatsAppInbox: React.FC = () => {
         if (reset) {
           setLoading(true);
           setListError('');
-          setServiceUnavailable(false);
           pageRef.current = 1;
         }
         const nextPage = reset ? 1 : pageRef.current;
@@ -178,17 +177,8 @@ const WhatsAppInbox: React.FC = () => {
         pageRef.current = nextPage + 1;
       } catch (error) {
         if (signal.aborted) return;
-        logErrorForDev('WhatsAppInbox.loadConversations', error);
-        const msg = getErrorMessage(error, 'Failed to load conversations.');
-        setListError(msg);
-        const isUnavailable =
-          msg.toLowerCase().includes('server') ||
-          msg.toLowerCase().includes('unavailable') ||
-          msg.toLowerCase().includes('unable to reach');
-        if (isUnavailable) {
-          setServiceUnavailable(true);
-          setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
-        }
+        logWhatsFlowError('loadConversations', error);
+        setListError(formatWhatsFlowError(error, 'Failed to load conversations.'));
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -203,7 +193,8 @@ const WhatsAppInbox: React.FC = () => {
       if (!signal.aborted) setInboxCounts(counts);
     } catch (error) {
       if (signal.aborted) return;
-      logErrorForDev('WhatsAppInbox.loadCounts', error);
+      logWhatsFlowError('loadCounts', error);
+      setCountsWarning(formatWhatsFlowError(error, 'Failed to load inbox counts.'));
     }
   }, [getAbortSignal]);
 
@@ -314,7 +305,7 @@ const WhatsAppInbox: React.FC = () => {
         onEvent: (event) => handleSocketEventRef.current(event),
       });
     } catch (error) {
-      logErrorForDev('WhatsAppInbox.connectSocket', error);
+      logWhatsFlowError('connectSocket', error);
       setSocketConnected(false);
       if (!socketEnabledRef.current || document.hidden) return;
       const delay = Math.min(2500 * 2 ** reconnectAttemptRef.current, 30000);
@@ -359,8 +350,8 @@ const WhatsAppInbox: React.FC = () => {
         }
       } catch (error) {
         if (signal.aborted) return;
-        logErrorForDev('WhatsAppInbox.loadConversationDetail', error);
-        setChatError(getErrorMessage(error, 'Failed to load conversation.'));
+        logWhatsFlowError('loadConversationDetail', error);
+        setChatError(formatWhatsFlowError(error, 'Failed to load conversation.'));
       } finally {
         if (!signal.aborted) {
           setChatLoading(false);
@@ -418,41 +409,45 @@ const WhatsAppInbox: React.FC = () => {
         if (!active) return;
 
         const signal = abortRef.current?.signal;
-        const [convPage, counts] = await Promise.all([
-          whatsappInboxApi.getConversations(
-            { page: 1, page_size: 20, filter: filterRef.current, search: searchRef.current },
-            signal,
-          ),
-          whatsappInboxApi.getCounts(signal),
-        ]);
+        const convPage = await whatsappInboxApi.getConversations(
+          { page: 1, page_size: 20, filter: filterRef.current, search: searchRef.current },
+          signal,
+        );
         if (!active) return;
 
         setConversations(convPage.results);
         setHasMoreConversations(Boolean(convPage.next));
         pageRef.current = 2;
-        setInboxCounts(counts);
+        setListError('');
         setLoading(false);
+
+        try {
+          const counts = await whatsappInboxApi.getCounts(signal);
+          if (!active) return;
+          setInboxCounts(counts);
+          setCountsWarning('');
+        } catch (countsError) {
+          if (!active || signal?.aborted) return;
+          logWhatsFlowError('bootstrap.counts', countsError);
+          setCountsWarning(formatWhatsFlowError(countsError, 'Failed to load inbox counts.'));
+        }
 
         if (!document.hidden) {
           await connectSocket();
         }
       } catch (error) {
         if (!active || abortRef.current?.signal.aborted) return;
-        logErrorForDev('WhatsAppInbox.bootstrap', error);
-        const msg = getErrorMessage(error, 'Failed to connect to WhatsApp.');
-        const missingApiKey =
-          !isWhatsAppApiKeyConfigured() ||
-          msg.toLowerCase().includes('api key') ||
-          msg.toLowerCase().includes('vite_whatsapp_api_key');
-        if (missingApiKey) {
-          setServiceUnavailable(true);
+        logWhatsFlowError('bootstrap', error);
+
+        if (!isWhatsAppApiKeyConfigured()) {
           setListError(
             'WhatsApp Embed API key is not configured.\n\nSet VITE_WHATSAPP_API_KEY on Vercel (Production), then redeploy the CRM.',
           );
+          setLoading(false);
           return;
         }
-        setServiceUnavailable(true);
-        setListError('WhatsApp service is temporarily unavailable.\n\nPlease try again later.');
+
+        setListError(formatWhatsFlowError(error, 'Failed to connect to WhatsApp.'));
         setLoading(false);
       }
     };
@@ -625,10 +620,10 @@ const WhatsAppInbox: React.FC = () => {
         </Button>
       </div>
 
-      {(serviceUnavailable || listError) && (
+      {(listError || countsWarning) && (
         <ErrorAlert
           title="WhatsApp Inbox"
-          message={listError || 'WhatsApp service is temporarily unavailable.\n\nPlease try again later.'}
+          message={[listError, countsWarning].filter(Boolean).join('\n\n')}
         />
       )}
 

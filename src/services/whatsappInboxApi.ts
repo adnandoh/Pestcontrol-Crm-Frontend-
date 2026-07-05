@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import type { AuthUser } from '../types';
-import { ApiError, createApiErrorFromAxios } from '../utils/errors';
+import { ApiError, createApiErrorFromAxios, isAxiosError } from '../utils/errors';
+import { logWhatsFlowError } from '../utils/whatsappInboxErrors';
 import { getUserRole } from '../utils/roles';
 
 const DEFAULT_API_BASE = 'https://api.driveronhire.ai';
@@ -433,15 +434,21 @@ class WhatsAppInboxApi {
       throw new ApiError('WhatsFlow refresh token missing.', 401);
     }
 
-    const response = await axios.post(
-      `${API_BASE}/api/v1/auth/refresh/`,
-      { refresh },
-      { headers: { 'Content-Type': 'application/json' } },
-    );
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/v1/auth/refresh/`,
+        { refresh },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
 
-    const tokens = parseRefreshTokens(response.data);
-    this.setTokens(tokens.access, tokens.refresh);
-    return tokens.access;
+      const tokens = parseRefreshTokens(response.data);
+      this.setTokens(tokens.access, tokens.refresh);
+      return tokens.access;
+    } catch (error) {
+      logWhatsFlowError('auth.refresh', error);
+      if (isAxiosError(error)) throw createApiErrorFromAxios(error);
+      throw error;
+    }
   }
 
   private async tryRefreshOrSso(): Promise<string> {
@@ -476,22 +483,28 @@ class WhatsAppInboxApi {
       throw new ApiError('CRM session not found. Please login again.', 401);
     }
 
-    const response = await axios.post(
-      `${API_BASE}/api/auth/sso-login/`,
-      {
-        api_key: WHATSAPP_API_KEY,
-        external_user: buildExternalUser(crmUser),
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/auth/sso-login/`,
+        {
+          api_key: WHATSAPP_API_KEY,
+          external_user: buildExternalUser(crmUser),
         },
-      },
-    );
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
-    const tokens = parseSsoTokens(response.data);
-    this.setTokens(tokens.access_token, tokens.refresh_token);
-    return tokens.access_token;
+      const tokens = parseSsoTokens(response.data);
+      this.setTokens(tokens.access_token, tokens.refresh_token);
+      return tokens.access_token;
+    } catch (error) {
+      logWhatsFlowError('auth.sso-login', error);
+      if (isAxiosError(error)) throw createApiErrorFromAxios(error);
+      throw error;
+    }
   }
 
   async ensureAuthenticated(): Promise<void> {
