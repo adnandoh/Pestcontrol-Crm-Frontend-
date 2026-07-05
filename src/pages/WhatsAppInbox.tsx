@@ -294,6 +294,8 @@ const WhatsAppInbox: React.FC = () => {
     [getAbortSignal],
   );
 
+  loadConversationsRef.current = loadConversations;
+
   const applyNewMessage = useCallback((message: InboxMessage) => {
     setConversationDetail((prev) => {
       if (!prev || prev.id !== message.conversation_id) return prev;
@@ -392,6 +394,11 @@ const WhatsAppInbox: React.FC = () => {
     [],
   );
 
+  const loadConversationsRef = useRef<(reset?: boolean) => Promise<void>>(async () => {});
+  const loadConversationDetailRef = useRef<(conversationId: string, before?: string) => Promise<void>>(
+    async () => {},
+  );
+
   const handleSocketEvent = useCallback(
     (event: InboxSocketEvent) => {
       if (event.type === 'new_message' && event.message) {
@@ -416,6 +423,15 @@ const WhatsAppInbox: React.FC = () => {
           clearTypingTimer();
           setTypingState('Typing…');
           typingTimerRef.current = window.setTimeout(() => setTypingState(''), 1500);
+        }
+        return;
+      }
+      if (event.type === 'conversation_updated') {
+        const convId = event.conversation_id;
+        if (convId && convId === selectedConversationIdRef.current) {
+          void loadConversationDetailRef.current(convId);
+        } else {
+          void loadConversationsRef.current(true);
         }
       }
     },
@@ -530,6 +546,8 @@ const WhatsAppInbox: React.FC = () => {
     },
     [getAbortSignal],
   );
+
+  loadConversationDetailRef.current = loadConversationDetail;
 
   const handleManualRefresh = useCallback(async () => {
     cancelPendingRequests();
@@ -651,6 +669,17 @@ const WhatsAppInbox: React.FC = () => {
     disconnectSocket,
     user?.id,
   ]);
+
+  useEffect(() => {
+    if (socketConnected || !selectedConversationId) return undefined;
+
+    const timer = window.setInterval(() => {
+      void loadConversationDetailRef.current(selectedConversationId);
+      void loadConversationsRef.current(true);
+    }, 20000);
+
+    return () => window.clearInterval(timer);
+  }, [socketConnected, selectedConversationId]);
 
   useEffect(() => {
     if (!conversationDetail || !messagesContainerRef.current || !initialMessagesScrollRef.current) return;

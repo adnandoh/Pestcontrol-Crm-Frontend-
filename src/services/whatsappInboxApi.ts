@@ -80,9 +80,13 @@ export interface InboxSocketEvent {
     | 'message_delivered'
     | 'message_read'
     | 'message_status_updated'
+    | 'conversation_updated'
     | 'typing'
     | 'presence';
   conversation_id?: string;
+  last_message?: string;
+  last_message_at?: string;
+  unread_count?: number;
   message?: InboxMessage;
   payload?: Record<string, unknown>;
 }
@@ -225,11 +229,12 @@ function mapConversationDetail(payload: unknown): ConversationDetail {
       id: String(item.id ?? ''),
       conversation_id: String(item.conversation_id ?? data.id ?? ''),
       direction: (item.direction as InboxMessage['direction']) ?? 'inbound',
-      message_type: (item.message_type as InboxMessage['message_type']) ?? 'text',
+      message_type: (item.message_type as InboxMessage['message_type']) ?? (item.type as InboxMessage['message_type']) ?? 'text',
       content: String(item.content ?? item.text ?? ''),
       media_url: item.media_url ? String(item.media_url) : undefined,
       created_at: String(item.created_at ?? ''),
       status: item.status as InboxMessage['status'] | undefined,
+      whatsapp_message_id: item.whatsapp_message_id ? String(item.whatsapp_message_id) : undefined,
       sender_name: item.sender_name ? String(item.sender_name) : undefined,
     };
   });
