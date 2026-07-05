@@ -20,7 +20,6 @@ import {
   isWhatsAppApiKeyConfigured,
   type ConversationDetail,
   type InboxConversation,
-  type InboxCounts,
   type InboxMessage,
   type InboxSocketEvent,
 } from '../services/whatsappInboxApi';
@@ -92,12 +91,10 @@ const WhatsAppInbox: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
-  const [countsWarning, setCountsWarning] = useState('');
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [search, setSearch] = useState('');
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
-  const [inboxCounts, setInboxCounts] = useState<InboxCounts | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversationDetail, setConversationDetail] = useState<ConversationDetail | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
@@ -133,7 +130,10 @@ const WhatsAppInbox: React.FC = () => {
     [conversations, selectedConversationId],
   );
 
-  const unreadTotal = inboxCounts?.unread ?? conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  const unreadTotal = useMemo(
+    () => conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0),
+    [conversations],
+  );
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -198,18 +198,6 @@ const WhatsAppInbox: React.FC = () => {
     },
     [getAbortSignal],
   );
-
-  const loadCounts = useCallback(async () => {
-    const signal = getAbortSignal();
-    try {
-      const counts = await whatsappInboxApi.getCounts(signal);
-      if (!signal.aborted) setInboxCounts(counts);
-    } catch (error) {
-      if (signal.aborted) return;
-      logWhatsFlowError('loadCounts', error);
-      setCountsWarning(formatWhatsFlowError(error, 'Failed to load inbox counts.'));
-    }
-  }, [getAbortSignal]);
 
   const applyNewMessage = useCallback((message: InboxMessage) => {
     setConversationDetail((prev) => {
@@ -431,8 +419,8 @@ const WhatsAppInbox: React.FC = () => {
 
   const handleManualRefresh = useCallback(async () => {
     cancelPendingRequests();
-    await Promise.all([loadConversations(true), loadCounts()]);
-  }, [cancelPendingRequests, loadConversations, loadCounts]);
+    await loadConversations(true);
+  }, [cancelPendingRequests, loadConversations]);
 
   const handleFilterChange = useCallback(
     (nextFilter: ConversationFilter) => {
@@ -487,17 +475,6 @@ const WhatsAppInbox: React.FC = () => {
         pageRef.current = 2;
         setListError('');
         setLoading(false);
-
-        try {
-          const counts = await whatsappInboxApi.getCounts(signal);
-          if (!active) return;
-          setInboxCounts(counts);
-          setCountsWarning('');
-        } catch (countsError) {
-          if (!active || signal?.aborted) return;
-          logWhatsFlowError('bootstrap.counts', countsError);
-          setCountsWarning(formatWhatsFlowError(countsError, 'Failed to load inbox counts.'));
-        }
 
         if (!document.hidden) {
           await connectSocket();
@@ -687,11 +664,8 @@ const WhatsAppInbox: React.FC = () => {
         </Button>
       </div>
 
-      {(listError || countsWarning) && (
-        <ErrorAlert
-          title="WhatsApp Inbox"
-          message={[listError, countsWarning].filter(Boolean).join('\n\n')}
-        />
+      {listError && (
+        <ErrorAlert title="WhatsApp Inbox" message={listError} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-0 min-h-0 flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">

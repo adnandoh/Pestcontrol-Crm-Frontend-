@@ -40,6 +40,26 @@ function firstMessageFromBody(data: Record<string, unknown>): string {
   return '';
 }
 
+function bodyToDisplayText(body: unknown): string {
+  if (body == null) return '';
+  if (typeof body === 'string') {
+    const trimmed = body.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('<!') || trimmed.toLowerCase().includes('<html')) {
+      return 'The requested API endpoint was not found on the server.';
+    }
+    return trimmed.length > 400 ? `${trimmed.slice(0, 400)}…` : trimmed;
+  }
+  if (typeof body === 'object') {
+    try {
+      return JSON.stringify(body, null, 2);
+    } catch {
+      return String(body);
+    }
+  }
+  return String(body);
+}
+
 export function extractWhatsFlowErrorPayload(error: unknown): ErrorPayload {
   if (isApiError(error)) {
     const body = error.details;
@@ -93,12 +113,8 @@ export function formatWhatsFlowError(error: unknown, fallback: string): string {
 
   if (payload.message) {
     lines.push(payload.message);
-  } else if (payload.body && typeof payload.body === 'object') {
-    try {
-      lines.push(JSON.stringify(payload.body, null, 2));
-    } catch {
-      lines.push(String(payload.body));
-    }
+  } else if (payload.body != null) {
+    lines.push(bodyToDisplayText(payload.body));
   }
 
   if (!lines.length) return fallback;

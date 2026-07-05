@@ -40,10 +40,18 @@ export function flattenValidationDetails(value: unknown, prefix = ''): string[] 
 }
 
 export function formatApiErrorMessage(
-  data: Record<string, unknown> | undefined,
+  data: Record<string, unknown> | string | undefined,
   fallback: string,
 ): string {
   if (!data) return fallback;
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (!trimmed) return fallback;
+    if (trimmed.startsWith('<!') || trimmed.toLowerCase().includes('<html')) {
+      return 'The requested API endpoint was not found on the server.';
+    }
+    return trimmed.length > 400 ? `${trimmed.slice(0, 400)}…` : trimmed;
+  }
   if (typeof data.detail === 'string' && data.detail) return data.detail;
   if (typeof data.message === 'string' && data.message) return data.message;
   const nestedDetails = data.details;

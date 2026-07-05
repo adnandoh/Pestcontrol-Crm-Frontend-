@@ -72,12 +72,6 @@ export interface ConversationPage {
   results: InboxConversation[];
 }
 
-export interface InboxCounts {
-  total: number;
-  unread: number;
-  assigned: number;
-}
-
 export interface InboxSocketEvent {
   type:
     | 'new_message'
@@ -200,15 +194,6 @@ function mapConversation(raw: Record<string, unknown>): InboxConversation {
     last_message_time: String(raw.last_message_time ?? ''),
     unread_count: Number(raw.unread_count ?? 0),
     assigned_to_me: typeof raw.assigned_to_me === 'boolean' ? raw.assigned_to_me : undefined,
-  };
-}
-
-function mapInboxCounts(payload: unknown): InboxCounts {
-  const data = unwrapWhatsFlowPayload<Record<string, unknown>>(payload);
-  return {
-    total: Number(data.total ?? data.all ?? 0),
-    unread: Number(data.unread ?? 0),
-    assigned: Number(data.assigned ?? 0),
   };
 }
 
@@ -545,14 +530,6 @@ class WhatsAppInboxApi {
         signal,
       });
       return mapConversationPage(res.data);
-    });
-  }
-
-  async getCounts(signal?: AbortSignal): Promise<InboxCounts> {
-    await this.ensureAuthenticated();
-    return this.withRetry(async () => {
-      const res = await this.client.get('/api/inbox/counts/', { signal });
-      return mapInboxCounts(res.data);
     });
   }
 
