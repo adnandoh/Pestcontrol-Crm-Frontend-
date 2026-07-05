@@ -17,6 +17,17 @@ function firstMessageFromBody(data: Record<string, unknown>): string {
     if (typeof inner.message === 'string' && inner.message.trim()) return inner.message.trim();
   }
 
+  const err = data.error;
+  if (err && typeof err === 'object') {
+    const errRecord = err as Record<string, unknown>;
+    const errMessage = errRecord.message;
+    if (typeof errMessage === 'string' && errMessage.trim()) return errMessage.trim();
+    if (Array.isArray(errMessage) && errMessage.length) {
+      const first = String(errMessage[0]).trim();
+      if (first) return `message: ${first}`;
+    }
+  }
+
   const messages = data.messages;
   if (Array.isArray(messages) && messages.length) {
     const parts = messages

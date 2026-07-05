@@ -54,6 +54,10 @@ export function formatApiErrorMessage(
   }
   if (typeof data.detail === 'string' && data.detail) return data.detail;
   if (typeof data.message === 'string' && data.message) return data.message;
+  if (data.error && typeof data.error === 'object') {
+    const parts = flattenValidationDetails(data.error);
+    if (parts.length) return parts.join('\n');
+  }
   const nestedDetails = data.details;
   if (nestedDetails) {
     const parts = flattenValidationDetails(nestedDetails);

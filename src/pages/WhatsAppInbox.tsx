@@ -107,7 +107,10 @@ const STATUS_RANK: Record<string, number> = {
   failed: 99,
 };
 
-function mergeMessageStatus(current?: string, incoming?: string): string | undefined {
+function mergeMessageStatus(
+  current?: InboxMessage['status'],
+  incoming?: InboxMessage['status'],
+): InboxMessage['status'] | undefined {
   if (!incoming) return current;
   if (!current) return incoming;
   if (incoming === 'failed') return 'failed';
@@ -690,7 +693,8 @@ const WhatsAppInbox: React.FC = () => {
       setSending(true);
       await whatsappInboxApi.sendText({
         conversation_id: selectedConversationId,
-        text,
+        message: text,
+        phone: selectedConversation?.phone || conversationDetail?.phone,
       });
     } catch (error) {
       notify.apiError(error, 'WhatsAppInbox.sendText', 'Failed to send message.');

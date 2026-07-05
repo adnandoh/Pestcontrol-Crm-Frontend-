@@ -89,7 +89,8 @@ export interface InboxSocketEvent {
 
 interface SendTextPayload {
   conversation_id: string;
-  text: string;
+  message: string;
+  phone?: string;
 }
 
 interface SendTemplatePayload {
@@ -552,8 +553,15 @@ class WhatsAppInboxApi {
 
   async sendText(payload: SendTextPayload): Promise<void> {
     await this.ensureAuthenticated();
+    const body: Record<string, string> = {
+      conversation_id: payload.conversation_id,
+      message: payload.message,
+    };
+    if (payload.phone?.trim()) {
+      body.phone = payload.phone.trim();
+    }
     await this.withRetry(async () => {
-      await this.client.post('/api/inbox/messages/send/', payload);
+      await this.client.post('/api/inbox/messages/send/', body);
     });
   }
 
