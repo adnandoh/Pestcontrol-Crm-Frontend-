@@ -16,9 +16,6 @@ import {
   Italic,
   Strikethrough,
   Zap,
-  ChevronDown,
-  Phone,
-  User,
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -101,6 +98,31 @@ const statusIcon = (status?: string) => {
   return <Circle className="h-3 w-3 text-gray-300" aria-hidden />;
 };
 
+const STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  sending: 1,
+  sent: 2,
+  delivered: 3,
+  read: 4,
+  failed: 99,
+};
+
+function mergeMessageStatus(current?: string, incoming?: string): string | undefined {
+  if (!incoming) return current;
+  if (!current) return incoming;
+  if (incoming === 'failed') return 'failed';
+  if (current === 'failed') return current;
+  return (STATUS_RANK[incoming] ?? 0) >= (STATUS_RANK[current] ?? 0) ? incoming : current;
+}
+
+function mergeMessageFields(existing: InboxMessage, incoming: InboxMessage): InboxMessage {
+  return {
+    ...existing,
+    ...incoming,
+    status: mergeMessageStatus(existing.status, incoming.status),
+  };
+}
+
 const getFileAccept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.mp3,.wav,.aac,.ogg';
 
 function bumpConversation(
@@ -162,8 +184,6 @@ const WhatsAppInbox: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [typingState, setTypingState] = useState('');
-  const [profileOpen, setProfileOpen] = useState(true);
-  const [detailsOpen, setDetailsOpen] = useState(true);
 
   const abortRef = useRef<AbortController | null>(null);
   const wsCleanupRef = useRef<(() => void) | null>(null);
@@ -188,11 +208,6 @@ const WhatsAppInbox: React.FC = () => {
   const selectedConversation = useMemo(
     () => conversations.find((c) => c.id === selectedConversationId) || null,
     [conversations, selectedConversationId],
-  );
-
-  const unreadTotal = useMemo(
-    () => conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0),
-    [conversations],
   );
 
   const filterCounts = useMemo(
@@ -302,7 +317,21 @@ const WhatsAppInbox: React.FC = () => {
         return {
           ...prev,
           messages: prev.messages.map((m) =>
-            m.id === message.id ? { ...m, status: message.status } : m,
+            m.id === message.id ? mergeMessageFields(m, message) : m,
+          ),
+        };
+      }
+
+      const byWaId =
+        message.whatsapp_message_id &&
+        prev.messages.find((m) => m.whatsapp_message_id === message.whatsapp_message_id);
+      if (byWaId) {
+        return {
+          ...prev,
+          messages: prev.messages.map((m) =>
+            m.whatsapp_message_id === message.whatsapp_message_id
+              ? mergeMessageFields(m, message)
+              : m,
           ),
         };
       }
@@ -311,11 +340,12 @@ const WhatsAppInbox: React.FC = () => {
         (m) =>
           m.id.startsWith('local-') &&
           m.direction === 'outbound' &&
+          message.content &&
           m.content === message.content,
       );
       if (localIdx >= 0) {
         const messages = [...prev.messages];
-        messages[localIdx] = { ...messages[localIdx], ...message };
+        messages[localIdx] = mergeMessageFields(messages[localIdx], message);
         return { ...prev, messages };
       }
 
@@ -332,7 +362,9 @@ const WhatsAppInbox: React.FC = () => {
         if (byId) {
           return {
             ...prev,
-            messages: prev.messages.map((m) => (m.id === message.id ? { ...m, ...message } : m)),
+            messages: prev.messages.map((m) =>
+              m.id === message.id ? mergeMessageFields(m, message) : m,
+            ),
           };
         }
 
@@ -344,7 +376,7 @@ const WhatsAppInbox: React.FC = () => {
         );
         if (localIdx >= 0) {
           const messages = [...prev.messages];
-          messages[localIdx] = message;
+          messages[localIdx] = mergeMessageFields(messages[localIdx], message);
           return { ...prev, messages };
         }
 
@@ -368,7 +400,9 @@ const WhatsAppInbox: React.FC = () => {
         return;
       }
       if (
-        (event.type === 'message_delivered' || event.type === 'message_read') &&
+        (event.type === 'message_delivered' ||
+          event.type === 'message_read' ||
+          event.type === 'message_status_updated') &&
         event.message
       ) {
         applyMessageStatus(event.message);
@@ -1002,95 +1036,6 @@ const WhatsAppInbox: React.FC = () => {
               </div>
             </>
           )}
-        </section>
-
-        {/* Right — chat profile */}
-        <section className="hidden xl:flex w-[300px] border-l border-gray-200 bg-white flex-col min-h-0 shrink-0">
-          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900">Chat Profile</h2>
-            <button
-              type="button"
-              onClick={() => setProfileOpen((v) => !v)}
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${profileOpen ? '' : '-rotate-90'}`} />
-            </button>
-          </div>
-
-          {profileOpen ? (
-            selectedConversation ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-6 text-center border-b border-gray-100">
-                  <div className="flex justify-center mb-3">
-                    <AvatarBadge name={selectedConversation.customer_name || '?'} size="lg" />
-                  </div>
-                  <p className="font-bold text-gray-900 uppercase tracking-wide">
-                    {selectedConversation.customer_name}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1 flex items-center justify-center gap-1">
-                    <Phone className="h-3.5 w-3.5" />
-                    {selectedConversation.phone || '—'}
-                  </p>
-                </div>
-
-                <div className="p-4 space-y-0 text-sm">
-                  {[
-                    ['Status', socketConnected ? 'Active' : 'Offline'],
-                    ['Unread', String(selectedConversation.unread_count || 0)],
-                    [
-                      'Last message',
-                      selectedConversation.last_message_time
-                        ? dayjs(selectedConversation.last_message_time).format('DD/MM/YYYY, HH:mm')
-                        : '—',
-                    ],
-                    ['Assigned to me', selectedConversation.assigned_to_me ? 'Yes' : 'No'],
-                    ['Messages in chat', String(conversationDetail?.messages.length ?? '—')],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
-                    >
-                      <span className="text-gray-500">{label}</span>
-                      <span className="font-medium text-gray-900 text-right max-w-[55%] truncate">{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => setDetailsOpen((v) => !v)}
-                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-gray-800 hover:bg-gray-50"
-                  >
-                    <span className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Conversation details
-                    </span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {detailsOpen ? (
-                    <div className="px-4 pb-4 text-xs text-gray-600 space-y-2">
-                      <p className="break-all">
-                        <span className="font-semibold text-gray-700">ID:</span> {selectedConversation.id}
-                      </p>
-                      {conversationDetail?.has_older_messages ? (
-                        <p className="text-amber-700">Scroll up in chat to load older messages.</p>
-                      ) : null}
-                      {unreadTotal > 0 ? (
-                        <p>{unreadTotal} unread across all conversations.</p>
-                      ) : (
-                        <p>All caught up — no unread messages.</p>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center p-6 text-sm text-gray-500 text-center">
-                Select a conversation to view customer profile
-              </div>
-            )
-          ) : null}
         </section>
       </div>
     </div>

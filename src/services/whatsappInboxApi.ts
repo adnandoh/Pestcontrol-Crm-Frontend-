@@ -53,7 +53,8 @@ export interface InboxMessage {
   content: string;
   media_url?: string;
   created_at: string;
-  status?: 'sent' | 'delivered' | 'read' | 'failed';
+  status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+  whatsapp_message_id?: string;
   sender_name?: string;
 }
 
@@ -78,6 +79,7 @@ export interface InboxSocketEvent {
     | 'message_sent'
     | 'message_delivered'
     | 'message_read'
+    | 'message_status_updated'
     | 'typing'
     | 'presence';
   conversation_id?: string;
