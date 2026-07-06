@@ -43,6 +43,18 @@ type ConversationFilter = 'all' | 'unread' | 'assigned';
 const EMOJIS = ['🙂', '👍', '🙏', '✅', '📍', '📞'];
 const SEARCH_DEBOUNCE_MS = 500;
 
+/** WhatsApp Web palette — one neutral dark + one teal accent */
+const WA = {
+  panel: '#202c33',
+  primary: '#00a884',
+  primaryHover: '#008f72',
+  chatBg: '#efeae2',
+  activeBg: '#f0f2f5',
+} as const;
+
+const CHAT_WALLPAPER =
+  'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23d4cdc4\' fill-opacity=\'0.35\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")';
+
 const AVATAR_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#EAB308', '#14B8A6', '#6366F1'];
 
 function getInitials(name: string): string {
@@ -83,7 +95,7 @@ function AvatarBadge({
         {getInitials(name)}
       </div>
       {unread && unread > 0 ? (
-        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#1B4332] text-white text-[10px] flex items-center justify-center font-bold border-2 border-white">
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] flex items-center justify-center font-bold border-2 border-white" style={{ backgroundColor: WA.primary }}>
           {unread > 9 ? '9+' : unread}
         </span>
       ) : null}
@@ -261,6 +273,8 @@ const WhatsAppInbox: React.FC = () => {
     return abortRef.current.signal;
   }, []);
 
+  const loadConversationsRef = useRef<(reset?: boolean) => Promise<void>>(async () => {});
+
   const loadConversations = useCallback(
     async (reset = false) => {
       const signal = getAbortSignal();
@@ -394,7 +408,6 @@ const WhatsAppInbox: React.FC = () => {
     [],
   );
 
-  const loadConversationsRef = useRef<(reset?: boolean) => Promise<void>>(async () => {});
   const loadConversationDetailRef = useRef<(conversationId: string, before?: string) => Promise<void>>(
     async () => {},
   );
@@ -808,7 +821,7 @@ const WhatsAppInbox: React.FC = () => {
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search name or mobile number"
-            className="w-full h-10 pl-9 pr-10 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
+            className="w-full h-10 pl-9 pr-10 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/25"
           />
           <SlidersHorizontal className="h-4 w-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
         </div>
@@ -852,7 +865,7 @@ const WhatsAppInbox: React.FC = () => {
                 onClick={() => handleFilterChange(f)}
                 className={`flex-1 py-3 text-[11px] font-bold tracking-wide border-b-2 transition-colors ${
                   filter === f
-                    ? 'border-[#1B4332] text-[#1B4332] bg-white'
+                    ? 'border-[#00a884] text-[#00a884] bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -873,7 +886,7 @@ const WhatsAppInbox: React.FC = () => {
                     type="button"
                     onClick={() => void onSelectConversation(conv)}
                     className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-[#f8faf9] transition-colors ${
-                      active ? 'bg-[#edf5f0] border-l-[3px] border-l-[#1B4332]' : 'border-l-[3px] border-l-transparent'
+                      active ? 'bg-[#f0f2f5] border-l-[3px] border-l-[#00a884]' : 'border-l-[3px] border-l-transparent'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -907,7 +920,7 @@ const WhatsAppInbox: React.FC = () => {
         </section>
 
         {/* Center — chat */}
-        <section className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#e5ddd5]">
+        <section className="flex-1 flex flex-col min-h-0 min-w-0" style={{ backgroundColor: WA.chatBg }}>
           {!selectedConversationId ? (
             <div className="flex-1 flex items-center justify-center text-gray-500 bg-[#f0f2f5]">
               <div className="text-center">
@@ -918,7 +931,7 @@ const WhatsAppInbox: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="px-5 py-3 bg-[#1B4332] text-white flex items-center justify-between gap-3 shrink-0">
+              <div className="px-5 py-3 text-white flex items-center justify-between gap-3 shrink-0" style={{ backgroundColor: WA.panel }}>
                 <div className="min-w-0">
                   <p className="font-bold text-sm truncate uppercase tracking-wide">
                     {selectedConversation?.customer_name}
@@ -935,7 +948,7 @@ const WhatsAppInbox: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                   <span
                     className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
-                      socketConnected ? 'bg-emerald-500/20 text-emerald-100' : 'bg-amber-500/20 text-amber-100'
+                      socketConnected ? 'bg-[#00a884]/25 text-[#d9fdd3]' : 'bg-amber-500/20 text-amber-100'
                     }`}
                   >
                     {socketConnected ? 'LIVE' : 'OFFLINE'}
@@ -948,9 +961,8 @@ const WhatsAppInbox: React.FC = () => {
                 onScroll={handleMessagesScroll}
                 className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
                 style={{
-                  backgroundColor: '#e5ddd5',
-                  backgroundImage:
-                    'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23d4cdc4\' fill-opacity=\'0.35\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+                  backgroundColor: WA.chatBg,
+                  backgroundImage: CHAT_WALLPAPER,
                 }}
               >
                 {chatLoading ? (
@@ -1054,13 +1066,14 @@ const WhatsAppInbox: React.FC = () => {
                       }
                     }}
                     placeholder="Type a message…"
-                    className="flex-1 min-h-[44px] max-h-32 resize-none px-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
+                    className="flex-1 min-h-[44px] max-h-32 resize-none px-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/25"
                   />
                   <button
                     type="button"
                     onClick={() => void handleSendText()}
                     disabled={!composerText.trim() || sending}
-                    className="h-11 px-5 rounded-lg bg-[#1B4332] hover:bg-[#153728] disabled:opacity-50 text-white font-semibold text-sm flex items-center gap-2 shrink-0"
+                    className="h-11 px-5 rounded-lg disabled:opacity-50 text-white font-semibold text-sm flex items-center gap-2 shrink-0 transition-colors hover:opacity-95"
+                    style={{ backgroundColor: WA.primary }}
                   >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     Send

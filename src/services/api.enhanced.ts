@@ -62,11 +62,6 @@ import type {
   PendingPaymentStats,
   PendingPaymentFilters,
   CollectPaymentPayload,
-  StaffTrackingLive,
-  StaffTrackingProfile,
-  StaffTrackingAttendance,
-  StaffTrackingHistory,
-  StaffTrackingDistanceRow, FieldVisit, StaffTask, LeaveApplication, ExpenseClaim,
 } from '../types';
 import { isSocietyBooking } from '../constants/bookingPropertyTypes';
 import {
@@ -1397,123 +1392,6 @@ class EnhancedApiService {
       params: { period }
     });
     return response.data;
-  }
-
-  // Staff Tracking
-  async getStaffTrackingLive(params?: { city?: string }): Promise<StaffTrackingLive[]> {
-    const cacheKey = apiCache.generateKey(API_ENDPOINTS.STAFF_TRACKING.LIVE, params);
-    return this.cachedRequest(
-      cacheKey,
-      () => this.retryRequest(() =>
-        this.makeRequest(cacheKey, () =>
-          this.api.get<StaffTrackingLive[]>(API_ENDPOINTS.STAFF_TRACKING.LIVE, { params }),
-        ),
-      ),
-      30 * 1000,
-    );
-  }
-
-  async getStaffTrackingProfiles(params?: { city?: string }): Promise<StaffTrackingProfile[]> {
-    const cacheKey = apiCache.generateKey(API_ENDPOINTS.STAFF_TRACKING.STAFF, params);
-    return this.cachedRequest(
-      cacheKey,
-      () => this.retryRequest(() =>
-        this.makeRequest(cacheKey, () =>
-          this.api.get<StaffTrackingProfile[]>(API_ENDPOINTS.STAFF_TRACKING.STAFF, { params }),
-        ),
-      ),
-      2 * 60 * 1000,
-    );
-  }
-
-  async getStaffTrackingAttendanceToday(): Promise<StaffTrackingAttendance[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<StaffTrackingAttendance[]>(API_ENDPOINTS.STAFF_TRACKING.ATTENDANCE_TODAY),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingAttendanceReport(params?: {
-    from?: string;
-    to?: string;
-    page_size?: number;
-  }): Promise<StaffTrackingAttendance[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<StaffTrackingAttendance[]>(API_ENDPOINTS.STAFF_TRACKING.ATTENDANCE_REPORT, { params }),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingHistory(
-    technicianId: number,
-    date?: string,
-  ): Promise<StaffTrackingHistory> {
-    const result = await this.retryRequest(() =>
-      this.api.get<StaffTrackingHistory>(
-        API_ENDPOINTS.STAFF_TRACKING.LOCATION_HISTORY(technicianId),
-        { params: date ? { date } : undefined },
-      ),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingDistance(date?: string): Promise<StaffTrackingDistanceRow[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<StaffTrackingDistanceRow[]>(API_ENDPOINTS.STAFF_TRACKING.DISTANCE, {
-        params: date ? { date } : undefined,
-      }),
-    );
-    return result.data;
-  }
-
-
-  async getStaffTrackingVisits(params?: { status?: string; date?: string; profile_id?: number }): Promise<FieldVisit[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<FieldVisit[]>(API_ENDPOINTS.STAFF_TRACKING.VISITS, { params }),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingTasks(params?: { status?: string; assigned_to?: number }): Promise<StaffTask[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<StaffTask[]>(API_ENDPOINTS.STAFF_TRACKING.TASKS, { params }),
-    );
-    return result.data;
-  }
-
-  async createStaffTrackingTask(body: Partial<StaffTask>): Promise<StaffTask> {
-    const result = await this.retryRequest(() =>
-      this.api.post<StaffTask>(API_ENDPOINTS.STAFF_TRACKING.TASKS, body),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingLeaveApplications(params?: { status?: string }): Promise<LeaveApplication[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<LeaveApplication[]>(API_ENDPOINTS.STAFF_TRACKING.LEAVE_APPLICATIONS, { params }),
-    );
-    return result.data;
-  }
-
-  async reviewStaffTrackingLeave(id: number, body: { approved: boolean; comment?: string }): Promise<LeaveApplication> {
-    const result = await this.retryRequest(() =>
-      this.api.patch<LeaveApplication>(API_ENDPOINTS.STAFF_TRACKING.LEAVE_REVIEW(id), body),
-    );
-    return result.data;
-  }
-
-  async getStaffTrackingExpenses(params?: { status?: string }): Promise<ExpenseClaim[]> {
-    const result = await this.retryRequest(() =>
-      this.api.get<ExpenseClaim[]>(API_ENDPOINTS.STAFF_TRACKING.EXPENSES, { params }),
-    );
-    return result.data;
-  }
-
-  async reviewStaffTrackingExpense(id: number, body: { approved: boolean; comment?: string }): Promise<ExpenseClaim> {
-    const result = await this.retryRequest(() =>
-      this.api.patch<ExpenseClaim>(API_ENDPOINTS.STAFF_TRACKING.EXPENSE_REVIEW(id), body),
-    );
-    return result.data;
   }
 
   // Feedback methods

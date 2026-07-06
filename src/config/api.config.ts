@@ -91,21 +91,6 @@ export const API_ENDPOINTS = {
     TAG_DETAIL: (id: number) => `/blogs/tags/${id}/`,
   },
 
-  STAFF_TRACKING: {
-    LIVE: '/staff-tracking/live/',
-    STAFF: '/staff-tracking/staff/',
-    ATTENDANCE_TODAY: '/staff-tracking/attendance/today/',
-    ATTENDANCE_REPORT: '/staff-tracking/attendance/report/',
-    LOCATION_HISTORY: (technicianId: number) => `/staff-tracking/location/history/${technicianId}/`,
-    DISTANCE: '/staff-tracking/location/distance/',
-    SETTINGS: '/staff-tracking/settings/',
-    VISITS: '/staff-tracking/visits/',
-    TASKS: '/staff-tracking/tasks/',
-    LEAVE_APPLICATIONS: '/staff-tracking/leave/applications/',
-    LEAVE_REVIEW: (id: number) => `/staff-tracking/leave/applications/${id}/review/`,
-    EXPENSES: '/staff-tracking/expenses/',
-    EXPENSE_REVIEW: (id: number) => `/staff-tracking/expenses/${id}/review/`,
-  },
 } as const;
 
 // Cache Keys
@@ -124,8 +109,6 @@ export const CACHE_KEYS = {
   QUOTATIONS: 'quotations',
   PRICING_RATES: 'pricing_rates',
   PRICING_REGIONS: 'pricing_regions',
-  STAFF_TRACKING_LIVE: 'staff_tracking_live',
-  STAFF_TRACKING_STAFF: 'staff_tracking_staff',
 } as const;
 
 // Request timeout configurations for different operations
