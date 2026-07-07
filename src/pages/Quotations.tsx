@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -17,26 +17,36 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { enhancedApiService } from '../services/api.enhanced';
-import { Button } from '../components/ui/Button';
+import { Button, Pagination } from '../components/ui';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
 import { getQuotationDisplayName } from '../constants/quotation';
 import { showAlert } from '../utils/notify';
 
+const PAGE_SIZE = 10;
+
 const Quotations: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<QuotationFilters>({
     search: '',
     status: '',
     ordering: '-created_at'
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [filters.search, filters.status, filters.ordering]);
+
   const { data: quotationsData, isLoading, refetch } = useQuery({
-    queryKey: ['quotations', filters],
-    queryFn: () => enhancedApiService.getQuotations(filters),
+    queryKey: ['quotations', filters, page, PAGE_SIZE],
+    queryFn: () => enhancedApiService.getQuotations({ ...filters, page, page_size: PAGE_SIZE }),
   });
+
+  const totalCount = quotationsData?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const { data: stats } = useQuery({
     queryKey: ['quotation-stats'],
@@ -293,6 +303,22 @@ const Quotations: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {totalCount > 0 ? (
+          <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} quotations
+            </span>
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={totalCount}
+              itemsPerPage={PAGE_SIZE}
+              onPageChange={setPage}
+              showGoToPage={totalPages > 1}
+            />
+          </div>
+        ) : null}
       </Card>
     </div>
   );
