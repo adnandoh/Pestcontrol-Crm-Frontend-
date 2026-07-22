@@ -11,6 +11,7 @@ import {
 } from '../../config/whatsappEcard';
 import {
   isWhatsAppApiKeyConfigured,
+  whatsAppApiKeySetupMessage,
   whatsappInboxApi,
 } from '../../services/whatsappInboxApi';
 import { getErrorMessage } from '../../utils/errors';
@@ -45,7 +46,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
     setError(null);
 
     if (!isWhatsAppApiKeyConfigured()) {
-      setError('WhatsApp API key is not configured. Set VITE_WHATSAPP_API_KEY and restart the CRM.');
+      setError(whatsAppApiKeySetupMessage());
       return;
     }
 

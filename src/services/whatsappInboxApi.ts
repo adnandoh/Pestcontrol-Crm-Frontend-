@@ -30,6 +30,10 @@ export function isWhatsAppApiKeyConfigured(): boolean {
   return WHATSAPP_API_KEY.length > 0;
 }
 
+export function whatsAppApiKeySetupMessage(): string {
+  return 'WhatsApp API key is not configured for this CRM deployment. Set VITE_WHATSAPP_API_KEY in Vercel (Project → Settings → Environment Variables) for Production, then redeploy.';
+}
+
 const ACCESS_KEY = 'whatsflow_access_token';
 const REFRESH_KEY = 'whatsflow_refresh_token';
 
@@ -189,6 +193,20 @@ function isAuthTokenError(error: AxiosError): boolean {
     return true;
   }
 
+  const nested = record.error;
+  if (nested && typeof nested === 'object') {
+    const err = nested as Record<string, unknown>;
+    if (err.code === 'token_not_valid') return true;
+    const nestedDetail = String(err.detail ?? '').toLowerCase();
+    if (
+      nestedDetail.includes('token') ||
+      nestedDetail.includes('expired') ||
+      nestedDetail.includes('not valid')
+    ) {
+      return true;
+    }
+  }
+
   const messages = record.messages;
   if (Array.isArray(messages)) {
     return messages.some((item) => {
@@ -199,6 +217,29 @@ function isAuthTokenError(error: AxiosError): boolean {
   }
 
   return status === 401;
+}
+
+function assertWhatsAppApiKey(): void {
+  if (!WHATSAPP_API_KEY) {
+    throw new ApiError(whatsAppApiKeySetupMessage(), 500);
+  }
+}
+
+function throwWhatsFlowSsoError(error: AxiosError): never {
+  const data = error.response?.data;
+  const message =
+    data && typeof data === 'object'
+      ? String((data as Record<string, unknown>).message ?? '')
+      : '';
+  if (message.toLowerCase().includes('api_key') || message.toLowerCase().includes('embed_token')) {
+    throw new ApiError(
+      WHATSAPP_API_KEY
+        ? 'WhatsFlow rejected the WhatsApp API key. Verify VITE_WHATSAPP_API_KEY in Vercel and redeploy the CRM.'
+        : whatsAppApiKeySetupMessage(),
+      error.response?.status ?? 400,
+    );
+  }
+  throw createApiErrorFromAxios(error);
 }
 
 function mapConversation(raw: Record<string, unknown>): InboxConversation {
@@ -461,7 +502,8 @@ class WhatsAppInboxApi {
         try {
           return await this.refreshAccessToken();
         } catch {
-          // Refresh failed — fall through to SSO.
+          // Expired/invalid refresh token — discard before SSO retry.
+          clearWhatsAppInboxTokens();
         }
       }
       return this.ssoLogin();
@@ -473,12 +515,7 @@ class WhatsAppInboxApi {
   }
 
   async ssoLogin(): Promise<string> {
-    if (!WHATSAPP_API_KEY) {
-      throw new ApiError(
-        'WhatsApp API key is not configured. Set VITE_WHATSAPP_API_KEY in your environment.',
-        500,
-      );
-    }
+    assertWhatsAppApiKey();
 
     const crmUser = readCrmUserFromStorage();
     if (!crmUser) {
@@ -505,12 +542,14 @@ class WhatsAppInboxApi {
       return tokens.access_token;
     } catch (error) {
       logWhatsFlowError('auth.sso-login', error);
-      if (isAxiosError(error)) throw createApiErrorFromAxios(error);
+      if (isAxiosError(error)) throwWhatsFlowSsoError(error);
       throw error;
     }
   }
 
   async ensureAuthenticated(): Promise<void> {
+    assertWhatsAppApiKey();
+
     const access = this.getAccessToken();
     const refresh = this.getRefreshToken();
 
