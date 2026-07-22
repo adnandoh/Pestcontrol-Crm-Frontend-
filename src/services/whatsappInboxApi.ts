@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import type { AuthUser } from '../types';
+import { WHATSAPP_ORG_ID } from '../config/whatsappEcard';
 import { ApiError, createApiErrorFromAxios, isAxiosError } from '../utils/errors';
 import { logWhatsFlowError } from '../utils/whatsappInboxErrors';
 import { getUserRole } from '../utils/roles';
@@ -101,6 +102,14 @@ interface SendTemplatePayload {
   conversation_id: string;
   template_id: string;
   variables?: Record<string, string>;
+}
+
+/** Embed API: send by phone + Meta template name (no conversation required). */
+export interface SendTemplateByPhonePayload {
+  phone: string;
+  template_name: string;
+  language?: string;
+  body_params?: string[];
 }
 
 interface SsoLoginResponse {
@@ -481,6 +490,7 @@ class WhatsAppInboxApi {
         `${API_BASE}/api/auth/sso-login/`,
         {
           api_key: WHATSAPP_API_KEY,
+          organization_id: WHATSAPP_ORG_ID,
           external_user: buildExternalUser(crmUser),
         },
         {
@@ -574,6 +584,23 @@ class WhatsAppInboxApi {
     await this.ensureAuthenticated();
     await this.withRetry(async () => {
       await this.client.post('/api/inbox/messages/template/', payload);
+    });
+  }
+
+  /**
+   * Send an approved Meta template to a phone number (e-card / business details).
+   * Uses Embed API: POST /api/inbox/messages/template/
+   */
+  async sendTemplateByPhone(payload: SendTemplateByPhonePayload): Promise<Record<string, unknown>> {
+    await this.ensureAuthenticated();
+    return this.withRetry(async () => {
+      const res = await this.client.post('/api/inbox/messages/template/', {
+        phone: payload.phone.replace(/\D/g, ''),
+        template_name: payload.template_name,
+        language: payload.language ?? 'en_US',
+        body_params: payload.body_params ?? [],
+      });
+      return unwrapWhatsFlowPayload<Record<string, unknown>>(res.data);
     });
   }
 

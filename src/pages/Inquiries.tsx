@@ -5,6 +5,7 @@ import {
   Search,
   Bell,
   CheckCheck,
+  IdCard,
 } from 'lucide-react';
 import {
   LocationCell,
@@ -20,6 +21,7 @@ import { cn } from '../utils/cn';
 import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
+import SendECardModal from '../components/crm/SendECardModal';
 import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
 import {
   dateFilterToApiParams,
@@ -74,7 +76,9 @@ const Inquiries: React.FC = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [searchInput, setSearchInput] = useState('');
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showECardModal, setShowECardModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
+  const [eCardTarget, setECardTarget] = useState<{ name: string; mobile: string } | null>(null);
 
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
@@ -509,6 +513,17 @@ const Inquiries: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
+                        title="Send E-Card"
+                        onClick={() => {
+                          setECardTarget({ name: inquiry.name, mobile: inquiry.mobile });
+                          setShowECardModal(true);
+                        }}
+                        className="inline-flex items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
+                      >
+                        <IdCard className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         title="Set reminder"
                         onClick={() => {
                           setSelectedInquiry({
@@ -569,6 +584,15 @@ const Inquiries: React.FC = () => {
         onClose={() => setShowReminderModal(false)}
         onSuccess={() => loadInquiries(pagination.current)}
         inquiryData={selectedInquiry}
+      />
+
+      <SendECardModal
+        open={showECardModal}
+        onOpenChange={(open) => {
+          setShowECardModal(open);
+          if (!open) setECardTarget(null);
+        }}
+        initial={eCardTarget}
       />
     </div>
   );

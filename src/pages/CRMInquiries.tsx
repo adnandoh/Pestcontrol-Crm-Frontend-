@@ -7,6 +7,7 @@ import {
   Bell,
   CheckCircle,
   CheckCheck,
+  IdCard,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
@@ -17,6 +18,7 @@ import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus, InquiryStatusCounts } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import ReminderModal from '../components/crm/ReminderModal';
+import SendECardModal from '../components/crm/SendECardModal';
 import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
 import {
   dateFilterToApiParams,
@@ -73,7 +75,9 @@ const CRMInquiries: React.FC = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showECardModal, setShowECardModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
+  const [eCardTarget, setECardTarget] = useState<{ name: string; mobile: string } | null>(null);
 
   const loadInquiries = useCallback(async (page = 1, opts?: { focus?: string; dateFilter?: InquiryDateFilterState }) => {
     try {
@@ -424,6 +428,17 @@ const CRMInquiries: React.FC = () => {
                   </td>
                   <td className={crmTdClass}>
                     <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setECardTarget({ name: inq.name, mobile: inq.mobile });
+                          setShowECardModal(true);
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700"
+                      >
+                        <IdCard className="h-3 w-3" />
+                        E-Card
+                      </button>
                       {!inq.is_read && (
                         <button
                           type="button"
@@ -497,7 +512,14 @@ const CRMInquiries: React.FC = () => {
         inquiryData={selectedInquiry}
       />
 
-
+      <SendECardModal
+        open={showECardModal}
+        onOpenChange={(open) => {
+          setShowECardModal(open);
+          if (!open) setECardTarget(null);
+        }}
+        initial={eCardTarget}
+      />
     </div>
   );
 };
