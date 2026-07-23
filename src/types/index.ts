@@ -63,6 +63,29 @@ export interface InquiryRemarkEntry {
   updated_at: string;
   inquiry?: number;
   lead?: number;
+  client?: number;
+}
+
+/** BookingClientReport snapshot row (name + mobile + remarks). */
+export interface BookingReportClient {
+  id: number;
+  name: string;
+  mobile: string;
+  remarks_count: number;
+  latest_remark?: LatestRemarkSummary | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BookingReportClientFilters {
+  name?: string;
+  mobile?: string;
+  number?: string;
+  search?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
 }
 
 export interface ServiceRateInfo {

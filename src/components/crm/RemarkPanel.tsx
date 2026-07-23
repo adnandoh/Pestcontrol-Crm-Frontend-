@@ -7,7 +7,7 @@ import { Modal } from '../ui/Modal';
 import type { InquiryRemarkEntry, LatestRemarkSummary, PaginatedResponse } from '../../types';
 import { showAlert } from '../../utils/notify';
 
-export type RemarkSourceType = 'crm' | 'website';
+export type RemarkSourceType = 'crm' | 'website' | 'booking_report';
 
 interface RemarkPanelProps {
   sourceType: RemarkSourceType;
@@ -62,10 +62,17 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res: PaginatedResponse<InquiryRemarkEntry> =
-        sourceType === 'crm'
-          ? await enhancedApiService.getCRMInquiryRemarks(entityId, { page: 1, page_size: 20 })
-          : await enhancedApiService.getWebsiteLeadRemarks(entityId, { page: 1, page_size: 20 });
+      let res: PaginatedResponse<InquiryRemarkEntry>;
+      if (sourceType === 'crm') {
+        res = await enhancedApiService.getCRMInquiryRemarks(entityId, { page: 1, page_size: 20 });
+      } else if (sourceType === 'website') {
+        res = await enhancedApiService.getWebsiteLeadRemarks(entityId, { page: 1, page_size: 20 });
+      } else {
+        res = await enhancedApiService.getBookingReportClientRemarks(entityId, {
+          page: 1,
+          page_size: 20,
+        });
+      }
       setHistory(res.results);
       setHistoryTotal(res.count);
     } catch (e) {
@@ -85,10 +92,14 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
     if (!text) return;
     setSaving(true);
     try {
-      const entry =
-        sourceType === 'crm'
-          ? await enhancedApiService.createCRMInquiryRemark(entityId, { remark: text })
-          : await enhancedApiService.createWebsiteLeadRemark(entityId, { remark: text });
+      let entry: InquiryRemarkEntry;
+      if (sourceType === 'crm') {
+        entry = await enhancedApiService.createCRMInquiryRemark(entityId, { remark: text });
+      } else if (sourceType === 'website') {
+        entry = await enhancedApiService.createWebsiteLeadRemark(entityId, { remark: text });
+      } else {
+        entry = await enhancedApiService.createBookingReportClientRemark(entityId, { remark: text });
+      }
       const newCount = count + 1;
       setHistoryTotal(newCount);
       setDraft('');

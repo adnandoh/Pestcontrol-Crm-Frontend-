@@ -53,6 +53,8 @@ import type {
   QuotationFilters,
   PartnerJobSelfie,
   InquiryRemarkEntry,
+  BookingReportClient,
+  BookingReportClientFilters,
   PricingRegion,
   PricingRate,
   PricingRateFormData,
@@ -628,6 +630,44 @@ class EnhancedApiService {
       ),
     );
     apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    return result.data;
+  }
+
+  async getBookingReportClients(
+    params?: BookingReportClientFilters,
+  ): Promise<PaginatedResponse<BookingReportClient>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<BookingReportClient>>(API_ENDPOINTS.BOOKING_REPORT_CLIENTS, {
+        params,
+      }),
+    );
+    return result.data;
+  }
+
+  async getBookingReportClientRemarks(
+    clientId: number,
+    params?: { page?: number; page_size?: number },
+  ): Promise<PaginatedResponse<InquiryRemarkEntry>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<InquiryRemarkEntry>>(
+        `${API_ENDPOINTS.BOOKING_REPORT_CLIENTS}${clientId}/remarks/`,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async createBookingReportClientRemark(
+    clientId: number,
+    data: { remark: string },
+  ): Promise<InquiryRemarkEntry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<InquiryRemarkEntry>(
+        `${API_ENDPOINTS.BOOKING_REPORT_CLIENTS}${clientId}/remarks/`,
+        { remark: data.remark },
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.BOOKING_REPORT_CLIENTS);
     return result.data;
   }
 

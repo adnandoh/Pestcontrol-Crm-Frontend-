@@ -57,6 +57,7 @@ export const API_ENDPOINTS = {
   PARTNER_REFERRALS: '/v1/partner-referrals/',
   PARTNER_APP_VERSION: '/v1/partner-app-version/',
   WEBSITE_LEADS: '/v1/website-leads/',
+  BOOKING_REPORT_CLIENTS: '/v1/booking-report-clients/',
   
   // Dashboard
   DASHBOARD_STATS: '/v1/dashboard/statistics/',
@@ -102,6 +103,7 @@ export const CACHE_KEYS = {
   DASHBOARD_STATS: 'dashboard_stats',
   TECHNICIANS: 'technicians',
   CRM_INQUIRIES: 'crm_inquiries',
+  BOOKING_REPORT_CLIENTS: 'booking_report_clients',
   PARTNER_REFERRALS: 'partner_referrals',
   FEEDBACKS: 'feedbacks',
   REMINDERS: 'reminders',
