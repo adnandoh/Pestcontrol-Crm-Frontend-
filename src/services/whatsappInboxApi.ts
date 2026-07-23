@@ -19,7 +19,11 @@ const WS_BASE = (
   API_BASE.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:')
 ).replace(/\/$/, '');
 
-const WHATSAPP_API_KEY = (import.meta.env.VITE_WHATSAPP_API_KEY || '').trim();
+const WHATSAPP_API_KEY = (
+  import.meta.env.VITE_WHATSAPP_API_KEY ||
+  import.meta.env.VITE_WHATSFLOW_API_KEY ||
+  ''
+).trim();
 
 /** Refresh ~5 min before the 30-minute access token expires. */
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
