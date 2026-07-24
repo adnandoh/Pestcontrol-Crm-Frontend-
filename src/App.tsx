@@ -27,7 +27,6 @@ import Renewals from './pages/Renewals';
 import References from './pages/References';
 import Technicians from './pages/Technicians';
 import CRMInquiries from './pages/CRMInquiries';
-import DohClientData from './pages/DohClientData';
 import PartnerReferrals from './pages/PartnerReferrals';
 import WhatsAppInbox from './pages/WhatsAppInbox';
 import Feedbacks from './pages/Feedbacks';
@@ -142,7 +141,6 @@ const AppContent: React.FC = () => {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/clients" element={<Clients />} />
                     <Route path="/clients/:id" element={<ClientDetail />} />
-                    <Route path="/doh-client-data" element={<DohClientData />} />
                     <Route path="/inquiries" element={<Inquiries />} />
                     <Route path="/jobcards" element={<JobCards />} />
                     <Route path="/jobcards/create" element={<CreateJobCard />} />
