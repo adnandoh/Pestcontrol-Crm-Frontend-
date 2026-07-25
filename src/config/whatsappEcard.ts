@@ -13,6 +13,16 @@ export const ECARD_TEMPLATE = {
     'Sends the approved PestControl99 business details WhatsApp template (digital visiting card / brochure buttons).',
 } as const;
 
+/** Tracked brochure template — unique click URL per customer (WhatsFlow track_ecard). */
+export const TRACKED_ECARD_TEMPLATE = {
+  name: 'pest_ecard_tracked',
+  language: 'en_US',
+  label: 'Pest-Card WhatsApp Track',
+  description:
+    'Sends pest_ecard_tracked with a per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
+  destinationUrl: 'https://www.pestcontrol99.com/e-card/',
+} as const;
+
 /** Normalize to Meta format: country code + digits, no + (e.g. 919876543210). */
 export function normalizeWhatsAppPhone(raw: string): string {
   let digits = raw.replace(/\D/g, '');

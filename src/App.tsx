@@ -31,6 +31,7 @@ import PartnerReferrals from './pages/PartnerReferrals';
 import WhatsAppInbox from './pages/WhatsAppInbox';
 import Feedbacks from './pages/Feedbacks';
 import ECardTracking from './pages/ECardTracking';
+import ECardWhatsAppTracking from './pages/ECardWhatsAppTracking';
 import Quotations from './pages/Quotations';
 import Invoices from './pages/Invoices';
 import PendingAmounts from './pages/PendingAmounts';
@@ -160,6 +161,7 @@ const AppContent: React.FC = () => {
                     <Route path="/quotations/preview/:id" element={<QuotationPreview />} />
                     <Route path="/feedbacks" element={<Feedbacks />} />
                     <Route path="/e-card/tracking" element={<ECardTracking />} />
+                    <Route path="/e-card/whatsapp-tracking" element={<ECardWhatsAppTracking />} />
                     <Route path="/technician-reports" element={<TechnicianReports />} />
                     <Route path="/technician-selfies" element={<TechnicianSelfies />} />
                     <Route path="/staff-performance" element={<StaffPerformance />} />

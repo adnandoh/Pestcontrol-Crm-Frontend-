@@ -118,6 +118,19 @@ export interface SendTemplateByPhonePayload {
   template_name: string;
   language?: string;
   body_params?: string[];
+  /** WhatsFlow e-card click tracking (pest_ecard_tracked). */
+  track_ecard?: boolean;
+  customer_name?: string;
+  external_id?: string | number;
+  ecard_destination_url?: string;
+}
+
+export interface ECardWhatsAppTrackingRow {
+  phone?: string;
+  customer_name?: string;
+  external_id?: string | number | null;
+  clicked_at?: string;
+  [key: string]: unknown;
 }
 
 interface SsoLoginResponse {
@@ -637,13 +650,58 @@ class WhatsAppInboxApi {
   async sendTemplateByPhone(payload: SendTemplateByPhonePayload): Promise<Record<string, unknown>> {
     await this.ensureAuthenticated();
     return this.withRetry(async () => {
-      const res = await this.client.post('/api/inbox/messages/template/', {
+      const body: Record<string, unknown> = {
         phone: payload.phone.replace(/\D/g, ''),
         template_name: payload.template_name,
         language: payload.language ?? 'en_US',
         body_params: payload.body_params ?? [],
-      });
+      };
+      if (payload.track_ecard) {
+        body.track_ecard = true;
+        if (payload.customer_name) body.customer_name = payload.customer_name;
+        if (payload.external_id !== undefined && payload.external_id !== null) {
+          body.external_id = String(payload.external_id);
+        }
+        if (payload.ecard_destination_url) {
+          body.ecard_destination_url = payload.ecard_destination_url;
+        }
+      }
+      const res = await this.client.post('/api/inbox/messages/template/', body);
       return unwrapWhatsFlowPayload<Record<string, unknown>>(res.data);
+    });
+  }
+
+  /**
+   * List E-Brochure click tracking rows (WhatsFlow).
+   * GET /api/inbox/ecard-tracking/
+   */
+  async getECardWhatsAppTracking(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    results: ECardWhatsAppTrackingRow[];
+    count?: number;
+    [key: string]: unknown;
+  }> {
+    await this.ensureAuthenticated();
+    return this.withRetry(async () => {
+      const res = await this.client.get('/api/inbox/ecard-tracking/', {
+        params: {
+          limit: params?.limit ?? 200,
+          offset: params?.offset ?? 0,
+        },
+      });
+      const data = unwrapWhatsFlowPayload<Record<string, unknown>>(res.data);
+      const results = Array.isArray(data?.results)
+        ? (data.results as ECardWhatsAppTrackingRow[])
+        : Array.isArray(data)
+          ? (data as ECardWhatsAppTrackingRow[])
+          : [];
+      return {
+        ...data,
+        results,
+        count: typeof data?.count === 'number' ? data.count : results.length,
+      };
     });
   }
 
