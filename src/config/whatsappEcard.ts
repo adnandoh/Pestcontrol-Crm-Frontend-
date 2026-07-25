@@ -15,11 +15,11 @@ export const ECARD_TEMPLATE = {
 
 /** Tracked brochure template — unique click URL per customer (WhatsFlow track_ecard). */
 export const TRACKED_ECARD_TEMPLATE = {
-  name: 'pest_ecard_tracked',
+  name: 'pest_ecard_utility',
   language: 'en_US',
   label: 'Pest-Card WhatsApp Track',
   description:
-    'Sends pest_ecard_tracked with a per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
+    'Sends pest_ecard_utility with a per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
 } as const;
 
