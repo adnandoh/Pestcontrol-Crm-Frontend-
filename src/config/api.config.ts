@@ -69,6 +69,7 @@ export const API_ENDPOINTS = {
   HEALTH: '/v1/health/',
   FIREBASE_HEALTH: '/v1/firebase/health/',
   FEEDBACKS: '/v1/feedbacks/',
+  ECARD_TRACKING: '/v1/e-card/tracking/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
   PENDING_PAYMENTS: '/v1/pending-payments/',

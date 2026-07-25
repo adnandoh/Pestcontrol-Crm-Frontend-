@@ -1450,6 +1450,32 @@ class EnhancedApiService {
     );
   }
 
+  async getECardTracking(params?: {
+    page?: number;
+    page_size?: number;
+    city?: string;
+    device_type?: string;
+    traffic_source?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+  }): Promise<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    total_visitors: number;
+    today_visitors: number;
+    results: Array<{
+      city: string;
+      device_type: string;
+      traffic_source: string;
+      visited_at: string;
+    }>;
+  }> {
+    const response = await this.api.get(API_ENDPOINTS.ECARD_TRACKING, { params });
+    return response.data;
+  }
+
   async markFeedbacksAsRead(): Promise<void> {
     await this.api.post(`${API_ENDPOINTS.FEEDBACKS}mark-all-read/`);
     apiCache.deletePattern(CACHE_KEYS.FEEDBACKS);
