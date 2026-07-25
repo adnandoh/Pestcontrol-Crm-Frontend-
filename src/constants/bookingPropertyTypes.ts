@@ -148,12 +148,54 @@ export function amcPlanValue(count: number): string {
 }
 
 export function parseAmcCountFromPlan(plan: string): number | null {
-  const m = (plan || '').toLowerCase().match(/(\d+)\s*service/);
-  return m ? Number(m[1]) : null;
+  const p = (plan || '').toLowerCase().trim();
+  if (!p || p.includes('one time')) return null;
+
+  const m = p.match(/(\d+)\s*service/);
+  if (m) return Number(m[1]);
+
+  // Society calendar frequencies — visit count resolved on backend from contract.
+  // Frontend uses a representative count so is_amc / visit_count flags work.
+  if (p === 'weekly' || p.startsWith('weekly ')) return 52;
+  if (p === 'monthly' || p.startsWith('monthly ')) return 12;
+  if (p === 'quarterly' || p.startsWith('quarterly ')) return 4;
+  if (p === 'half yearly' || p === 'half-yearly' || p.startsWith('half yearly')) return 2;
+  if (p === 'yearly' || p === 'annual' || p === 'annually') return 2;
+  if (p === 'amc' || p.startsWith('amc ')) return 12;
+
+  return null;
 }
 
 export function isAmcPlan(plan: string): boolean {
-  return parseAmcCountFromPlan(plan) !== null;
+  const p = (plan || '').toLowerCase().trim();
+  if (!p || p.includes('one time')) return false;
+  if (parseAmcCountFromPlan(plan) !== null) return true;
+  // Yearly still generates at least the main visit; treat multi-visit calendars as recurring
+  return ['weekly', 'monthly', 'quarterly', 'half yearly', 'half-yearly', 'yearly', 'amc'].some(
+    (k) => p === k || p.startsWith(`${k} `),
+  );
+}
+
+/** Normalize quotation FREQ dropdown value → plan string for booking engine. */
+export function normalizeFrequencyToPlan(frequency: string): string {
+  const f = (frequency || '').trim();
+  const fl = f.toLowerCase();
+  if (!f || fl.includes('one time')) return f || 'One Time Service';
+
+  const servicesMatch = fl.match(/^(\d+)\s*services?$/);
+  if (servicesMatch) return `AMC ${servicesMatch[1]} Services`;
+
+  if (fl === 'amc') return 'AMC';
+  if (fl === 'weekly') return 'Weekly';
+  if (fl === 'monthly') return 'Monthly';
+  if (fl === 'quarterly') return 'Quarterly';
+  if (fl === 'half yearly' || fl === 'half-yearly') return 'Half Yearly';
+  if (fl === 'yearly' || fl === 'annual' || fl === 'annually') return 'Yearly';
+
+  const amcMatch = fl.match(/(\d+)\s*service/);
+  if (amcMatch) return `AMC ${amcMatch[1]} Services`;
+
+  return f;
 }
 
 /** All plan values to store in service_items.plan */

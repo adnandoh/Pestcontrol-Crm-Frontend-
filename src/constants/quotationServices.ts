@@ -4,6 +4,7 @@ import {
   isAmcPlan,
   isBedBugService,
   isTermiteService,
+  normalizeFrequencyToPlan,
   oneTimePlanValue,
   parseAmcCountFromPlan,
   supportsAmcMode,
@@ -254,13 +255,14 @@ export function configsFromQuotation(
 }
 
 function inferPlanFromFrequency(service: string, frequency: string): string {
-  const f = (frequency || '').toLowerCase();
-  if (f.includes('amc')) {
-    const m = f.match(/(\d+)\s*service/);
-    if (m) return `AMC ${m[1]} Services`;
+  const f = (frequency || '').trim();
+  if (!f) return defaultPlanForService(service);
+  const normalized = normalizeFrequencyToPlan(f);
+  if (normalized.toLowerCase().includes('one time')) {
+    if (normalized.toLowerCase().includes('treatment')) return 'One Time Treatment';
+    return defaultPlanForService(service);
   }
-  if (f.includes('one time treatment')) return 'One Time Treatment';
-  return defaultPlanForService(service);
+  return normalized;
 }
 
 export function sortItemsByServiceOrder(

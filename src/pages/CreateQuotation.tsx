@@ -40,6 +40,11 @@ import {
   propertyTypeToQuotationType,
 } from '../constants/quotationTemplates';
 import {
+  isAmcPlan,
+  normalizeFrequencyToPlan,
+  parseAmcCountFromPlan,
+} from '../constants/bookingPropertyTypes';
+import {
   QUOTATION_SELECTABLE_SERVICES,
   type QuotationServicePlanConfig,
   buildItemsFromServicePlans,
@@ -321,13 +326,42 @@ const CreateQuotation: React.FC = () => {
   const handleItemChange = (index: number, field: keyof QuotationItem, value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
-    
+
     if (field === 'rate' || field === 'quantity') {
       const q = Math.max(1, Number(newItems[index].quantity) || 0);
       const r = Number(newItems[index].rate) || 0;
       newItems[index].total = r * q;
     }
-    
+
+    // Keep description (engine plan) in sync with FREQ for Society / AMC conversion
+    if (field === 'frequency') {
+      const plan = normalizeFrequencyToPlan(String(value || ''));
+      newItems[index].description = plan;
+      newItems[index].frequency = String(value || plan);
+
+      const configs = newItems
+        .filter((i) => i.service_name?.trim())
+        .map((i) => ({
+          service: i.service_name,
+          plan: i.description || normalizeFrequencyToPlan(i.frequency || ''),
+        }));
+      const hasAmc = configs.some((c) => isAmcPlan(c.plan));
+      const counts = configs
+        .map((c) => parseAmcCountFromPlan(c.plan))
+        .filter((n): n is number => n !== null && n > 1);
+      const visit_count = counts.length ? Math.max(...counts) : hasAmc ? 12 : 1;
+
+      setFormData({
+        ...formData,
+        items: newItems,
+        is_amc: hasAmc,
+        visit_count,
+        quotation_type: hasAmc ? 'AMC Package' : formData.quotation_type,
+      });
+      calculateTotals(newItems, formData.discount, { is_amc: hasAmc, visit_count });
+      return;
+    }
+
     setFormData({ ...formData, items: newItems });
     calculateTotals(newItems, formData.discount);
   };
