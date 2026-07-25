@@ -118,7 +118,7 @@ export interface SendTemplateByPhonePayload {
   template_name: string;
   language?: string;
   body_params?: string[];
-  /** WhatsFlow e-card click tracking (pest_ecard_tracked). */
+  /** WhatsFlow e-card click tracking (pest_ecard_utility). */
   track_ecard?: boolean;
   customer_name?: string;
   external_id?: string | number;
