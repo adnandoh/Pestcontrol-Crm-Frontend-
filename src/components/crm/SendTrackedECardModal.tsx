@@ -67,13 +67,12 @@ export default function SendTrackedECardModal({
         template_name: TRACKED_ECARD_TEMPLATE.name,
         language: TRACKED_ECARD_TEMPLATE.language,
         body_params: [],
-        track_ecard: true,
         customer_name: initial?.name || undefined,
         external_id: initial?.inquiryId,
-        ecard_destination_url: TRACKED_ECARD_TEMPLATE.destinationUrl,
+        // Do NOT send track_ecard — pest_ecard_test has a static E-Brochure URL
       });
       notify.success(
-        `Tracked Pest-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. Clicks will show on E-Card WhatsApp Tracking.`,
+        `Pest-Card WhatsApp template sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -100,7 +99,8 @@ export default function SendTrackedECardModal({
             Template: {TRACKED_ECARD_TEMPLATE.name}
           </p>
           <p className="mt-1 text-sky-800/80">
-            Language {TRACKED_ECARD_TEMPLATE.language} · track_ecard enabled
+            Language {TRACKED_ECARD_TEMPLATE.language}
+            {TRACKED_ECARD_TEMPLATE.metaId ? ` · Meta ID ${TRACKED_ECARD_TEMPLATE.metaId}` : ''}
           </p>
           {initial?.inquiryId ? (
             <p className="mt-1.5 text-sky-800">
@@ -113,7 +113,7 @@ export default function SendTrackedECardModal({
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-sky-700/90">
-            Does not change the green E-Card button — this uses the tracked brochure template only.
+            Green E-Card button is unchanged. This template uses a static brochure URL (no click tracking yet).
           </p>
         </div>
 

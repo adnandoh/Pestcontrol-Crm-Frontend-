@@ -118,7 +118,7 @@ export interface SendTemplateByPhonePayload {
   template_name: string;
   language?: string;
   body_params?: string[];
-  /** WhatsFlow e-card click tracking (pest_ecard_utility). */
+  /** Optional WhatsFlow e-card click tracking (dynamic redirect templates only). */
   track_ecard?: boolean;
   customer_name?: string;
   external_id?: string | number;
@@ -656,12 +656,13 @@ class WhatsAppInboxApi {
         language: payload.language ?? 'en_US',
         body_params: payload.body_params ?? [],
       };
+      if (payload.customer_name) body.customer_name = payload.customer_name;
+      if (payload.external_id !== undefined && payload.external_id !== null) {
+        body.external_id = String(payload.external_id);
+      }
+      // Only when using a dynamic redirect template (not pest_ecard_test static URL)
       if (payload.track_ecard) {
         body.track_ecard = true;
-        if (payload.customer_name) body.customer_name = payload.customer_name;
-        if (payload.external_id !== undefined && payload.external_id !== null) {
-          body.external_id = String(payload.external_id);
-        }
         if (payload.ecard_destination_url) {
           body.ecard_destination_url = payload.ecard_destination_url;
         }
