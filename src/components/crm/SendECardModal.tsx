@@ -105,9 +105,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             Template: {ECARD_TEMPLATE.name}
           </p>
           <p className="mt-1 text-emerald-800/80">
-            Language {ECARD_TEMPLATE.language}
-            {ECARD_TEMPLATE.metaId ? ` · Meta ID ${ECARD_TEMPLATE.metaId}` : ''}
-            {' · '}track_ecard enabled
+            Language {ECARD_TEMPLATE.language} · track_ecard enabled
           </p>
           {sourceLabel && externalId ? (
             <p className="mt-1.5 text-emerald-800">

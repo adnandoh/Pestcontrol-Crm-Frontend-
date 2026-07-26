@@ -1,17 +1,19 @@
 /**
  * Pest Control 99 — WhatsApp e-card (Meta template) config.
- * Green E-Card: pest_business_details + track_ecard click tracking.
+ *
+ * track_ecard requires a Meta template whose button URL ends with {{1}}
+ * (WhatsFlow dynamic redirect). pest_business_details has a static URL, so
+ * WhatsFlow rejects track_ecard on it. Use pest_service_card (Approved Utility).
  */
 export const WHATSAPP_ORG_ID = '96d71345-5c98-4e9a-8095-0eae9ff855c4';
 
-/** Green E-Card button — send pest_business_details with click tracking. */
+/** Green E-Card — Approved Utility with dynamic URL + click tracking. */
 export const ECARD_TEMPLATE = {
-  name: 'pest_business_details',
+  name: 'pest_service_card',
   language: 'en_US',
-  metaId: '1333062758460952',
   label: 'Send E-Card',
   description:
-    'Sends the approved PestControl99 business details WhatsApp template with click tracking. Clicks appear on E-Card WhatsApp Tracking.',
+    'Sends pest_service_card with per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
 } as const;
 
