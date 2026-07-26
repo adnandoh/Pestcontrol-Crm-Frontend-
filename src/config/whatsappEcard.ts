@@ -1,18 +1,25 @@
 /**
  * Pest Control 99 — WhatsApp e-card (Meta template) config.
- * Green E-Card on CRM + Website inquiries: pest_business_details + track_ecard.
+ *
+ * Green E-Card on CRM + Website inquiries.
+ *
+ * Meta locked recreating `pest_business_details` for ~4 weeks after upgrading
+ * its E-Brochure URL to dynamic tracking. Temporary Approved-trackable twin:
+ * `pc99_business_details` — same Call Now + E-Brochure copy, dynamic {{1}} URL.
  */
 export const WHATSAPP_ORG_ID = '96d71345-5c98-4e9a-8095-0eae9ff855c4';
 
-/** Green E-Card — exact Meta template pest_business_details with click tracking. */
+/** Green E-Card — same business-details message + trackable E-Brochure. */
 export const ECARD_TEMPLATE = {
-  name: 'pest_business_details',
+  /** Prefer Meta name once unlocked; until then use approved trackable twin. */
+  name: 'pc99_business_details',
   language: 'en_US',
-  metaId: '1333062758460952',
   label: 'Send E-Card',
   description:
-    'Sends pest_business_details (Call Now + E-Brochure) with click tracking. Opens appear on E-Card WhatsApp Tracking.',
+    'Sends the PestControl99 business details WhatsApp template (Call Now + E-Brochure) with click tracking. Opens appear on E-Card WhatsApp Tracking.',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
+  /** Original locked Meta name (cannot recreate for ~4 weeks). */
+  legacyName: 'pest_business_details',
 } as const;
 
 export type ECardInquirySource = 'crm' | 'website';
