@@ -443,7 +443,7 @@ const CRMInquiries: React.FC = () => {
                           setShowECardModal(true);
                         }}
                         className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700"
-                        title="Send pest_service_card with click tracking"
+                        title="Send pest_business_details with click tracking"
                       >
                         <IdCard className="h-3 w-3" />
                         E-Card

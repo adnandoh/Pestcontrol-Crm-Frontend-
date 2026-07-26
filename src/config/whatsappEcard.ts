@@ -1,16 +1,17 @@
 /**
  * Pest Control 99 — WhatsApp e-card (Meta template) config.
- * Green E-Card sends pest_service_card (Approved Utility with dynamic tracking URL).
+ * Green E-Card: pest_business_details + track_ecard click tracking.
  */
 export const WHATSAPP_ORG_ID = '96d71345-5c98-4e9a-8095-0eae9ff855c4';
 
-/** Green E-Card button — send + click tracking. */
+/** Green E-Card button — send pest_business_details with click tracking. */
 export const ECARD_TEMPLATE = {
-  name: 'pest_service_card',
+  name: 'pest_business_details',
   language: 'en_US',
+  metaId: '1333062758460952',
   label: 'Send E-Card',
   description:
-    'Sends pest_service_card with per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
+    'Sends the approved PestControl99 business details WhatsApp template with click tracking. Clicks appear on E-Card WhatsApp Tracking.',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
 } as const;
 
