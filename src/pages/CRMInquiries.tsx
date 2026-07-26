@@ -8,7 +8,6 @@ import {
   CheckCircle,
   CheckCheck,
   IdCard,
-  Link2,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
@@ -20,7 +19,6 @@ import type { CRMInquiry, CRMInquiryStatus, InquiryStatusCounts } from '../types
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
 import ReminderModal from '../components/crm/ReminderModal';
 import SendECardModal from '../components/crm/SendECardModal';
-import SendTrackedECardModal from '../components/crm/SendTrackedECardModal';
 import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
 import {
   dateFilterToApiParams,
@@ -78,14 +76,8 @@ const CRMInquiries: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showECardModal, setShowECardModal] = useState(false);
-  const [showTrackedECardModal, setShowTrackedECardModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
   const [eCardTarget, setECardTarget] = useState<{
-    name: string;
-    mobile: string;
-    inquiryId: number;
-  } | null>(null);
-  const [trackedECardTarget, setTrackedECardTarget] = useState<{
     name: string;
     mobile: string;
     inquiryId: number;
@@ -456,22 +448,6 @@ const CRMInquiries: React.FC = () => {
                         <IdCard className="h-3 w-3" />
                         E-Card
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTrackedECardTarget({
-                            name: inq.name,
-                            mobile: inq.mobile,
-                            inquiryId: inq.id,
-                          });
-                          setShowTrackedECardModal(true);
-                        }}
-                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-sky-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-sky-800"
-                        title="Send pest_service_card with click tracking"
-                      >
-                        <Link2 className="h-3 w-3" />
-                        Pest-Card WhatsApp Track
-                      </button>
                       {!inq.is_read && (
                         <button
                           type="button"
@@ -552,15 +528,6 @@ const CRMInquiries: React.FC = () => {
           if (!open) setECardTarget(null);
         }}
         initial={eCardTarget}
-      />
-
-      <SendTrackedECardModal
-        open={showTrackedECardModal}
-        onOpenChange={(open) => {
-          setShowTrackedECardModal(open);
-          if (!open) setTrackedECardTarget(null);
-        }}
-        initial={trackedECardTarget}
       />
     </div>
   );

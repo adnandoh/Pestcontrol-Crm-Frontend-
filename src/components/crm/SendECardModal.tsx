@@ -110,7 +110,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-emerald-700/90">
-            Same click tracking as Pest-Card Track. Opens show on E-Card WhatsApp Tracking.
+            When they tap Visiting Card, the click appears on E-Card WhatsApp Tracking.
           </p>
         </div>
 
