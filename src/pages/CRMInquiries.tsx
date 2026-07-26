@@ -81,6 +81,7 @@ const CRMInquiries: React.FC = () => {
     name: string;
     mobile: string;
     inquiryId: number;
+    source: 'crm';
   } | null>(null);
 
   const loadInquiries = useCallback(async (page = 1, opts?: { focus?: string; dateFilter?: InquiryDateFilterState }) => {
@@ -439,6 +440,7 @@ const CRMInquiries: React.FC = () => {
                             name: inq.name,
                             mobile: inq.mobile,
                             inquiryId: inq.id,
+                            source: 'crm',
                           });
                           setShowECardModal(true);
                         }}

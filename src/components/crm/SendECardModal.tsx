@@ -6,8 +6,10 @@ import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import {
   ECARD_TEMPLATE,
+  buildECardExternalId,
   isValidWhatsAppPhone,
   normalizeWhatsAppPhone,
+  type ECardInquirySource,
 } from '../../config/whatsappEcard';
 import {
   isWhatsAppApiKeyConfigured,
@@ -21,6 +23,8 @@ export type SendECardTarget = {
   name?: string;
   mobile?: string;
   inquiryId?: number;
+  /** Distinguishes CRM vs website IDs in tracking (crm:123 / website:456). */
+  source?: ECardInquirySource;
 } | null;
 
 type SendECardModalProps = {
@@ -41,6 +45,10 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
     setSending(false);
     setPhone(initial?.mobile ? normalizeWhatsAppPhone(initial.mobile) : '');
   }, [open, initial?.mobile]);
+
+  const externalId = buildECardExternalId(initial?.source, initial?.inquiryId);
+  const sourceLabel =
+    initial?.source === 'website' ? 'Website inquiry' : initial?.source === 'crm' ? 'CRM inquiry' : null;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +74,11 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
         body_params: [],
         track_ecard: true,
         customer_name: initial?.name || undefined,
-        external_id: initial?.inquiryId,
+        external_id: externalId,
         ecard_destination_url: ECARD_TEMPLATE.destinationUrl,
       });
       notify.success(
-        `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they tap Visiting Card, the click appears on E-Card WhatsApp Tracking.`,
+        `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they open the brochure link, the click appears on E-Card WhatsApp Tracking.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -101,9 +109,9 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             {ECARD_TEMPLATE.metaId ? ` · Meta ID ${ECARD_TEMPLATE.metaId}` : ''}
             {' · '}track_ecard enabled
           </p>
-          {initial?.inquiryId ? (
+          {sourceLabel && externalId ? (
             <p className="mt-1.5 text-emerald-800">
-              Inquiry ID: <span className="font-semibold">{initial.inquiryId}</span>
+              {sourceLabel}: <span className="font-semibold">{externalId}</span>
             </p>
           ) : null}
           {initial?.name ? (
@@ -112,7 +120,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-emerald-700/90">
-            When they tap Visiting Card, the click appears on E-Card WhatsApp Tracking.
+            Clicks on the E-Brochure / visiting card button appear on E-Card WhatsApp Tracking.
           </p>
         </div>
 

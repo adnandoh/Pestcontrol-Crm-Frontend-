@@ -110,7 +110,7 @@ const ECardWhatsAppTracking: React.FC = () => {
               <tr className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                 <th className="text-left px-4 py-3">Phone</th>
                 <th className="text-left px-4 py-3">Customer name</th>
-                <th className="text-left px-4 py-3">Inquiry ID</th>
+                <th className="text-left px-4 py-3">Inquiry</th>
                 <th className="text-left px-4 py-3">Clicked at</th>
               </tr>
             </thead>

@@ -82,6 +82,7 @@ const Inquiries: React.FC = () => {
     name: string;
     mobile: string;
     inquiryId: number;
+    source: 'website';
   } | null>(null);
 
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
@@ -517,18 +518,20 @@ const Inquiries: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
-                        title="Send E-Card with click tracking"
+                        title="Send pest_business_details with click tracking"
                         onClick={() => {
                           setECardTarget({
                             name: inquiry.name,
                             mobile: inquiry.mobile,
                             inquiryId: inquiry.id,
+                            source: 'website',
                           });
                           setShowECardModal(true);
                         }}
-                        className="inline-flex items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
+                        className="inline-flex items-center justify-center gap-1 rounded-md bg-emerald-600 px-2 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700"
                       >
                         <IdCard className="h-3.5 w-3.5" />
+                        E-Card
                       </button>
                       <button
                         type="button"

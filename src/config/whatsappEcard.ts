@@ -15,6 +15,20 @@ export const ECARD_TEMPLATE = {
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
 } as const;
 
+export type ECardInquirySource = 'crm' | 'website';
+
+/** Prefix so CRM and website inquiry IDs never collide in WhatsFlow tracking. */
+export function buildECardExternalId(
+  source: ECardInquirySource | undefined,
+  inquiryId: number | string | undefined,
+): string | undefined {
+  if (inquiryId === undefined || inquiryId === null || inquiryId === '') return undefined;
+  const id = String(inquiryId).trim();
+  if (!id) return undefined;
+  if (!source) return id;
+  return `${source}:${id}`;
+}
+
 /** Normalize to Meta format: country code + digits, no + (e.g. 919876543210). */
 export function normalizeWhatsAppPhone(raw: string): string {
   let digits = raw.replace(/\D/g, '');
