@@ -13,14 +13,13 @@ export const ECARD_TEMPLATE = {
     'Sends the approved PestControl99 business details WhatsApp template (digital visiting card / brochure buttons).',
 } as const;
 
-/** Pest-Card WhatsApp Track button — Approved Meta template (static E-Brochure URL). */
+/** Pest-Card WhatsApp Track — Approved Utility with dynamic tracking URL. */
 export const TRACKED_ECARD_TEMPLATE = {
-  name: 'pest_ecard_test',
+  name: 'pest_service_card',
   language: 'en_US',
-  metaId: '1012404895122748',
   label: 'Pest-Card WhatsApp Track',
   description:
-    'Sends approved pest_ecard_test WhatsApp template. Static E-Brochure URL — no track_ecard on this template.',
+    'Sends pest_service_card with per-customer tracking link. Clicks appear on E-Card WhatsApp Tracking.',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
 } as const;
 

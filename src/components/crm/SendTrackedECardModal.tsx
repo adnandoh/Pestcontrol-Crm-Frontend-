@@ -67,12 +67,13 @@ export default function SendTrackedECardModal({
         template_name: TRACKED_ECARD_TEMPLATE.name,
         language: TRACKED_ECARD_TEMPLATE.language,
         body_params: [],
+        track_ecard: true,
         customer_name: initial?.name || undefined,
         external_id: initial?.inquiryId,
-        // Do NOT send track_ecard — pest_ecard_test has a static E-Brochure URL
+        ecard_destination_url: TRACKED_ECARD_TEMPLATE.destinationUrl,
       });
       notify.success(
-        `Pest-Card WhatsApp template sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
+        `Pest-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they tap Visiting Card, the click appears on E-Card WhatsApp Tracking.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -99,8 +100,7 @@ export default function SendTrackedECardModal({
             Template: {TRACKED_ECARD_TEMPLATE.name}
           </p>
           <p className="mt-1 text-sky-800/80">
-            Language {TRACKED_ECARD_TEMPLATE.language}
-            {TRACKED_ECARD_TEMPLATE.metaId ? ` · Meta ID ${TRACKED_ECARD_TEMPLATE.metaId}` : ''}
+            Language {TRACKED_ECARD_TEMPLATE.language} · track_ecard enabled
           </p>
           {initial?.inquiryId ? (
             <p className="mt-1.5 text-sky-800">
@@ -113,7 +113,7 @@ export default function SendTrackedECardModal({
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-sky-700/90">
-            Green E-Card button is unchanged. This template uses a static brochure URL (no click tracking yet).
+            Green E-Card button is unchanged. Clicks on Visiting Card show on E-Card WhatsApp Tracking.
           </p>
         </div>
 

@@ -458,7 +458,7 @@ const CRMInquiries: React.FC = () => {
                           setShowTrackedECardModal(true);
                         }}
                         className="inline-flex items-center justify-center gap-1 rounded-lg bg-sky-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-sky-800"
-                        title="Send pest_ecard_test WhatsApp template"
+                        title="Send pest_service_card with click tracking"
                       >
                         <Link2 className="h-3 w-3" />
                         Pest-Card WhatsApp Track
