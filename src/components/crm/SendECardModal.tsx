@@ -20,6 +20,7 @@ import { notify } from '../../utils/notify';
 export type SendECardTarget = {
   name?: string;
   mobile?: string;
+  inquiryId?: number;
 } | null;
 
 type SendECardModalProps = {
@@ -63,9 +64,13 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
         template_name: ECARD_TEMPLATE.name,
         language: ECARD_TEMPLATE.language,
         body_params: [],
+        track_ecard: true,
+        customer_name: initial?.name || undefined,
+        external_id: initial?.inquiryId,
+        ecard_destination_url: ECARD_TEMPLATE.destinationUrl,
       });
       notify.success(
-        `E-Card WhatsApp template sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
+        `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they tap Visiting Card, the click appears on E-Card WhatsApp Tracking.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -92,13 +97,21 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             Template: {ECARD_TEMPLATE.name}
           </p>
           <p className="mt-1 text-emerald-800/80">
-            Language {ECARD_TEMPLATE.language} · Meta ID {ECARD_TEMPLATE.metaId}
+            Language {ECARD_TEMPLATE.language} · track_ecard enabled
           </p>
+          {initial?.inquiryId ? (
+            <p className="mt-1.5 text-emerald-800">
+              Inquiry ID: <span className="font-semibold">{initial.inquiryId}</span>
+            </p>
+          ) : null}
           {initial?.name ? (
             <p className="mt-1.5 text-emerald-800">
               Customer: <span className="font-semibold">{initial.name}</span>
             </p>
           ) : null}
+          <p className="mt-1.5 text-[11px] text-emerald-700/90">
+            Same click tracking as Pest-Card Track. Opens show on E-Card WhatsApp Tracking.
+          </p>
         </div>
 
         <div className="space-y-2">

@@ -78,7 +78,11 @@ const Inquiries: React.FC = () => {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showECardModal, setShowECardModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
-  const [eCardTarget, setECardTarget] = useState<{ name: string; mobile: string } | null>(null);
+  const [eCardTarget, setECardTarget] = useState<{
+    name: string;
+    mobile: string;
+    inquiryId: number;
+  } | null>(null);
 
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
@@ -513,9 +517,13 @@ const Inquiries: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
-                        title="Send E-Card"
+                        title="Send E-Card with click tracking"
                         onClick={() => {
-                          setECardTarget({ name: inquiry.name, mobile: inquiry.mobile });
+                          setECardTarget({
+                            name: inquiry.name,
+                            mobile: inquiry.mobile,
+                            inquiryId: inquiry.id,
+                          });
                           setShowECardModal(true);
                         }}
                         className="inline-flex items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"

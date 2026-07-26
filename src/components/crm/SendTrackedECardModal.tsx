@@ -113,7 +113,7 @@ export default function SendTrackedECardModal({
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-sky-700/90">
-            Green E-Card button is unchanged. Clicks on Visiting Card show on E-Card WhatsApp Tracking.
+            Same tracking as green E-Card. Clicks on Visiting Card show on E-Card WhatsApp Tracking.
           </p>
         </div>
 

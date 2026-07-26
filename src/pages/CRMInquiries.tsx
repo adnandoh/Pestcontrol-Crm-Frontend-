@@ -80,7 +80,11 @@ const CRMInquiries: React.FC = () => {
   const [showECardModal, setShowECardModal] = useState(false);
   const [showTrackedECardModal, setShowTrackedECardModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<{id: number, type: 'crm' | 'website', name: string, mobile: string} | null>(null);
-  const [eCardTarget, setECardTarget] = useState<{ name: string; mobile: string } | null>(null);
+  const [eCardTarget, setECardTarget] = useState<{
+    name: string;
+    mobile: string;
+    inquiryId: number;
+  } | null>(null);
   const [trackedECardTarget, setTrackedECardTarget] = useState<{
     name: string;
     mobile: string;
@@ -439,10 +443,15 @@ const CRMInquiries: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setECardTarget({ name: inq.name, mobile: inq.mobile });
+                          setECardTarget({
+                            name: inq.name,
+                            mobile: inq.mobile,
+                            inquiryId: inq.id,
+                          });
                           setShowECardModal(true);
                         }}
                         className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700"
+                        title="Send pest_service_card with click tracking"
                       >
                         <IdCard className="h-3 w-3" />
                         E-Card
