@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MessageSquare,
-  MessageCircle,
   ClipboardList,
   RefreshCw,
   FileText,
@@ -29,6 +28,7 @@ import { cn } from '../../utils/cn';
 import type { AuthUser } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 import { isBlogUser, isPricingAdmin } from '../../utils/roles';
+import { WhatsAppIcon } from '../icons/WhatsAppIcon';
 
 interface SidebarProps {
   className?: string;
@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     },
     {
       items: [
-        { name: 'WhatsApp Inbox', href: '/whatsapp/inbox', icon: MessageCircle },
+        { name: 'WhatsApp Inbox', href: '/whatsapp/inbox', icon: WhatsAppIcon, brand: 'whatsapp' as const },
         { name: 'E-Card Tracking', href: '/e-card/tracking', icon: IdCard },
       ],
     },
@@ -183,6 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                   {visibleItems.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
+                    const isWhatsApp = 'brand' in item && item.brand === 'whatsapp';
 
                     return (
                       <Link
@@ -197,7 +198,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
                       >
                         <div className={cn(
                           'flex items-center justify-center transition-colors',
-                          active ? 'text-blue-600' : 'text-crm-muted group-hover:text-crm-text'
+                          isWhatsApp
+                            ? 'text-[#25D366]'
+                            : active
+                              ? 'text-blue-600'
+                              : 'text-crm-muted group-hover:text-crm-text'
                         )}>
                           <Icon className="h-[18px] w-[18px]" />
                         </div>
