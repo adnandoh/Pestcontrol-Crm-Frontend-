@@ -518,7 +518,7 @@ const Inquiries: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
-                        title="Send business details E-Card with click tracking"
+                        title="Send pestecardaadsd E-Card"
                         onClick={() => {
                           setECardTarget({
                             name: inquiry.name,

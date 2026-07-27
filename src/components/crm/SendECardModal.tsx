@@ -67,18 +67,23 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
 
     setSending(true);
     try {
-      await whatsappInboxApi.sendTemplateByPhone({
+      const payload: Parameters<typeof whatsappInboxApi.sendTemplateByPhone>[0] = {
         phone: normalized,
         template_name: ECARD_TEMPLATE.name,
         language: ECARD_TEMPLATE.language,
         body_params: [],
-        track_ecard: true,
         customer_name: initial?.name || undefined,
         external_id: externalId,
-        ecard_destination_url: ECARD_TEMPLATE.destinationUrl,
-      });
+      };
+      if (ECARD_TEMPLATE.supportsTracking) {
+        payload.track_ecard = true;
+        payload.ecard_destination_url = ECARD_TEMPLATE.destinationUrl;
+      }
+      await whatsappInboxApi.sendTemplateByPhone(payload);
       notify.success(
-        `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they open the brochure link, the click appears on E-Card WhatsApp Tracking.`,
+        ECARD_TEMPLATE.supportsTracking
+          ? `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they open the brochure link, the click appears on E-Card WhatsApp Tracking.`
+          : `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -107,7 +112,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
           <p className="mt-1 text-emerald-800/80">
             Language {ECARD_TEMPLATE.language}
             {ECARD_TEMPLATE.metaId ? ` · Meta ID ${ECARD_TEMPLATE.metaId}` : ''}
-            {' · '}track_ecard enabled
+            {ECARD_TEMPLATE.supportsTracking ? ' · track_ecard enabled' : ''}
           </p>
           {sourceLabel && externalId ? (
             <p className="mt-1.5 text-emerald-800">
@@ -120,7 +125,9 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-emerald-700/90">
-            Clicks on the E-Brochure / visiting card button appear on E-Card WhatsApp Tracking.
+            {ECARD_TEMPLATE.supportsTracking
+              ? 'Clicks on the E-Brochure button appear on E-Card WhatsApp Tracking.'
+              : 'Approved Utility template: Call Us + E-Brochure.'}
           </p>
         </div>
 

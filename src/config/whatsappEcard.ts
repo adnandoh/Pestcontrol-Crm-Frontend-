@@ -1,22 +1,25 @@
 /**
  * Pest Control 99 — WhatsApp e-card (Meta template) config.
- * Green E-Card on CRM + Website inquiries.
- *
- * pc99_business_utility = same Call Now + E-Brochure copy as pc99_business_details,
- * submitted as Utility with empty footer + dynamic tracking URL.
+ * Green E-Card on CRM Inquiries + Website Leads → pestecardaadsd.
  */
 export const WHATSAPP_ORG_ID = '96d71345-5c98-4e9a-8095-0eae9ff855c4';
 
-/** Green E-Card — Utility trackable business details (empty footer). */
+/**
+ * Green E-Card template.
+ * Note: pestecardaadsd E-Brochure URL is currently static on Meta
+ * (https://www.pestcontrol99.com/e-card/), so track_ecard cannot be enabled
+ * until that button URL ends with {{1}}.
+ */
 export const ECARD_TEMPLATE = {
-  name: 'pc99_business_utility',
+  name: 'pestecardaadsd',
   language: 'en_US',
+  metaId: '898122920007286',
   label: 'Send E-Card',
   description:
-    'Sends pc99_business_utility (Call Now + E-Brochure, Utility, no footer) with click tracking. Opens appear on E-Card WhatsApp Tracking.',
+    'Sends approved pestecardaadsd WhatsApp template (Call Us + E-Brochure).',
   destinationUrl: 'https://www.pestcontrol99.com/e-card/',
-  legacyName: 'pest_business_details',
-  marketingFallbackName: 'pc99_business_details',
+  /** Meta button URL is static — do not send track_ecard until upgraded to {{1}}. */
+  supportsTracking: false,
 } as const;
 
 export type ECardInquirySource = 'crm' | 'website';
