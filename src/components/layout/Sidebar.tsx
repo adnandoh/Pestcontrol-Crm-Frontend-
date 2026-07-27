@@ -23,7 +23,6 @@ import {
   Receipt,
   IndianRupee,
   IdCard,
-  Link2,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -84,7 +83,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'WhatsApp Inbox', href: '/whatsapp/inbox', icon: MessageCircle },
         { name: 'E-Card Tracking', href: '/e-card/tracking', icon: IdCard },
-        { name: 'E-Card WhatsApp Tracking', href: '/e-card/whatsapp-tracking', icon: Link2 },
       ],
     },
     {

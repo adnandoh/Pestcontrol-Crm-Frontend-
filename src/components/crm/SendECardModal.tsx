@@ -23,14 +23,12 @@ export type SendECardTarget = {
   name?: string;
   mobile?: string;
   inquiryId?: number;
-  /** Distinguishes CRM vs website IDs in tracking (crm:123 / website:456). */
   source?: ECardInquirySource;
 } | null;
 
 type SendECardModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Prefill from inquiry row; user can still edit the number. */
   initial?: SendECardTarget;
 };
 
@@ -67,23 +65,16 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
 
     setSending(true);
     try {
-      const payload: Parameters<typeof whatsappInboxApi.sendTemplateByPhone>[0] = {
+      await whatsappInboxApi.sendTemplateByPhone({
         phone: normalized,
         template_name: ECARD_TEMPLATE.name,
         language: ECARD_TEMPLATE.language,
         body_params: [],
         customer_name: initial?.name || undefined,
         external_id: externalId,
-      };
-      if (ECARD_TEMPLATE.supportsTracking) {
-        payload.track_ecard = true;
-        payload.ecard_destination_url = ECARD_TEMPLATE.destinationUrl;
-      }
-      await whatsappInboxApi.sendTemplateByPhone(payload);
+      });
       notify.success(
-        ECARD_TEMPLATE.supportsTracking
-          ? `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}. When they open the brochure link, the click appears on E-Card WhatsApp Tracking.`
-          : `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
+        `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
       );
       onOpenChange(false);
     } catch (err) {
@@ -112,7 +103,6 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
           <p className="mt-1 text-emerald-800/80">
             Language {ECARD_TEMPLATE.language}
             {ECARD_TEMPLATE.metaId ? ` · Meta ID ${ECARD_TEMPLATE.metaId}` : ''}
-            {ECARD_TEMPLATE.supportsTracking ? ' · track_ecard enabled' : ''}
           </p>
           {sourceLabel && externalId ? (
             <p className="mt-1.5 text-emerald-800">
@@ -125,9 +115,7 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
             </p>
           ) : null}
           <p className="mt-1.5 text-[11px] text-emerald-700/90">
-            {ECARD_TEMPLATE.supportsTracking
-              ? 'Clicks on the E-Brochure button appear on E-Card WhatsApp Tracking.'
-              : 'Approved Utility template: Call Us + E-Brochure.'}
+            Approved Utility template: Call Us + E-Brochure (static URL).
           </p>
         </div>
 
