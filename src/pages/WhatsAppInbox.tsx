@@ -190,6 +190,7 @@ const WhatsAppInbox: React.FC = () => {
   const [search, setSearch] = useState('');
   const [hasMoreConversations, setHasMoreConversations] = useState(true);
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
+  const [tabCounts, setTabCounts] = useState({ all: 0, unread: 0, assigned: 0 });
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversationDetail, setConversationDetail] = useState<ConversationDetail | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
@@ -227,11 +228,11 @@ const WhatsAppInbox: React.FC = () => {
 
   const filterCounts = useMemo(
     () => ({
-      all: conversations.length,
-      unread: conversations.filter((c) => (c.unread_count || 0) > 0).length,
-      assigned: conversations.filter((c) => c.assigned_to_me).length,
+      all: tabCounts.all || conversations.length,
+      unread: tabCounts.unread,
+      assigned: tabCounts.assigned,
     }),
-    [conversations],
+    [conversations.length, tabCounts],
   );
 
   const quickContacts = useMemo(() => conversations.slice(0, 10), [conversations]);
@@ -297,6 +298,17 @@ const WhatsAppInbox: React.FC = () => {
         setConversations((prev) => (reset ? response.results : [...prev, ...response.results]));
         setHasMoreConversations(Boolean(response.next));
         pageRef.current = nextPage + 1;
+        setTabCounts((prev) => ({
+          all: response.all_total ?? (filterRef.current === 'all' ? response.count : prev.all),
+          unread:
+            response.unread_total ??
+            (filterRef.current === 'unread'
+              ? response.count
+              : response.results.filter((c) => (c.unread_count || 0) > 0).length || prev.unread),
+          assigned:
+            response.assigned_total ??
+            (filterRef.current === 'assigned' ? response.count : prev.assigned),
+        }));
       } catch (error) {
         if (signal.aborted) return;
         logWhatsFlowError('loadConversations', error);
@@ -545,6 +557,13 @@ const WhatsAppInbox: React.FC = () => {
           setConversations((prev) =>
             prev.map((conv) => (conv.id === conversationId ? { ...conv, unread_count: 0 } : conv)),
           );
+          setTabCounts((prev) => ({
+            ...prev,
+            unread: Math.max(0, prev.unread - 1),
+          }));
+          void whatsappInboxApi.markConversationRead(conversationId).catch(() => {
+            // Detail GET already marks read on WhatsFlow; ignore if mark-read route lags deploy.
+          });
         }
       } catch (error) {
         if (signal.aborted) return;
@@ -618,6 +637,13 @@ const WhatsAppInbox: React.FC = () => {
         setConversations(convPage.results);
         setHasMoreConversations(Boolean(convPage.next));
         pageRef.current = 2;
+        setTabCounts({
+          all: convPage.all_total ?? convPage.count,
+          unread:
+            convPage.unread_total ??
+            convPage.results.filter((c) => (c.unread_count || 0) > 0).length,
+          assigned: convPage.assigned_total ?? 0,
+        });
         setListError('');
         setLoading(false);
 
@@ -887,20 +913,32 @@ const WhatsAppInbox: React.FC = () => {
                     onClick={() => void onSelectConversation(conv)}
                     className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-[#f8faf9] transition-colors ${
                       active ? 'bg-[#f0f2f5] border-l-[3px] border-l-[#00a884]' : 'border-l-[3px] border-l-transparent'
-                    }`}
+                    } ${(conv.unread_count || 0) > 0 ? 'bg-[#f0faf7]' : ''}`}
                   >
                     <div className="flex items-start gap-3">
-                      <AvatarBadge name={conv.customer_name || '?'} unread={conv.unread_count} />
+                      <AvatarBadge name={conv.customer_name || conv.phone || '?'} unread={conv.unread_count} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="font-bold text-sm text-gray-900 truncate uppercase tracking-tight">
-                            {conv.customer_name || 'Unknown'}
+                          <p
+                            className={`text-sm truncate uppercase tracking-tight ${
+                              (conv.unread_count || 0) > 0
+                                ? 'font-extrabold text-gray-950'
+                                : 'font-bold text-gray-900'
+                            }`}
+                          >
+                            {conv.customer_name || conv.phone || 'Unknown'}
                           </p>
                           <p className="text-[10px] text-gray-400 shrink-0">
                             {conv.last_message_time ? dayjs(conv.last_message_time).format('DD/MM') : ''}
                           </p>
                         </div>
-                        <p className="text-xs text-gray-500 truncate mt-0.5">
+                        <p
+                          className={`text-xs truncate mt-0.5 ${
+                            (conv.unread_count || 0) > 0
+                              ? 'font-semibold text-gray-800'
+                              : 'text-gray-500'
+                          }`}
+                        >
                           {conv.last_message || 'No messages yet'}
                         </p>
                       </div>

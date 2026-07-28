@@ -80,6 +80,9 @@ export interface ConversationPage {
   next: string | null;
   previous: string | null;
   results: InboxConversation[];
+  all_total?: number;
+  unread_total?: number;
+  assigned_total?: number;
 }
 
 export interface InboxSocketEvent {
@@ -249,12 +252,15 @@ function throwWhatsFlowSsoError(error: AxiosError): never {
 }
 
 function mapConversation(raw: Record<string, unknown>): InboxConversation {
+  const lastMessage = String(
+    raw.last_message ?? raw.last_message_preview ?? raw.preview ?? '',
+  ).trim();
   return {
     id: String(raw.id ?? ''),
-    customer_name: String(raw.customer_name ?? raw.customer ?? ''),
+    customer_name: String(raw.customer_name ?? raw.customer ?? raw.phone ?? ''),
     phone: String(raw.phone ?? ''),
-    last_message: String(raw.last_message ?? ''),
-    last_message_time: String(raw.last_message_time ?? ''),
+    last_message: lastMessage,
+    last_message_time: String(raw.last_message_time ?? raw.last_message_at ?? ''),
     unread_count: Number(raw.unread_count ?? 0),
     assigned_to_me: typeof raw.assigned_to_me === 'boolean' ? raw.assigned_to_me : undefined,
   };
@@ -266,6 +272,9 @@ function mapConversationPage(payload: unknown): ConversationPage {
     count?: number;
     next?: string | null;
     previous?: string | null;
+    all_total?: number;
+    unread_total?: number;
+    assigned_total?: number;
   }>(payload);
   const results = (data.results ?? []).map(mapConversation);
   return {
@@ -273,6 +282,9 @@ function mapConversationPage(payload: unknown): ConversationPage {
     next: data.next ?? null,
     previous: data.previous ?? null,
     results,
+    all_total: typeof data.all_total === 'number' ? data.all_total : undefined,
+    unread_total: typeof data.unread_total === 'number' ? data.unread_total : undefined,
+    assigned_total: typeof data.assigned_total === 'number' ? data.assigned_total : undefined,
   };
 }
 
@@ -609,6 +621,20 @@ class WhatsAppInboxApi {
       });
       return mapConversationDetail(res.data);
     });
+  }
+
+  /** Explicit mark-read (detail GET also clears unread on WhatsFlow). */
+  async markConversationRead(conversationId: string): Promise<void> {
+    await this.ensureAuthenticated();
+    try {
+      await this.client.post(`/api/inbox/conversations/${conversationId}/mark-read/`);
+    } catch (error) {
+      // Older WhatsFlow deploys may not have this route yet; detail GET still clears unread.
+      if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
+        return;
+      }
+      throw error;
+    }
   }
 
   async sendText(payload: SendTextPayload): Promise<void> {
