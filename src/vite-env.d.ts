@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_WHATSFLOW_API_BASE_URL?: string;
   /** @deprecated Derived from VITE_WHATSAPP_API_URL when omitted */
   readonly VITE_WHATSFLOW_WS_BASE_URL?: string;
+  /** Enable CRM revenue-model UI even if backend flag is off (local only). */
+  readonly VITE_REVENUE_MODEL_V2?: string;
 }
 
 interface ImportMeta {

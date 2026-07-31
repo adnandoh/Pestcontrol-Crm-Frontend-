@@ -67,9 +67,13 @@ export const API_ENDPOINTS = {
 
   // Health Check
   HEALTH: '/v1/health/',
+  FEATURE_FLAGS: '/v1/feature-flags/',
+  SETTLEMENTS: '/v1/settlements/',
   FIREBASE_HEALTH: '/v1/firebase/health/',
   FEEDBACKS: '/v1/feedbacks/',
   ECARD_TRACKING: '/v1/e-card/tracking/',
+  ECARD_SENT_CHECK: '/v1/e-card/sent-check/',
+  ECARD_MARK_SENT: '/v1/e-card/mark-sent/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
   PENDING_PAYMENTS: '/v1/pending-payments/',

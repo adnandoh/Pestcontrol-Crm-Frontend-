@@ -23,6 +23,8 @@ import {
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
+import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
+import RevenueModelFields from '../components/crm/RevenueModelFields';
 
 import {
   MUMBAI_PRICING_CONFIG,
@@ -116,11 +118,28 @@ const CreateJobCard: React.FC = () => {
       is_amc_main_booking: false,
       is_followup_visit: false,
       included_in_amc: false,
-      is_complaint_call: false
+      is_complaint_call: false,
+      package_tier: '',
+      payment_model: '',
+      technician_share_percent: 40,
+      company_share_percent: 60,
+      planned_visit_count: null,
+      discount_amount: 0,
     };
   };
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
+  const revenueModelEnabled = useRevenueModelV2();
+
+  // When revenue model is enabled, default new bookings to revenue_sharing
+  useEffect(() => {
+    if (!revenueModelEnabled) return;
+    setFormData((prev) =>
+      prev.payment_model
+        ? prev
+        : { ...prev, payment_model: 'revenue_sharing' },
+    );
+  }, [revenueModelEnabled]);
 
   const servicePackageOptions = getServicePackageOptions(pricingConfig).filter(
     (service) => service !== 'Hotel / Commercial',
@@ -938,6 +957,14 @@ const CreateJobCard: React.FC = () => {
                   <option value="Online">Online</option>
                 </select>
               </div>
+              {revenueModelEnabled && (
+                <RevenueModelFields
+                  formData={formData}
+                  onChange={(field, value) =>
+                    handleInputChange(field as keyof JobCardFormData, value as never)
+                  }
+                />
+              )}
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
                 <select

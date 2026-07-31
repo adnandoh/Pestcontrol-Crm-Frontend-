@@ -1,30 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
-  Phone,
-  User,
   Edit2,
-  XCircle,
-  Hash,
-  Contact2,
-  MapPin
+  MapPin,
 } from 'lucide-react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
-  Card,
-  Input,
   Pagination,
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { PaginatedResponse, Technician } from '../types';
 import { cn } from '../utils/cn';
 import { showAlert } from '../utils/notify';
+import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 
 const PAGE_SIZE = 10;
 
 const Technicians: React.FC = () => {
+  const navigate = useNavigate();
+  const revenueModelEnabled = useRevenueModelV2();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
@@ -36,19 +33,6 @@ const Technicians: React.FC = () => {
     current: 1,
     pageSize: PAGE_SIZE,
     totalPages: 0,
-  });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [editingTech, setEditingTech] = useState<Technician | null>(null);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    mobile: '',
-    age: '',
-    alternative_mobile: '',
-    service_area: '',
-    city: '',
-    is_active: true,
   });
 
   const loadTechnicians = useCallback(async (page = 1, currentSearch = searchInput) => {
@@ -118,82 +102,6 @@ const Technicians: React.FC = () => {
     loadTechnicians(page, searchInput);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const normalizeFormPayload = () => ({
-    name: formData.name.trim(),
-    mobile: formData.mobile.replace(/\D/g, '').slice(0, 10),
-    age: formData.age ? parseInt(formData.age, 10) : undefined,
-    alternative_mobile: formData.alternative_mobile
-      ? formData.alternative_mobile.replace(/\D/g, '').slice(0, 10)
-      : '',
-    service_area: formData.service_area.trim(),
-    city: formData.city.trim(),
-    is_active: formData.is_active,
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const payload = normalizeFormPayload();
-      if (editingTech) {
-        await enhancedApiService.updateTechnician(editingTech.id, payload);
-      } else {
-        await enhancedApiService.createTechnician(payload);
-      }
-      setIsModalOpen(false);
-      resetForm();
-      await loadTechnicians(pagination.current, searchInput);
-    } catch (error: unknown) {
-      console.error('Failed to save technician:', error);
-      const apiErr = error as { message?: string; details?: Record<string, string[] | string> };
-      let msg = apiErr.message || 'Failed to save technician.';
-      if (apiErr.details?.mobile) {
-        const mobileErr = Array.isArray(apiErr.details.mobile)
-          ? apiErr.details.mobile[0]
-          : String(apiErr.details.mobile);
-        msg = mobileErr;
-      }
-      showAlert(msg);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      mobile: '',
-      age: '',
-      alternative_mobile: '',
-      service_area: '',
-      city: '',
-      is_active: true,
-    });
-    setEditingTech(null);
-  };
-
-  const handleEdit = (tech: Technician) => {
-    setEditingTech(tech);
-    setFormData({
-      name: tech.name,
-      mobile: tech.mobile,
-      age: tech.age?.toString() || '',
-      alternative_mobile: tech.alternative_mobile || '',
-      service_area: tech.service_area || '',
-      city: tech.city || '',
-      is_active: tech.is_active,
-    });
-    setIsModalOpen(true);
-  };
-
   const showingFrom = pagination.count === 0 ? 0 : (pagination.current - 1) * PAGE_SIZE + 1;
   const showingTo = Math.min(pagination.current * PAGE_SIZE, pagination.count);
 
@@ -207,7 +115,7 @@ const Technicians: React.FC = () => {
           </span>
         </div>
         <Button
-          onClick={() => { resetForm(); setIsModalOpen(true); }}
+          onClick={() => navigate('/technicians/create')}
           className="bg-blue-700 hover:bg-blue-800 h-8 text-[11px] font-extrabold shadow-lg px-6 uppercase tracking-wider"
         >
           <Plus className="h-4 w-4 mr-1" /> Create Technician
@@ -242,6 +150,9 @@ const Technicians: React.FC = () => {
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Age</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Join Date</th>
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Status</th>
+                {revenueModelEnabled && (
+                  <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Type</th>
+                )}
                 <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Partner App</th>
                 <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
               </tr>
@@ -249,14 +160,14 @@ const Technicians: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center">
+                  <td colSpan={revenueModelEnabled ? 9 : 8} className="py-20 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
                     <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                   </td>
                 </tr>
               ) : technicians.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                  <td colSpan={revenueModelEnabled ? 9 : 8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                     No Technicians Found
                   </td>
                 </tr>
@@ -293,6 +204,24 @@ const Technicians: React.FC = () => {
                       {tech.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </td>
+                  {revenueModelEnabled && (
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
+                          tech.technician_type === 'salaried'
+                            ? 'bg-slate-50 text-slate-700 ring-slate-600/20'
+                            : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                        }`}
+                      >
+                        {tech.technician_type === 'salaried' ? 'Salaried' : 'Partner'}
+                      </span>
+                      {tech.presence_status && tech.presence_status !== 'offline' && (
+                        <div className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">
+                          {tech.presence_status.replace('_', ' ')}
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-3 py-2.5">
                     {!tech.has_partner_app ? (
                       <span className="text-[9px] font-bold text-gray-400 uppercase">No app</span>
@@ -317,7 +246,12 @@ const Technicians: React.FC = () => {
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => handleEdit(tech)} className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/technicians/edit/${tech.id}`)}
+                        className="p-1.5 bg-gray-100 hover:bg-blue-100 rounded transition-all group"
+                        title="Edit technician"
+                      >
                         <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
                       </button>
                     </div>
@@ -345,147 +279,6 @@ const Technicians: React.FC = () => {
           </div>
         )}
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <Card className="relative w-full max-w-md bg-white shadow-2xl rounded-2xl overflow-hidden border-none animate-in fade-in zoom-in duration-300">
-            <div className="p-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-extrabold uppercase tracking-widest italic">{editingTech ? 'Edit Technician' : 'Add New Technician'}</h2>
-                <p className="text-[9px] text-blue-100 font-semibold tracking-tighter mt-0.5">Please fill in all mandatory personnel details</p>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-extrabold text-gray-500 mb-1.5 block uppercase tracking-widest">Full Name *</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                    <Input
-                      name="name"
-                      required
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="ENTER FULL NAME"
-                      className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500 uppercase"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">Mobile Number *</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                      <Input
-                        name="mobile"
-                        required
-                        value={formData.mobile}
-                        onChange={handleInputChange}
-                        placeholder="9999999999"
-                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">Age</label>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                      <Input
-                        name="age"
-                        type="number"
-                        value={formData.age}
-                        onChange={handleInputChange}
-                        placeholder="00"
-                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">Alternative Number</label>
-                  <div className="relative">
-                    <Contact2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                    <Input
-                      name="alternative_mobile"
-                      value={formData.alternative_mobile}
-                      onChange={handleInputChange}
-                      placeholder="ENTER SECONDARY NUMBER"
-                      className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">Service Area</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                      <Input
-                        name="service_area"
-                        value={formData.service_area}
-                        onChange={handleInputChange}
-                        placeholder="E.G. BANDRA"
-                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500 uppercase"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase tracking-widest">City</label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                      <Input
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        placeholder="E.G. MUMBAI"
-                        className="pl-9 h-10 text-xs font-black border-gray-200 focus:border-blue-500 uppercase"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                  />
-                  <label htmlFor="is_active" className="text-[10px] font-black text-gray-700 uppercase tracking-widest cursor-pointer select-none flex items-center gap-2">
-                    Mark as Active / Available for assignment
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 h-10 text-[11px] font-black uppercase tracking-wider border-gray-300 hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 h-10 text-[11px] font-black uppercase tracking-wider bg-blue-700 hover:bg-blue-800 shadow-xl shadow-blue-100 transition-all active:scale-95"
-                >
-                  {submitting ? 'Saving...' : editingTech ? 'Update Personnel' : 'Register Technician'}
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };

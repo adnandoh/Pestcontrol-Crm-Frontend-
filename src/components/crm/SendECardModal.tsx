@@ -16,6 +16,7 @@ import {
   whatsAppApiKeySetupMessage,
   whatsappInboxApi,
 } from '../../services/whatsappInboxApi';
+import { enhancedApiService } from '../../services/api.enhanced';
 import { getErrorMessage } from '../../utils/errors';
 import { notify } from '../../utils/notify';
 
@@ -65,6 +66,18 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
 
     setSending(true);
     try {
+      const check = await enhancedApiService.checkECardSent(normalized);
+      if (check.already_sent) {
+        const when = check.sent_at ? new Date(check.sent_at).toLocaleString('en-IN') : '';
+        const by = check.sent_by || 'another staff member';
+        const msg = when
+          ? `Pest e-Card already sent on ${when} by ${by}.`
+          : `Pest e-Card already sent by ${by}.`;
+        setError(msg);
+        notify.error(msg);
+        return;
+      }
+
       await whatsappInboxApi.sendTemplateByPhone({
         phone: normalized,
         template_name: ECARD_TEMPLATE.name,
@@ -73,6 +86,23 @@ export default function SendECardModal({ open, onOpenChange, initial }: SendECar
         customer_name: initial?.name || undefined,
         external_id: externalId,
       });
+
+      try {
+        await enhancedApiService.markECardSent({
+          mobile: normalized,
+          customer_name: initial?.name || undefined,
+          source:
+            initial?.source === 'website'
+              ? 'website_inquiry'
+              : initial?.source === 'crm'
+                ? 'crm_inquiry'
+                : 'pest_crm',
+          template_name: ECARD_TEMPLATE.name,
+        });
+      } catch (markErr) {
+        console.error('Failed to mark e-card sent:', markErr);
+      }
+
       notify.success(
         `E-Card sent to +${normalized}${initial?.name ? ` (${initial.name})` : ''}.`,
       );

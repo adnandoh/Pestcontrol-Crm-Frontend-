@@ -26,8 +26,9 @@ import EditJobCard from './pages/EditJobCard';
 import Renewals from './pages/Renewals';
 import References from './pages/References';
 import Technicians from './pages/Technicians';
+import TechnicianFormPage from './pages/TechnicianFormPage';
+import Settlements from './pages/Settlements';
 import CRMInquiries from './pages/CRMInquiries';
-import PartnerReferrals from './pages/PartnerReferrals';
 import WhatsAppInbox from './pages/WhatsAppInbox';
 import Feedbacks from './pages/Feedbacks';
 import ECardTracking from './pages/ECardTracking';
@@ -149,8 +150,10 @@ const AppContent: React.FC = () => {
                     <Route path="/renewals" element={<Renewals />} />
                     <Route path="/references" element={<References />} />
                     <Route path="/technicians" element={<Technicians />} />
+                    <Route path="/technicians/create" element={<TechnicianFormPage />} />
+                    <Route path="/technicians/edit/:id" element={<TechnicianFormPage />} />
+                    <Route path="/settlements" element={<Settlements />} />
                     <Route path="/crm-inquiries" element={<CRMInquiries />} />
-                    <Route path="/partner-referrals" element={<PartnerReferrals />} />
                     <Route path="/whatsapp/inbox" element={<WhatsAppInbox />} />
                     <Route path="/quotations" element={<Quotations />} />
                     <Route path="/invoices" element={<Invoices />} />

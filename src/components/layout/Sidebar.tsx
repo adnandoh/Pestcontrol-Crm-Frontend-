@@ -22,6 +22,7 @@ import {
   Receipt,
   IndianRupee,
   IdCard,
+  Wallet,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -29,6 +30,7 @@ import type { AuthUser } from '../../types';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 import { isBlogUser, isPricingAdmin } from '../../utils/roles';
 import { WhatsAppIcon } from '../icons/WhatsAppIcon';
+import { useRevenueModelV2 } from '../../hooks/useRevenueModelV2';
 
 interface SidebarProps {
   className?: string;
@@ -38,6 +40,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, user }) => {
+  const revenueModelEnabled = useRevenueModelV2();
   const location = useLocation();
   const { counts } = useDashboardCounts();
 
@@ -74,7 +77,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Invoices', href: '/invoices', icon: Receipt },
         { name: 'Pending Amounts', href: '/pending-amounts', icon: IndianRupee },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
-        { name: 'Partner Referrals', href: '/partner-referrals', icon: UserPlus },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]
@@ -89,6 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
       items: [
         { name: 'Client Directory', href: '/clients', icon: Users },
         { name: 'Technicians', href: '/technicians', icon: Users },
+        ...(revenueModelEnabled
+          ? [{ name: 'Settlements', href: '/settlements', icon: Wallet }]
+          : []),
         { name: 'Technician Reports', href: '/technician-reports', icon: BarChart3 },
         { name: 'Technician Selfies', href: '/technician-selfies', icon: Camera },
         { name: 'Staff Performance', href: '/staff-performance', icon: BarChart3 },

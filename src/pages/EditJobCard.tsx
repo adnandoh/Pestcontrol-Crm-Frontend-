@@ -27,6 +27,9 @@ import {
 import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValidation';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, JobCard, State, City } from '../types';
+import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
+import RevenueModelFields from '../components/crm/RevenueModelFields';
+import JobCrewPanel from '../components/crm/JobCrewPanel';
 
 import {
   MUMBAI_PRICING_CONFIG,
@@ -128,10 +131,18 @@ const EditJobCard: React.FC = () => {
     is_amc_main_booking: false,
     is_followup_visit: false,
     included_in_amc: false,
-    is_complaint_call: false
+    is_complaint_call: false,
+    package_tier: '',
+    payment_model: '',
+    technician_share_percent: 40,
+    company_share_percent: 60,
+    planned_visit_count: null,
+    discount_amount: 0,
   });
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
+  const [loadedJob, setLoadedJob] = useState<JobCard | null>(null);
+  const revenueModelEnabled = useRevenueModelV2();
 
   useEffect(() => {
     if (loading || isInitialLoad.current || !pricingConfigReady) return;
@@ -293,9 +304,16 @@ const EditJobCard: React.FC = () => {
           is_amc_main_booking: data.is_amc_main_booking || false,
           is_followup_visit: data.is_followup_visit || false,
           included_in_amc: data.included_in_amc || false,
-          is_complaint_call: data.is_complaint_call || false
+          is_complaint_call: data.is_complaint_call || false,
+          package_tier: data.package_tier || '',
+          payment_model: data.payment_model || '',
+          technician_share_percent: data.technician_share_percent ?? 40,
+          company_share_percent: data.company_share_percent ?? 60,
+          planned_visit_count: data.planned_visit_count ?? null,
+          discount_amount: data.discount_amount ?? 0,
+          max_cycle: data.max_cycle,
         });
-        
+        setLoadedJob(data);
         // If it already has a next service date, mark it as manual/respected
         if (data.next_service_date) {
           setIsNextDateManual(true);
@@ -1169,8 +1187,49 @@ const EditJobCard: React.FC = () => {
                 </select>
                 {errors.reference && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>}
               </div>
+
+              {revenueModelEnabled && (
+                <RevenueModelFields
+                  formData={formData}
+                  onChange={(field, value) =>
+                    handleInputChange(field as keyof JobCardFormData, value as never)
+                  }
+                  readOnlySnapshots={
+                    loadedJob
+                      ? {
+                          payout_status: loadedJob.payout_status,
+                          visit_revenue_amount: loadedJob.visit_revenue_amount,
+                          technician_pool_amount: loadedJob.technician_pool_amount,
+                          company_share_amount: loadedJob.company_share_amount,
+                          visit_payout_amount: loadedJob.visit_payout_amount,
+                        }
+                      : undefined
+                  }
+                />
+              )}
             </div>
           </div>
+
+          {revenueModelEnabled && loadedJob && (
+            <JobCrewPanel
+              job={loadedJob}
+              onJobUpdated={(updated) => {
+                setLoadedJob(updated);
+                setJobCard((prev) => (prev ? { ...prev, ...updated } : updated));
+                setFormData((prev) => ({
+                  ...prev,
+                  package_tier: updated.package_tier || prev.package_tier,
+                  payment_model: updated.payment_model || prev.payment_model,
+                  technician_share_percent:
+                    updated.technician_share_percent ?? prev.technician_share_percent,
+                  company_share_percent:
+                    updated.company_share_percent ?? prev.company_share_percent,
+                  planned_visit_count:
+                    updated.planned_visit_count ?? prev.planned_visit_count,
+                }));
+              }}
+            />
+          )}
 
           {/* Section: Reminders */}
           <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">

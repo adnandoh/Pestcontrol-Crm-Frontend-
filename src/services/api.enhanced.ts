@@ -31,6 +31,10 @@ import type {
   ClientFormData,
   InquiryFormData,
   JobCardFormData,
+  JobCardTechnicianParticipation,
+  FeatureFlags,
+  TechnicianSettlement,
+  SettlementCadence,
   DashboardStatisticsResponse,
   CRMInquiry,
   CRMInquiryFormData,
@@ -88,12 +92,19 @@ function normalizeServiceCategory(value: unknown): string | null | undefined {
 
 function sanitizeJobCardPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const out = { ...payload };
+  // CharFields that allow blank but NOT null — keep empty string, never null.
+  const emptyToBlank = ['package_tier', 'payment_model'];
+  for (const field of emptyToBlank) {
+    if (field in out && (out[field] === null || out[field] === undefined || out[field] === '')) {
+      out[field] = '';
+    }
+  }
   const emptyToNull = [
     'bhk_size', 'property_type', 'contract_duration', 'society_billing_type', 'payment_mode',
     'reminder_date', 'reminder_time', 'reminder_note', 'next_service_date',
     'assigned_to', 'notes', 'extra_notes', 'cancellation_reason', 'removal_remarks',
     'technician', 'master_country', 'master_state', 'master_city', 'master_location',
-    'full_address',
+    'full_address', 'planned_visit_count',
   ];
   for (const field of emptyToNull) {
     if (field in out) out[field] = nullIfEmpty(out[field]);
@@ -425,6 +436,13 @@ class EnhancedApiService {
       this.api.post<Technician>(API_ENDPOINTS.TECHNICIANS, data),
     );
     apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
+    return result.data;
+  }
+
+  async getTechnician(id: number): Promise<Technician> {
+    const result = await this.retryRequest(() =>
+      this.api.get<Technician>(`${API_ENDPOINTS.TECHNICIANS}${id}/`),
+    );
     return result.data;
   }
 
@@ -998,6 +1016,12 @@ class EnhancedApiService {
       is_followup_visit: data.is_followup_visit ?? false,
       included_in_amc: data.included_in_amc ?? false,
       is_complaint_call: data.is_complaint_call ?? false,
+      package_tier: data.package_tier || '',
+      payment_model: data.payment_model || '',
+      technician_share_percent: data.technician_share_percent ?? 40,
+      company_share_percent: data.company_share_percent ?? 60,
+      planned_visit_count: data.planned_visit_count ?? null,
+      discount_amount: data.discount_amount ?? 0,
     };
 
     // Explicitly ensure no 'id' is sent during creation
@@ -1098,6 +1122,18 @@ class EnhancedApiService {
     if (data.is_followup_visit !== undefined) requestData.is_followup_visit = data.is_followup_visit;
     if (data.included_in_amc !== undefined) requestData.included_in_amc = data.included_in_amc;
     if (data.is_complaint_call !== undefined) requestData.is_complaint_call = data.is_complaint_call;
+    if (data.package_tier !== undefined) requestData.package_tier = data.package_tier || '';
+    if (data.payment_model !== undefined) requestData.payment_model = data.payment_model || '';
+    if (data.technician_share_percent !== undefined) {
+      requestData.technician_share_percent = data.technician_share_percent;
+    }
+    if (data.company_share_percent !== undefined) {
+      requestData.company_share_percent = data.company_share_percent;
+    }
+    if (data.planned_visit_count !== undefined) {
+      requestData.planned_visit_count = data.planned_visit_count;
+    }
+    if (data.discount_amount !== undefined) requestData.discount_amount = data.discount_amount;
 
     const result = await this.retryRequest(() =>
       this.api.patch<JobCard>(
@@ -1122,6 +1158,152 @@ class EnhancedApiService {
     apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
     apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${id}`);
     
+    return result.data;
+  }
+
+  async getFeatureFlags(): Promise<FeatureFlags> {
+    const result = await this.api.get<FeatureFlags>(API_ENDPOINTS.FEATURE_FLAGS);
+    return result.data;
+  }
+
+  async getJobCardParticipants(jobId: number): Promise<JobCardTechnicianParticipation[]> {
+    const result = await this.api.get<JobCardTechnicianParticipation[]>(
+      `${API_ENDPOINTS.JOBCARDS}${jobId}/participants/`,
+    );
+    return result.data;
+  }
+
+  async addJobCardParticipant(
+    jobId: number,
+    data: { technician_id: number; role?: 'lead' | 'crew' },
+  ): Promise<JobCardTechnicianParticipation> {
+    const result = await this.api.post<JobCardTechnicianParticipation>(
+      `${API_ENDPOINTS.JOBCARDS}${jobId}/participants/`,
+      data,
+    );
+    return result.data;
+  }
+
+  async updateJobCardParticipant(
+    jobId: number,
+    participantId: number,
+    data: Partial<Pick<JobCardTechnicianParticipation, 'role' | 'attendance_status' | 'is_payout_eligible'>>,
+  ): Promise<JobCardTechnicianParticipation> {
+    const result = await this.api.patch<JobCardTechnicianParticipation>(
+      `${API_ENDPOINTS.JOBCARDS}${jobId}/participants/${participantId}/`,
+      data,
+    );
+    return result.data;
+  }
+
+  async removeJobCardParticipant(jobId: number, participantId: number): Promise<void> {
+    await this.api.delete(`${API_ENDPOINTS.JOBCARDS}${jobId}/participants/${participantId}/`);
+  }
+
+  async recalculateJobCardPayout(jobId: number): Promise<{
+    skipped: boolean;
+    reason?: string;
+    economics?: string;
+    visit_revenue?: string;
+    technician_pool?: string;
+    company_share?: string;
+    payout_status?: string;
+    visit_payout_amount?: string;
+    participants?: JobCardTechnicianParticipation[];
+  }> {
+    const result = await this.api.post(`${API_ENDPOINTS.JOBCARDS}${jobId}/payout-recalculate/`);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${jobId}`);
+    return result.data;
+  }
+
+  async holdJobCardPayout(jobId: number): Promise<JobCard> {
+    const result = await this.api.post<JobCard>(`${API_ENDPOINTS.JOBCARDS}${jobId}/payout-hold/`);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${jobId}`);
+    return result.data;
+  }
+
+  async approveJobCardPayout(jobId: number): Promise<JobCard> {
+    const result = await this.api.post<JobCard>(`${API_ENDPOINTS.JOBCARDS}${jobId}/payout-approve/`);
+    apiCache.deletePattern(CACHE_KEYS.JOBCARDS);
+    apiCache.deletePattern(`${API_ENDPOINTS.JOBCARDS}${jobId}`);
+    return result.data;
+  }
+
+  async getSettlements(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    technician?: number;
+    period_start?: string;
+    period_end?: string;
+  }): Promise<PaginatedResponse<TechnicianSettlement> | TechnicianSettlement[]> {
+    const result = await this.api.get(API_ENDPOINTS.SETTLEMENTS, { params });
+    return result.data;
+  }
+
+  async getSettlement(id: number): Promise<TechnicianSettlement> {
+    const result = await this.api.get<TechnicianSettlement>(`${API_ENDPOINTS.SETTLEMENTS}${id}/`);
+    return result.data;
+  }
+
+  async buildSettlements(data: {
+    period_start: string;
+    period_end: string;
+    cadence?: SettlementCadence;
+    technician_ids?: number[];
+  }): Promise<{ count: number; results: TechnicianSettlement[] }> {
+    const result = await this.api.post(`${API_ENDPOINTS.SETTLEMENTS}`, data);
+    return result.data;
+  }
+
+  async approveSettlement(id: number): Promise<TechnicianSettlement> {
+    const result = await this.api.post<TechnicianSettlement>(
+      `${API_ENDPOINTS.SETTLEMENTS}${id}/approve/`,
+    );
+    return result.data;
+  }
+
+  async markSettlementPaid(id: number): Promise<TechnicianSettlement> {
+    const result = await this.api.post<TechnicianSettlement>(
+      `${API_ENDPOINTS.SETTLEMENTS}${id}/mark-paid/`,
+    );
+    return result.data;
+  }
+
+  async cancelSettlement(id: number): Promise<TechnicianSettlement> {
+    const result = await this.api.post<TechnicianSettlement>(
+      `${API_ENDPOINTS.SETTLEMENTS}${id}/cancel/`,
+    );
+    return result.data;
+  }
+
+  async downloadSettlementsExcel(params?: {
+    ids?: number[];
+    status?: string;
+    period_start?: string;
+    period_end?: string;
+  }): Promise<Blob> {
+    const query: Record<string, string> = {};
+    if (params?.ids?.length) query.ids = params.ids.join(',');
+    if (params?.status) query.status = params.status;
+    if (params?.period_start) query.period_start = params.period_start;
+    if (params?.period_end) query.period_end = params.period_end;
+    const result = await this.api.get(`${API_ENDPOINTS.SETTLEMENTS}export/`, {
+      params: query,
+      responseType: 'blob',
+    });
+    return result.data;
+  }
+
+  async downloadRevenueSharingReport(params?: {
+    from?: string;
+    to?: string;
+  }): Promise<Blob> {
+    const result = await this.api.get(
+      `${API_ENDPOINTS.SETTLEMENTS}revenue-sharing-report/`,
+      { params, responseType: 'blob' },
+    );
     return result.data;
   }
 
@@ -1473,6 +1655,38 @@ class EnhancedApiService {
     }>;
   }> {
     const response = await this.api.get(API_ENDPOINTS.ECARD_TRACKING, { params });
+    return response.data;
+  }
+
+  async checkECardSent(mobile: string): Promise<{
+    already_sent: boolean;
+    mobile?: string;
+    sent_at?: string;
+    sent_by?: string;
+    customer_name?: string;
+    template_name?: string;
+    source?: string;
+  }> {
+    const response = await this.api.get(API_ENDPOINTS.ECARD_SENT_CHECK, {
+      params: { mobile },
+    });
+    return response.data;
+  }
+
+  async markECardSent(data: {
+    mobile: string;
+    customer_name?: string;
+    source?: string;
+    sent_by?: string;
+    template_name?: string;
+  }): Promise<{
+    already_sent: boolean;
+    mobile: string;
+    sent_at?: string;
+    sent_by?: string;
+    created?: boolean;
+  }> {
+    const response = await this.api.post(API_ENDPOINTS.ECARD_MARK_SENT, data);
     return response.data;
   }
 

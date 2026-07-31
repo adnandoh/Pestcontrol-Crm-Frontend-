@@ -34,6 +34,18 @@ export interface Technician {
   partner_app_approved?: boolean;
   partner_id?: number | null;
   partner_name?: string | null;
+  technician_type?: 'partner' | 'salaried';
+  branch?: string;
+  aadhaar?: string;
+  pan?: string;
+  security_deposit_amount?: number | string;
+  security_deposit_status?: 'pending' | 'collected' | 'refunded';
+  skills?: string[];
+  star_rating?: number | string;
+  presence_status?: 'online' | 'offline' | 'busy' | 'on_service' | 'on_leave' | 'suspended';
+  suspended_at?: string | null;
+  suspend_reason?: string;
+  reactivated_at?: string | null;
   active_job_details?: {
     id: number;
     client__full_name: string;
@@ -41,6 +53,90 @@ export interface Technician {
     client_name?: string;
     service?: string;
   }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type PackageTier = 'standard' | 'premium';
+export type PaymentModel = 'revenue_sharing' | 'salaried';
+export type PayoutStatus =
+  | 'legacy_exempt'
+  | 'not_applicable'
+  | 'pending'
+  | 'held'
+  | 'approved'
+  | 'paid'
+  | 'cancelled';
+
+export interface JobCardTechnicianParticipation {
+  id: number;
+  jobcard: number;
+  technician: number;
+  technician_name?: string;
+  technician_mobile?: string;
+  technician_type?: 'partner' | 'salaried';
+  partner?: number | null;
+  partner_name?: string | null;
+  role: 'lead' | 'crew';
+  attendance_status: 'assigned' | 'checked_in' | 'completed' | 'absent';
+  checked_in_at?: string | null;
+  checked_out_at?: string | null;
+  is_payout_eligible: boolean;
+  share_percent_snapshot?: number | string | null;
+  payout_amount_snapshot?: number | string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeatureFlags {
+  REVENUE_MODEL_V2: boolean;
+}
+
+export type SettlementCadence = 'weekly' | 'monthly';
+export type SettlementStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'paid'
+  | 'cancelled';
+
+export interface SettlementLineItem {
+  id: number;
+  settlement: number;
+  job: number;
+  job_code?: string;
+  participation?: number | null;
+  technician_name?: string | null;
+  partner_earning?: number | null;
+  earning_type: 'revenue_share' | 'incentive' | 'deduction';
+  amount: number | string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TechnicianSettlement {
+  id: number;
+  technician: number;
+  technician_name?: string;
+  technician_mobile?: string;
+  partner?: number | null;
+  partner_name?: string | null;
+  period_start: string;
+  period_end: string;
+  cadence: SettlementCadence;
+  status: SettlementStatus;
+  gross_amount: number | string;
+  incentive_amount: number | string;
+  deduction_amount: number | string;
+  net_amount: number | string;
+  notes?: string;
+  approved_at?: string | null;
+  approved_by_name?: string | null;
+  paid_at?: string | null;
+  paid_by_name?: string | null;
+  line_count?: number;
+  line_items?: SettlementLineItem[];
   created_at: string;
   updated_at: string;
 }
@@ -303,6 +399,17 @@ export interface JobCard {
   done_by_name?: string;
   created_at: string;
   updated_at: string;
+  package_tier?: PackageTier | '';
+  payment_model?: PaymentModel | '';
+  technician_share_percent?: number | string;
+  company_share_percent?: number | string;
+  planned_visit_count?: number | null;
+  discount_amount?: number | string;
+  visit_revenue_amount?: number | string;
+  technician_pool_amount?: number | string;
+  company_share_amount?: number | string;
+  visit_payout_amount?: number | string;
+  payout_status?: PayoutStatus;
 }
 
 export interface PartnerJobSelfie {
@@ -591,6 +698,12 @@ export interface JobCardFormData {
   is_followup_visit?: boolean;
   included_in_amc?: boolean;
   is_complaint_call?: boolean;
+  package_tier?: PackageTier | '';
+  payment_model?: PaymentModel | '';
+  technician_share_percent?: number | string;
+  company_share_percent?: number | string;
+  planned_visit_count?: number | null;
+  discount_amount?: number | string;
 }
 
 // Filter types
