@@ -177,7 +177,7 @@ export default function JobCrewPanel({ job, onJobUpdated }: JobCrewPanelProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
         <Stat label="Visit revenue" value={`₹${preview.visitRevenue.toFixed(2)}`} />
-        <Stat label="Tech pool" value={`₹${preview.technicianPool.toFixed(2)}`} />
+        <Stat label="Partner share (40%)" value={`₹${preview.technicianPool.toFixed(2)}`} />
         <Stat label="Company" value={`₹${preview.companyShare.toFixed(2)}`} />
         <Stat
           label="Split preview"

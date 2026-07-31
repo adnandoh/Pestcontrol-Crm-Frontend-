@@ -138,7 +138,7 @@ export default function RevenueModelFields({
       {showPreview && !isLegacy && formData.payment_model !== 'salaried' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
           <PreviewStat label="Visit revenue" value={preview.visitRevenue} />
-          <PreviewStat label="Tech pool (40%)" value={preview.technicianPool} />
+          <PreviewStat label="Partner share (40%)" value={preview.technicianPool} />
           <PreviewStat label="Company (60%)" value={preview.companyShare} />
           <PreviewStat
             label={preview.held ? 'Status' : 'Per partner'}
