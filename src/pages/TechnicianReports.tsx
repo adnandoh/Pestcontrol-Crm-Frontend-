@@ -32,9 +32,11 @@ const TechnicianReports: React.FC = () => {
     service_type: '',
     search: ''
   });
-  const [activeDatePreset, setActiveDatePreset] = useState('this_month');
 
   useEffect(() => {
+    if (filters.from && filters.to && filters.from > filters.to) {
+      return;
+    }
     fetchReports();
   }, [filters.from, filters.to, filters.service_type]);
 
@@ -42,9 +44,9 @@ const TechnicianReports: React.FC = () => {
     try {
       setLoading(true);
       const data = await enhancedApiService.getTechnicianPerformance({
-        from: filters.from,
-        to: filters.to,
-        service_type: filters.service_type
+        from: filters.from || undefined,
+        to: filters.to || undefined,
+        service_type: filters.service_type || undefined,
       });
       setReports(data);
     } catch (err) {
@@ -54,30 +56,24 @@ const TechnicianReports: React.FC = () => {
     }
   };
 
-  const setDatePreset = (preset: string) => {
-    setActiveDatePreset(preset);
-    let from = '';
-    let to = dayjs().format('YYYY-MM-DD');
+  const onFromChange = (value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, from: value };
+      if (value && prev.to && value > prev.to) {
+        next.to = value;
+      }
+      return next;
+    });
+  };
 
-    switch (preset) {
-      case 'today':
-        from = dayjs().format('YYYY-MM-DD');
-        break;
-      case 'yesterday':
-        from = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-        to = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-        break;
-      case 'this_week':
-        from = dayjs().startOf('week').format('YYYY-MM-DD');
-        break;
-      case 'this_month':
-        from = dayjs().startOf('month').format('YYYY-MM-DD');
-        break;
-      default:
-        return;
-    }
-
-    setFilters(prev => ({ ...prev, from, to }));
+  const onToChange = (value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, to: value };
+      if (value && prev.from && value < prev.from) {
+        next.from = value;
+      }
+      return next;
+    });
   };
 
   const filteredTechnicians = reports?.technicians?.filter(t => 
@@ -101,54 +97,36 @@ const TechnicianReports: React.FC = () => {
           <p className="text-sm font-bold text-gray-500 mt-1">Real-time technician performance analytics and reporting</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="bg-white p-1 rounded-xl border border-gray-200 flex shadow-sm">
-            {[
-              { id: 'today', label: 'Today' },
-              { id: 'yesterday', label: 'Yesterday' },
-              { id: 'this_week', label: 'Week' },
-              { id: 'this_month', label: 'Month' },
-            ].map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setDatePreset(p.id)}
-                className={cn(
-                  "px-4 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-lg transition-all",
-                  activeDatePreset === p.id 
-                    ? "bg-gray-900 text-white shadow-md" 
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative group">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-500">
+              Start Date
+            </label>
+            <div className="relative">
               <input
                 type="date"
                 value={filters.from}
-                onChange={(e) => {
-                  setFilters({ ...filters, from: e.target.value });
-                  setActiveDatePreset('custom');
-                }}
-                className="pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                max={filters.to || undefined}
+                onChange={(e) => onFromChange(e.target.value)}
+                className="h-10 pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
               />
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
             </div>
-            <span className="text-gray-400 font-bold">to</span>
-            <div className="relative group">
+          </div>
+          <span className="pb-2.5 text-gray-400 font-bold">to</span>
+          <div>
+            <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-500">
+              End Date
+            </label>
+            <div className="relative">
               <input
                 type="date"
                 value={filters.to}
-                onChange={(e) => {
-                  setFilters({ ...filters, to: e.target.value });
-                  setActiveDatePreset('custom');
-                }}
-                className="pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                min={filters.from || undefined}
+                onChange={(e) => onToChange(e.target.value)}
+                className="h-10 pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
               />
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
             </div>
           </div>
         </div>
