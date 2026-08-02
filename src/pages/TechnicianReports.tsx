@@ -98,7 +98,7 @@ const TechnicianReports: React.FC = () => {
             <TrendingUp className="h-7 w-7 text-blue-600" />
             Technician Performance
           </h1>
-          <p className="text-sm font-bold text-gray-500 mt-1">Real-time operational analytics and staff reporting</p>
+          <p className="text-sm font-bold text-gray-500 mt-1">Real-time technician performance analytics and reporting</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -159,7 +159,7 @@ const TechnicianReports: React.FC = () => {
         {[
           { label: 'Completed Jobs', value: reports?.stats?.total_completed, icon: CheckCircle, color: 'emerald', trend: '+12%' },
           { label: 'Total Revenue', value: `₹${Math.round(reports?.stats?.total_revenue || 0).toLocaleString()}`, icon: IndianRupee, color: 'blue', trend: '+8%' },
-          { label: 'Avg Rating', value: `${(reports?.stats?.avg_rating || 0).toFixed(1)} / 5.0`, icon: Star, color: 'amber', trend: 'Stable' },
+          { label: 'Average Rating', value: `${(reports?.stats?.avg_rating || 0).toFixed(1)} / 5.0`, icon: Star, color: 'amber', trend: 'Stable' },
           { label: 'Pending Jobs', value: reports?.stats?.pending_jobs, icon: Clock, color: 'rose', trend: '-5%' },
           { label: 'Service Calls', value: reports?.stats?.service_calls, icon: Wrench, color: 'indigo', trend: '+15%' },
         ].map((stat, i) => (
@@ -316,12 +316,12 @@ const TechnicianReports: React.FC = () => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Staff Member</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Stats (C/P/O)</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Svc Calls</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technician</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completed / Pending / On Process</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Service Calls</th>
                 <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Revenue</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Avg Rating</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completion</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Average Rating</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completion Rate</th>
                 <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Action</th>
               </tr>
             </thead>
@@ -357,15 +357,15 @@ const TechnicianReports: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-black border border-emerald-100" title="Completed">
-                          {tech.completed_count}
+                      <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold border border-emerald-100">
+                          Completed {tech.completed_count}
                         </span>
-                        <span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded text-[10px] font-black border border-rose-100" title="Pending">
-                          {tech.pending_count}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-700 rounded text-[10px] font-bold border border-rose-100">
+                          Pending {tech.pending_count}
                         </span>
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] font-black border border-amber-100" title="On Process">
-                          {tech.on_process_count}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-bold border border-amber-100">
+                          On Process {tech.on_process_count}
                         </span>
                       </div>
                     </td>
