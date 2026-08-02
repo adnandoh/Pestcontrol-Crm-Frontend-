@@ -57,6 +57,27 @@ export interface Technician {
   updated_at: string;
 }
 
+/** CRM technician edit page — monthly earnings + completed bookings. */
+export interface TechnicianMonthlyPerformance {
+  technician_id: number;
+  technician_name: string;
+  technician_type?: 'partner' | 'salaried' | string;
+  year: number;
+  month: number;
+  month_label: string;
+  monthly_earnings: string | number;
+  monthly_bookings: number;
+  earnings_note?: string;
+  monthly_stats?: Array<{
+    month: number;
+    name: string;
+    completed?: number;
+    revenue?: number;
+    avg_rating?: number | null;
+  }>;
+  recent_feedbacks?: unknown[];
+}
+
 export type PackageTier = 'standard' | 'premium';
 export type PaymentModel = 'revenue_sharing' | 'salaried';
 export type PayoutStatus =

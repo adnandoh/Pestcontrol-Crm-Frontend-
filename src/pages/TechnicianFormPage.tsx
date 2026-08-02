@@ -7,6 +7,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { Technician } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { showAlert } from '../utils/notify';
+import TechnicianMonthlyPerformancePanel from '../components/crm/TechnicianMonthlyPerformancePanel';
 
 const fieldClass =
   'w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600';
@@ -178,6 +179,10 @@ const TechnicianFormPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {isEdit && techId != null && (
+        <TechnicianMonthlyPerformancePanel technicianId={techId} />
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">

@@ -21,6 +21,7 @@ import type {
   PaginatedResponse,
   Feedback,
   TechnicianPerformance,
+  TechnicianMonthlyPerformance,
   ClientFilters,
   InquiryFilters,
   JobCardFilters,
@@ -489,18 +490,24 @@ class EnhancedApiService {
     );
   }
 
-  async getTechnicianPerformanceDetail(id: number): Promise<any> {
-    const cacheKey = `/technicians/${id}/performance_detail/`;
-    
+  async getTechnicianPerformanceDetail(
+    id: number,
+    params?: { year?: number; month?: number },
+  ): Promise<TechnicianMonthlyPerformance> {
+    const cacheKey = apiCache.generateKey(`/technicians/${id}/performance_detail/`, params);
+
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<any>(`/technicians/${id}/performance_detail/`)
+          () => this.api.get<TechnicianMonthlyPerformance>(
+            `/technicians/${id}/performance_detail/`,
+            { params },
+          )
         )
       ),
-      5 * 60 * 1000 // 5 minutes cache
+      60 * 1000, // 1 minute — month filters change often while reviewing
     );
   }
 
