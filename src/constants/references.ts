@@ -16,5 +16,6 @@ export const BOOKING_REFERENCE_OPTIONS = [
   'Friend Reference',
   'No Parking Board',
   'Holding',
+  'Auto Rickshaw Advertisement',
   'Other',
 ] as const;
