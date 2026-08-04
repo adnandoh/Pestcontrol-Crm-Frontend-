@@ -10,30 +10,49 @@ import {
   ShieldCheck,
   Smartphone,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { PageLoading } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { StaffUser } from '../types';
+import type { StaffSummary, StaffUser } from '../types';
 import { cn } from '../utils/cn';
 import { roleBadgeClass, STAFF_ROLE_OPTIONS } from '../constants/staffRoles';
+
+const PAGE_SIZE = 10;
+
+const EMPTY_SUMMARY: StaffSummary = {
+  total: 0,
+  active: 0,
+  super_admins: 0,
+  technicians: 0,
+  blog_users: 0,
+};
 
 const StaffManagement: React.FC = () => {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [summary, setSummary] = useState<StaffSummary>(EMPTY_SUMMARY);
 
   const fetchStaff = async () => {
     try {
       setLoading(true);
       const response = await enhancedApiService.getStaff({
-        q: searchQuery || undefined,
-        page_size: 500,
+        search: searchQuery || undefined,
+        role: roleFilter !== 'all' ? roleFilter : undefined,
+        page,
+        page_size: PAGE_SIZE,
       });
       setStaff(response.results);
+      setTotalCount(response.count ?? 0);
+      setSummary(response.summary ?? EMPTY_SUMMARY);
     } catch (error) {
       console.error('Error fetching staff:', error);
     } finally {
@@ -44,12 +63,15 @@ const StaffManagement: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(fetchStaff, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, roleFilter, page]);
 
-  const filtered = staff.filter((m) => {
-    if (roleFilter === 'all') return true;
-    return m.role_display === roleFilter;
-  });
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pageStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(page * PAGE_SIZE, totalCount);
 
   if (loading && staff.length === 0) {
     return <PageLoading />;
@@ -78,31 +100,23 @@ const StaffManagement: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Total</p>
-          <p className="text-2xl font-bold text-gray-900">{staff.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
         </Card>
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Active</p>
-          <p className="text-2xl font-bold text-emerald-600">
-            {staff.filter((s) => s.is_active).length}
-          </p>
+          <p className="text-2xl font-bold text-emerald-600">{summary.active}</p>
         </Card>
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Super admins</p>
-          <p className="text-2xl font-bold text-purple-600">
-            {staff.filter((s) => s.role_display === 'Super Admin').length}
-          </p>
+          <p className="text-2xl font-bold text-purple-600">{summary.super_admins}</p>
         </Card>
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Technicians</p>
-          <p className="text-2xl font-bold text-amber-600">
-            {staff.filter((s) => s.role_display === 'Technician').length}
-          </p>
+          <p className="text-2xl font-bold text-amber-600">{summary.technicians}</p>
         </Card>
         <Card className="p-4 border-gray-100">
           <p className="text-xs text-gray-500 font-medium">Blog users</p>
-          <p className="text-2xl font-bold text-[#2d8a2f]">
-            {staff.filter((s) => s.role_display === 'Blog User').length}
-          </p>
+          <p className="text-2xl font-bold text-[#2d8a2f]">{summary.blog_users}</p>
         </Card>
       </div>
 
@@ -132,7 +146,7 @@ const StaffManagement: React.FC = () => {
               ))}
             </select>
             <span className="text-sm text-gray-500 whitespace-nowrap">
-              Showing {filtered.length}
+              Showing {pageStart}-{pageEnd} of {totalCount}
             </span>
           </div>
         </div>
@@ -150,7 +164,7 @@ const StaffManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.length === 0 ? (
+              {staff.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-16 text-center text-gray-500">
                     <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
@@ -158,7 +172,7 @@ const StaffManagement: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filtered.map((member) => (
+                staff.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50/80">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -257,6 +271,54 @@ const StaffManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-4 py-3">
+            <p className="text-xs font-medium text-gray-500">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="h-8 w-8 p-0 border-gray-200"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                  const pageNumber = start + i;
+                  if (pageNumber > totalPages) return null;
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={page === pageNumber ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setPage(pageNumber)}
+                      className={cn(
+                        'h-8 w-8 p-0 text-xs font-semibold',
+                        page === pageNumber ? 'bg-[#1e5a9e] text-white hover:bg-[#174a82]' : '',
+                      )}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="h-8 w-8 p-0 border-gray-200"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
     </div>

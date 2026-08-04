@@ -489,6 +489,14 @@ export interface StaffUser {
   technician_id?: number | null;
 }
 
+export interface StaffSummary {
+  total: number;
+  active: number;
+  super_admins: number;
+  technicians: number;
+  blog_users: number;
+}
+
 export interface ActivityLog {
   id: number;
   user: number;
@@ -529,6 +537,7 @@ export interface PaginatedResponse<T> {
   previous: string | null;
   results: T[];
   status_counts?: InquiryStatusCounts;
+  summary?: StaffSummary;
 }
 
 export interface ApiErrorResponse {
