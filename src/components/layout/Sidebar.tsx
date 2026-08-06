@@ -18,7 +18,6 @@ import {
   BookOpen,
   UserPlus,
   Camera,
-  Smartphone,
   Receipt,
   IndianRupee,
   IdCard,
@@ -95,6 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
           ? [{ name: 'Settlements', href: '/settlements', icon: Wallet }]
           : []),
         { name: 'Technician Reports', href: '/technician-reports', icon: BarChart3 },
+        { name: 'Technician Ledger', href: '/technician-ledger', icon: Receipt },
         { name: 'Technician Selfies', href: '/technician-selfies', icon: Camera },
         { name: 'Staff Performance', href: '/staff-performance', icon: BarChart3 },
       ]
@@ -116,7 +116,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Staff Management', href: '/staff', icon: Shield, superAdminOnly: true },
         { name: 'Add Employee', href: '/staff/add', icon: UserPlus, superAdminOnly: true },
         { name: 'Activity Logs', href: '/activity-logs', icon: History, superAdminOnly: true },
-        { name: 'Partner App Version', href: '/partner-app-version', icon: Smartphone, superAdminOnly: true },
       ]
     }
   ];

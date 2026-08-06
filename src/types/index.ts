@@ -257,15 +257,6 @@ export type CRMInquiryStatus = 'New' | 'Contacted' | 'Converted' | 'Closed';
 
 export type PartnerReferralPartnerStatus = 'pending' | 'in_progress' | 'successful' | 'closed';
 
-export interface PartnerAppVersionConfig {
-  latest_version: string;
-  minimum_supported_version: string;
-  force_update: boolean;
-  update_title: string;
-  update_message: string;
-  updated_at?: string | null;
-}
-
 export interface PartnerReferral {
   id: number;
   client_name: string;
@@ -933,9 +924,98 @@ export interface TechnicianPerformance {
   on_process_count: number;
   service_calls_count: number;
   total_revenue: number;
+  /** Technician payout (≈40% share / visit payout snapshot). */
+  technician_share: number;
   avg_rating: number;
   feedback_count: number;
   completion_rate: number;
+}
+
+export interface TechnicianLedgerRow {
+  job_id: number;
+  booking_id: string;
+  booking_date: string;
+  customer_name: string;
+  service_type: string;
+  city: string;
+  booking_type: 'one_time' | 'amc' | 'contract';
+  booking_type_label: string;
+  status: string;
+  is_completed_visit: boolean;
+  service_cycle?: number | null;
+  planned_visits?: number | null;
+  booking_amount: string;
+  visit_revenue: string;
+  technician_share: string;
+  company_share: string;
+  bonus: string;
+  penalty: string;
+  paid_amount: string;
+  pending_amount: string;
+  net_payable: string;
+  payout_status: string;
+  customer_rating: number | null;
+}
+
+export interface TechnicianLedgerSummary {
+  total_jobs: number;
+  completed_jobs: number;
+  one_time_jobs: number;
+  amc_jobs: number;
+  contract_jobs: number;
+  total_revenue_generated: string;
+  booking_amount: string;
+  technician_share: string;
+  company_share: string;
+  bonus: string;
+  penalty: string;
+  paid_amount: string;
+  pending_amount: string;
+  net_payable: string;
+  average_rating: string;
+}
+
+export interface TechnicianLedgerPayment {
+  id: number;
+  period_start: string;
+  period_end: string;
+  status: string;
+  gross_amount: string;
+  bonus: string;
+  penalty: string;
+  net_amount: string;
+  paid_at: string | null;
+  paid_by: string | null;
+  notes: string;
+}
+
+export interface TechnicianLedgerResponse {
+  technician: {
+    id: number;
+    name: string;
+    mobile: string;
+    technician_type: string;
+  };
+  summary: TechnicianLedgerSummary;
+  earnings: {
+    daily: string;
+    monthly: string;
+    lifetime: string;
+  };
+  payment_history: TechnicianLedgerPayment[];
+  options: {
+    cities: string[];
+    service_types: string[];
+    booking_types: Array<{ value: string; label: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  };
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  next: boolean;
+  previous: boolean;
+  results: TechnicianLedgerRow[];
 }
 
 export interface GlobalSearchResult {

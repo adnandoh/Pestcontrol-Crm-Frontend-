@@ -38,12 +38,12 @@ import PendingAmounts from './pages/PendingAmounts';
 import CreateQuotation from './pages/CreateQuotation';
 import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
+import TechnicianLedgerReport from './pages/TechnicianLedgerReport';
 import StaffPerformance from './pages/StaffPerformance';
 import TechnicianSelfies from './pages/TechnicianSelfies';
 import PublicFeedback from './pages/PublicFeedback';
 import StaffManagement from './pages/StaffManagement';
 import ActivityLogs from './pages/ActivityLogs';
-import PartnerAppVersion from './pages/PartnerAppVersion';
 import MasterCountries from './pages/MasterCountries';
 import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
@@ -164,6 +164,7 @@ const AppContent: React.FC = () => {
                     <Route path="/feedbacks" element={<Feedbacks />} />
                     <Route path="/e-card/tracking" element={<ECardTracking />} />
                     <Route path="/technician-reports" element={<TechnicianReports />} />
+                    <Route path="/technician-ledger" element={<TechnicianLedgerReport />} />
                     <Route path="/technician-selfies" element={<TechnicianSelfies />} />
                     <Route path="/staff-performance" element={<StaffPerformance />} />
                     <Route
@@ -195,14 +196,6 @@ const AppContent: React.FC = () => {
                       element={
                         <SuperAdminRoute>
                           <ActivityLogs />
-                        </SuperAdminRoute>
-                      }
-                    />
-                    <Route
-                      path="/partner-app-version"
-                      element={
-                        <SuperAdminRoute>
-                          <PartnerAppVersion />
                         </SuperAdminRoute>
                       }
                     />

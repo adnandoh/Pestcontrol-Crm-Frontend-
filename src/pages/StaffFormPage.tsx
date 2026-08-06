@@ -1,22 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Key,
-  Loader2,
-  Save,
-  UserPlus,
-} from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
+import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { enhancedApiService } from '../services/api.enhanced';
 import { STAFF_ROLE_OPTIONS, type StaffRoleLabel } from '../constants/staffRoles';
 import type { StaffUser } from '../types';
 import { cn } from '../utils/cn';
 import { showAlert } from '../utils/notify';
+
+const fieldClass =
+  'h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-[#1e5a9e] focus:ring-1 focus:ring-[#1e5a9e]';
+
+const labelClass = 'mb-1 block text-sm font-medium text-gray-700';
 
 const StaffFormPage: React.FC = () => {
   const { id } = useParams();
@@ -30,6 +24,7 @@ const StaffFormPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -107,6 +102,7 @@ const StaffFormPage: React.FC = () => {
 
   const handleResetPassword = async () => {
     if (!staffId || !newPassword.trim()) return;
+    setResetting(true);
     try {
       await enhancedApiService.resetStaffPassword(staffId, newPassword);
       setNewPassword('');
@@ -114,220 +110,211 @@ const StaffFormPage: React.FC = () => {
     } catch (error: unknown) {
       const err = error as { message?: string };
       showAlert(err.message || 'Failed to reset password');
+    } finally {
+      setResetting(false);
     }
   };
 
+  const roleHint = STAFF_ROLE_OPTIONS.find((o) => o.value === form.role)?.description;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1e5a9e]" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-[#1e5a9e]" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-10">
-      <div className="flex items-center gap-3">
+    <div className="w-full">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Link
           to="/staff"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-[#1e5a9e]"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[#1e5a9e]"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to staff list
         </Link>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <UserPlus className="h-7 w-7 text-[#1e5a9e]" />
-          {isEdit ? 'Edit employee' : 'Add employee'}
+      <div className="w-full border border-gray-200 bg-white px-4 py-4 sm:px-5">
+        <h1 className="border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">
+          {isEdit ? 'Edit User' : 'Add User'}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {isEdit
-            ? 'Update profile, role, and account status'
-            : 'Create a new CRM login with the correct access level'}
-        </p>
-      </div>
 
-      <Card className="p-6 md:p-8 shadow-sm border border-gray-100">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">
-                Full name <span className="text-red-500">*</span>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          {/* Row 1: Name | Phone */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>
+                Name <span className="text-red-500">*</span>
               </label>
-              <Input
+              <input
                 required
-                placeholder="e.g. Rajesh Kumar"
+                className={fieldClass}
+                placeholder="Enter full name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">
-                Mobile (login ID) <span className="text-red-500">*</span>
+            <div>
+              <label className={labelClass}>
+                Phone <span className="text-red-500">*</span>
               </label>
-              <Input
+              <input
                 required
-                placeholder="10 digit mobile number"
+                className={fieldClass}
+                placeholder="10 digit mobile"
                 value={form.mobile}
-                onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                 maxLength={10}
+                inputMode="numeric"
+                onChange={(e) =>
+                  setForm({ ...form, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })
+                }
               />
             </div>
+          </div>
+
+          {/* Row 2: Usertype | Password (add) or Status (edit) */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Usertype</label>
+              <select
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value as StaffRoleLabel })}
+                className={fieldClass}
+              >
+                {STAFF_ROLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {roleHint && (
+                <p className="mt-0.5 text-xs text-gray-500">{roleHint}</p>
+              )}
+              {form.role === 'Technician' && (
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Same phone &amp; password work in the Partner app.
+                  {isEdit && member && !member.partner_app_ready
+                    ? ' Reset password below if login is not linked yet.'
+                    : ''}
+                </p>
+              )}
+            </div>
+
+            {!isEdit ? (
+              <div>
+                <label className={labelClass}>
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    className={cn(fieldClass, 'pr-10')}
+                    placeholder="Minimum 8 characters"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className={labelClass}>Account status</label>
+                <select
+                  value={form.is_active ? 'active' : 'inactive'}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.value === 'active' })}
+                  className={fieldClass}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                {member && (
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Current role: {member.role_display}
+                    {member.partner_app_ready ? ' · Partner app linked' : ''}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {!isEdit && (
-            <div className="space-y-1.5 max-w-md">
-              <label className="text-sm font-medium text-gray-700">
-                Password <span className="text-red-500">*</span>
-              </label>
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-[#1e5a9e] focus:ring-[#1e5a9e]"
+              />
+              Active account
+            </label>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex h-9 min-w-[100px] items-center justify-center rounded-md bg-[#1e5a9e] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#174a82] disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/staff')}
+              className="inline-flex h-9 items-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        {isEdit && staffId && (
+          <div
+            id="reset-password-section"
+            className="mt-4 border-t border-gray-200 pt-4"
+          >
+            <h2 className="mb-2 text-sm font-semibold text-gray-900">Reset password</h2>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:max-w-xl">
               <div className="relative">
-                <Input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Minimum 8 characters"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="pr-10"
+                <input
+                  type={showResetPassword ? 'text' : 'password'}
+                  className={cn(fieldClass, 'pr-10')}
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  aria-label={showResetPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">User type</label>
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as StaffRoleLabel })}
-              className="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium focus:border-[#1e5a9e] focus:ring-2 focus:ring-[#1e5a9e]/20 outline-none"
-            >
-              {STAFF_ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">
-              {STAFF_ROLE_OPTIONS.find((o) => o.value === form.role)?.description}
-            </p>
-            {form.role === 'Technician' && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <strong>Partner app:</strong> Use the same mobile and password in the Pest 99
-                Partner app. After saving, assign jobs via Send to Partner App on pending bookings.
-              </div>
-            )}
-            {isEdit && member?.role_display === 'Technician' && (
-              <div
-                className={cn(
-                  'rounded-lg px-3 py-2 text-xs font-medium',
-                  member.partner_app_ready
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : 'bg-red-50 text-red-800 border border-red-200',
-                )}
-              >
-                {member.partner_app_ready
-                  ? 'Partner app linked — technician can log in on mobile.'
-                  : 'Partner app not ready — reset password to link Partner app.'}
-              </div>
-            )}
-          </div>
-
-          {isEdit && member && (
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 text-sm">
-              <span className="text-gray-500">Current role: </span>
-              <span className="font-semibold text-gray-900">{member.role_display}</span>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Account status</label>
-            <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setForm({ ...form, is_active: true })}
-                className={cn(
-                  'flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors',
-                  form.is_active
-                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                    : 'border-gray-200 text-gray-500',
-                )}
+                disabled={!newPassword.trim() || resetting}
+                onClick={handleResetPassword}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
               >
-                Active
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, is_active: false })}
-                className={cn(
-                  'flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors',
-                  !form.is_active
-                    ? 'border-red-500 bg-red-50 text-red-800'
-                    : 'border-gray-200 text-gray-500',
-                )}
-              >
-                Inactive
+                {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update password'}
               </button>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-[#1e5a9e] hover:bg-[#174a82] text-white gap-2"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {isEdit ? 'Save changes' : 'Create employee'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => navigate('/staff')}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {isEdit && staffId && (
-        <Card id="reset-password-section" className="p-6 border border-amber-100 bg-amber-50/30">
-          <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
-            <Key className="h-4 w-4 text-amber-600" />
-            Reset password
-          </h3>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Input
-                type={showResetPassword ? 'text' : 'password'}
-                placeholder="New password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="pr-10 bg-white"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                onClick={() => setShowResetPassword(!showResetPassword)}
-              >
-                {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-amber-300 text-amber-800 hover:bg-amber-100"
-              onClick={handleResetPassword}
-              disabled={!newPassword.trim()}
-            >
-              Update password
-            </Button>
-          </div>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 };

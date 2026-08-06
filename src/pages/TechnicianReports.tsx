@@ -15,12 +15,14 @@ import {
   Calendar
 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { TechnicianPerformance } from '../types';
 import { cn } from '../utils/cn';
 import { Button } from '../components/ui';
 
 const TechnicianReports: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<{
     stats: any;
@@ -81,8 +83,11 @@ const TechnicianReports: React.FC = () => {
   ) || [];
 
   // Top Performers for Leaderboard
+  const techShare = (t: TechnicianPerformance) =>
+    Number(t.technician_share ?? (t.total_revenue || 0) * 0.4);
+
   const topByRating = [...(reports?.technicians || [])].sort((a, b) => b.avg_rating - a.avg_rating).slice(0, 3);
-  const topByRevenue = [...(reports?.technicians || [])].sort((a, b) => b.total_revenue - a.total_revenue).slice(0, 3);
+  const topByRevenue = [...(reports?.technicians || [])].sort((a, b) => techShare(b) - techShare(a)).slice(0, 3);
   const topByJobs = [...(reports?.technicians || [])].sort((a, b) => b.completed_count - a.completed_count).slice(0, 3);
 
   return (
@@ -136,7 +141,13 @@ const TechnicianReports: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {[
           { label: 'Completed Jobs', value: reports?.stats?.total_completed, icon: CheckCircle, color: 'emerald', trend: '+12%' },
-          { label: 'Total Revenue', value: `₹${Math.round(reports?.stats?.total_revenue || 0).toLocaleString()}`, icon: IndianRupee, color: 'blue', trend: '+8%' },
+          {
+            label: 'Technician Share (40%)',
+            value: `₹${Math.round(reports?.stats?.total_technician_share ?? (reports?.stats?.total_revenue || 0) * 0.4).toLocaleString()}`,
+            icon: IndianRupee,
+            color: 'blue',
+            trend: '+8%',
+          },
           { label: 'Average Rating', value: `${(reports?.stats?.avg_rating || 0).toFixed(1)} / 5.0`, icon: Star, color: 'amber', trend: 'Stable' },
           { label: 'Pending Jobs', value: reports?.stats?.pending_jobs, icon: Clock, color: 'rose', trend: '-5%' },
           { label: 'Service Calls', value: reports?.stats?.service_calls, icon: Wrench, color: 'indigo', trend: '+15%' },
@@ -206,7 +217,7 @@ const TechnicianReports: React.FC = () => {
           <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Top by Revenue
+              Top by Technician Share
             </h3>
           </div>
           <div className="p-4 space-y-4 flex-1">
@@ -226,7 +237,7 @@ const TechnicianReports: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-emerald-600 font-black text-sm">
-                  ₹{Math.round(tech.total_revenue).toLocaleString()}
+                  ₹{Math.round(techShare(tech)).toLocaleString()}
                 </div>
               </div>
             ))}
@@ -297,7 +308,7 @@ const TechnicianReports: React.FC = () => {
                 <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technician</th>
                 <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completed / Pending / On Process</th>
                 <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Service Calls</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Revenue</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technician Share (40%)</th>
                 <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Average Rating</th>
                 <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completion Rate</th>
                 <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Action</th>
@@ -353,8 +364,10 @@ const TechnicianReports: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <p className="text-sm font-black text-gray-900">₹{Math.round(tech.total_revenue).toLocaleString()}</p>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Total Generated</p>
+                      <p className="text-sm font-black text-emerald-700">₹{Math.round(techShare(tech)).toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">
+                        To pay tech · Booking ₹{Math.round(tech.total_revenue || 0).toLocaleString()}
+                      </p>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1 text-amber-500 font-black">
@@ -379,7 +392,11 @@ const TechnicianReports: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600">
+                      <button
+                        onClick={() => navigate(`/technician-ledger?technician=${tech.id}`)}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
+                        title="Open technician ledger"
+                      >
                         <ChevronRight className="h-5 w-5" />
                       </button>
                     </td>

@@ -22,6 +22,7 @@ import type {
   Feedback,
   TechnicianPerformance,
   TechnicianMonthlyPerformance,
+  TechnicianLedgerResponse,
   ClientFilters,
   InquiryFilters,
   JobCardFilters,
@@ -41,7 +42,6 @@ import type {
   CRMInquiryFormData,
   CRMInquiryFilters,
   PartnerReferral,
-  PartnerAppVersionConfig,
   CRMInquiryStatus,
   DashboardCounts,
   StaffPerformance,
@@ -494,21 +494,40 @@ class EnhancedApiService {
     id: number,
     params?: { year?: number; month?: number },
   ): Promise<TechnicianMonthlyPerformance> {
-    const cacheKey = apiCache.generateKey(`/technicians/${id}/performance_detail/`, params);
+    const path = `${API_ENDPOINTS.TECHNICIANS}${id}/performance_detail/`;
+    const cacheKey = apiCache.generateKey(path, params);
 
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<TechnicianMonthlyPerformance>(
-            `/technicians/${id}/performance_detail/`,
-            { params },
-          )
+          () => this.api.get<TechnicianMonthlyPerformance>(path, { params }),
         )
       ),
       60 * 1000, // 1 minute — month filters change often while reviewing
     );
+  }
+
+  async getTechnicianLedger(
+    id: number,
+    params?: {
+      from?: string;
+      to?: string;
+      city?: string;
+      service_type?: string;
+      booking_type?: string;
+      status?: string;
+      page?: number;
+      page_size?: number;
+    },
+  ): Promise<TechnicianLedgerResponse> {
+    return this.retryRequest(() =>
+      this.api.get<TechnicianLedgerResponse>(
+        `${API_ENDPOINTS.TECHNICIANS}${id}/ledger/`,
+        { params },
+      ),
+    ).then((result) => result.data);
   }
 
   // CRM Inquiry methods
@@ -2057,21 +2076,6 @@ class EnhancedApiService {
     return result.data;
   }
 
-  async getPartnerAppVersion(): Promise<PartnerAppVersionConfig> {
-    const result = await this.retryRequest(() =>
-      this.api.get<PartnerAppVersionConfig>(API_ENDPOINTS.PARTNER_APP_VERSION),
-    );
-    return result.data;
-  }
-
-  async updatePartnerAppVersion(
-    data: Partial<PartnerAppVersionConfig>,
-  ): Promise<PartnerAppVersionConfig> {
-    const result = await this.retryRequest(() =>
-      this.api.patch<PartnerAppVersionConfig>(API_ENDPOINTS.PARTNER_APP_VERSION, data),
-    );
-    return result.data;
-  }
 }
 
 // Export singleton instance
