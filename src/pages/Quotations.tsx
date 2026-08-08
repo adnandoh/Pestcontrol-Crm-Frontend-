@@ -17,6 +17,10 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { enhancedApiService } from '../services/api.enhanced';
+import {
+  fireAndForget,
+  sendBookingConfirmationApi,
+} from '../services/whatsappPc99Send';
 import { Button, Pagination } from '../components/ui';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -60,6 +64,10 @@ const Quotations: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
       queryClient.invalidateQueries({ queryKey: ['quotation-stats'] });
       queryClient.invalidateQueries({ queryKey: ['jobcards'] });
+      void enhancedApiService
+        .getJobCard(data.booking_id)
+        .then((job) => fireAndForget(sendBookingConfirmationApi(job)))
+        .catch((err) => console.error('WhatsApp booking confirmation skipped:', err));
       showAlert(`Successfully converted to Booking: ${data.booking_code}`);
       navigate(`/jobcards`);
     },

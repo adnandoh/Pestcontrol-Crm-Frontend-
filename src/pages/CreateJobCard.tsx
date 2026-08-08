@@ -25,6 +25,11 @@ import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import RevenueModelFields from '../components/crm/RevenueModelFields';
+import {
+  fireAndForget,
+  sendBookingConfirmationApi,
+  sendInquiryReceivedApi,
+} from '../services/whatsappPc99Send';
 
 import {
   MUMBAI_PRICING_CONFIG,
@@ -532,7 +537,8 @@ const CreateJobCard: React.FC = () => {
         }
         submitData.schedule_datetime = combined.toISOString();
       }
-      await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
+      const created = await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
+      fireAndForget(sendBookingConfirmationApi(created));
       navigate('/jobcards');
     } catch (err: unknown) {
       logErrorForDev('CreateJobCard', err);
@@ -1163,6 +1169,14 @@ const CreateJobCard: React.FC = () => {
                         reminder_time: formData.reminder_time || undefined,
                         reminder_note: formData.reminder_note || undefined
                       } as any);
+                      fireAndForget(
+                        sendInquiryReceivedApi(formData.client_mobile, {
+                          name: formData.client_name,
+                          pest_type: formData.service_type || selectedPackages.join(', ') || 'Other',
+                          area: bhkLabel || formData.city || formData.state,
+                          property_type: formData.property_type || 'Residential',
+                        }),
+                      );
                       navigate('/crm-inquiries');
                     } catch (err: any) {
                       showAlert(err.message || 'Failed to save inquiry. Please try again.');

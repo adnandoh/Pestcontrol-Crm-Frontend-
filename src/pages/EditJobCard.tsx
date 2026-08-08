@@ -10,6 +10,11 @@ import {
   UserCheck
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import {
+  fireAndForget,
+  sendBookingCancelledApi,
+  sendBookingDonePairApi,
+} from '../services/whatsappPc99Send';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -567,7 +572,32 @@ const EditJobCard: React.FC = () => {
         submitData.reminder_date = '';
         submitData.reminder_time = '';
       }
+      const previousStatus = jobCard?.status;
       await enhancedApiService.updateJobCard(parseInt(id!), submitData);
+      const nextStatus = String(submitData.status || '');
+      const waJob = {
+        id: jobCard!.id,
+        code: jobCard!.code,
+        client_name: submitData.client_name || formData.client_name,
+        client_mobile: submitData.client_mobile || formData.client_mobile,
+        service_type: submitData.service_type || formData.service_type,
+        area: submitData.bhk_size || submitData.property_type || formData.bhk_size,
+        bhk_size: submitData.bhk_size || formData.bhk_size,
+        property_type: submitData.property_type || formData.property_type,
+        client_address: submitData.client_address || formData.client_address,
+        schedule_datetime: submitData.schedule_datetime || formData.schedule_datetime,
+        time_slot: submitData.time_slot || formData.time_slot,
+        price: submitData.price || formData.price,
+        notes: submitData.notes || formData.notes,
+        technician_name: jobCard!.technician_name,
+        technician_mobile: jobCard!.technician_mobile,
+        assigned_to: jobCard!.assigned_to,
+      };
+      if (nextStatus === 'Done' && previousStatus !== 'Done') {
+        fireAndForget(sendBookingDonePairApi(waJob));
+      } else if (nextStatus === 'Cancelled' && previousStatus !== 'Cancelled') {
+        fireAndForget(sendBookingCancelledApi(waJob));
+      }
       navigate('/jobcards');
     } catch (err: unknown) {
       logErrorForDev('EditJobCard', err);

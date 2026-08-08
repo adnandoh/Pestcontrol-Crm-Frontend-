@@ -14,6 +14,10 @@ import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInqui
 import { Button, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
+import {
+  fireAndForget,
+  sendBookingConfirmationApi,
+} from '../services/whatsappPc99Send';
 import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus, InquiryStatusCounts } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
@@ -204,6 +208,12 @@ const CRMInquiries: React.FC = () => {
     try {
       setSubmitting(id);
       const result = await enhancedApiService.convertInquiryToBooking(id);
+      try {
+        const job = await enhancedApiService.getJobCard(result.job_card_id);
+        fireAndForget(sendBookingConfirmationApi(job));
+      } catch (waErr) {
+        console.error('WhatsApp booking confirmation skipped:', waErr);
+      }
       showAlert(`Successfully converted! Code: ${result.job_card_code}`);
       loadInquiries(pagination.current);
       refreshCounts();

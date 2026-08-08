@@ -17,6 +17,10 @@ import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInqui
 import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThCompactClass, crmTdCompactClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
+import {
+  fireAndForget,
+  sendBookingConfirmationApi,
+} from '../services/whatsappPc99Send';
 import { cn } from '../utils/cn';
 import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
@@ -255,6 +259,7 @@ const Inquiries: React.FC = () => {
       };
 
       const jobCard = await enhancedApiService.convertInquiry(inquiry.id, jobCardData);
+      fireAndForget(sendBookingConfirmationApi(jobCard));
       showAlert(`Successfully converted to Job Card #${jobCard.code}`);
       loadInquiries(pagination.current);
       refreshCounts();

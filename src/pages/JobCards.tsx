@@ -20,6 +20,11 @@ import {
   Download,
 } from 'lucide-react';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import {
+  fireAndForget,
+  sendBookingCancelledApi,
+  sendBookingDonePairApi,
+} from '../services/whatsappPc99Send';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -491,6 +496,10 @@ const JobCards: React.FC = () => {
         payload.payment_mode = paymentMode || 'Cash';
       }
       await enhancedApiService.updateJobCard(jobId, payload);
+      if (newStatus === 'Done') {
+        const job = jobCards.find((row) => row.id === jobId);
+        if (job) fireAndForget(sendBookingDonePairApi(job));
+      }
       loadJobCards(pagination.current, filters);
       refreshCounts();
     } catch (err) {
@@ -505,6 +514,8 @@ const JobCards: React.FC = () => {
     if (!doneId) return;
     try {
       setLoading(true);
+      const job =
+        jobCards.find((row) => row.id === doneId) || selectedJobCard;
       await enhancedApiService.updateJobCard(doneId, {
         status: 'Done',
         payment_mode: payload.paymentMode,
@@ -512,6 +523,7 @@ const JobCards: React.FC = () => {
         completion_paid_amount: payload.completionPaidAmount,
         completion_pending_amount: payload.completionPendingAmount,
       });
+      if (job) fireAndForget(sendBookingDonePairApi(job));
       setDoneId(null);
       loadJobCards(pagination.current, filters);
       refreshCounts();
@@ -532,7 +544,9 @@ const JobCards: React.FC = () => {
   const completeBookingWithoutPayment = async (jobId: number) => {
     try {
       setLoading(true);
+      const job = jobCards.find((row) => row.id === jobId);
       await enhancedApiService.updateJobCard(jobId, { status: 'Done' });
+      if (job) fireAndForget(sendBookingDonePairApi(job));
       loadJobCards(pagination.current, filters);
       refreshCounts();
     } catch (error) {
@@ -650,10 +664,12 @@ const JobCards: React.FC = () => {
 
     try {
       setLoading(true);
+      const job = jobCards.find((row) => row.id === id);
       await enhancedApiService.updateJobCard(id, { 
         status: 'Cancelled',
         cancellation_reason: cancelReason.trim()
       });
+      if (job) fireAndForget(sendBookingCancelledApi(job));
       setCancellingId(null);
       setCancelReason('');
       setCancelErrors([]);

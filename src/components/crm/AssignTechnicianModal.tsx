@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone, Search } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
+import {
+  fireAndForget,
+  sendTechAssignedPairApi,
+} from '../../services/whatsappPc99Send';
 import { Button } from '../ui';
 import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
@@ -45,7 +49,15 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     try {
       setAssigning(techId);
       setError(null);
-      await enhancedApiService.assignTechnician(jobCard.id, techId);
+      const updated = await enhancedApiService.assignTechnician(jobCard.id, techId);
+      const tech = technicians.find((row) => row.id === techId) || null;
+      fireAndForget(
+        sendTechAssignedPairApi(updated || {
+          ...jobCard,
+          technician_name: tech?.name || jobCard.technician_name,
+          technician_mobile: tech?.mobile || tech?.phone || jobCard.technician_mobile,
+        }, tech),
+      );
       onSuccess();
       onClose();
     } catch (err) {

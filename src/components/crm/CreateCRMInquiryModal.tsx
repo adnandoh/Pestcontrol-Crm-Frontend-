@@ -7,6 +7,11 @@ import { PEST_TYPES } from '../../constants/pestTypes';
 import { useDashboardCounts } from '../../hooks/useDashboardCounts';
 import { useEffect } from 'react';
 import LocationSearchSelect from '../forms/LocationSearchSelect';
+import { inquiryFromCrm } from '../../config/whatsappPc99Templates';
+import {
+  fireAndForget,
+  sendInquiryReceivedApi,
+} from '../../services/whatsappPc99Send';
 
 interface CreateCRMInquiryModalProps {
   isOpen: boolean;
@@ -108,6 +113,9 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
       setSubmitting(true);
       setError(null);
       await enhancedApiService.createCRMInquiry(formData);
+      fireAndForget(
+        sendInquiryReceivedApi(formData.mobile, inquiryFromCrm(formData)),
+      );
       onSuccess();
       refreshCounts();
       setFormData(initialData);
