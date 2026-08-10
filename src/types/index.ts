@@ -938,7 +938,7 @@ export interface TechnicianLedgerRow {
   customer_name: string;
   service_type: string;
   city: string;
-  booking_type: 'one_time' | 'amc' | 'contract';
+  booking_type: 'one_time' | 'amc' | 'contract' | 'contract_amc';
   booking_type_label: string;
   status: string;
   is_completed_visit: boolean;
@@ -954,6 +954,7 @@ export interface TechnicianLedgerRow {
   pending_amount: string;
   net_payable: string;
   payout_status: string;
+  payout_status_label?: string;
   customer_rating: number | null;
 }
 

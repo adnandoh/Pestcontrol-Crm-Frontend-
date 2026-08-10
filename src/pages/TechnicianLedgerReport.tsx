@@ -536,7 +536,8 @@ const TechnicianLedgerReport: React.FC = () => {
 
           <p className="flex items-start gap-1.5 px-1 text-[10px] font-medium text-gray-400">
             <Info className="mt-0.5 h-3 w-3 shrink-0" />
-            Payout amounts are locked when a visit is completed. AMC / contract earn only after the visit is Done.
+            AMC example: package ₹1,000 / 3 visits → each Done visit pays Tech ₹133.33 (40%) and Company ₹200 (60%)
+            to whoever completed that visit. One Time pays full 40% on Done. Held = partner not credited yet.
           </p>
         </>
       ) : null}
@@ -668,10 +669,28 @@ const TypePill = ({ label }: { label: string }) => (
   </span>
 );
 
-const visitLabel = (row: TechnicianLedgerRow) =>
-  row.booking_type === 'one_time'
-    ? null
-    : `V${row.service_cycle || '—'}/${row.planned_visits || '—'}`;
+const visitLabel = (row: TechnicianLedgerRow) => {
+  if (row.booking_type === 'one_time') return null;
+  if (!row.planned_visits && !row.service_cycle) return null;
+  return `V${row.service_cycle || '—'}/${row.planned_visits || '—'}`;
+};
+
+const PayoutPill = ({ status, label }: { status?: string; label?: string }) => {
+  const text = label || status || '—';
+  const tone =
+    status === 'held'
+      ? 'bg-rose-50 text-rose-700'
+      : status === 'pending'
+        ? 'bg-amber-50 text-amber-700'
+        : status === 'approved' || status === 'paid'
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'bg-gray-100 text-gray-600';
+  return (
+    <span className={cn('inline-block rounded px-1.5 py-0.5 text-[9px] font-black capitalize', tone)}>
+      {text}
+    </span>
+  );
+};
 
 const BookingRow = ({ row }: { row: TechnicianLedgerRow }) => (
   <tr className="hover:bg-gray-50/80">
@@ -694,6 +713,9 @@ const BookingRow = ({ row }: { row: TechnicianLedgerRow }) => (
     </td>
     <td className="px-3 py-1.5">
       <StatusPill status={row.status} done={row.is_completed_visit} />
+      <div className="mt-0.5">
+        <PayoutPill status={row.payout_status} label={row.payout_status_label} />
+      </div>
     </td>
     <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{money(row.booking_amount)}</td>
     <td className="px-3 py-1.5 text-right font-black text-emerald-700">{money(row.technician_share)}</td>
