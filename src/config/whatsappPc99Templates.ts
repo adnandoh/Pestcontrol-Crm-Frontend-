@@ -138,7 +138,7 @@ export function paramsTechAssignedCustomer(
 /** {{1}} booking … {{9}} instructions — sent to technician phone */
 export function paramsTechCustomerDetails(
   job: JobWhatsAppSource,
-  tech?: Pick<Technician, 'name'> | null,
+  _tech?: Pick<Technician, 'name'> | null,
 ): string[] {
   const { dateTime } = scheduleParts(job);
   return [
@@ -214,12 +214,12 @@ export function asJobWhatsAppSource(job: JobCard): JobWhatsAppSource {
 export function inquiryFromWebsite(inquiry: Inquiry) {
   return {
     name: inquiry.name,
-    pest_type: inquiry.service_interest || inquiry.pest_type,
+    pest_type: inquiry.service_interest || inquiry.pest_problems,
     service_type: inquiry.service_interest,
-    location: inquiry.city || inquiry.state,
-    area: inquiry.city,
+    location: inquiry.area || inquiry.city || inquiry.state,
+    area: inquiry.area || inquiry.city,
     city: inquiry.city,
-    property_type: 'Residential',
+    property_type: inquiry.premise_type || 'Residential',
     message: inquiry.message,
   };
 }
@@ -234,14 +234,23 @@ export function inquiryFromCrm(inquiry: CRMInquiry | {
   property_type?: string;
   remark?: string;
 }) {
+  const area =
+    ('area' in inquiry ? inquiry.area : undefined) ||
+    inquiry.location ||
+    ('master_location_name' in inquiry ? inquiry.master_location_name : undefined);
+  const city =
+    ('city' in inquiry ? inquiry.city : undefined) || inquiry.master_city_name;
+  const propertyType =
+    ('property_type' in inquiry ? inquiry.property_type : undefined) || 'Residential';
+
   return {
     name: inquiry.name,
     pest_type: inquiry.pest_type,
     service_type: inquiry.pest_type,
-    location: inquiry.location,
-    area: inquiry.area || inquiry.location,
-    city: ('city' in inquiry ? inquiry.city : undefined) || inquiry.master_city_name,
-    property_type: inquiry.property_type || 'Residential',
+    location: inquiry.location || area,
+    area: area || city,
+    city,
+    property_type: propertyType,
     message: 'remark' in inquiry ? inquiry.remark : undefined,
   };
 }
