@@ -23,6 +23,7 @@ import type {
   TechnicianPerformance,
   TechnicianMonthlyPerformance,
   TechnicianLedgerResponse,
+  TechnicianLedgerSettleResponse,
   ClientFilters,
   InquiryFilters,
   JobCardFilters,
@@ -518,6 +519,7 @@ class EnhancedApiService {
       service_type?: string;
       booking_type?: string;
       status?: string;
+      settlement_status?: string;
       page?: number;
       page_size?: number;
     },
@@ -526,6 +528,18 @@ class EnhancedApiService {
       this.api.get<TechnicianLedgerResponse>(
         `${API_ENDPOINTS.TECHNICIANS}${id}/ledger/`,
         { params },
+      ),
+    ).then((result) => result.data);
+  }
+
+  async settleTechnicianLedgerJobs(
+    id: number,
+    payload: { job_ids: number[]; notes?: string },
+  ): Promise<TechnicianLedgerSettleResponse> {
+    return this.retryRequest(() =>
+      this.api.post<TechnicianLedgerSettleResponse>(
+        `${API_ENDPOINTS.TECHNICIANS}${id}/ledger/`,
+        payload,
       ),
     ).then((result) => result.data);
   }
@@ -2074,6 +2088,248 @@ class EnhancedApiService {
       this.api.patch<{ theme: string }>(API_ENDPOINTS.USERS_THEME, { theme }),
     );
     return result.data;
+  }
+
+  // ── Accounts Management ──────────────────────────────────────────
+  private accountsPath(path: string) {
+    return `/accounts/${path.replace(/^\//, '')}`;
+  }
+
+  async getAccountsDashboard(params?: { branch?: number }) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('dashboard/'), { params }),
+    );
+    return result.data;
+  }
+
+  async listAccountsBranches(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('branches/'), { params }),
+    );
+    return result.data;
+  }
+
+  async saveAccountsBranch(data: Record<string, unknown>, id?: number) {
+    const result = await this.retryRequest(() =>
+      id
+        ? this.api.patch(this.accountsPath(`branches/${id}/`), data)
+        : this.api.post(this.accountsPath('branches/'), data),
+    );
+    return result.data;
+  }
+
+  async listAccountsChemicals(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('chemicals/'), { params }),
+    );
+    return result.data;
+  }
+
+  async saveAccountsChemical(data: Record<string, unknown>, id?: number) {
+    const result = await this.retryRequest(() =>
+      id
+        ? this.api.patch(this.accountsPath(`chemicals/${id}/`), data)
+        : this.api.post(this.accountsPath('chemicals/'), data),
+    );
+    return result.data;
+  }
+
+  async listAccountsSuppliers(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('suppliers/'), { params }),
+    );
+    return result.data;
+  }
+
+  async saveAccountsSupplier(data: Record<string, unknown>, id?: number) {
+    const result = await this.retryRequest(() =>
+      id
+        ? this.api.patch(this.accountsPath(`suppliers/${id}/`), data)
+        : this.api.post(this.accountsPath('suppliers/'), data),
+    );
+    return result.data;
+  }
+
+  async listStockBalances(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('stock-balances/'), { params }),
+    );
+    return result.data;
+  }
+
+  async listStockMovements(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('stock-movements/'), { params }),
+    );
+    return result.data;
+  }
+
+  async purchaseStock(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/purchase/'), data),
+    );
+    return result.data;
+  }
+
+  async adjustStock(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/adjust/'), data),
+    );
+    return result.data;
+  }
+
+  async issueStock(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/issue/'), data),
+    );
+    return result.data;
+  }
+
+  async transferStock(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/transfer/'), data),
+    );
+    return result.data;
+  }
+
+  async purchaseReturnStock(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/purchase_return/'), data),
+    );
+    return result.data;
+  }
+
+  async stockReturn(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('stock-movements/stock-return/'), data),
+    );
+    return result.data;
+  }
+
+  async listAccountsEquipment(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('equipment/'), { params }),
+    );
+    return result.data;
+  }
+
+  async saveAccountsEquipment(data: Record<string, unknown>, id?: number) {
+    const result = await this.retryRequest(() =>
+      id
+        ? this.api.patch(this.accountsPath(`equipment/${id}/`), data)
+        : this.api.post(this.accountsPath('equipment/'), data),
+    );
+    return result.data;
+  }
+
+  async listExpiringLots(days = 30) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('stock-lots/expiring/'), { params: { days } }),
+    );
+    return result.data;
+  }
+
+  async listLowStock() {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('stock-balances/low_stock/')),
+    );
+    return result.data;
+  }
+
+  async listExpenseCategories(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('expense-categories/'), { params }),
+    );
+    return result.data;
+  }
+
+  async listExpenses(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('expenses/'), { params }),
+    );
+    return result.data;
+  }
+
+  async saveExpense(data: FormData | Record<string, unknown>, id?: number) {
+    const result = await this.retryRequest(() =>
+      id
+        ? this.api.patch(this.accountsPath(`expenses/${id}/`), data)
+        : this.api.post(this.accountsPath('expenses/'), data),
+    );
+    return result.data;
+  }
+
+  async listBookingCosts(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('booking-costs/'), { params }),
+    );
+    return result.data;
+  }
+
+  async recalculateBookingCost(jobcardId: number) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('booking-costs/recalculate/'), { jobcard_id: jobcardId }),
+    );
+    return result.data;
+  }
+
+  async listChemicalUsages(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('chemical-usages/'), { params }),
+    );
+    return result.data;
+  }
+
+  async createChemicalUsage(data: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('chemical-usages/'), data),
+    );
+    return result.data;
+  }
+
+  async listAccountsAlerts(params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('alerts/'), { params }),
+    );
+    return result.data;
+  }
+
+  async runAccountsAlerts() {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('alerts/run/')),
+    );
+    return result.data;
+  }
+
+  async resolveAccountsAlert(id: number) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath(`alerts/${id}/resolve/`)),
+    );
+    return result.data;
+  }
+
+  async allocateAccountsOverhead(data?: { year?: number; month?: number; branch_id?: number }) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('overhead/allocate/'), data || {}),
+    );
+    return result.data;
+  }
+
+  async rebuildAccountsPnL(data?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.post(this.accountsPath('rebuild-pnl/'), data || {}),
+    );
+    return result.data;
+  }
+
+  async exportAccountsReport(report: string, params?: Record<string, unknown>) {
+    const result = await this.retryRequest(() =>
+      this.api.get(this.accountsPath('export/'), {
+        params: { report, ...params },
+        responseType: 'blob',
+      }),
+    );
+    return result.data as Blob;
   }
 
 }

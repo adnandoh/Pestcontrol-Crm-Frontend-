@@ -936,6 +936,7 @@ export interface TechnicianLedgerRow {
   booking_id: string;
   booking_date: string;
   customer_name: string;
+  property_type?: string;
   service_type: string;
   city: string;
   booking_type: 'one_time' | 'amc' | 'contract' | 'contract_amc';
@@ -944,6 +945,9 @@ export interface TechnicianLedgerRow {
   is_completed_visit: boolean;
   service_cycle?: number | null;
   planned_visits?: number | null;
+  service_number?: string | null;
+  assigned_technicians?: string;
+  technician_share_percent?: string;
   booking_amount: string;
   visit_revenue: string;
   technician_share: string;
@@ -955,6 +959,9 @@ export interface TechnicianLedgerRow {
   net_payable: string;
   payout_status: string;
   payout_status_label?: string;
+  settlement_status?: 'settled' | 'unsettled' | 'legacy' | 'n_a' | string;
+  settlement_status_label?: string;
+  settlement_date?: string | null;
   customer_rating: number | null;
 }
 
@@ -998,6 +1005,7 @@ export interface TechnicianLedgerResponse {
     technician_type: string;
   };
   summary: TechnicianLedgerSummary;
+  unsettled_payable?: string;
   earnings: {
     daily: string;
     monthly: string;
@@ -1017,6 +1025,14 @@ export interface TechnicianLedgerResponse {
   next: boolean;
   previous: boolean;
   results: TechnicianLedgerRow[];
+}
+
+export interface TechnicianLedgerSettleResponse {
+  settlement_id: number;
+  net_amount: string;
+  status: string;
+  paid_at: string | null;
+  job_count: number;
 }
 
 export interface GlobalSearchResult {

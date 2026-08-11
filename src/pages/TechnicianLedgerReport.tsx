@@ -25,6 +25,8 @@ import type {
 
 const PAGE_SIZE = 20;
 
+type SettlementTab = '' | 'unsettled' | 'settled' | 'legacy';
+
 type Filters = {
   technician: string;
   from: string;
@@ -33,6 +35,7 @@ type Filters = {
   service_type: string;
   status: string;
   booking_type: string;
+  settlement_status: SettlementTab;
   page: number;
 };
 
@@ -44,6 +47,7 @@ const defaultFilters = (technician: string): Filters => ({
   service_type: '',
   status: '',
   booking_type: '',
+  settlement_status: 'unsettled',
   page: 1,
 });
 
@@ -69,6 +73,9 @@ const TechnicianLedgerReport: React.FC = () => {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showPayments, setShowPayments] = useState(false);
   const [filters, setFilters] = useState<Filters>(defaultFilters(technicianFromUrl));
+  const [selectedJobIds, setSelectedJobIds] = useState<number[]>([]);
+  const [settling, setSettling] = useState(false);
+  const [settleMessage, setSettleMessage] = useState<string | null>(null);
 
   useEffect(() => {
     enhancedApiService.getActiveTechnicians()
@@ -105,11 +112,13 @@ const TechnicianLedgerReport: React.FC = () => {
           service_type: filters.service_type || undefined,
           booking_type: filters.booking_type || undefined,
           status: filters.status || undefined,
+          settlement_status: filters.settlement_status || undefined,
           page: filters.page,
           page_size: PAGE_SIZE,
         },
       );
       setData(report);
+      setSelectedJobIds([]);
       setError(null);
       if (report.payment_history.length > 0) setShowPayments(true);
     } catch (err) {
@@ -142,18 +151,73 @@ const TechnicianLedgerReport: React.FC = () => {
     [filters.city, filters.service_type, filters.booking_type, filters.status],
   );
 
+  const unsettledRows = useMemo(
+    () => (data?.results || []).filter((row) => row.settlement_status === 'unsettled'),
+    [data],
+  );
+
+  const selectedPayable = useMemo(
+    () => unsettledRows
+      .filter((row) => selectedJobIds.includes(row.job_id))
+      .reduce((sum, row) => sum + Number(row.pending_amount || 0), 0),
+    [unsettledRows, selectedJobIds],
+  );
+
+  const allUnsettledSelected = unsettledRows.length > 0
+    && unsettledRows.every((row) => selectedJobIds.includes(row.job_id));
+
+  const toggleJob = (jobId: number, checked: boolean) => {
+    setSelectedJobIds((current) => (
+      checked
+        ? Array.from(new Set([...current, jobId]))
+        : current.filter((id) => id !== jobId)
+    ));
+  };
+
+  const toggleAllUnsettled = (checked: boolean) => {
+    setSelectedJobIds(checked ? unsettledRows.map((row) => row.job_id) : []);
+  };
+
+  const settleSelected = async () => {
+    if (!filters.technician || selectedJobIds.length === 0) return;
+    setSettling(true);
+    setSettleMessage(null);
+    try {
+      const result = await enhancedApiService.settleTechnicianLedgerJobs(
+        Number(filters.technician),
+        { job_ids: selectedJobIds },
+      );
+      setSettleMessage(
+        `Settled ${result.job_count} service(s) · ${money(result.net_amount)}. Rows stay on the ledger as Settled.`,
+      );
+      setSelectedJobIds([]);
+      await load();
+    } catch (err) {
+      console.error('Failed to settle ledger jobs', err);
+      setSettleMessage('Could not settle selected services. Please try again.');
+    } finally {
+      setSettling(false);
+    }
+  };
+
   const downloadCsv = () => {
     if (!data?.results.length) return;
     const headings = [
-      'Booking Date', 'Booking ID', 'Customer', 'Service', 'City', 'Booking Type',
-      'Status', 'Booking Amount', 'Technician Earning', 'Company Share',
-      'Bonus', 'Penalty', 'Already Paid', 'Still To Pay', 'Total Earned', 'Rating',
+      'Booking Date', 'Booking ID', 'Customer', 'Property Type', 'Service', 'City',
+      'Booking Type', 'Service Number', 'Assigned Technicians', 'Visit Status',
+      'Payment Status', 'Settlement Date', 'Booking Amount', 'Service Value',
+      'Tech Share %', 'Technician Payable', 'Company Share', 'Bonus', 'Penalty',
+      'Already Paid', 'Still To Pay', 'Rating',
     ];
     const rows = data.results.map((row) => [
-      row.booking_date, row.booking_id, row.customer_name, row.service_type, row.city,
-      row.booking_type_label, row.status, row.booking_amount, row.technician_share,
+      row.booking_date, row.booking_id, row.customer_name, row.property_type || '',
+      row.service_type, row.city, row.booking_type_label, row.service_number || '',
+      row.assigned_technicians || '', row.status,
+      row.settlement_status_label || row.payout_status_label || row.payout_status || '',
+      row.settlement_date || '', row.booking_amount, row.visit_revenue,
+      row.technician_share_percent || '40', row.technician_share,
       row.company_share, row.bonus, row.penalty, row.paid_amount, row.pending_amount,
-      row.net_payable, row.customer_rating ?? '',
+      row.customer_rating ?? '',
     ]);
     const csv = [headings, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -177,7 +241,7 @@ const TechnicianLedgerReport: React.FC = () => {
             Technician Ledger
           </h1>
           <p className="text-[11px] font-medium text-gray-500">
-            Booking-wise 40% share · what is still to pay
+            Per completed service · Settled / Unsettled · multi-select settle
           </p>
         </div>
         <Button
@@ -374,8 +438,13 @@ const TechnicianLedgerReport: React.FC = () => {
               <MiniStat label="Revenue" value={money(data.summary.total_revenue_generated)} />
               <MiniStat label="Tech earned (40%)" value={money(data.summary.technician_share)} tone="emerald" highlight />
               <MiniStat label="Company (60%)" value={money(data.summary.company_share)} tone="purple" />
-              <MiniStat label="Still to pay" value={money(data.summary.pending_amount)} tone="rose" highlight />
-              <MiniStat label="Already paid" value={money(data.summary.paid_amount)} tone="blue" />
+              <MiniStat
+                label="Unsettled payable"
+                value={money(data.unsettled_payable ?? data.summary.pending_amount)}
+                tone="rose"
+                highlight
+              />
+              <MiniStat label="Already settled" value={money(data.summary.paid_amount)} tone="blue" />
               <MiniStat label="Bonus" value={money(data.summary.bonus)} />
               <MiniStat label="Penalty" value={money(data.summary.penalty)} tone="rose" />
               <MiniStat label="Total payable" value={money(data.summary.net_payable)} tone="amber" highlight />
@@ -399,16 +468,62 @@ const TechnicianLedgerReport: React.FC = () => {
             </div>
           </section>
 
-          {/* Booking history */}
+          {/* Payment Settlement */}
           <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
               <h2 className="text-sm font-black text-gray-900">
-                Booking history
+                Payment Settlement
                 <span className="ml-2 text-[11px] font-semibold text-gray-500">
                   {data.count === 0 ? 'none' : `${data.count} found`}
                 </span>
               </h2>
+              <div className="flex flex-wrap gap-1">
+                {([
+                  ['unsettled', 'Unsettled'],
+                  ['settled', 'Settled'],
+                  ['legacy', 'History'],
+                  ['', 'All'],
+                ] as Array<[SettlementTab, string]>).map(([value, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => updateFilter('settlement_status', value)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1 text-[10px] font-black',
+                      filters.settlement_status === value
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {settleMessage && (
+              <div className="border-b border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
+                {settleMessage}
+              </div>
+            )}
+
+            {selectedJobIds.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-3 py-2">
+                <p className="text-[11px] font-bold text-amber-900">
+                  Selected {selectedJobIds.length} service
+                  {selectedJobIds.length > 1 ? 's' : ''} → Total Technician Payable{' '}
+                  <strong>{money(selectedPayable)}</strong>
+                </p>
+                <Button
+                  size="sm"
+                  onClick={settleSelected}
+                  disabled={settling}
+                  className="h-7 bg-emerald-700 px-3 text-[11px] hover:bg-emerald-800"
+                >
+                  {settling ? 'Settling…' : 'Settle Payment'}
+                </Button>
+              </div>
+            )}
 
             {data.results.length === 0 ? (
               <div className="px-3 py-8 text-center">
@@ -420,31 +535,51 @@ const TechnicianLedgerReport: React.FC = () => {
                 <ul className="divide-y divide-gray-100 lg:hidden">
                   {data.results.map((row) => (
                     <li key={row.job_id}>
-                      <BookingCard row={row} />
+                      <BookingCard
+                        row={row}
+                        selected={selectedJobIds.includes(row.job_id)}
+                        onToggle={(checked) => toggleJob(row.job_id, checked)}
+                      />
                     </li>
                   ))}
                 </ul>
 
                 <div className="hidden overflow-x-auto lg:block">
-                  <table className="w-full min-w-[1000px] text-left text-[11px]">
+                  <table className="w-full min-w-[1280px] text-left text-[11px]">
                     <thead className="bg-gray-50 text-[9px] uppercase tracking-wider text-gray-500">
                       <tr>
+                        <th className="px-2 py-2 font-black">
+                          <input
+                            type="checkbox"
+                            checked={allUnsettledSelected}
+                            disabled={unsettledRows.length === 0}
+                            onChange={(event) => toggleAllUnsettled(event.target.checked)}
+                            aria-label="Select all unsettled"
+                          />
+                        </th>
                         <th className="px-3 py-2 font-black">Booking</th>
                         <th className="px-3 py-2 font-black">Customer</th>
+                        <th className="px-3 py-2 font-black">Property</th>
                         <th className="px-3 py-2 font-black">Service</th>
-                        <th className="px-3 py-2 font-black">Type</th>
-                        <th className="px-3 py-2 font-black">Status</th>
-                        <th className="px-3 py-2 text-right font-black">Amount</th>
-                        <th className="px-3 py-2 text-right font-black">Tech 40%</th>
-                        <th className="px-3 py-2 text-right font-black">Company</th>
-                        <th className="px-3 py-2 text-right font-black">+/-</th>
-                        <th className="px-3 py-2 text-right font-black">Paid</th>
-                        <th className="px-3 py-2 text-right font-black">To pay</th>
-                        <th className="px-3 py-2 text-right font-black">★</th>
+                        <th className="px-3 py-2 font-black">Type / #</th>
+                        <th className="px-3 py-2 font-black">Technicians</th>
+                        <th className="px-3 py-2 font-black">Visit / Pay</th>
+                        <th className="px-3 py-2 text-right font-black">Booking</th>
+                        <th className="px-3 py-2 text-right font-black">Service ₹</th>
+                        <th className="px-3 py-2 text-right font-black">Share %</th>
+                        <th className="px-3 py-2 text-right font-black">Tech pay</th>
+                        <th className="px-3 py-2 text-right font-black">Settled on</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {data.results.map((row) => <BookingRow key={row.job_id} row={row} />)}
+                      {data.results.map((row) => (
+                        <BookingRow
+                          key={row.job_id}
+                          row={row}
+                          selected={selectedJobIds.includes(row.job_id)}
+                          onToggle={(checked) => toggleJob(row.job_id, checked)}
+                        />
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -536,8 +671,12 @@ const TechnicianLedgerReport: React.FC = () => {
 
           <p className="flex items-start gap-1.5 px-1 text-[10px] font-medium text-gray-400">
             <Info className="mt-0.5 h-3 w-3 shrink-0" />
-            AMC example: package ₹1,000 / 3 visits → each Done visit pays Tech ₹133.33 (40%) and Company ₹200 (60%)
-            to whoever completed that visit. One Time pays full 40% on Done. Held = partner not credited yet.
+            <span>
+              <strong className="text-gray-500">Visit</strong> = service completed or not.
+              {' '}<strong className="text-gray-500">Pay</strong> = Settled / Unsettled (not Visit Done).
+              One-Time = full 40%. AMC / Bed Bugs = per completed service (Bed Bugs = package ÷ 2 × 40%).
+              Multi-tech = same 40% split equally. Settled rows stay on the ledger with a settlement date.
+            </span>
           </p>
         </>
       ) : null}
@@ -675,98 +814,165 @@ const visitLabel = (row: TechnicianLedgerRow) => {
   return `V${row.service_cycle || '—'}/${row.planned_visits || '—'}`;
 };
 
-const PayoutPill = ({ status, label }: { status?: string; label?: string }) => {
-  const text = label || status || '—';
+const SettlementPill = ({ row }: { row: TechnicianLedgerRow }) => {
+  const status = row.settlement_status || '';
+  const text = row.settlement_status_label
+    || (status === 'settled' ? 'Settled'
+      : status === 'unsettled' ? 'Unsettled'
+        : status === 'legacy' ? 'Old record'
+          : status === 'n_a' ? 'N/A'
+            : row.payout_status_label || '—');
   const tone =
-    status === 'held'
-      ? 'bg-rose-50 text-rose-700'
-      : status === 'pending'
+    status === 'settled'
+      ? 'bg-emerald-50 text-emerald-700'
+      : status === 'unsettled'
         ? 'bg-amber-50 text-amber-700'
-        : status === 'approved' || status === 'paid'
-          ? 'bg-emerald-50 text-emerald-700'
-          : 'bg-gray-100 text-gray-600';
+        : status === 'legacy'
+          ? 'bg-gray-100 text-gray-600'
+          : 'bg-slate-50 text-slate-600';
   return (
-    <span className={cn('inline-block rounded px-1.5 py-0.5 text-[9px] font-black capitalize', tone)}>
+    <span className={cn('inline-block rounded px-1.5 py-0.5 text-[9px] font-black', tone)}>
       {text}
     </span>
   );
 };
 
-const BookingRow = ({ row }: { row: TechnicianLedgerRow }) => (
-  <tr className="hover:bg-gray-50/80">
-    <td className="px-3 py-1.5">
-      <p className="font-bold text-gray-900">{prettyDate(row.booking_date)}</p>
-      <p className="text-[10px] font-bold text-blue-600">#{row.booking_id}</p>
-    </td>
-    <td className="max-w-[120px] truncate px-3 py-1.5 font-semibold text-gray-800">
-      {row.customer_name || '—'}
-    </td>
-    <td className="px-3 py-1.5">
-      <p className="truncate font-semibold text-gray-800">{row.service_type || '—'}</p>
-      <p className="text-[10px] text-gray-500">{row.city || '—'}</p>
-    </td>
-    <td className="px-3 py-1.5">
-      <TypePill label={row.booking_type_label} />
-      {visitLabel(row) && (
-        <p className="mt-0.5 text-[9px] text-gray-500">{visitLabel(row)}</p>
-      )}
-    </td>
-    <td className="px-3 py-1.5">
+/** Two clear rows so staff don't confuse Visit Done with Pay Settled. */
+const VisitPayStatus = ({ row }: { row: TechnicianLedgerRow }) => (
+  <div className="flex min-w-[118px] flex-col gap-1">
+    <div className="flex items-center gap-1.5">
+      <span className="w-7 shrink-0 text-[8px] font-black uppercase tracking-wide text-gray-400">
+        Visit
+      </span>
       <StatusPill status={row.status} done={row.is_completed_visit} />
-      <div className="mt-0.5">
-        <PayoutPill status={row.payout_status} label={row.payout_status_label} />
-      </div>
-    </td>
-    <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{money(row.booking_amount)}</td>
-    <td className="px-3 py-1.5 text-right font-black text-emerald-700">{money(row.technician_share)}</td>
-    <td className="px-3 py-1.5 text-right font-semibold text-purple-700">{money(row.company_share)}</td>
-    <td className="px-3 py-1.5 text-right text-[10px]">
-      <span className="font-semibold text-emerald-700">+{money(row.bonus)}</span>
-      <br />
-      <span className="font-semibold text-rose-700">-{money(row.penalty)}</span>
-    </td>
-    <td className="px-3 py-1.5 text-right font-semibold text-blue-700">{money(row.paid_amount)}</td>
-    <td className="px-3 py-1.5 text-right font-black text-rose-700">{money(row.pending_amount)}</td>
-    <td className="px-3 py-1.5 text-right">
-      {row.customer_rating
-        ? <span className="font-bold text-amber-600">{row.customer_rating}</span>
-        : <span className="text-gray-300">—</span>}
-    </td>
-  </tr>
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-7 shrink-0 text-[8px] font-black uppercase tracking-wide text-gray-400">
+        Pay
+      </span>
+      <SettlementPill row={row} />
+    </div>
+  </div>
 );
 
-const BookingCard = ({ row }: { row: TechnicianLedgerRow }) => (
-  <article className="px-3 py-2.5">
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <p className="truncate text-xs font-black text-gray-900">{row.customer_name || 'Customer'}</p>
-        <p className="text-[10px] font-bold text-blue-600">
-          #{row.booking_id} · {prettyDate(row.booking_date)}
+const BookingRow = ({
+  row,
+  selected,
+  onToggle,
+}: {
+  row: TechnicianLedgerRow;
+  selected: boolean;
+  onToggle: (checked: boolean) => void;
+}) => {
+  const canSettle = row.settlement_status === 'unsettled';
+  return (
+    <tr className="hover:bg-gray-50/80">
+      <td className="px-2 py-1.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={!canSettle}
+          onChange={(event) => onToggle(event.target.checked)}
+          aria-label={`Select booking ${row.booking_id}`}
+        />
+      </td>
+      <td className="px-3 py-1.5">
+        <p className="font-bold text-gray-900">{prettyDate(row.booking_date)}</p>
+        <p className="text-[10px] font-bold text-blue-600">#{row.booking_id}</p>
+      </td>
+      <td className="max-w-[120px] truncate px-3 py-1.5 font-semibold text-gray-800">
+        {row.customer_name || '—'}
+      </td>
+      <td className="max-w-[90px] truncate px-3 py-1.5 text-gray-600">
+        {row.property_type || '—'}
+      </td>
+      <td className="px-3 py-1.5">
+        <p className="truncate font-semibold text-gray-800">{row.service_type || '—'}</p>
+        <p className="text-[10px] text-gray-500">{row.city || '—'}</p>
+      </td>
+      <td className="px-3 py-1.5">
+        <TypePill label={row.booking_type_label} />
+        <p className="mt-0.5 text-[9px] text-gray-500">
+          {row.service_number || visitLabel(row) || '—'}
         </p>
+      </td>
+      <td className="max-w-[120px] truncate px-3 py-1.5 text-gray-600">
+        {row.assigned_technicians || '—'}
+      </td>
+      <td className="px-3 py-1.5">
+        <VisitPayStatus row={row} />
+      </td>
+      <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{money(row.booking_amount)}</td>
+      <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{money(row.visit_revenue)}</td>
+      <td className="px-3 py-1.5 text-right font-semibold text-gray-600">
+        {row.technician_share_percent || '40'}%
+      </td>
+      <td className="px-3 py-1.5 text-right font-black text-emerald-700">{money(row.technician_share)}</td>
+      <td className="px-3 py-1.5 text-right text-gray-600">
+        {row.settlement_date ? prettyDate(row.settlement_date) : '—'}
+      </td>
+    </tr>
+  );
+};
+
+const BookingCard = ({
+  row,
+  selected,
+  onToggle,
+}: {
+  row: TechnicianLedgerRow;
+  selected: boolean;
+  onToggle: (checked: boolean) => void;
+}) => {
+  const canSettle = row.settlement_status === 'unsettled';
+  return (
+    <article className="px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={selected}
+            disabled={!canSettle}
+            onChange={(event) => onToggle(event.target.checked)}
+            aria-label={`Select booking ${row.booking_id}`}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-black text-gray-900">{row.customer_name || 'Customer'}</p>
+            <p className="text-[10px] font-bold text-blue-600">
+              #{row.booking_id} · {prettyDate(row.booking_date)}
+            </p>
+          </div>
+        </div>
+        <VisitPayStatus row={row} />
       </div>
-      <StatusPill status={row.status} done={row.is_completed_visit} />
-    </div>
-    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-gray-500">
-      <TypePill label={row.booking_type_label} />
-      <span>{row.service_type || '—'}</span>
-      {row.city && <span>· {row.city}</span>}
-    </div>
-    <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-lg bg-gray-50 p-2 text-center">
-      <div>
-        <p className="text-[9px] font-bold uppercase text-gray-400">Amount</p>
-        <p className="text-xs font-black">{money(row.booking_amount)}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-gray-500">
+        <TypePill label={row.booking_type_label} />
+        <span>{row.service_type || '—'}</span>
+        {row.property_type && <span>· {row.property_type}</span>}
+        {row.service_number && <span>· {row.service_number}</span>}
       </div>
-      <div>
-        <p className="text-[9px] font-bold uppercase text-gray-400">Tech 40%</p>
-        <p className="text-xs font-black text-emerald-700">{money(row.technician_share)}</p>
+      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-lg bg-gray-50 p-2 text-center">
+        <div>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Booking</p>
+          <p className="text-xs font-black">{money(row.booking_amount)}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Tech pay</p>
+          <p className="text-xs font-black text-emerald-700">{money(row.technician_share)}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-gray-400">
+            {row.settlement_status === 'settled' ? 'Settled' : 'Unsettled'}
+          </p>
+          <p className="text-xs font-black text-rose-700">
+            {row.settlement_date ? prettyDate(row.settlement_date) : money(row.pending_amount)}
+          </p>
+        </div>
       </div>
-      <div>
-        <p className="text-[9px] font-bold uppercase text-gray-400">To pay</p>
-        <p className="text-xs font-black text-rose-700">{money(row.pending_amount)}</p>
-      </div>
-    </div>
-  </article>
-);
+    </article>
+  );
+};
 
 const PaymentCard = ({ payment }: { payment: TechnicianLedgerPayment }) => (
   <article className="px-3 py-2.5">
