@@ -25,7 +25,7 @@ import type {
 
 const PAGE_SIZE = 20;
 
-type SettlementTab = '' | 'unsettled' | 'settled' | 'legacy';
+type SettlementTab = '' | 'unsettled' | 'settled' | 'history' | 'legacy';
 
 type Filters = {
   technician: string;
@@ -480,8 +480,8 @@ const TechnicianLedgerReport: React.FC = () => {
               <div className="flex flex-wrap gap-1">
                 {([
                   ['unsettled', 'Unsettled'],
-                  ['settled', 'Settled'],
-                  ['legacy', 'History'],
+                  ['settled', 'Settlement History'],
+                  ['history', 'Old Service Calls'],
                   ['', 'All'],
                 ] as Array<[SettlementTab, string]>).map(([value, label]) => (
                   <button
