@@ -12,15 +12,11 @@ import {
   buildLocationTooltip,
   propertyAddressFromMessage,
 } from '../components/crm/LocationCell';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThCompactClass, crmTdCompactClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
-import {
-  fireAndForget,
-  sendBookingConfirmationApi,
-} from '../services/whatsappPc99Send';
 import { cn } from '../utils/cn';
 import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
@@ -51,6 +47,7 @@ const TAB_STATUS_MAP: Record<string, keyof InquiryStatusCounts | 'all'> = {
 };
 
 const Inquiries: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('focus');
   const [focusPreview, setFocusPreview] = useState<string | null>(null);
@@ -228,12 +225,13 @@ const Inquiries: React.FC = () => {
 
 
 
-  // Handle convert to job card
+  // Handle convert to job card — draft only; WhatsApp after staff confirms on Edit Booking
   const handleConvertToJobCard = async (inquiry: Inquiry) => {
-    if (!confirm('Convert this inquiry to a job card?')) return;
+    if (!confirm(
+      'Convert this inquiry into a draft booking?\n\nWhatsApp will NOT be sent yet. You will review and confirm the final price on Edit Booking first.',
+    )) return;
 
     try {
-      // Prepare job card data from inquiry
       const jobCardData = {
         client_name: inquiry.name,
         client_mobile: inquiry.mobile,
@@ -250,7 +248,8 @@ const Inquiries: React.FC = () => {
         schedule_datetime: new Date().toISOString(),
         status: 'Pending',
         payment_status: 'Unpaid',
-        price: inquiry.estimated_price?.toString() || '',
+        // Do not send website estimated_price — staff sets final agreed price on Edit Booking.
+        price: '',
         commercial_type: (inquiry.premise_type === 'commercial' ? 'office' : 'home') as 'office' | 'home',
         bhk_size: inquiry.premise_size || '',
         service_category: inquiry.service_frequency === 'amc' ? 'AMC' : 'One-Time Service',
@@ -259,10 +258,12 @@ const Inquiries: React.FC = () => {
       };
 
       const jobCard = await enhancedApiService.convertInquiry(inquiry.id, jobCardData);
-      fireAndForget(sendBookingConfirmationApi(jobCard));
-      showAlert(`Successfully converted to Job Card #${jobCard.code}`);
+      showAlert(
+        `Draft booking #${jobCard.code} created. Review details and confirm final price before WhatsApp is sent.`,
+      );
       loadInquiries(pagination.current);
       refreshCounts();
+      navigate(`/jobcards/edit/${jobCard.id}?confirmBooking=1`);
     } catch (err: any) {
       console.error('Conversion error:', err);
       showAlert(err.message || 'Failed to convert inquiry to booking.');

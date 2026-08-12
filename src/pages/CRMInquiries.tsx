@@ -9,15 +9,11 @@ import {
   CheckCheck,
   IdCard,
 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInquiryFocusFromSearch, inquiryRowAnchorId } from '../hooks/useInquiryFocusFromSearch';
 import { Button, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThClass, crmTdClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
-import {
-  fireAndForget,
-  sendBookingConfirmationApi,
-} from '../services/whatsappPc99Send';
 import { cn } from '../utils/cn';
 import type { CRMInquiry, CRMInquiryStatus, InquiryStatusCounts } from '../types';
 import CreateCRMInquiryModal from '../components/crm/CreateCRMInquiryModal';
@@ -42,6 +38,7 @@ import { showAlert } from '../utils/notify';
 const CRM_DATE_FILTER_KEY = 'crm-inquiries-date-filter';
 
 const CRMInquiries: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('focus');
   const [focusPreview, setFocusPreview] = useState<string | null>(null);
@@ -203,20 +200,19 @@ const CRMInquiries: React.FC = () => {
   };
 
   const handleConvert = async (id: number) => {
-    if (!window.confirm('Are you sure you want to convert this inquiry into a booking?')) return;
+    if (!window.confirm(
+      'Convert this inquiry into a draft booking?\n\nWhatsApp will NOT be sent yet. You will review and confirm the final price on Edit Booking first.',
+    )) return;
     
     try {
       setSubmitting(id);
       const result = await enhancedApiService.convertInquiryToBooking(id);
-      try {
-        const job = await enhancedApiService.getJobCard(result.job_card_id);
-        fireAndForget(sendBookingConfirmationApi(job));
-      } catch (waErr) {
-        console.error('WhatsApp booking confirmation skipped:', waErr);
-      }
-      showAlert(`Successfully converted! Code: ${result.job_card_code}`);
+      showAlert(
+        `Draft booking ${result.job_card_code} created. Review details and confirm final price before WhatsApp is sent.`,
+      );
       loadInquiries(pagination.current);
       refreshCounts();
+      navigate(`/jobcards/edit/${result.job_card_id}?confirmBooking=1`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Conversion failed';
       showAlert(message);

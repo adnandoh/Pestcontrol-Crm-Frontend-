@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -13,6 +13,7 @@ import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import {
   fireAndForget,
   sendBookingCancelledApi,
+  sendBookingConfirmationApi,
   sendBookingDonePairApi,
 } from '../services/whatsappPc99Send';
 import CopyablePhone from '../components/crm/CopyablePhone';
@@ -35,6 +36,7 @@ import type { JobCardFormData, JobCard, State, City } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import RevenueModelFields from '../components/crm/RevenueModelFields';
 import JobCrewPanel from '../components/crm/JobCrewPanel';
+import JobAccountsPanel from '../components/crm/JobAccountsPanel';
 
 import {
   MUMBAI_PRICING_CONFIG,
@@ -72,10 +74,13 @@ import { FormErrorBanner } from '../components/errors';
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const confirmBookingFlow = searchParams.get('confirmBooking') === '1';
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
+  const [sendWhatsAppOnSave, setSendWhatsAppOnSave] = useState(confirmBookingFlow);
   
   const {
     errors,
@@ -518,11 +523,16 @@ const EditJobCard: React.FC = () => {
       setTimeout(() => { scrollToFirstError(); }, 100);
       return;
     }
+    const finalPrice = Number.parseFloat(String(formData.price || '0')) || 0;
+    if (sendWhatsAppOnSave && finalPrice <= 0) {
+      showAlert('Enter the final agreed price before sending WhatsApp booking confirmation.');
+      return;
+    }
     try {
       setSubmitting(true);
       setSubmitError('');
       // Ensure schedule_datetime is in ISO format
-      const manualPrice = Number.parseFloat(String(formData.price || '0')) || 0;
+      const manualPrice = finalPrice;
       const itemsForSubmit = isPriceManuallyEdited
         ? syncServiceItemAmountsToTotal(serviceItems, manualPrice)
         : serviceItems;
@@ -593,6 +603,10 @@ const EditJobCard: React.FC = () => {
         technician_mobile: jobCard!.technician_mobile,
         assigned_to: jobCard!.assigned_to,
       };
+      if (sendWhatsAppOnSave && nextStatus !== 'Cancelled') {
+        fireAndForget(sendBookingConfirmationApi(waJob));
+        notify.success('Booking saved. WhatsApp confirmation sent with the final price.');
+      }
       if (nextStatus === 'Done' && previousStatus !== 'Done') {
         fireAndForget(sendBookingDonePairApi(waJob));
       } else if (nextStatus === 'Cancelled' && previousStatus !== 'Cancelled') {
@@ -743,6 +757,15 @@ const EditJobCard: React.FC = () => {
       )}
 
       <div className="max-w-6xl mx-auto">
+        {confirmBookingFlow && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p className="font-bold">Confirm booking before WhatsApp</p>
+            <p className="mt-1 text-[13px] text-amber-900/90">
+              This booking was converted from an inquiry. Review service, address, schedule, and enter the
+              <span className="font-semibold"> final agreed price</span>. WhatsApp confirmation is sent only when you save with “Send WhatsApp confirmation” checked — never on convert.
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-5">
           <FormErrorBanner message={submitError} />
           {/* Section: Client & Location */}
@@ -1261,6 +1284,10 @@ const EditJobCard: React.FC = () => {
             />
           )}
 
+          {id && (
+            <JobAccountsPanel jobId={Number(id)} status={formData.status} />
+          )}
+
           {/* Section: Reminders */}
           <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
             <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
@@ -1311,11 +1338,31 @@ const EditJobCard: React.FC = () => {
           </div>
 
           {/* Action Footer (Non-Sticky) */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col sm:flex-row items-center justify-end gap-3">
-             <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-10 px-6 text-[13px] font-bold text-gray-600 hover:bg-gray-50 border-gray-300">Discard Changes</Button>
-             <Button type="submit" disabled={submitting} className="h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-               {submitting ? 'Saving...' : 'Update Booking'}
-             </Button>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col gap-3">
+             <label className="inline-flex items-start gap-2 text-[13px] text-gray-700 cursor-pointer select-none">
+               <input
+                 type="checkbox"
+                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                 checked={sendWhatsAppOnSave}
+                 onChange={(e) => setSendWhatsAppOnSave(e.target.checked)}
+               />
+               <span>
+                 <span className="font-bold text-gray-900">Send WhatsApp confirmation</span>
+                 <span className="block text-gray-500 text-[12px]">
+                   Uses the final price and details on this form (not the original inquiry estimate).
+                 </span>
+               </span>
+             </label>
+             <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
+               <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-10 px-6 text-[13px] font-bold text-gray-600 hover:bg-gray-50 border-gray-300">Discard Changes</Button>
+               <Button type="submit" disabled={submitting} className="h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                 {submitting
+                   ? 'Saving...'
+                   : sendWhatsAppOnSave
+                     ? 'Confirm Booking & Send WhatsApp'
+                     : 'Update Booking'}
+               </Button>
+             </div>
           </div>
 
         </form>
