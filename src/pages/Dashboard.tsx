@@ -223,6 +223,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="flex flex-1 justify-between sm:justify-start gap-4 sm:gap-12 px-2 sm:px-8 w-full sm:w-auto">
            {[
+             { label: 'Bookings', value: stats?.today_booking_count ?? stats?.total_job_cards ?? 0, color: 'text-indigo-600' },
              { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
              { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
              { label: 'Completed', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
@@ -234,6 +235,63 @@ const Dashboard: React.FC = () => {
            ))}
         </div>
       </div>
+
+      {/* 📍 Bookings by City — Today */}
+      <section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm animate-fade-up delay-200">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-emerald-600" />
+            <div>
+              <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
+                Today’s Bookings by City
+              </h2>
+              <p className="text-[10px] font-medium text-gray-500">
+                Pune, Mumbai, Lonavala and other cities — scheduled today
+              </p>
+            </div>
+          </div>
+          <span className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-black text-white">
+            {stats?.today_booking_count ?? 0} total today
+          </span>
+        </div>
+        {(stats?.today_city_stats?.length || 0) === 0 ? (
+          <p className="text-xs font-medium text-gray-400">No bookings scheduled for today yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {(stats?.today_city_stats || []).map((row) => (
+              <div
+                key={row.city}
+                className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-3 text-center"
+              >
+                <p className="text-2xl font-black tabular-nums text-emerald-800">{row.count}</p>
+                <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-emerald-700/80">
+                  {row.city}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        {(stats?.city_stats?.length || 0) > 0 && (
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-gray-400">
+              Selected date range
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(stats?.city_stats || []).map((row) => (
+                <span
+                  key={`range-${row.city}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 text-[11px] font-bold text-gray-700"
+                >
+                  <span className="text-gray-900">{row.city}</span>
+                  <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-black tabular-nums">
+                    {row.count}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-fade-up delay-300">
         {/* 📊 4. PERFORMANCE INSIGHTS */}
