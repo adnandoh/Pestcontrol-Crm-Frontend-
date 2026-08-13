@@ -88,8 +88,12 @@ const JobCards: React.FC = () => {
     date_preset: '', // today, tomorrow, custom
     from: '',
     to: '',
-    commercial_type: ''
+    commercial_type: '',
+    city: '',
   });
+  const [cityOptions, setCityOptions] = useState<string[]>([
+    'Mumbai', 'Pune', 'Lonavala', 'Thane', 'Navi Mumbai', 'Kalyan',
+  ]);
   const [searchInput, setSearchInput] = useState('');
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(
@@ -196,6 +200,11 @@ const JobCards: React.FC = () => {
         params.commercial_type = currentFilters.commercial_type;
       }
 
+      // City filter (Done / all tabs)
+      if (currentFilters.city) {
+        params.city = currentFilters.city;
+      }
+
       // Add date filters using dayjs for IST accuracy
       if (currentFilters.date_preset === 'today') {
         const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
@@ -280,6 +289,28 @@ const JobCards: React.FC = () => {
       loadJobCards(1);
     }
   }, [activeTab, loadReminders, loadJobCards]);
+
+  // Load master cities for City filter (Pune / Mumbai / …)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await enhancedApiService.getCities({ page_size: 100, is_active: true });
+        const names = (res.results || [])
+          .map((c) => c.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        if (!cancelled && names.length) {
+          setCityOptions((prev) => Array.from(new Set([...prev, ...names])).sort((a, b) => a.localeCompare(b)));
+        }
+      } catch {
+        // Keep default city list if master cities API fails
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Refetch data when page becomes visible
   const isInitialMount = useRef(true);
@@ -393,7 +424,8 @@ const JobCards: React.FC = () => {
       date_preset: '',
       from: '',
       to: '',
-      commercial_type: ''
+      commercial_type: '',
+      city: '',
     };
     setFilters(newFilters);
     setSearchInput('');
@@ -719,6 +751,11 @@ const JobCards: React.FC = () => {
             <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
               Total {activeTab === 'reminders' ? reminderTotal : pagination.count} Records
             </span>
+            {activeTab === 'done' && filters.city && (
+              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded tracking-widest uppercase">
+                Done in {filters.city}: {pagination.count}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => navigate('/jobcards/create')} className="bg-blue-700 hover:bg-blue-800 h-8 font-bold shadow-sm">
@@ -818,6 +855,20 @@ const JobCards: React.FC = () => {
             <option value="villa">Villa</option>
             <option value="office">Office</option>
             <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div className="w-36">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">City</label>
+          <select
+            value={filters.city}
+            onChange={(e) => handleFilterChange('city', e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          >
+            <option value="">All Cities</option>
+            {cityOptions.map((city) => (
+              <option key={city} value={city}>{city}</option>
+            ))}
           </select>
         </div>
 
