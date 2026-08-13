@@ -22,6 +22,7 @@ import {
   IndianRupee,
   IdCard,
   Wallet,
+  Calculator,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -97,6 +98,16 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Technician Ledger', href: '/technician-ledger', icon: Receipt },
         { name: 'Technician Selfies', href: '/technician-selfies', icon: Camera },
         { name: 'Staff Performance', href: '/staff-performance', icon: BarChart3 },
+      ]
+    },
+    {
+      items: [
+        { name: 'Accounts', href: '/accounts', icon: Calculator },
+        { name: 'Inventory', href: '/accounts/inventory', icon: Database },
+        { name: 'Expenses', href: '/accounts/expenses', icon: IndianRupee },
+        { name: 'Booking Profit', href: '/accounts/booking-profit', icon: BarChart3 },
+        { name: 'Accounts Alerts', href: '/accounts/alerts', icon: Zap },
+        { name: 'Accounts Reports', href: '/accounts/reports', icon: FileText },
       ]
     },
     {

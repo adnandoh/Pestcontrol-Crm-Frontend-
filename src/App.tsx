@@ -49,6 +49,12 @@ import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
 import MasterLocations from './pages/MasterLocations';
 import PricingMaster from './pages/PricingMaster';
+import AccountsDashboard from './pages/accounts/AccountsDashboard';
+import AccountsInventory from './pages/accounts/AccountsInventory';
+import AccountsExpenses from './pages/accounts/AccountsExpenses';
+import AccountsBookingProfit from './pages/accounts/AccountsBookingProfit';
+import AccountsAlerts from './pages/accounts/AccountsAlerts';
+import AccountsReports from './pages/accounts/AccountsReports';
 import BlogDashboard from './pages/blog/BlogDashboard';
 import BlogList from './pages/blog/BlogList';
 import BlogEditor from './pages/blog/BlogEditor';
@@ -153,6 +159,12 @@ const AppContent: React.FC = () => {
                     <Route path="/technicians/create" element={<TechnicianFormPage />} />
                     <Route path="/technicians/edit/:id" element={<TechnicianFormPage />} />
                     <Route path="/settlements" element={<Settlements />} />
+                    <Route path="/accounts" element={<AccountsDashboard />} />
+                    <Route path="/accounts/inventory" element={<AccountsInventory />} />
+                    <Route path="/accounts/expenses" element={<AccountsExpenses />} />
+                    <Route path="/accounts/booking-profit" element={<AccountsBookingProfit />} />
+                    <Route path="/accounts/alerts" element={<AccountsAlerts />} />
+                    <Route path="/accounts/reports" element={<AccountsReports />} />
                     <Route path="/crm-inquiries" element={<CRMInquiries />} />
                     <Route path="/whatsapp/inbox" element={<WhatsAppInbox />} />
                     <Route path="/quotations" element={<Quotations />} />
