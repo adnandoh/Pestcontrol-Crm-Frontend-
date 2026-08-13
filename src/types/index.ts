@@ -866,7 +866,12 @@ export interface DashboardStatisticsResponse {
     city: string;
     count: number;
   }>;
+  today_service_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
   today_booking_count?: number;
+  today_service_call_count?: number;
   property_type_stats?: Array<{
     property_type: string;
     count: number;
