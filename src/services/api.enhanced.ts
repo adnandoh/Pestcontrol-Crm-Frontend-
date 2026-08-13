@@ -2104,7 +2104,7 @@ class EnhancedApiService {
 
   async listAccountsBranches(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('branches/'), { params }),
+      this.api.get(this.accountsPath('branches/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2120,7 +2120,7 @@ class EnhancedApiService {
 
   async listAccountsChemicals(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('chemicals/'), { params }),
+      this.api.get(this.accountsPath('chemicals/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2136,7 +2136,7 @@ class EnhancedApiService {
 
   async listAccountsSuppliers(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('suppliers/'), { params }),
+      this.api.get(this.accountsPath('suppliers/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2152,14 +2152,14 @@ class EnhancedApiService {
 
   async listStockBalances(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('stock-balances/'), { params }),
+      this.api.get(this.accountsPath('stock-balances/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
 
   async listStockMovements(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('stock-movements/'), { params }),
+      this.api.get(this.accountsPath('stock-movements/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2208,7 +2208,7 @@ class EnhancedApiService {
 
   async listAccountsEquipment(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('equipment/'), { params }),
+      this.api.get(this.accountsPath('equipment/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2238,14 +2238,14 @@ class EnhancedApiService {
 
   async listExpenseCategories(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('expense-categories/'), { params }),
+      this.api.get(this.accountsPath('expense-categories/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
 
   async listExpenses(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('expenses/'), { params }),
+      this.api.get(this.accountsPath('expenses/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2261,7 +2261,7 @@ class EnhancedApiService {
 
   async listBookingCosts(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('booking-costs/'), { params }),
+      this.api.get(this.accountsPath('booking-costs/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
@@ -2289,7 +2289,7 @@ class EnhancedApiService {
 
   async listAccountsAlerts(params?: Record<string, unknown>) {
     const result = await this.retryRequest(() =>
-      this.api.get(this.accountsPath('alerts/'), { params }),
+      this.api.get(this.accountsPath('alerts/'), { params: { page_size: 100, ...params } }),
     );
     return result.data;
   }
