@@ -5,6 +5,8 @@ import {
   Search,
   Edit2,
   MapPin,
+  Check,
+  X,
 } from 'lucide-react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import {
@@ -24,6 +26,7 @@ const Technicians: React.FC = () => {
   const revenueModelEnabled = useRevenueModelV2();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionBusyId, setActionBusyId] = useState<number | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [pagination, setPagination] = useState({
@@ -102,6 +105,34 @@ const Technicians: React.FC = () => {
     loadTechnicians(page, searchInput);
   };
 
+  const handleApproveApp = async (tech: Technician) => {
+    if (!window.confirm(`Approve Partner App access for ${tech.name}?`)) return;
+    try {
+      setActionBusyId(tech.id);
+      await enhancedApiService.approvePartnerApp(tech.id);
+      showAlert(`Partner App approved for ${tech.name}`);
+      await loadTechnicians(pagination.current, searchInput);
+    } catch {
+      showAlert('Could not approve Partner App');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleRejectApp = async (tech: Technician) => {
+    if (!window.confirm(`Reject / revoke Partner App access for ${tech.name}?`)) return;
+    try {
+      setActionBusyId(tech.id);
+      await enhancedApiService.revokePartnerApp(tech.id);
+      showAlert(`Partner App access rejected for ${tech.name}`);
+      await loadTechnicians(pagination.current, searchInput);
+    } catch {
+      showAlert('Could not reject Partner App');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
   const showingFrom = pagination.count === 0 ? 0 : (pagination.current - 1) * PAGE_SIZE + 1;
   const showingTo = Math.min(pagination.current * PAGE_SIZE, pagination.count);
 
@@ -171,7 +202,12 @@ const Technicians: React.FC = () => {
                     No Technicians Found
                   </td>
                 </tr>
-              ) : technicians.map((tech) => (
+              ) : technicians.map((tech) => {
+                const busy = actionBusyId === tech.id;
+                const hasApp = Boolean(tech.has_partner_app);
+                const approved = Boolean(tech.partner_app_approved);
+
+                return (
                 <tr key={tech.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
                   <td className="px-3 py-2.5">
                     <div className={cn('h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold shadow-inner', tech.is_active ? 'bg-emerald-500' : 'bg-gray-400')}>
@@ -223,29 +259,51 @@ const Technicians: React.FC = () => {
                     </td>
                   )}
                   <td className="px-3 py-2.5">
-                    {!tech.has_partner_app ? (
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">No app</span>
-                    ) : tech.partner_app_approved ? (
-                      <span className="text-[9px] font-bold text-emerald-700 uppercase">Approved</span>
+                    {!hasApp ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-gray-50 text-gray-500 ring-1 ring-inset ring-gray-200">
+                        No app
+                      </span>
+                    ) : approved ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                        Approved
+                      </span>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await enhancedApiService.approvePartnerApp(tech.id);
-                            await loadTechnicians(pagination.current, searchInput);
-                          } catch {
-                            showAlert('Could not approve partner app');
-                          }
-                        }}
-                        className="text-[9px] font-black uppercase text-amber-700 underline"
-                      >
-                        Approve app
-                      </button>
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                        Pending approval
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {hasApp && !approved && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleApproveApp(tech)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase tracking-wide disabled:opacity-50"
+                          title="Approve Partner App"
+                        >
+                          <Check className="h-3 w-3" />
+                          Approve
+                        </button>
+                      )}
+                      {hasApp && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleRejectApp(tech)}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wide disabled:opacity-50',
+                            approved
+                              ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100'
+                              : 'bg-red-600 hover:bg-red-700 text-white',
+                          )}
+                          title={approved ? 'Revoke Partner App access' : 'Reject Partner App'}
+                        >
+                          <X className="h-3 w-3" />
+                          {approved ? 'Revoke' : 'Reject'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => navigate(`/technicians/edit/${tech.id}`)}
@@ -257,7 +315,8 @@ const Technicians: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
