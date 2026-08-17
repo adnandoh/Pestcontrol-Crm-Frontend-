@@ -165,11 +165,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                   <button
                     key={tech.id}
                     onClick={() => handleAssign(tech.id)}
-                    disabled={assigning !== null || workload >= 10}
+                    disabled={assigning !== null}
                     className={cn(
                       "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-center justify-between",
-                      assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
-                      workload >= 10 && "opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50"
+                      assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30"
                     )}
                   >
                     <div className="flex items-center gap-4">
@@ -240,12 +239,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                     <div className="flex items-center gap-3">
                        <div className={cn(
                          "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border shadow-xs",
-                         isHighLoad && workload < 10 ? "bg-red-50 text-red-700 border-red-200" :
-                         workload >= 10 ? "bg-gray-100 text-gray-700 border-gray-300" :
+                         isHighLoad ? "bg-red-50 text-red-700 border-red-200" :
                          isMediumLoad ? "bg-amber-50 text-amber-700 border-amber-200" :
                          "bg-emerald-50 text-emerald-700 border-emerald-200"
                        )}>
-                         {workload >= 10 ? 'Max Capacity' : isHighLoad ? 'High Load' : isMediumLoad ? 'Busy' : 'Available'}
+                         {isHighLoad ? 'High Load' : isMediumLoad ? 'Busy' : 'Available'}
                        </div>
                        
                        {assigning === tech.id ? (
