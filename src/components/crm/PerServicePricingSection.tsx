@@ -60,7 +60,7 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
           Selected Services Configuration
         </h4>
         <p className="text-[11px] text-gray-500 mb-3">
-          Choose <strong>One Time</strong> or <strong>AMC package</strong> per service. Set booking date in Assignment & Payment to preview upcoming visits.
+          Choose <strong>One Time</strong> or <strong>AMC package</strong> per service. Bed Bugs is always a <strong>2-service package</strong> (2nd visit after 15 days). Set booking date in Assignment & Payment to preview upcoming visits.
         </p>
         <div className="space-y-4">
           {selectedPackages.map((service) => {
@@ -93,8 +93,8 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                         One Time Treatment
                       </div>
                     ) : isBedBugService(service) ? (
-                      <div className="h-10 flex items-center px-3 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg">
-                        One Time Service
+                      <div className="h-10 flex items-center px-3 text-sm font-semibold text-gray-800 bg-violet-50 border border-violet-200 rounded-lg">
+                        2-Service Package
                       </div>
                     ) : (
                       <select
@@ -137,6 +137,10 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                     ) : isTermiteService(service) ? (
                       <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2.5 leading-snug">
                         Includes <strong>4 free check-up visits</strong> over 2 years (auto-scheduled).
+                      </div>
+                    ) : isBedBugService(service) ? (
+                      <div className="text-[11px] text-violet-800 bg-violet-50 border border-violet-100 rounded-lg p-2.5 leading-snug">
+                        Includes <strong>2 services</strong> — 2nd visit auto-scheduled after 15 days.
                       </div>
                     ) : (
                       <div className="text-[11px] text-gray-500 pt-6">

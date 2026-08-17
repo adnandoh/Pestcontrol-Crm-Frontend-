@@ -47,8 +47,14 @@ import { requiresPaymentOnCompletion } from '../utils/bookingPayment';
 import ReminderModal from '../components/crm/ReminderModal';
 import type { JobCard, PaginatedResponse, Reminder } from '../types';
 import { downloadInvoicePdf } from '../utils/invoicePdf';
-import { isSocietyBooking } from '../constants/bookingPropertyTypes';
+import { isBedBugService, isSocietyBooking } from '../constants/bookingPropertyTypes';
 import { showAlert } from '../utils/notify';
+
+function bookingCategoryLabel(job: JobCard): string {
+  const type = job.service_type || '';
+  if (isBedBugService(type) && !type.includes(',')) return '2-Service Package';
+  return job.service_category || '';
+}
 
 const TableSkeleton: React.FC = () => (
   <>
@@ -1208,7 +1214,7 @@ const JobCards: React.FC = () => {
                         <div className={cn(
                           "text-[9px] font-black uppercase mt-0.5 tracking-tighter opacity-80",
                           (currentPriority === 1 || currentPriority === 2) ? "text-inherit" : "text-blue-600"
-                        )}>{job.service_category}</div>
+                        )}>{bookingCategoryLabel(job)}</div>
                         
                         <div className="mt-1 flex flex-col gap-0.5">
                           <span className={cn(

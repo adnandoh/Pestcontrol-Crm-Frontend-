@@ -809,6 +809,9 @@ const TypePill = ({ label }: { label: string }) => (
 );
 
 const visitLabel = (row: TechnicianLedgerRow) => {
+  if (row.booking_type_label === '2-Service Package') {
+    return `V${row.service_cycle || 1}/${row.planned_visits || 2}`;
+  }
   if (row.booking_type === 'one_time') return null;
   if (!row.planned_visits && !row.service_cycle) return null;
   return `V${row.service_cycle || '—'}/${row.planned_visits || '—'}`;

@@ -209,6 +209,9 @@ export function getAllPlanValuesForService(service: string): string[] {
 
 /** Human label for dropdowns. */
 export function formatPlanLabel(service: string, plan: string): string {
+  if (isBedBugService(service)) {
+    return '2-Service Package — 2nd visit after 15 days';
+  }
   if (isTermiteService(service) && plan.toLowerCase().includes('one time')) {
     return 'One Time Treatment — 4 free check-ups over 2 years';
   }
