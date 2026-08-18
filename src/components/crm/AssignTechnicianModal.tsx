@@ -122,6 +122,16 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
             </div>
           )}
 
+          {jobCard?.parent_job ? (
+            <div className="mb-4 p-3 bg-violet-50 border border-violet-100 rounded-xl text-[11px] text-violet-900 leading-snug">
+              This is one service line ({jobCard.service_type}). Assigning here sets the technician for this service only — other services in the package stay unchanged.
+            </div>
+          ) : (jobCard?.service_type || '').includes(',') ? (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[11px] text-amber-900 leading-snug">
+              Multi-service package. This name fills only unassigned service lines. Open Cockroach / Termite / etc. separately to assign a different technician per service.
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 mb-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
