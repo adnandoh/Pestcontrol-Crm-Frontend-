@@ -80,7 +80,7 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
 
   const validate = (): string => {
     if (serviceAmount <= 0) {
-      return 'Service amount is missing or invalid for this booking.';
+      return 'This visit is included in the package — no payment to collect.';
     }
     if (collectionType === 'custom') {
       const custom = parseAmount(customValue);

@@ -599,13 +599,22 @@ const JobCards: React.FC = () => {
     }
   };
 
-  const handleCompleteBookingClick = (job: JobCard) => {
-    setSelectedJobCard(job);
-    if (requiresPaymentOnCompletion(job)) {
-      setDoneId(job.id);
-      return;
+  const handleCompleteBookingClick = async (job: JobCard) => {
+    try {
+      setLoading(true);
+      const freshJob = await enhancedApiService.getJobCard(job.id, { fresh: true });
+      setSelectedJobCard(freshJob);
+      if (requiresPaymentOnCompletion(freshJob)) {
+        setDoneId(freshJob.id);
+        return;
+      }
+      await completeBookingWithoutPayment(freshJob.id);
+    } catch (error) {
+      console.error('Failed to prepare booking completion:', error);
+      showAlert('Could not load booking details. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    void completeBookingWithoutPayment(job.id);
   };
 
   const handleDownloadInvoice = async (job: JobCard) => {

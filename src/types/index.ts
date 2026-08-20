@@ -372,6 +372,7 @@ export interface JobCard {
   full_address?: string;
   price?: number | string;
   price_display?: string;
+  requires_payment_on_completion?: boolean;
   booking_type?: string;
   assigned_to?: string;
   technician?: number | null;

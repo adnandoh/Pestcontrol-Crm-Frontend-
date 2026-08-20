@@ -979,8 +979,12 @@ class EnhancedApiService {
     );
   }
 
-  async getJobCard(id: number): Promise<JobCard> {
+  async getJobCard(id: number, options?: { fresh?: boolean }): Promise<JobCard> {
     const cacheKey = `${API_ENDPOINTS.JOBCARDS}${id}`;
+
+    if (options?.fresh) {
+      apiCache.delete(cacheKey);
+    }
     
     return this.cachedRequest(
       cacheKey,

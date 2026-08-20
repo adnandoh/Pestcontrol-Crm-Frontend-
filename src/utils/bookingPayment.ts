@@ -1,5 +1,34 @@
 import type { JobCard } from '../types';
 
+const BED_BUG_PATTERN = /bed\s*bug/i;
+
+export function isBedBugService(text?: string | null): boolean {
+  if (!text) return false;
+  return BED_BUG_PATTERN.test(text.trim());
+}
+
+/** Bed Bugs visit 2+ — customer already paid on visit 1. */
+export function isBedBugIncludedVisit(job: Pick<
+  JobCard,
+  'service_cycle' | 'source_service' | 'service_type' | 'service_items'
+>): boolean {
+  const cycle = job.service_cycle || 1;
+  if (cycle <= 1) return false;
+
+  if (isBedBugService(job.source_service) && !String(job.source_service).includes(',')) {
+    return true;
+  }
+  if (isBedBugService(job.service_type) && !String(job.service_type).includes(',')) {
+    return true;
+  }
+
+  const items = job.service_items;
+  if (Array.isArray(items)) {
+    return items.some((item) => isBedBugService(item?.service));
+  }
+  return false;
+}
+
 const parseAmount = (value?: string | number | null): number => {
   if (value === null || value === undefined) return 0;
   const raw = String(value).replace(/[₹,\s]/g, '').trim();
@@ -16,8 +45,16 @@ function serviceItemsTotal(job: Pick<JobCard, 'service_items'>): number {
 /** Current service amount for payment UI — ignores stale total_amount when unpaid. */
 export function getEffectiveServiceAmount(job: Pick<
   JobCard,
-  'price' | 'total_amount' | 'paid_amount' | 'service_items'
+  'price' | 'total_amount' | 'paid_amount' | 'service_items' | 'price_display' | 'service_cycle' | 'source_service' | 'service_type'
 >): number {
+  if (
+    job.price_display === 'Included in Service'
+    || job.price_display === 'Included in AMC'
+    || isBedBugIncludedVisit(job)
+  ) {
+    return 0;
+  }
+
   const priceTotal = parseAmount(job.price);
   const itemsTotal = serviceItemsTotal(job);
   const storedTotal = parseAmount(job.total_amount);
@@ -41,6 +78,7 @@ export function getEffectiveServiceAmount(job: Pick<
  */
 export function requiresPaymentOnCompletion(job: Pick<
   JobCard,
+  | 'requires_payment_on_completion'
   | 'is_complaint_call'
   | 'booking_category'
   | 'booking_type'
@@ -49,15 +87,23 @@ export function requiresPaymentOnCompletion(job: Pick<
   | 'is_service_call'
   | 'parent_job'
   | 'service_cycle'
+  | 'source_service'
+  | 'service_type'
+  | 'service_items'
   | 'price'
+  | 'price_display'
   | 'total_amount'
   | 'paid_amount'
   | 'pending_amount'
-  | 'service_items'
 >): boolean {
+  if (job.requires_payment_on_completion === false) return false;
+  if (job.requires_payment_on_completion === true) return true;
+
   if (job.is_complaint_call) return false;
   if (job.booking_category === 'complaint_call') return false;
   if (job.booking_type === 'Complaint Call') return false;
+
+  if (isBedBugIncludedVisit(job)) return false;
 
   if (job.included_in_amc) return false;
   if (job.is_followup_visit) return false;
