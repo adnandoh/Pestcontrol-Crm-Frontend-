@@ -399,6 +399,10 @@ export interface JobCard {
   reminder_note?: string | null;
   is_reminder_done?: boolean;
   is_complaint_call?: boolean;
+  /** booking | service | complaint — from customer-history grouping */
+  history_role?: 'booking' | 'service' | 'complaint' | string;
+  /** Original booking this row belongs under (package root / complaint parent). */
+  root_booking_id?: number;
   complaint_type?: string;
   complaint_note?: string;
   complaint_status?: string;
@@ -947,6 +951,10 @@ export interface TechnicianLedgerRow {
   booking_id: string;
   booking_date: string;
   customer_name: string;
+  /** Client mobile for the booking (API may send client_mobile and/or client_number). */
+  client_mobile?: string;
+  client_number?: string;
+  is_complaint_call?: boolean;
   property_type?: string;
   service_type: string;
   city: string;
@@ -957,6 +965,7 @@ export interface TechnicianLedgerRow {
   service_cycle?: number | null;
   planned_visits?: number | null;
   service_number?: string | null;
+  /** Deprecated in CRM ledger UI; still returned by API for compatibility. */
   assigned_technicians?: string;
   technician_share_percent?: string;
   booking_amount: string;

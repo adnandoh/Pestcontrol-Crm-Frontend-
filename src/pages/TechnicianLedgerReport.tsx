@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Calendar,
@@ -25,7 +25,7 @@ import type {
 
 const PAGE_SIZE = 20;
 
-type SettlementTab = '' | 'unsettled' | 'settled' | 'history' | 'legacy';
+type SettlementTab = '' | 'unsettled' | 'settled' | 'history' | 'legacy' | 'complaints';
 
 type Filters = {
   technician: string;
@@ -61,7 +61,11 @@ const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""'
 
 const prettyDate = (value: string) => dayjs(value).format('DD MMM YYYY');
 
+const clientNumber = (row: TechnicianLedgerRow) =>
+  row.client_number || row.client_mobile || '';
+
 const TechnicianLedgerReport: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const technicianFromUrl = searchParams.get('technician') || '';
 
@@ -76,6 +80,7 @@ const TechnicianLedgerReport: React.FC = () => {
   const [selectedJobIds, setSelectedJobIds] = useState<number[]>([]);
   const [settling, setSettling] = useState(false);
   const [settleMessage, setSettleMessage] = useState<string | null>(null);
+  const [openingBookingId, setOpeningBookingId] = useState<string | null>(null);
 
   useEffect(() => {
     enhancedApiService.getActiveTechnicians()
@@ -200,19 +205,50 @@ const TechnicianLedgerReport: React.FC = () => {
     }
   };
 
+  const openBookingHistory = useCallback(async (row: TechnicianLedgerRow) => {
+    const query = String(row.booking_id || row.job_id || '').trim();
+    if (!query) return;
+    setOpeningBookingId(query);
+    try {
+      const results = await enhancedApiService.getGlobalSearch(query);
+      const bookingMatch = results.find((item) => {
+        if (item.type !== 'Booking') return false;
+        if (item.id === row.job_id) return true;
+        const titleId = String(item.title || '').replace(/[^\d]/g, '');
+        return titleId === query || String(item.id) === query;
+      }) || results.find((item) => item.type === 'Booking');
+
+      if (bookingMatch?.link) {
+        navigate(bookingMatch.link);
+        return;
+      }
+      if (bookingMatch?.id) {
+        navigate(`/jobcards/edit/${bookingMatch.id}`);
+        return;
+      }
+      navigate(`/jobcards/edit/${row.job_id}`);
+    } catch (err) {
+      console.error('Failed to open booking via global search', err);
+      navigate(`/jobcards/edit/${row.job_id}`);
+    } finally {
+      setOpeningBookingId(null);
+    }
+  }, [navigate]);
+
   const downloadCsv = () => {
     if (!data?.results.length) return;
     const headings = [
-      'Booking Date', 'Booking ID', 'Customer', 'Property Type', 'Service', 'City',
-      'Booking Type', 'Service Number', 'Assigned Technicians', 'Visit Status',
+      'Booking Date', 'Booking ID', 'Customer', 'Client Number', 'Property Type', 'Service', 'City',
+      'Booking Type', 'Service Number', 'Visit Status',
       'Payment Status', 'Settlement Date', 'Booking Amount', 'Service Value',
       'Tech Share %', 'Technician Payable', 'Company Share', 'Bonus', 'Penalty',
       'Already Paid', 'Still To Pay', 'Rating',
     ];
     const rows = data.results.map((row) => [
-      row.booking_date, row.booking_id, row.customer_name, row.property_type || '',
+      row.booking_date, row.booking_id, row.customer_name, clientNumber(row),
+      row.property_type || '',
       row.service_type, row.city, row.booking_type_label, row.service_number || '',
-      row.assigned_technicians || '', row.status,
+      row.status,
       row.settlement_status_label || row.payout_status_label || row.payout_status || '',
       row.settlement_date || '', row.booking_amount, row.visit_revenue,
       row.technician_share_percent || '40', row.technician_share,
@@ -482,6 +518,7 @@ const TechnicianLedgerReport: React.FC = () => {
                   ['unsettled', 'Unsettled'],
                   ['settled', 'Settlement History'],
                   ['history', 'Old Service Calls'],
+                  ['complaints', 'Complaints'],
                   ['', 'All'],
                 ] as Array<[SettlementTab, string]>).map(([value, label]) => (
                   <button
@@ -491,7 +528,9 @@ const TechnicianLedgerReport: React.FC = () => {
                     className={cn(
                       'rounded-lg px-2.5 py-1 text-[10px] font-black',
                       filters.settlement_status === value
-                        ? 'bg-emerald-600 text-white'
+                        ? value === 'complaints'
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-emerald-600 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
                     )}
                   >
@@ -527,8 +566,16 @@ const TechnicianLedgerReport: React.FC = () => {
 
             {data.results.length === 0 ? (
               <div className="px-3 py-8 text-center">
-                <p className="text-xs font-bold text-gray-500">No bookings found</p>
-                <p className="mt-0.5 text-[11px] text-gray-400">Widen the date range or clear filters.</p>
+                <p className="text-xs font-bold text-gray-500">
+                  {filters.settlement_status === 'complaints'
+                    ? 'No complaint calls found'
+                    : 'No bookings found'}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  {filters.settlement_status === 'complaints'
+                    ? 'Complaint service calls for this technician will appear here.'
+                    : 'Widen the date range or clear filters.'}
+                </p>
               </div>
             ) : (
               <>
@@ -538,14 +585,16 @@ const TechnicianLedgerReport: React.FC = () => {
                       <BookingCard
                         row={row}
                         selected={selectedJobIds.includes(row.job_id)}
+                        opening={openingBookingId === String(row.booking_id)}
                         onToggle={(checked) => toggleJob(row.job_id, checked)}
+                        onOpenBooking={() => openBookingHistory(row)}
                       />
                     </li>
                   ))}
                 </ul>
 
                 <div className="hidden overflow-x-auto lg:block">
-                  <table className="w-full min-w-[1280px] text-left text-[11px]">
+                  <table className="w-full min-w-[1180px] text-left text-[11px]">
                     <thead className="bg-gray-50 text-[9px] uppercase tracking-wider text-gray-500">
                       <tr>
                         <th className="px-2 py-2 font-black">
@@ -559,10 +608,10 @@ const TechnicianLedgerReport: React.FC = () => {
                         </th>
                         <th className="px-3 py-2 font-black">Booking</th>
                         <th className="px-3 py-2 font-black">Customer</th>
+                        <th className="px-3 py-2 font-black">Client No.</th>
                         <th className="px-3 py-2 font-black">Property</th>
                         <th className="px-3 py-2 font-black">Service</th>
                         <th className="px-3 py-2 font-black">Type / #</th>
-                        <th className="px-3 py-2 font-black">Technicians</th>
                         <th className="px-3 py-2 font-black">Visit / Pay</th>
                         <th className="px-3 py-2 text-right font-black">Booking</th>
                         <th className="px-3 py-2 text-right font-black">Service ₹</th>
@@ -577,7 +626,9 @@ const TechnicianLedgerReport: React.FC = () => {
                           key={row.job_id}
                           row={row}
                           selected={selectedJobIds.includes(row.job_id)}
+                          opening={openingBookingId === String(row.booking_id)}
                           onToggle={(checked) => toggleJob(row.job_id, checked)}
+                          onOpenBooking={() => openBookingHistory(row)}
                         />
                       ))}
                     </tbody>
@@ -676,6 +727,8 @@ const TechnicianLedgerReport: React.FC = () => {
               {' '}<strong className="text-gray-500">Pay</strong> = Settled / Unsettled (not Visit Done).
               One-Time = full 40%. AMC / Bed Bugs = per completed service (Bed Bugs = package ÷ 2 × 40%).
               Multi-tech = same 40% split equally. Settled rows stay on the ledger with a settlement date.
+              Service complaint calls are only listed under the Complaints tab.
+              Click a Booking ID to open that booking's full history.
             </span>
           </p>
         </>
@@ -861,15 +914,19 @@ const VisitPayStatus = ({ row }: { row: TechnicianLedgerRow }) => (
 const BookingRow = ({
   row,
   selected,
+  opening,
   onToggle,
+  onOpenBooking,
 }: {
   row: TechnicianLedgerRow;
   selected: boolean;
+  opening?: boolean;
   onToggle: (checked: boolean) => void;
+  onOpenBooking: () => void;
 }) => {
   const canSettle = row.settlement_status === 'unsettled';
   return (
-    <tr className="hover:bg-gray-50/80">
+    <tr className={cn('hover:bg-gray-50/80', row.is_complaint_call && 'bg-rose-50/40')}>
       <td className="px-2 py-1.5">
         <input
           type="checkbox"
@@ -881,10 +938,21 @@ const BookingRow = ({
       </td>
       <td className="px-3 py-1.5">
         <p className="font-bold text-gray-900">{prettyDate(row.booking_date)}</p>
-        <p className="text-[10px] font-bold text-blue-600">#{row.booking_id}</p>
+        <button
+          type="button"
+          onClick={onOpenBooking}
+          disabled={opening}
+          className="text-[10px] font-bold text-blue-600 underline-offset-2 hover:underline disabled:opacity-60"
+          title="Open booking history"
+        >
+          {opening ? 'Opening…' : `#${row.booking_id}`}
+        </button>
       </td>
       <td className="max-w-[120px] truncate px-3 py-1.5 font-semibold text-gray-800">
         {row.customer_name || '—'}
+      </td>
+      <td className="whitespace-nowrap px-3 py-1.5 font-semibold tabular-nums text-gray-700">
+        {clientNumber(row) || '—'}
       </td>
       <td className="max-w-[90px] truncate px-3 py-1.5 text-gray-600">
         {row.property_type || '—'}
@@ -898,9 +966,6 @@ const BookingRow = ({
         <p className="mt-0.5 text-[9px] text-gray-500">
           {row.service_number || visitLabel(row) || '—'}
         </p>
-      </td>
-      <td className="max-w-[120px] truncate px-3 py-1.5 text-gray-600">
-        {row.assigned_technicians || '—'}
       </td>
       <td className="px-3 py-1.5">
         <VisitPayStatus row={row} />
@@ -921,15 +986,19 @@ const BookingRow = ({
 const BookingCard = ({
   row,
   selected,
+  opening,
   onToggle,
+  onOpenBooking,
 }: {
   row: TechnicianLedgerRow;
   selected: boolean;
+  opening?: boolean;
   onToggle: (checked: boolean) => void;
+  onOpenBooking: () => void;
 }) => {
   const canSettle = row.settlement_status === 'unsettled';
   return (
-    <article className="px-3 py-2.5">
+    <article className={cn('px-3 py-2.5', row.is_complaint_call && 'bg-rose-50/40')}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
           <input
@@ -942,8 +1011,21 @@ const BookingCard = ({
           />
           <div className="min-w-0">
             <p className="truncate text-xs font-black text-gray-900">{row.customer_name || 'Customer'}</p>
-            <p className="text-[10px] font-bold text-blue-600">
-              #{row.booking_id} · {prettyDate(row.booking_date)}
+            <p className="text-[10px] font-semibold text-gray-500">
+              <button
+                type="button"
+                onClick={onOpenBooking}
+                disabled={opening}
+                className="font-bold text-blue-600 underline-offset-2 hover:underline disabled:opacity-60"
+                title="Open booking history"
+              >
+                {opening ? 'Opening…' : `#${row.booking_id}`}
+              </button>
+              {' · '}
+              {prettyDate(row.booking_date)}
+            </p>
+            <p className="mt-0.5 text-[10px] font-semibold tabular-nums text-gray-600">
+              Client: {clientNumber(row) || '—'}
             </p>
           </div>
         </div>

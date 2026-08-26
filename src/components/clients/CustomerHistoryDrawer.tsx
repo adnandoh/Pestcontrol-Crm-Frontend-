@@ -27,6 +27,96 @@ interface CustomerHistoryDrawerProps {
   onClose: () => void;
 }
 
+/** Resolve booking vs service/visit vs complaint when API omits history_role. */
+function resolveHistoryRole(job: JobCard): 'booking' | 'service' | 'complaint' {
+  if (job.history_role === 'booking' || job.history_role === 'service' || job.history_role === 'complaint') {
+    return job.history_role;
+  }
+  if (job.is_complaint_call) return 'complaint';
+  if (
+    job.parent_job
+    || job.is_followup_visit
+    || job.included_in_amc
+    || job.booking_category === 'service_call'
+    || job.booking_category === 'amc_followup'
+  ) {
+    return 'service';
+  }
+  return 'booking';
+}
+
+function resolveRootBookingId(job: JobCard): number {
+  if (job.root_booking_id) return job.root_booking_id;
+  if (job.parent_job) return Number(job.parent_job);
+  if (job.complaint_parent_booking) return Number(job.complaint_parent_booking);
+  return job.id;
+}
+
+/** Original bookings only — services/visits/complaints do not inflate the count. */
+function countBillableBookings(bookings: JobCard[]): number {
+  return bookings.filter((job) => {
+    if (resolveHistoryRole(job) !== 'booking') return false;
+    if (job.status === 'Cancelled') return false;
+    return true;
+  }).length;
+}
+
+function visitLabel(job: JobCard): string | null {
+  const cycle = Number(job.service_cycle || 0);
+  const max = Number(job.planned_visit_count || job.max_cycle || 0);
+  if (cycle > 0 && max > 1) return `Visit ${cycle} of ${max}`;
+  if (cycle > 1) return `Visit ${cycle}`;
+  return null;
+}
+
+/**
+ * Group services + complaints under their original booking.
+ * Cancelled visits stay visible as nested service rows (not separate bookings).
+ */
+function groupedHistoryBookings(bookings: JobCard[]): JobCard[] {
+  const byRoot = new Map<number, JobCard[]>();
+  for (const job of bookings) {
+    const rootId = resolveRootBookingId(job);
+    const list = byRoot.get(rootId) || [];
+    list.push(job);
+    byRoot.set(rootId, list);
+  }
+
+  const roots = [...byRoot.keys()].sort((a, b) => {
+    const aJobs = byRoot.get(a) || [];
+    const bJobs = byRoot.get(b) || [];
+    const aDate = aJobs.find((j) => j.id === a)?.schedule_datetime
+      || aJobs[0]?.schedule_datetime
+      || '';
+    const bDate = bJobs.find((j) => j.id === b)?.schedule_datetime
+      || bJobs[0]?.schedule_datetime
+      || '';
+    return String(bDate).localeCompare(String(aDate));
+  });
+
+  const ordered: JobCard[] = [];
+  for (const rootId of roots) {
+    const rows = byRoot.get(rootId) || [];
+    const root = rows.find((j) => j.id === rootId && resolveHistoryRole(j) === 'booking')
+      || rows.find((j) => j.id === rootId);
+    const rest = rows
+      .filter((j) => j.id !== root?.id)
+      .sort((a, b) => {
+        const ac = Number(a.service_cycle || 0);
+        const bc = Number(b.service_cycle || 0);
+        if (ac && bc && ac !== bc) return ac - bc;
+        return String(a.schedule_datetime || '').localeCompare(String(b.schedule_datetime || ''));
+      });
+    if (root) ordered.push(root);
+    else if (rest.length) {
+      ordered.push(...rest);
+      continue;
+    }
+    ordered.push(...rest);
+  }
+  return ordered;
+}
+
 const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId, isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<CustomerHistory | null>(null);
@@ -164,7 +254,9 @@ const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId,
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
                 <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">Bookings</p>
-                <p className="text-xl font-black text-purple-900">{history.stats.total_bookings}</p>
+                <p className="text-xl font-black text-purple-900">
+                  {countBillableBookings(history.bookings) || history.stats.total_bookings}
+                </p>
               </div>
             </div>
           </section>
@@ -190,7 +282,7 @@ const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId,
             </section>
           )}
 
-          {/* Booking History */}
+          {/* Booking History — grouped under original booking */}
           <section>
             <div className="flex items-center space-x-2 mb-4">
               <History className="h-5 w-5 text-gray-600" />
@@ -205,34 +297,80 @@ const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId,
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {history.bookings.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium">#{job.code}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{job.service_type}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{dayjs(job.schedule_datetime).format('DD/MM/YY')}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={job.status === 'Done' ? 'success' : job.status === 'Cancelled' ? 'destructive' : 'warning'}>
-                          {job.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900">{job.price_display || `₹${job.price}`}</td>
-                      <td className="px-4 py-3 text-right">
-                        {job.status === 'Done' && !job.is_complaint_call && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="h-7 text-[10px] text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => handleCreateComplaint(job)}
-                          >
-                            <AlertCircle className="h-3 w-3 mr-1" /> Complaint
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {groupedHistoryBookings(history.bookings).map((job) => {
+                    const role = resolveHistoryRole(job);
+                    const isNested = role !== 'booking';
+                    const rootId = resolveRootBookingId(job);
+                    const visit = visitLabel(job);
+                    return (
+                      <tr
+                        key={job.id}
+                        className={
+                          role === 'complaint'
+                            ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                            : isNested
+                              ? 'bg-slate-50/60 hover:bg-slate-50'
+                              : 'hover:bg-gray-50'
+                        }
+                      >
+                        <td className="px-4 py-3 text-sm font-medium">
+                          <span className={isNested ? 'pl-3 text-gray-600' : ''}>
+                            {isNested ? '↳ ' : ''}#{job.code || job.id}
+                          </span>
+                          {role === 'complaint' && (
+                            <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-rose-600">
+                              Complaint
+                            </span>
+                          )}
+                          {role === 'service' && (
+                            <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-slate-500">
+                              {visit || 'Service'}
+                            </span>
+                          )}
+                          {isNested && rootId !== job.id && (
+                            <p className="text-[10px] font-medium text-gray-400">
+                              under Booking #{rootId}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div>{job.service_type}</div>
+                          {job.visit_type && role === 'service' && (
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wide">
+                              {job.visit_type}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {job.schedule_datetime ? dayjs(job.schedule_datetime).format('DD/MM/YY') : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={job.status === 'Done' ? 'success' : job.status === 'Cancelled' ? 'destructive' : 'warning'}>
+                            {job.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-gray-900">
+                          {job.price_display || (job.is_complaint_call ? 'Free (Complaint)' : isNested ? 'Included in Service' : `₹${job.price}`)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {job.status === 'Done' && !job.is_complaint_call && role === 'booking' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 text-[10px] text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handleCreateComplaint(job)}
+                            >
+                              <AlertCircle className="h-3 w-3 mr-1" /> Complaint
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -72,6 +72,79 @@ export function getEffectiveServiceAmount(job: Pick<
   return priceTotal > 0 ? priceTotal : itemsTotal;
 }
 
+/** Planned visit count for package split (Bed Bugs = 2, AMC = N). */
+export function getPlannedServiceCount(job: Pick<
+  JobCard,
+  'planned_visit_count' | 'max_cycle' | 'source_service' | 'service_type' | 'service_items'
+>): number {
+  const planned = Number(job.planned_visit_count || 0);
+  if (planned > 1) return planned;
+  const maxCycle = Number(job.max_cycle || 0);
+  if (maxCycle > 1) return maxCycle;
+  if (
+    isBedBugService(job.source_service)
+    || isBedBugService(job.service_type)
+    || (Array.isArray(job.service_items) && job.service_items.some((item) => isBedBugService(item?.service)))
+  ) {
+    return 2;
+  }
+  return 1;
+}
+
+/**
+ * Money allocated to THIS visit for technician earnings.
+ * Customer payment may still be the full package on visit 1.
+ */
+export function getServiceAllocationAmount(job: Pick<
+  JobCard,
+  | 'price'
+  | 'total_amount'
+  | 'paid_amount'
+  | 'service_items'
+  | 'price_display'
+  | 'service_cycle'
+  | 'source_service'
+  | 'service_type'
+  | 'planned_visit_count'
+  | 'max_cycle'
+  | 'visit_revenue_amount'
+>): number {
+  const storedVisit = parseAmount(job.visit_revenue_amount);
+  if (storedVisit > 0) return storedVisit;
+
+  if (isBedBugIncludedVisit(job) || job.price_display === 'Included in Service') {
+    // Visit 2+ — allocate from parent package fields when present on this row.
+    const packageTotal = Math.max(
+      parseAmount(job.total_amount),
+      parseAmount(job.price),
+      serviceItemsTotal(job),
+    );
+    const divisor = Math.max(getPlannedServiceCount(job), 2);
+    return packageTotal > 0 ? Math.round((packageTotal / divisor) * 100) / 100 : 0;
+  }
+
+  const packageOrService = getEffectiveServiceAmount(job);
+  const divisor = getPlannedServiceCount(job);
+  if (divisor <= 1) return packageOrService;
+  return Math.round((packageOrService / divisor) * 100) / 100;
+}
+
+export function getTechnicianSharePercent(job: Pick<JobCard, 'technician_share_percent'>): number {
+  const pct = Number(job.technician_share_percent ?? 40);
+  return Number.isFinite(pct) && pct > 0 ? pct : 40;
+}
+
+export function getTechnicianEarningsPreview(job: Parameters<typeof getServiceAllocationAmount>[0] & Pick<
+  JobCard,
+  'technician_share_percent' | 'visit_payout_amount'
+>): number {
+  const stored = parseAmount(job.visit_payout_amount);
+  if (stored > 0) return stored;
+  const allocation = getServiceAllocationAmount(job);
+  const pct = getTechnicianSharePercent(job);
+  return Math.round((allocation * pct) / 100 * 100) / 100;
+}
+
 /**
  * Payment popup on Done only for the first/main paid booking.
  * Follow-ups, complaints, revisits, and included AMC visits complete directly.

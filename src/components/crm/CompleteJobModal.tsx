@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, CheckCircle, Wallet, CreditCard } from 'lucide-react';
 import type { JobCard } from '../../types';
-import { getEffectiveServiceAmount } from '../../utils/bookingPayment';
+import {
+  getEffectiveServiceAmount,
+  getPlannedServiceCount,
+  getServiceAllocationAmount,
+  getTechnicianEarningsPreview,
+  getTechnicianSharePercent,
+} from '../../utils/bookingPayment';
 
 export type PaymentCollectionType = 'full' | 'half' | 'custom';
 
@@ -37,10 +43,30 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
   jobCard,
   isLoading = false,
 }) => {
-  const serviceAmount = useMemo(() => {
+  // Customer payment amount (full package on visit 1 for Bed Bugs / multi-visit).
+  const paymentAmount = useMemo(() => {
     if (!jobCard) return 0;
     return getEffectiveServiceAmount(jobCard);
   }, [jobCard]);
+
+  const plannedServices = useMemo(
+    () => (jobCard ? getPlannedServiceCount(jobCard) : 1),
+    [jobCard],
+  );
+  const currentService = Math.max(1, Number(jobCard?.service_cycle || 1));
+  const serviceAllocation = useMemo(
+    () => (jobCard ? getServiceAllocationAmount(jobCard) : 0),
+    [jobCard],
+  );
+  const techSharePct = useMemo(
+    () => (jobCard ? getTechnicianSharePercent(jobCard) : 40),
+    [jobCard],
+  );
+  const techEarnings = useMemo(
+    () => (jobCard ? getTechnicianEarningsPreview(jobCard) : 0),
+    [jobCard],
+  );
+  const isMultiVisitPackage = plannedServices > 1;
 
   const [collectionType, setCollectionType] = useState<PaymentCollectionType>('full');
   const [customInputMode, setCustomInputMode] = useState<'pending' | 'received'>('pending');
@@ -59,27 +85,27 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
 
   const { paidAmount, pendingAmount } = useMemo(() => {
     if (collectionType === 'full') {
-      return { paidAmount: serviceAmount, pendingAmount: 0 };
+      return { paidAmount: paymentAmount, pendingAmount: 0 };
     }
     if (collectionType === 'half') {
-      const paid = Math.round((serviceAmount / 2) * 100) / 100;
-      return { paidAmount: paid, pendingAmount: Math.round((serviceAmount - paid) * 100) / 100 };
+      const paid = Math.round((paymentAmount / 2) * 100) / 100;
+      return { paidAmount: paid, pendingAmount: Math.round((paymentAmount - paid) * 100) / 100 };
     }
     const custom = parseAmount(customValue);
     if (customInputMode === 'pending') {
       return {
-        paidAmount: Math.max(0, serviceAmount - custom),
+        paidAmount: Math.max(0, paymentAmount - custom),
         pendingAmount: custom,
       };
     }
     return {
       paidAmount: custom,
-      pendingAmount: Math.max(0, serviceAmount - custom),
+      pendingAmount: Math.max(0, paymentAmount - custom),
     };
-  }, [collectionType, customInputMode, customValue, serviceAmount]);
+  }, [collectionType, customInputMode, customValue, paymentAmount]);
 
   const validate = (): string => {
-    if (serviceAmount <= 0) {
+    if (paymentAmount <= 0) {
       return 'This visit is included in the package — no payment to collect.';
     }
     if (collectionType === 'custom') {
@@ -90,20 +116,20 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
       if (custom < 0) {
         return 'Amount cannot be negative.';
       }
-      if (custom > serviceAmount) {
+      if (custom > paymentAmount) {
         return customInputMode === 'pending'
-          ? 'Pending amount cannot exceed total service amount.'
-          : 'Received amount cannot exceed total service amount.';
+          ? 'Pending amount cannot exceed total booking amount.'
+          : 'Received amount cannot exceed total booking amount.';
       }
     }
     if (paidAmount < 0 || pendingAmount < 0) {
       return 'Payment amounts cannot be negative.';
     }
-    if (paidAmount > serviceAmount || pendingAmount > serviceAmount) {
-      return 'Paid or pending amount cannot exceed total service amount.';
+    if (paidAmount > paymentAmount || pendingAmount > paymentAmount) {
+      return 'Paid or pending amount cannot exceed total booking amount.';
     }
-    if (Math.abs(paidAmount + pendingAmount - serviceAmount) > 0.01) {
-      return 'Paid and pending amounts must equal the service amount.';
+    if (Math.abs(paidAmount + pendingAmount - paymentAmount) > 0.01) {
+      return 'Paid and pending amounts must equal the booking amount.';
     }
     if (!paymentMode) {
       return 'Select how payment was received (Cash or Online).';
@@ -151,10 +177,10 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
               <CheckCircle className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-white font-black text-lg tracking-tight">COMPLETE BOOKING</h3>
+              <h3 className="text-white font-black text-lg tracking-tight">COMPLETE SERVICE</h3>
               {jobCard && (
                 <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-widest mt-0.5">
-                  {jobCard.code || `ID: ${jobCard.id}`} • {jobCard.client_name}
+                  Booking #{jobCard.code || jobCard.id} • {jobCard.client_name}
                 </p>
               )}
             </div>
@@ -168,14 +194,47 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Amount</span>
-            <span className="text-lg font-black text-gray-900">₹{formatMoney(serviceAmount)}</span>
-          </div>
+          {isMultiVisitPackage ? (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-emerald-800">Total Booking Amount</span>
+                <span className="font-black text-emerald-950">₹{formatMoney(paymentAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-emerald-800">Total Services</span>
+                <span className="font-black text-emerald-950">{plannedServices}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-emerald-800">Current Service</span>
+                <span className="font-black text-emerald-950">
+                  Service {currentService} of {plannedServices}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] border-t border-emerald-100 pt-2">
+                <span className="font-bold text-emerald-800">Service Amount (allocation)</span>
+                <span className="font-black text-emerald-950">₹{formatMoney(serviceAllocation)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-emerald-800">
+                  Technician Earnings ({techSharePct}%)
+                </span>
+                <span className="font-black text-emerald-700">₹{formatMoney(techEarnings)}</span>
+              </div>
+              <p className="text-[10px] font-medium text-emerald-700/80 pt-1">
+                Collect the booking payment once. Technician pay uses this service allocation
+                (₹{formatMoney(serviceAllocation)}), not the full booking again on later visits.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Amount</span>
+              <span className="text-lg font-black text-gray-900">₹{formatMoney(paymentAmount)}</span>
+            </div>
+          )}
 
           <div>
             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
-              Payment Collection Type
+              {isMultiVisitPackage ? 'Customer Payment (Booking)' : 'Payment Collection Type'}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
@@ -231,7 +290,7 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
               <input
                 type="number"
                 min={0}
-                max={serviceAmount}
+                max={paymentAmount}
                 step="0.01"
                 value={customValue}
                 onChange={(e) => {
@@ -308,7 +367,7 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
             disabled={isLoading}
             className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50"
           >
-            {isLoading ? 'Completing…' : 'Complete Booking'}
+            {isLoading ? 'Completing…' : 'Complete Service'}
           </button>
         </div>
       </div>
