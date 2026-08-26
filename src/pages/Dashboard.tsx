@@ -197,12 +197,13 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* 🚀 2. PRIMARY KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 animate-fade-up delay-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3 animate-fade-up delay-100">
         {[
           { label: 'Range Revenue', value: `₹${Math.round(stats?.range_revenue || 0).toLocaleString()}`, color: 'border-emerald-600', bg: 'bg-emerald-50/60' },
           { label: 'Today Revenue', value: `₹${Math.round(stats?.today_revenue || 0).toLocaleString()}`, color: 'border-blue-600', bg: 'bg-blue-50/60' },
           { label: 'Yesterday Revenue', value: `₹${Math.round(stats?.yesterday_revenue || 0).toLocaleString()}`, color: 'border-gray-400', bg: 'bg-gray-50/60' },
           { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
+          { label: 'Complaint Calls', value: stats?.total_complaint_calls || 0, color: 'border-rose-500', bg: 'bg-rose-50/40' },
           { label: 'CRM Inquiries', value: stats?.total_crm_inquiries || 0, color: 'border-purple-500', bg: 'bg-purple-50/40' },
           { label: 'Website Leads', value: stats?.total_web_inquiries || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
         ].map((stat, i) => (
@@ -222,10 +223,11 @@ const Dashboard: React.FC = () => {
            <Clock className="h-4 w-4 text-orange-500" />
            <h2 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Today Focus</h2>
         </div>
-        <div className="flex flex-1 justify-between sm:justify-start gap-4 sm:gap-12 px-2 sm:px-8 w-full sm:w-auto">
+        <div className="flex flex-1 flex-wrap justify-between sm:justify-start gap-4 sm:gap-8 lg:gap-10 px-2 sm:px-6 w-full sm:w-auto">
            {[
              { label: 'Bookings', value: stats?.today_booking_count ?? 0, color: 'text-indigo-600' },
              { label: 'Service', value: stats?.today_service_call_count ?? 0, color: 'text-emerald-600' },
+             { label: 'Complaints', value: stats?.today_complaint_call_count ?? 0, color: 'text-rose-600' },
              { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
              { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
              { label: 'Completed', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
@@ -238,8 +240,8 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 📍 Today — Bookings vs Service Calls by City */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 animate-fade-up delay-200">
+      {/* 📍 Today — Bookings / Service / Complaint Calls by City */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 animate-fade-up delay-200">
         <section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -249,7 +251,7 @@ const Dashboard: React.FC = () => {
                   Today’s Bookings by City
                 </h2>
                 <p className="text-[10px] font-medium text-gray-500">
-                  New bookings scheduled today
+                  New bookings scheduled today (excludes complaint calls)
                 </p>
               </div>
             </div>
@@ -311,8 +313,43 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </section>
-      </div>
 
+        <section className="rounded-xl border border-rose-100 bg-white p-4 shadow-sm md:col-span-2 xl:col-span-1">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600" />
+              <div>
+                <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
+                  Today’s Complaint Calls by City
+                </h2>
+                <p className="text-[10px] font-medium text-gray-500">
+                  Linked free re-visits (not new bookings)
+                </p>
+              </div>
+            </div>
+            <span className="rounded-lg bg-rose-600 px-2.5 py-1 text-[10px] font-black text-white">
+              {stats?.today_complaint_call_count ?? 0} complaints
+            </span>
+          </div>
+          {(stats?.today_complaint_city_stats?.length || 0) === 0 ? (
+            <p className="text-xs font-medium text-gray-400">No complaint calls scheduled for today yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {(stats?.today_complaint_city_stats || []).map((row) => (
+                <div
+                  key={`cmp-${row.city}`}
+                  className="rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-3 text-center"
+                >
+                  <p className="text-2xl font-black tabular-nums text-rose-800">{row.count}</p>
+                  <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-rose-700/80">
+                    {row.city}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
       {(stats?.city_stats?.length || 0) > 0 && (
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
           <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-gray-400">

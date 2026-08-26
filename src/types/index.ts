@@ -875,8 +875,14 @@ export interface DashboardStatisticsResponse {
     city: string;
     count: number;
   }>;
+  today_complaint_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
   today_booking_count?: number;
   today_service_call_count?: number;
+  today_complaint_call_count?: number;
+  total_complaint_calls?: number;
   property_type_stats?: Array<{
     property_type: string;
     count: number;
