@@ -544,6 +544,30 @@ class EnhancedApiService {
     ).then((result) => result.data);
   }
 
+  async moveTechnicianLedgerJobToOldService(
+    technicianId: number,
+    jobId: number,
+  ): Promise<{ ok: boolean; job_id: number; message?: string }> {
+    return this.retryRequest(() =>
+      this.api.post<{ ok: boolean; job_id: number; message?: string }>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/ledger/move-to-old-service/`,
+        { job_id: jobId },
+      ),
+    ).then((result) => result.data);
+  }
+
+  async removeTechnicianLedgerJob(
+    technicianId: number,
+    jobId: number,
+  ): Promise<{ ok: boolean; job_id: number; message?: string }> {
+    return this.retryRequest(() =>
+      this.api.post<{ ok: boolean; job_id: number; message?: string }>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/ledger/remove-booking/`,
+        { job_id: jobId },
+      ),
+    ).then((result) => result.data);
+  }
+
   // CRM Inquiry methods
   async getCRMInquiries(params?: CRMInquiryFilters & { page?: number; page_size?: number }): Promise<PaginatedResponse<CRMInquiry>> {
     const cacheKey = apiCache.generateKey(API_ENDPOINTS.CRM_INQUIRIES, params);

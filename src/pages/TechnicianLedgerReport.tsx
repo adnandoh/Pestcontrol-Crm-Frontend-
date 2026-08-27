@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import dayjs from 'dayjs';
 
-import { Button, PageLoading } from '../components/ui';
+import { Button, ConfirmationModal, PageLoading } from '../components/ui';
 import { Pagination } from '../components/ui/Pagination';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
@@ -22,6 +22,8 @@ import type {
   TechnicianLedgerResponse,
   TechnicianLedgerRow,
 } from '../types';
+
+type LedgerRowAction = 'move_to_old' | 'remove';
 
 const PAGE_SIZE = 20;
 
@@ -81,6 +83,12 @@ const TechnicianLedgerReport: React.FC = () => {
   const [settling, setSettling] = useState(false);
   const [settleMessage, setSettleMessage] = useState<string | null>(null);
   const [openingBookingId, setOpeningBookingId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: LedgerRowAction;
+    row: TechnicianLedgerRow;
+  } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     enhancedApiService.getActiveTechnicians()
@@ -202,6 +210,34 @@ const TechnicianLedgerReport: React.FC = () => {
       setSettleMessage('Could not settle selected services. Please try again.');
     } finally {
       setSettling(false);
+    }
+  };
+
+  const confirmLedgerAction = async () => {
+    if (!confirmAction || !filters.technician) return;
+    const technicianId = Number(filters.technician);
+    const jobId = confirmAction.row.job_id;
+    setActionBusy(true);
+    setActionMessage(null);
+    try {
+      if (confirmAction.type === 'move_to_old') {
+        await enhancedApiService.moveTechnicianLedgerJobToOldService(technicianId, jobId);
+        setActionMessage(`Booking #${confirmAction.row.booking_id} moved to Old Service.`);
+      } else {
+        await enhancedApiService.removeTechnicianLedgerJob(technicianId, jobId);
+        setActionMessage(`Booking #${confirmAction.row.booking_id} removed from the ledger.`);
+      }
+      setConfirmAction(null);
+      await load();
+    } catch (err) {
+      console.error('Failed ledger booking action', err);
+      setActionMessage(
+        confirmAction.type === 'move_to_old'
+          ? 'Could not move this booking to Old Service. Please try again.'
+          : 'Could not remove this booking from the ledger. Please try again.',
+      );
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -546,6 +582,12 @@ const TechnicianLedgerReport: React.FC = () => {
               </div>
             )}
 
+            {actionMessage && (
+              <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-800">
+                {actionMessage}
+              </div>
+            )}
+
             {selectedJobIds.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-3 py-2">
                 <p className="text-[11px] font-bold text-amber-900">
@@ -588,13 +630,15 @@ const TechnicianLedgerReport: React.FC = () => {
                         opening={openingBookingId === String(row.booking_id)}
                         onToggle={(checked) => toggleJob(row.job_id, checked)}
                         onOpenBooking={() => openBookingHistory(row)}
+                        onMoveToOld={() => setConfirmAction({ type: 'move_to_old', row })}
+                        onRemove={() => setConfirmAction({ type: 'remove', row })}
                       />
                     </li>
                   ))}
                 </ul>
 
                 <div className="hidden overflow-x-auto lg:block">
-                  <table className="w-full min-w-[1180px] text-left text-[11px]">
+                  <table className="w-full min-w-[1320px] text-left text-[11px]">
                     <thead className="bg-gray-50 text-[9px] uppercase tracking-wider text-gray-500">
                       <tr>
                         <th className="px-2 py-2 font-black">
@@ -618,6 +662,7 @@ const TechnicianLedgerReport: React.FC = () => {
                         <th className="px-3 py-2 text-right font-black">Share %</th>
                         <th className="px-3 py-2 text-right font-black">Tech pay</th>
                         <th className="px-3 py-2 text-right font-black">Settled on</th>
+                        <th className="px-3 py-2 font-black">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -629,6 +674,8 @@ const TechnicianLedgerReport: React.FC = () => {
                           opening={openingBookingId === String(row.booking_id)}
                           onToggle={(checked) => toggleJob(row.job_id, checked)}
                           onOpenBooking={() => openBookingHistory(row)}
+                          onMoveToOld={() => setConfirmAction({ type: 'move_to_old', row })}
+                          onRemove={() => setConfirmAction({ type: 'remove', row })}
                         />
                       ))}
                     </tbody>
@@ -733,6 +780,28 @@ const TechnicianLedgerReport: React.FC = () => {
           </p>
         </>
       ) : null}
+
+      <ConfirmationModal
+        isOpen={Boolean(confirmAction)}
+        onClose={() => {
+          if (!actionBusy) setConfirmAction(null);
+        }}
+        onConfirm={confirmLedgerAction}
+        title={
+          confirmAction?.type === 'remove'
+            ? 'Remove from Ledger'
+            : 'Move to Old Service'
+        }
+        message={
+          confirmAction?.type === 'remove'
+            ? 'Are you sure you want to remove this booking from the ledger?'
+            : 'Are you sure you want to move this booking to Old Service?'
+        }
+        confirmText="Confirm"
+        cancelText="Cancel"
+        type={confirmAction?.type === 'remove' ? 'danger' : 'warning'}
+        isLoading={actionBusy}
+      />
     </div>
   );
 };
@@ -917,12 +986,16 @@ const BookingRow = ({
   opening,
   onToggle,
   onOpenBooking,
+  onMoveToOld,
+  onRemove,
 }: {
   row: TechnicianLedgerRow;
   selected: boolean;
   opening?: boolean;
   onToggle: (checked: boolean) => void;
   onOpenBooking: () => void;
+  onMoveToOld: () => void;
+  onRemove: () => void;
 }) => {
   const canSettle = row.settlement_status === 'unsettled';
   return (
@@ -979,6 +1052,9 @@ const BookingRow = ({
       <td className="px-3 py-1.5 text-right text-gray-600">
         {row.settlement_date ? prettyDate(row.settlement_date) : '—'}
       </td>
+      <td className="px-3 py-1.5">
+        <RowActions onMoveToOld={onMoveToOld} onRemove={onRemove} />
+      </td>
     </tr>
   );
 };
@@ -989,12 +1065,16 @@ const BookingCard = ({
   opening,
   onToggle,
   onOpenBooking,
+  onMoveToOld,
+  onRemove,
 }: {
   row: TechnicianLedgerRow;
   selected: boolean;
   opening?: boolean;
   onToggle: (checked: boolean) => void;
   onOpenBooking: () => void;
+  onMoveToOld: () => void;
+  onRemove: () => void;
 }) => {
   const canSettle = row.settlement_status === 'unsettled';
   return (
@@ -1055,9 +1135,37 @@ const BookingCard = ({
           </p>
         </div>
       </div>
+      <div className="mt-2">
+        <RowActions onMoveToOld={onMoveToOld} onRemove={onRemove} />
+      </div>
     </article>
   );
 };
+
+const RowActions = ({
+  onMoveToOld,
+  onRemove,
+}: {
+  onMoveToOld: () => void;
+  onRemove: () => void;
+}) => (
+  <div className="flex min-w-[148px] flex-col gap-1">
+    <button
+      type="button"
+      onClick={onMoveToOld}
+      className="rounded border border-slate-200 bg-white px-2 py-1 text-left text-[10px] font-bold text-slate-700 hover:bg-slate-50"
+    >
+      Move to Old Service
+    </button>
+    <button
+      type="button"
+      onClick={onRemove}
+      className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-left text-[10px] font-bold text-rose-700 hover:bg-rose-100"
+    >
+      Remove
+    </button>
+  </div>
+);
 
 const PaymentCard = ({ payment }: { payment: TechnicianLedgerPayment }) => (
   <article className="px-3 py-2.5">
