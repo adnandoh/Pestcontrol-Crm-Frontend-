@@ -269,7 +269,7 @@ const Dashboard: React.FC = () => {
                   className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-3 text-center"
                 >
                   <p className="text-2xl font-black tabular-nums text-indigo-800">{row.count}</p>
-                  <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-indigo-700/80">
+                    <p className="mt-0.5 truncate text-[10px] font-black tracking-wide text-indigo-700/80">
                     {row.city}
                   </p>
                 </div>
@@ -305,7 +305,7 @@ const Dashboard: React.FC = () => {
                   className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-3 text-center"
                 >
                   <p className="text-2xl font-black tabular-nums text-emerald-800">{row.count}</p>
-                  <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-emerald-700/80">
+                  <p className="mt-0.5 truncate text-[10px] font-black tracking-wide text-emerald-700/80">
                     {row.city}
                   </p>
                 </div>
@@ -341,7 +341,7 @@ const Dashboard: React.FC = () => {
                   className="rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-3 text-center"
                 >
                   <p className="text-2xl font-black tabular-nums text-rose-800">{row.count}</p>
-                  <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-rose-700/80">
+                  <p className="mt-0.5 truncate text-[10px] font-black tracking-wide text-rose-700/80">
                     {row.city}
                   </p>
                 </div>
