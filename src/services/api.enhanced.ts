@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
+import { TECHNICIAN_LEDGER_PAGE_SIZE } from '../constants/technicianLedger';
 import { apiCache } from './apiCache';
 import {
   forceSessionLogout,
@@ -524,10 +525,14 @@ class EnhancedApiService {
       page_size?: number;
     },
   ): Promise<TechnicianLedgerResponse> {
+    const query = {
+      ...params,
+      page_size: params?.page_size ?? TECHNICIAN_LEDGER_PAGE_SIZE,
+    };
     return this.retryRequest(() =>
       this.api.get<TechnicianLedgerResponse>(
         `${API_ENDPOINTS.TECHNICIANS}${id}/ledger/`,
-        { params },
+        { params: query },
       ),
     ).then((result) => result.data);
   }

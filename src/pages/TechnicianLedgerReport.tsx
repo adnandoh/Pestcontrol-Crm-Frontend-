@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 
 import { Button, ConfirmationModal, PageLoading } from '../components/ui';
 import { Pagination } from '../components/ui/Pagination';
+import { TECHNICIAN_LEDGER_PAGE_SIZE } from '../constants/technicianLedger';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type {
@@ -25,7 +26,7 @@ import type {
 
 type LedgerRowAction = 'move_to_old' | 'remove';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = TECHNICIAN_LEDGER_PAGE_SIZE;
 
 type SettlementTab = '' | 'unsettled' | 'settled' | 'history' | 'legacy' | 'complaints';
 
