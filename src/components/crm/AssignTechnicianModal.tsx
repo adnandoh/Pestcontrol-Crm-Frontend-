@@ -9,6 +9,7 @@ import {
 import { Button } from '../ui';
 import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
+import { getErrorMessage } from '../../utils/errors';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -60,8 +61,8 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       );
       onSuccess();
       onClose();
-    } catch (err) {
-      setError('Failed to assign technician');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to assign technician'));
       console.error(err);
     } finally {
       setAssigning(null);
@@ -167,31 +168,28 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
               </div>
             ) : (
               filteredTechnicians.map((tech) => {
+                // Informational only — CRM desk assign has no active-job capacity limit.
                 const workload = tech.active_jobs || 0;
-                const isHighLoad = workload >= 7;
-                const isMediumLoad = workload >= 4 && workload < 7;
-                
+
                 return (
                   <button
                     key={tech.id}
+                    type="button"
                     onClick={() => handleAssign(tech.id)}
                     disabled={assigning !== null}
+                    title="Click to assign — no job limit"
                     className={cn(
                       "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-center justify-between",
-                      assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30"
+                      assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
+                      assigning !== null && assigning !== tech.id && "opacity-60"
                     )}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "p-2.5 rounded-full transition-colors",
-                        isHighLoad ? "bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white" :
-                        isMediumLoad ? "bg-amber-50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white" :
-                        "bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white"
-                      )}>
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="p-2.5 rounded-full transition-colors bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white shrink-0">
                         <User className="h-5 w-5" />
                       </div>
                       
-                      <div>
+                      <div className="min-w-0">
                         <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-none mb-1">
                           {tech.name}
                         </h4>
@@ -246,14 +244,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                       <div className={cn(
-                         "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border shadow-xs",
-                         isHighLoad ? "bg-red-50 text-red-700 border-red-200" :
-                         isMediumLoad ? "bg-amber-50 text-amber-700 border-amber-200" :
-                         "bg-emerald-50 text-emerald-700 border-emerald-200"
-                       )}>
-                         {isHighLoad ? 'High Load' : isMediumLoad ? 'Busy' : 'Available'}
+                    <div className="flex items-center gap-3 shrink-0">
+                       <div className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border shadow-xs bg-blue-50 text-blue-700 border-blue-200">
+                         Assign
                        </div>
                        
                        {assigning === tech.id ? (
@@ -270,8 +263,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-           <span className="text-[9px] font-bold text-gray-400 italic">Selecting a technician will auto-start the job.</span>
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between gap-3 border-t border-gray-200">
+           <span className="text-[9px] font-bold text-gray-400 italic">
+             No job limit — assign any technician. Selecting one auto-starts the job.
+           </span>
            <Button 
              variant="outline" 
              size="sm" 
