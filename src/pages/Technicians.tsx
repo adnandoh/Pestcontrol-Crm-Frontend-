@@ -216,10 +216,12 @@ const Technicians: React.FC = () => {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-gray-800 uppercase">{tech.name}</div>
-                    {(tech.service_area || tech.city) && (
+                    {((tech.service_cities && tech.service_cities.length > 0) || tech.service_area || tech.city) && (
                       <div className="text-[9px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
                         <MapPin className="h-2.5 w-2.5" />
-                        {tech.service_area} {tech.city && `- ${tech.city}`}
+                        {tech.service_cities && tech.service_cities.length > 0
+                          ? tech.service_cities.map((c) => c.name).join(', ')
+                          : `${tech.service_area || ''}${tech.service_area && tech.city ? ' - ' : ''}${tech.city || ''}`}
                       </div>
                     )}
                   </td>

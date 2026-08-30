@@ -29,13 +29,19 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     if (isOpen) {
       fetchTechnicians();
     }
-  }, [isOpen]);
+  }, [isOpen, jobCard?.id, jobCard?.master_city]);
 
   const fetchTechnicians = async () => {
     try {
       setLoading(true);
       setError(null);
-      const activeTechnicians = await enhancedApiService.getActiveTechnicians({ fresh: true });
+      const cityId =
+        typeof jobCard?.master_city === 'number' ? jobCard.master_city : undefined;
+      const activeTechnicians = await enhancedApiService.getActiveTechnicians({
+        fresh: true,
+        jobId: jobCard?.id,
+        cityId,
+      });
       setTechnicians(activeTechnicians);
     } catch (err) {
       setError('Failed to load technicians');
@@ -157,7 +163,12 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
               </div>
             ) : technicians.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-                <p className="text-xs font-bold text-gray-400 italic">No active technicians found</p>
+                <p className="text-xs font-bold text-gray-700">
+                  No available technicians found for this service area.
+                </p>
+                <p className="text-[10px] text-gray-400 mt-2 font-semibold px-6">
+                  Assign service areas on the technician edit page, or check that staff are marked Active.
+                </p>
               </div>
             ) : filteredTechnicians.length === 0 ? (
               <div className="py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
@@ -211,10 +222,14 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                               />
                             </span>
 
-                            {(tech.service_area || tech.city) && (
+                            {(tech.service_cities && tech.service_cities.length > 0
+                              ? tech.service_cities.map((c) => c.name).join(', ')
+                              : tech.service_area || tech.city) && (
                               <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
                                 <MapPin className="h-3 w-3" />
-                                {tech.service_area || ''}{tech.service_area && tech.city ? ' - ' : ''}{tech.city || ''}
+                                {tech.service_cities && tech.service_cities.length > 0
+                                  ? tech.service_cities.map((c) => c.name).join(', ')
+                                  : `${tech.service_area || ''}${tech.service_area && tech.city ? ' - ' : ''}${tech.city || ''}`}
                               </span>
                             )}
 

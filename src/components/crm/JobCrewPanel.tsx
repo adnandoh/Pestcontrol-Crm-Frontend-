@@ -25,7 +25,11 @@ export default function JobCrewPanel({ job, onJobUpdated }: JobCrewPanelProps) {
     try {
       const [crew, techs] = await Promise.all([
         enhancedApiService.getJobCardParticipants(job.id),
-        enhancedApiService.getActiveTechnicians({ fresh: true }),
+        enhancedApiService.getActiveTechnicians({
+          fresh: true,
+          jobId: job.id,
+          cityId: typeof job.master_city === 'number' ? job.master_city : undefined,
+        }),
       ]);
       setParticipants(crew);
       setTechnicians(techs || []);

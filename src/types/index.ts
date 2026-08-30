@@ -28,6 +28,16 @@ export interface Technician {
   is_active: boolean;
   service_area?: string;
   city?: string;
+  /** Master City IDs this technician serves (structured service areas). */
+  service_cities?: Array<{
+    id: number;
+    name: string;
+    is_active?: boolean;
+    state?: number;
+    state_name?: string | null;
+  }>;
+  /** Write-only on create/update — replaces prior service cities. */
+  service_city_ids?: number[];
   last_active?: string;
   active_jobs?: number;
   has_partner_app?: boolean;

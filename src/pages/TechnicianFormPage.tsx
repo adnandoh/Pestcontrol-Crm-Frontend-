@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Save, UserPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { Technician } from '../types';
+import type { City, Technician } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { showAlert } from '../utils/notify';
 import TechnicianMonthlyPerformancePanel from '../components/crm/TechnicianMonthlyPerformancePanel';
@@ -19,8 +19,7 @@ type FormState = {
   mobile: string;
   age: string;
   alternative_mobile: string;
-  service_area: string;
-  city: string;
+  service_city_ids: number[];
   is_active: boolean;
   technician_type: 'partner' | 'salaried';
   branch: string;
@@ -36,8 +35,7 @@ const emptyForm: FormState = {
   mobile: '',
   age: '',
   alternative_mobile: '',
-  service_area: '',
-  city: '',
+  service_city_ids: [],
   is_active: true,
   technician_type: 'partner',
   branch: '',
@@ -58,6 +56,18 @@ const TechnicianFormPage: React.FC = () => {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [cities, setCities] = useState<City[]>([]);
+  const [citySearch, setCitySearch] = useState('');
+
+  useEffect(() => {
+    enhancedApiService
+      .getCities({ is_active: true, page_size: 200 })
+      .then((res) => {
+        const rows = Array.isArray(res) ? res : res?.results || [];
+        setCities(rows as City[]);
+      })
+      .catch(() => setCities([]));
+  }, []);
 
   useEffect(() => {
     if (!isEdit || !techId) return;
@@ -65,13 +75,13 @@ const TechnicianFormPage: React.FC = () => {
     enhancedApiService
       .getTechnician(techId)
       .then((tech) => {
+        const fromM2M = (tech.service_cities || []).map((c) => c.id);
         setForm({
           name: tech.name || '',
           mobile: tech.mobile || '',
           age: tech.age?.toString() || '',
           alternative_mobile: tech.alternative_mobile || '',
-          service_area: tech.service_area || '',
-          city: tech.city || '',
+          service_city_ids: fromM2M,
           is_active: tech.is_active,
           technician_type: tech.technician_type || 'partner',
           branch: tech.branch || '',
@@ -93,11 +103,41 @@ const TechnicianFormPage: React.FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const selectedCities = useMemo(
+    () => cities.filter((c) => form.service_city_ids.includes(c.id)),
+    [cities, form.service_city_ids],
+  );
+
+  const availableCities = useMemo(() => {
+    const q = citySearch.trim().toLowerCase();
+    return cities
+      .filter((c) => !form.service_city_ids.includes(c.id))
+      .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.state_name || '').toLowerCase().includes(q))
+      .slice(0, 40);
+  }, [cities, form.service_city_ids, citySearch]);
+
+  const addCity = (cityId: number) => {
+    if (!cityId || form.service_city_ids.includes(cityId)) return;
+    setField('service_city_ids', [...form.service_city_ids, cityId]);
+    setCitySearch('');
+  };
+
+  const removeCity = (cityId: number) => {
+    setField(
+      'service_city_ids',
+      form.service_city_ids.filter((id) => id !== cityId),
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const mobile = form.mobile.replace(/\D/g, '').slice(0, 10);
     if (!form.name.trim() || mobile.length !== 10) {
       showAlert('Please enter full name and a valid 10-digit mobile number.');
+      return;
+    }
+    if (form.service_city_ids.length === 0) {
+      showAlert('Please select at least one Service Area (city).');
       return;
     }
 
@@ -110,8 +150,7 @@ const TechnicianFormPage: React.FC = () => {
         alternative_mobile: form.alternative_mobile
           ? form.alternative_mobile.replace(/\D/g, '').slice(0, 10)
           : '',
-        service_area: form.service_area.trim(),
-        city: form.city.trim(),
+        service_city_ids: form.service_city_ids,
         is_active: form.is_active,
       };
 
@@ -239,23 +278,55 @@ const TechnicianFormPage: React.FC = () => {
                 className={fieldClass}
               />
             </div>
-            <div>
-              <label className={labelClass}>Service Area</label>
-              <Input
-                value={form.service_area}
-                onChange={(e) => setField('service_area', e.target.value)}
-                placeholder="e.g. Bandra"
-                className={fieldClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>City</label>
-              <Input
-                value={form.city}
-                onChange={(e) => setField('city', e.target.value)}
-                placeholder="e.g. Mumbai"
-                className={fieldClass}
-              />
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className={labelClass}>
+                Service Areas <span className="text-red-500">*</span>
+              </label>
+              <p className="mb-2 text-xs text-gray-500">
+                Select one or more cities this technician can be assigned to. Booking assign will
+                only show them for these areas.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-3 min-h-[2.25rem]">
+                {selectedCities.length === 0 ? (
+                  <span className="text-xs text-gray-400 italic">No service areas selected</span>
+                ) : (
+                  selectedCities.map((city) => (
+                    <button
+                      key={city.id}
+                      type="button"
+                      onClick={() => removeCity(city.id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-100"
+                    >
+                      {city.name}
+                      <X className="h-3 w-3" />
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  placeholder="Search city to add…"
+                  className={fieldClass}
+                />
+                <select
+                  className={selectClass}
+                  value=""
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    if (id) addCity(id);
+                  }}
+                >
+                  <option value="">+ Add Service Area</option>
+                  {availableCities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                      {city.state_name ? ` (${city.state_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className={labelClass}>Branch</label>
@@ -319,8 +390,8 @@ const TechnicianFormPage: React.FC = () => {
                   <option value="offline">Offline</option>
                   <option value="online">Online</option>
                   <option value="busy">Busy</option>
-                  <option value="on_service">On service</option>
-                  <option value="on_leave">On leave</option>
+                  <option value="on_service">On Service</option>
+                  <option value="on_leave">On Leave</option>
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
@@ -349,7 +420,7 @@ const TechnicianFormPage: React.FC = () => {
                   step="0.01"
                   value={form.security_deposit_amount}
                   onChange={(e) => setField('security_deposit_amount', e.target.value)}
-                  placeholder="0"
+                  placeholder="0.00"
                   className={fieldClass}
                 />
               </div>
@@ -357,9 +428,7 @@ const TechnicianFormPage: React.FC = () => {
                 <label className={labelClass}>Aadhaar (optional)</label>
                 <Input
                   value={form.aadhaar}
-                  onChange={(e) => setField('aadhaar', e.target.value.replace(/\D/g, '').slice(0, 12))}
-                  placeholder="12 digit Aadhaar"
-                  maxLength={12}
+                  onChange={(e) => setField('aadhaar', e.target.value)}
                   className={fieldClass}
                 />
               </div>
@@ -367,9 +436,7 @@ const TechnicianFormPage: React.FC = () => {
                 <label className={labelClass}>PAN (optional)</label>
                 <Input
                   value={form.pan}
-                  onChange={(e) => setField('pan', e.target.value.toUpperCase().slice(0, 10))}
-                  placeholder="ABCDE1234F"
-                  maxLength={10}
+                  onChange={(e) => setField('pan', e.target.value.toUpperCase())}
                   className={fieldClass}
                 />
               </div>
@@ -377,32 +444,13 @@ const TechnicianFormPage: React.FC = () => {
           </section>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/technicians')}
-            disabled={saving}
-            className="h-11 min-w-[120px]"
-          >
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => navigate('/technicians')}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={saving}
-            className="h-11 min-w-[160px] bg-blue-700 hover:bg-blue-800"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                {isEdit ? 'Update Technician' : 'Save Technician'}
-              </>
-            )}
+          <Button type="submit" disabled={saving} className="gap-2 bg-blue-700 hover:bg-blue-800">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isEdit ? 'Save Changes' : 'Create Technician'}
           </Button>
         </div>
       </form>

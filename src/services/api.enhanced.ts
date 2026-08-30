@@ -410,14 +410,26 @@ class EnhancedApiService {
     );
   }
 
-  async getActiveTechnicians(options?: { fresh?: boolean }): Promise<Technician[]> {
+  async getActiveTechnicians(options?: {
+    fresh?: boolean;
+    jobId?: number;
+    cityId?: number;
+  }): Promise<Technician[]> {
+    const params: Record<string, number> = {};
+    if (options?.jobId) params.job_id = options.jobId;
+    if (options?.cityId) params.city_id = options.cityId;
     const cacheKey = `${API_ENDPOINTS.TECHNICIANS}active/`;
+    const queryKey = Object.keys(params).length
+      ? `${cacheKey}?${new URLSearchParams(
+          Object.entries(params).map(([k, v]) => [k, String(v)]),
+        ).toString()}`
+      : cacheKey;
 
-    if (options?.fresh) {
+    if (options?.fresh || options?.jobId || options?.cityId) {
       return this.retryRequest(() =>
         this.makeRequest(
-          cacheKey,
-          () => this.api.get<Technician[]>(cacheKey),
+          queryKey,
+          () => this.api.get<Technician[]>(cacheKey, { params }),
         ),
       );
     }
