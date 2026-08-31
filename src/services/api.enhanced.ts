@@ -284,9 +284,12 @@ class EnhancedApiService {
     }
   }
 
-  private isRetryableError(error: any): boolean {
-    // Retry on network errors or 5xx server errors
-    return !error.response || (error.response.status >= 500 && error.response.status < 600);
+  private isRetryableError(error: unknown): boolean {
+    if (error instanceof ApiError) {
+      return error.status >= 500 && error.status < 600;
+    }
+    const axiosError = error as AxiosError;
+    return !axiosError.response || (axiosError.response.status >= 500 && axiosError.response.status < 600);
   }
 
   private delay(ms: number): Promise<void> {

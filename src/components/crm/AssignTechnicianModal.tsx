@@ -94,6 +94,8 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       setAssigning(techId);
       setAssignError(null);
       const updated = await enhancedApiService.assignTechnician(jobCard.id, techId);
+      const overrideMsg = (updated as JobCard & { message?: string; partner_override?: boolean })
+        ?.message;
       fireAndForget(
         sendTechAssignedPairApi(updated || {
           ...jobCard,
@@ -101,7 +103,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           technician_mobile: tech?.mobile || tech?.phone || jobCard.technician_mobile,
         }, tech),
       );
-      notify.success(`${tech?.name || 'Technician'} assigned to booking #${jobCard.id}.`);
+      notify.success(
+        overrideMsg || `${tech?.name || 'Technician'} assigned to booking #${jobCard.id}.`,
+      );
       onSuccess();
       onClose();
     } catch (err: unknown) {

@@ -1,4 +1,4 @@
-import { getErrorMessage, isAxiosError } from './errors';
+import { getErrorMessage, isApiError, isAxiosError } from './errors';
 
 export type AssignTechnicianErrorCode =
   | 'technician_no_service_area'
@@ -17,6 +17,10 @@ export type AssignTechnicianError = {
 };
 
 function readPayload(error: unknown): Record<string, unknown> | undefined {
+  if (isApiError(error)) {
+    const data = error.details;
+    if (data && typeof data === 'object') return data as Record<string, unknown>;
+  }
   if (isAxiosError(error)) {
     const data = error.response?.data;
     if (data && typeof data === 'object') return data as Record<string, unknown>;
