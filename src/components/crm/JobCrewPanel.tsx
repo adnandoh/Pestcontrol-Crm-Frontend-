@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, JobCardTechnicianParticipation, Technician } from '../../types';
 import { payoutStatusLabel, previewVisitPayout } from '../../utils/revenuePayoutPreview';
+import { resolveJobCityId, resolveJobCityName } from '../../utils/jobCity';
 
 interface JobCrewPanelProps {
   job: JobCard;
@@ -28,7 +29,8 @@ export default function JobCrewPanel({ job, onJobUpdated }: JobCrewPanelProps) {
         enhancedApiService.getActiveTechnicians({
           fresh: true,
           jobId: job.id,
-          cityId: typeof job.master_city === 'number' ? job.master_city : undefined,
+          cityId: resolveJobCityId(job),
+          cityName: resolveJobCityId(job) ? undefined : resolveJobCityName(job),
         }),
       ]);
       setParticipants(crew);

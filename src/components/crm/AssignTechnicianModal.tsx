@@ -11,6 +11,7 @@ import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { getErrorMessage } from '../../utils/errors';
 import { notify } from '../../utils/notify';
+import { resolveJobCityId, resolveJobCityName } from '../../utils/jobCity';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -36,17 +37,21 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     try {
       setLoading(true);
       setError(null);
-      const rawCity = jobCard?.master_city;
-      const cityId =
-        typeof rawCity === 'number'
-          ? rawCity
-          : rawCity && typeof rawCity === 'object' && 'id' in rawCity
-            ? Number((rawCity as { id: number }).id)
-            : undefined;
+      let booking = jobCard;
+      if (jobCard?.id) {
+        try {
+          booking = await enhancedApiService.getJobCard(jobCard.id, { fresh: true });
+        } catch {
+          booking = jobCard;
+        }
+      }
+      const cityId = resolveJobCityId(booking);
+      const cityName = resolveJobCityName(booking);
       const activeTechnicians = await enhancedApiService.getActiveTechnicians({
         fresh: true,
-        jobId: jobCard?.id,
-        cityId: Number.isFinite(cityId) ? cityId : undefined,
+        jobId: booking?.id,
+        cityId,
+        cityName: cityId ? undefined : cityName,
       });
       setTechnicians(activeTechnicians);
     } catch (err) {

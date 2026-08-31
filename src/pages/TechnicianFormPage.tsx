@@ -170,8 +170,12 @@ const TechnicianFormPage: React.FC = () => {
 
       if (isEdit && techId) {
         await enhancedApiService.updateTechnician(techId, payload);
+        await enhancedApiService.updateTechnicianServiceAreas(techId, form.service_city_ids);
       } else {
-        await enhancedApiService.createTechnician(payload);
+        const created = await enhancedApiService.createTechnician(payload);
+        if (created?.id) {
+          await enhancedApiService.updateTechnicianServiceAreas(created.id, form.service_city_ids);
+        }
       }
       navigate('/technicians');
     } catch (error: unknown) {

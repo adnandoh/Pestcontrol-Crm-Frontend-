@@ -414,10 +414,12 @@ class EnhancedApiService {
     fresh?: boolean;
     jobId?: number;
     cityId?: number;
+    cityName?: string;
   }): Promise<Technician[]> {
-    const params: Record<string, number> = {};
+    const params: Record<string, number | string> = {};
     if (options?.jobId) params.job_id = options.jobId;
     if (options?.cityId) params.city_id = options.cityId;
+    if (options?.cityName) params.city_name = options.cityName;
     const cacheKey = `${API_ENDPOINTS.TECHNICIANS}active/`;
     const queryKey = Object.keys(params).length
       ? `${cacheKey}?${new URLSearchParams(
@@ -425,7 +427,7 @@ class EnhancedApiService {
         ).toString()}`
       : cacheKey;
 
-    if (options?.fresh || options?.jobId || options?.cityId) {
+    if (options?.fresh || options?.jobId || options?.cityId || options?.cityName) {
       return this.retryRequest(() =>
         this.makeRequest(
           queryKey,
@@ -458,6 +460,16 @@ class EnhancedApiService {
     const result = await this.retryRequest(() =>
       this.api.get<Technician>(`${API_ENDPOINTS.TECHNICIANS}${id}/`),
     );
+    return result.data;
+  }
+
+  async updateTechnicianServiceAreas(id: number, serviceCityIds: number[]) {
+    const result = await this.retryRequest(() =>
+      this.api.patch(`${API_ENDPOINTS.TECHNICIANS}${id}/service-areas/`, {
+        service_city_ids: serviceCityIds,
+      }),
+    );
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data;
   }
 
