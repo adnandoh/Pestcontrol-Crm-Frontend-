@@ -49,6 +49,7 @@ import MasterCities from './pages/MasterCities';
 import MasterStates from './pages/MasterStates';
 import MasterLocations from './pages/MasterLocations';
 import PricingMaster from './pages/PricingMaster';
+import AppUpdates from './pages/AppUpdates';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
 import AccountsInventory from './pages/accounts/AccountsInventory';
 import AccountsExpenses from './pages/accounts/AccountsExpenses';
@@ -221,6 +222,14 @@ const AppContent: React.FC = () => {
                         <AdminRoute>
                           <PricingMaster />
                         </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/app-updates"
+                      element={
+                        <SuperAdminRoute>
+                          <AppUpdates />
+                        </SuperAdminRoute>
                       }
                     />
                     <Route path="/blog" element={<BlogDashboard />} />

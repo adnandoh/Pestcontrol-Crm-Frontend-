@@ -1251,6 +1251,38 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async getAppVersionConfig(app: 'partner' | 'customer' = 'partner'): Promise<{
+    app: string;
+    latest_version: string;
+    minimum_supported_version: string;
+    force_update: boolean;
+    update_title: string;
+    update_message: string;
+    store_url: string;
+    updated_at?: string | null;
+  }> {
+    const result = await this.api.get(API_ENDPOINTS.PARTNER_APP_VERSION, {
+      params: { app },
+    });
+    return result.data;
+  }
+
+  async updateAppVersionConfig(
+    app: 'partner' | 'customer',
+    data: {
+      latest_version: string;
+      minimum_supported_version: string;
+      force_update: boolean;
+      update_title: string;
+      update_message: string;
+    },
+  ) {
+    const result = await this.api.patch(API_ENDPOINTS.PARTNER_APP_VERSION, data, {
+      params: { app },
+    });
+    return result.data;
+  }
+
   async getJobCardParticipants(jobId: number): Promise<JobCardTechnicianParticipation[]> {
     const result = await this.api.get<JobCardTechnicianParticipation[]>(
       `${API_ENDPOINTS.JOBCARDS}${jobId}/participants/`,

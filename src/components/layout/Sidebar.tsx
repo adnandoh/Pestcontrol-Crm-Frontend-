@@ -23,6 +23,7 @@ import {
   IdCard,
   Wallet,
   Calculator,
+  Download,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -124,6 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
     {
       items: [
         { name: 'Pricing Master', href: '/pricing-master', icon: IndianRupee, adminOnly: true },
+        { name: 'App Updates', href: '/app-updates', icon: Download, superAdminOnly: true },
         { name: 'Staff Management', href: '/staff', icon: Shield, superAdminOnly: true },
         { name: 'Add Employee', href: '/staff/add', icon: UserPlus, superAdminOnly: true },
         { name: 'Activity Logs', href: '/activity-logs', icon: History, superAdminOnly: true },

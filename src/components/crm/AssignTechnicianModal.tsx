@@ -10,6 +10,7 @@ import { Button } from '../ui';
 import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { getErrorMessage } from '../../utils/errors';
+import { notify } from '../../utils/notify';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -35,12 +36,17 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     try {
       setLoading(true);
       setError(null);
+      const rawCity = jobCard?.master_city;
       const cityId =
-        typeof jobCard?.master_city === 'number' ? jobCard.master_city : undefined;
+        typeof rawCity === 'number'
+          ? rawCity
+          : rawCity && typeof rawCity === 'object' && 'id' in rawCity
+            ? Number((rawCity as { id: number }).id)
+            : undefined;
       const activeTechnicians = await enhancedApiService.getActiveTechnicians({
         fresh: true,
         jobId: jobCard?.id,
-        cityId,
+        cityId: Number.isFinite(cityId) ? cityId : undefined,
       });
       setTechnicians(activeTechnicians);
     } catch (err) {
@@ -65,6 +71,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           technician_mobile: tech?.mobile || tech?.phone || jobCard.technician_mobile,
         }, tech),
       );
+      notify.success(`${tech?.name || 'Technician'} assigned to booking #${jobCard.id}.`);
       onSuccess();
       onClose();
     } catch (err: unknown) {
