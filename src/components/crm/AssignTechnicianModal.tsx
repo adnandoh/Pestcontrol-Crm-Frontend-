@@ -11,13 +11,7 @@ import { Button } from '../ui';
 import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { notify } from '../../utils/notify';
-import { resolveJobCityId, resolveJobCityName } from '../../utils/jobCity';
-import {
-  buildLocalAssignBlockMessage,
-  parseAssignTechnicianError,
-  technicianMissingServiceAreas,
-  type AssignTechnicianError,
-} from '../../utils/assignTechnicianErrors';
+import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -31,7 +25,6 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<number | null>(null);
   const [assignError, setAssignError] = useState<AssignTechnicianError | null>(null);
-  const [bookingCityLabel, setBookingCityLabel] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -52,14 +45,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           booking = jobCard;
         }
       }
-      const cityId = resolveJobCityId(booking);
-      const cityName = resolveJobCityName(booking);
-      setBookingCityLabel(cityName || null);
       const activeTechnicians = await enhancedApiService.getActiveTechnicians({
         fresh: true,
         jobId: booking?.id,
-        cityId,
-        cityName: cityId ? undefined : cityName,
       });
       setTechnicians(activeTechnicians);
     } catch (err) {
@@ -77,18 +65,6 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     if (!jobCard) return;
     const tech = technicians.find((row) => row.id === techId) || null;
     if (!tech) return;
-
-    if (bookingCityLabel && technicianMissingServiceAreas(tech)) {
-      setAssignError({
-        message: buildLocalAssignBlockMessage(tech.name, bookingCityLabel),
-        code: 'technician_no_service_area',
-        technicianId: tech.id,
-        technicianName: tech.name,
-        serviceCityName: bookingCityLabel,
-        editTechnicianPath: `/technicians/edit/${tech.id}`,
-      });
-      return;
-    }
 
     try {
       setAssigning(techId);
@@ -169,12 +145,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 space-y-2">
                   <p className="text-xs font-bold leading-snug">{assignError.message}</p>
-                  {(assignError.code === 'technician_no_service_area' ||
-                    assignError.code === 'technician_outside_service_area') && (
+                  {assignError.code === 'technician_inactive' && (
                     <p className="text-[10px] font-semibold text-red-600/90">
-                      {assignError.code === 'technician_no_service_area'
-                        ? 'Service Areas are required before this technician can take bookings in this city.'
-                        : 'Add the booking city to this technician’s Service Areas, then try again.'}
+                      Mark the technician Active on the Technicians page, then try again.
                     </p>
                   )}
                   {assignError.editTechnicianPath && (
@@ -191,15 +164,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
             </div>
           )}
 
-          {bookingCityLabel && (
-            <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                Showing technicians assigned to <strong>{bookingCityLabel}</strong> only.
-                Staff without Service Areas are hidden.
-              </span>
-            </div>
-          )}
+          <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug">
+            All active technicians are listed. Service Areas are shown for reference only —
+            CRM desk can assign anyone to this booking.
+          </div>
 
           {jobCard?.parent_job ? (
             <div className="mb-4 p-3 bg-violet-50 border border-violet-100 rounded-xl text-[11px] text-violet-900 leading-snug">
@@ -235,15 +203,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
               </div>
             ) : technicians.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-                <p className="text-xs font-bold text-gray-700">
-                  {bookingCityLabel
-                    ? `No technicians serve ${bookingCityLabel}.`
-                    : 'No available technicians found for this service area.'}
-                </p>
+                <p className="text-xs font-bold text-gray-700">No active technicians found.</p>
                 <p className="text-[10px] text-gray-500 mt-2 font-semibold px-6 leading-relaxed">
-                  {bookingCityLabel
-                    ? `Open Technicians → Edit, add ${bookingCityLabel} under Service Areas, mark Active, then return here.`
-                    : 'Assign service areas on the technician edit page, or check that staff are marked Active.'}
+                  Open Technicians and mark staff as Active, or add a new technician.
                 </p>
               </div>
             ) : filteredTechnicians.length === 0 ? (
@@ -356,7 +318,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 flex items-center justify-between gap-3 border-t border-gray-200">
            <span className="text-[9px] font-bold text-gray-400 italic">
-             No job limit — assign any technician. Selecting one auto-starts the job.
+             Assign any active technician — no job limit. Selecting one auto-starts the job.
            </span>
            <Button 
              variant="outline" 

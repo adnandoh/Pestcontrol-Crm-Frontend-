@@ -136,11 +136,6 @@ const TechnicianFormPage: React.FC = () => {
       showAlert('Please enter full name and a valid 10-digit mobile number.');
       return;
     }
-    if (form.service_city_ids.length === 0) {
-      showAlert('Please select at least one Service Area (city).');
-      return;
-    }
-
     setSaving(true);
     try {
       const payload: Partial<Technician> = {
@@ -170,10 +165,12 @@ const TechnicianFormPage: React.FC = () => {
 
       if (isEdit && techId) {
         await enhancedApiService.updateTechnician(techId, payload);
-        await enhancedApiService.updateTechnicianServiceAreas(techId, form.service_city_ids);
+        if (form.service_city_ids.length) {
+          await enhancedApiService.updateTechnicianServiceAreas(techId, form.service_city_ids);
+        }
       } else {
         const created = await enhancedApiService.createTechnician(payload);
-        if (created?.id) {
+        if (created?.id && form.service_city_ids.length) {
           await enhancedApiService.updateTechnicianServiceAreas(created.id, form.service_city_ids);
         }
       }
@@ -284,11 +281,11 @@ const TechnicianFormPage: React.FC = () => {
             </div>
             <div className="md:col-span-2 lg:col-span-3">
               <label className={labelClass}>
-                Service Areas <span className="text-red-500">*</span>
+                Service Areas
               </label>
               <p className="mb-2 text-xs text-gray-500">
-                Select one or more cities this technician can be assigned to. Booking assign will
-                only show them for these areas.
+                Optional. Used for partner app job filtering. CRM desk can assign any active
+                technician regardless of service areas.
               </p>
               <div className="flex flex-wrap gap-2 mb-3 min-h-[2.25rem]">
                 {selectedCities.length === 0 ? (
