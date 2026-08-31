@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -41,6 +41,7 @@ import JobAccountsPanel from '../components/crm/JobAccountsPanel';
 import {
   MUMBAI_PRICING_CONFIG,
   buildServiceConfigMap,
+  computeBookingGstSummary,
   computePerServicePricing,
   deriveServiceCategoryFromItems,
   getServicePackageOptions,
@@ -443,6 +444,11 @@ const EditJobCard: React.FC = () => {
   }, [formData.master_city, formData.city, loading, masterCities]);
 
   const servicePackageOptions = getServicePackageOptions(pricingConfig);
+
+  const gstSummary = useMemo(
+    () => computeBookingGstSummary(serviceConfigs, pricingConfig),
+    [serviceConfigs, pricingConfig],
+  );
 
   useEffect(() => {
     const label = selectedPackages.join(', ');
@@ -1047,10 +1053,19 @@ const EditJobCard: React.FC = () => {
                      {supportsAutoPricing(formData.commercial_type, pricingConfig) ? 'Total Price' : 'Estimated Price'}
                    </span>
                    {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
+                     <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
                         {formData.price}
                      </div>
+                     {gstSummary.hasGstMeta && (
+                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
+                         <p>Base ₹{gstSummary.base.toLocaleString('en-IN')}</p>
+                         <p>GST ₹{gstSummary.gst.toLocaleString('en-IN')}</p>
+                         <p className="text-gray-700">Total ₹{gstSummary.total.toLocaleString('en-IN')}</p>
+                       </div>
+                     )}
+                     </>
                    ) : (
                      <div className="flex flex-col items-start lg:items-end">
                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-md tracking-tighter uppercase mb-1">To be decided</span>

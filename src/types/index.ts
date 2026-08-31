@@ -1361,6 +1361,11 @@ export interface PricingRate {
   area_key: string;
   property_category: PricingPropertyCategory;
   amount: number | string;
+  gst_percent?: number | string;
+  price_includes_gst?: boolean;
+  base_amount?: number | string;
+  gst_amount?: number | string;
+  total_with_gst?: number | string;
   is_active: boolean;
   notes?: string;
   updated_by?: number | null;
@@ -1376,6 +1381,8 @@ export interface PricingRateFormData {
   area_key: string;
   property_category: PricingPropertyCategory;
   amount: number;
+  gst_percent: number;
+  price_includes_gst: boolean;
   is_active: boolean;
   notes?: string;
 }

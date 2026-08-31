@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import {
 import {
   MUMBAI_PRICING_CONFIG,
   buildServiceConfigMap,
+  computeBookingGstSummary,
   computePerServicePricing,
   deriveServiceCategoryFromItems,
   getServicePackageOptions,
@@ -219,6 +220,11 @@ const CreateJobCard: React.FC = () => {
     pricingConfig,
     pricingConfigReady,
   ]);
+
+  const gstSummary = useMemo(
+    () => computeBookingGstSummary(serviceConfigs, pricingConfig),
+    [serviceConfigs, pricingConfig],
+  );
 
   // Client check state
   const [clientCheckStatus, setClientCheckStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
@@ -1061,6 +1067,13 @@ const CreateJobCard: React.FC = () => {
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
                         {formData.price}
                      </div>
+                     {gstSummary.hasGstMeta && (
+                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
+                         <p>Base ₹{gstSummary.base.toLocaleString('en-IN')}</p>
+                         <p>GST ₹{gstSummary.gst.toLocaleString('en-IN')}</p>
+                         <p className="text-gray-700">Total ₹{gstSummary.total.toLocaleString('en-IN')}</p>
+                       </div>
+                     )}
                      {priceBreakdown.length > 0 && (
                        <p className="mt-2 text-[10px] font-bold text-gray-500 text-left lg:text-right">
                          {selectedPackages.length} service{selectedPackages.length > 1 ? 's' : ''} configured

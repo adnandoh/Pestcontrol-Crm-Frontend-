@@ -1,14 +1,26 @@
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES, COMMERCIAL_AREA_OPTION } from '../constants/pricing';
 import { getAllPlanValuesForService, oneTimePlanValue } from '../constants/bookingPropertyTypes';
 
+export interface RateGstDetail {
+  amount: string | number;
+  gst_percent: string | number;
+  price_includes_gst: boolean;
+  base_amount: string | number;
+  gst_amount: string | number;
+  total_with_gst: string | number;
+}
+
 export interface PricingConfig {
-  region: 'mumbai' | 'lonavala';
+  region: 'mumbai' | 'lonavala' | string;
   city: string;
   pricing: Record<string, Record<string, Record<string, number>>>;
   service_types: Record<string, string[]>;
   residential_locations: string[];
   villa_locations: string[];
   rodent_locations: string[];
+  /** Nested GST metadata from Pricing Master (service → plan → area). */
+  rate_gst?: Record<string, Record<string, Record<string, RateGstDetail>>>;
+  source?: string;
 }
 
 export const MUMBAI_PRICING_CONFIG: PricingConfig = {
@@ -353,6 +365,57 @@ export function computePerServicePricing(
 
   const total = lines.reduce((sum, line) => sum + line.price, 0);
   return { total, lines, items };
+}
+
+export function getRateGstDetail(
+  service: string,
+  plan: string,
+  area: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): RateGstDetail | null {
+  const gstTree = config.rate_gst;
+  if (!gstTree) return null;
+  const candidates = pricingPlanCandidates(service, plan);
+  for (const p of candidates) {
+    const detail = gstTree[service]?.[p]?.[area];
+    if (detail) return detail;
+  }
+  return null;
+}
+
+/** Aggregate GST base / tax / total for configured service lines. */
+export function computeBookingGstSummary(
+  serviceConfigs: ServiceConfigMap,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): { base: number; gst: number; total: number; hasGstMeta: boolean } {
+  let base = 0;
+  let gst = 0;
+  let total = 0;
+  let hasGstMeta = false;
+
+  for (const [service, { plan, area }] of Object.entries(serviceConfigs)) {
+    if (!plan || !area) continue;
+    const detail = getRateGstDetail(service, plan, area, config);
+    if (detail) {
+      hasGstMeta = true;
+      base += Number(detail.base_amount) || 0;
+      gst += Number(detail.gst_amount) || 0;
+      total += Number(detail.total_with_gst) || 0;
+      continue;
+    }
+    const unit = getUnitPrice(service, plan, area, config);
+    if (unit != null && unit > 0) {
+      total += unit;
+      base += unit;
+    }
+  }
+
+  return {
+    base: Math.round(base * 100) / 100,
+    gst: Math.round(gst * 100) / 100,
+    total: Math.round(total * 100) / 100,
+    hasGstMeta,
+  };
 }
 
 export function deriveServiceCategoryFromItems(

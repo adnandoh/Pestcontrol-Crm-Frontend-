@@ -42,7 +42,13 @@ const SERVICE_PACKAGES = [
   'Hotel / Commercial',
 ];
 
-const PLAN_TYPES = ['One Time Service', 'AMC 3 Services'];
+const PLAN_TYPES = [
+  'One Time Service',
+  'AMC 3 Services',
+  'AMC 4 Services',
+  'AMC 6 Services',
+  'AMC 12 Services',
+];
 
 const PROPERTY_CATEGORIES: { value: PricingPropertyCategory; label: string }[] = [
   { value: 'residential', label: 'Residential (BHK/RK)' },
@@ -59,9 +65,30 @@ const emptyForm = (): PricingRateFormData => ({
   area_key: '',
   property_category: 'residential',
   amount: 0,
+  gst_percent: 18,
+  price_includes_gst: true,
   is_active: true,
   notes: '',
 });
+
+/** Live GST preview for the Pricing Master form. */
+function previewGst(amount: number, gstPercent: number, includes: boolean) {
+  const selling = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  const rate = Number.isFinite(gstPercent) ? Math.max(0, gstPercent) : 0;
+  if (selling <= 0 || rate <= 0) {
+    return { base: selling, gst: 0, total: selling };
+  }
+  if (includes) {
+    const base = Math.round((selling / (1 + rate / 100)) * 100) / 100;
+    const gst = Math.round((selling - base) * 100) / 100;
+    return { base, gst, total: selling };
+  }
+  const gst = Math.round((selling * rate) / 100 * 100) / 100;
+  return { base: selling, gst, total: Math.round((selling + gst) * 100) / 100 };
+}
+
+const formatInr = (n: number | string | undefined | null) =>
+  `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 const PricingMaster: React.FC = () => {
   const { user } = useAuth();
@@ -172,6 +199,8 @@ const PricingMaster: React.FC = () => {
       area_key: rate.area_key,
       property_category: rate.property_category,
       amount: Number(rate.amount),
+      gst_percent: Number(rate.gst_percent ?? 18),
+      price_includes_gst: rate.price_includes_gst !== false,
       is_active: rate.is_active,
       notes: rate.notes || '',
     });
@@ -215,7 +244,7 @@ const PricingMaster: React.FC = () => {
             Pricing Master
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Central pricing for all cities. Changes apply to new bookings only — existing records are unaffected.
+            Single master for One-Time and AMC rates with GST. Changes apply to new bookings and the customer catalog — existing bookings keep their stored price.
           </p>
         </div>
         {canEdit && tab === 'rates' && (
@@ -326,15 +355,17 @@ const PricingMaster: React.FC = () => {
                   <th className="py-3 pr-3">Area / Size</th>
                   <th className="py-3 pr-3">Category</th>
                   <th className="py-3 pr-3 text-right">Amount</th>
+                  <th className="py-3 pr-3">GST</th>
+                  <th className="py-3 pr-3 text-right">Total</th>
                   <th className="py-3 pr-3">Status</th>
                   {canEdit && <th className="py-3 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="py-8 text-center text-gray-400">Loading...</td></tr>
+                  <tr><td colSpan={10} className="py-8 text-center text-gray-400">Loading...</td></tr>
                 ) : rates.length === 0 ? (
-                  <tr><td colSpan={8} className="py-8 text-center text-gray-400">No pricing rates found.</td></tr>
+                  <tr><td colSpan={10} className="py-8 text-center text-gray-400">No pricing rates found. Click Add Rate to create one.</td></tr>
                 ) : (
                   rates.map((rate) => (
                     <tr key={rate.id} className="border-b border-gray-100 hover:bg-gray-50/80">
@@ -348,7 +379,16 @@ const PricingMaster: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="py-3 pr-3 text-right font-black text-gray-900 tabular-nums">
-                        ₹{Number(rate.amount).toLocaleString('en-IN')}
+                        {formatInr(rate.amount)}
+                      </td>
+                      <td className="py-3 pr-3 text-xs text-gray-600">
+                        <div className="font-semibold">{Number(rate.gst_percent ?? 18)}%</div>
+                        <div className="text-[10px] text-gray-400">
+                          {rate.price_includes_gst !== false ? 'Incl. GST' : 'Excl. GST'}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-3 text-right font-bold text-[#2d8a2f] tabular-nums">
+                        {formatInr(rate.total_with_gst ?? rate.amount)}
                       </td>
                       <td className="py-3 pr-3">
                         {rate.is_active ? (
@@ -533,7 +573,30 @@ const PricingMaster: React.FC = () => {
                 required
               />
             </div>
-            <div className="flex items-end">
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase">GST %</label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                value={formData.gst_percent}
+                onChange={(e) => setFormData({ ...formData, gst_percent: Number(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+            <div className="sm:col-span-2 flex flex-col gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.price_includes_gst}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price_includes_gst: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded"
+                />
+                <span className="text-sm font-semibold">Price includes GST</span>
+              </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -544,6 +607,41 @@ const PricingMaster: React.FC = () => {
                 <span className="text-sm font-semibold">Active (used for new bookings)</span>
               </label>
             </div>
+            {(() => {
+              const preview = previewGst(
+                formData.amount,
+                formData.gst_percent,
+                formData.price_includes_gst,
+              );
+              return (
+                <div className="sm:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800 mb-2">
+                    GST preview
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <div className="text-[11px] text-gray-500">Base</div>
+                      <div className="font-bold tabular-nums">{formatInr(preview.base)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-500">GST ({formData.gst_percent}%)</div>
+                      <div className="font-bold tabular-nums">{formatInr(preview.gst)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-500">Customer total</div>
+                      <div className="font-black text-[#2d8a2f] tabular-nums">
+                        {formatInr(preview.total)}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    {formData.price_includes_gst
+                      ? 'Amount is tax-inclusive. Base is back-calculated from GST %.'
+                      : 'Amount is tax-exclusive. GST is added on top for the customer total.'}
+                  </p>
+                </div>
+              );
+            })()}
             <div className="sm:col-span-2">
               <label className="text-xs font-bold text-gray-600 uppercase">Notes</label>
               <Input
