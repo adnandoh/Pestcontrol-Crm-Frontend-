@@ -67,7 +67,6 @@ export const API_ENDPOINTS = {
   // Health Check
   HEALTH: '/v1/health/',
   FEATURE_FLAGS: '/v1/feature-flags/',
-  PARTNER_APP_VERSION: '/v1/partner-app-version/',
   SETTLEMENTS: '/v1/settlements/',
   FIREBASE_HEALTH: '/v1/firebase/health/',
   FEEDBACKS: '/v1/feedbacks/',
