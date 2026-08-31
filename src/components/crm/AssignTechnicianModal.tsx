@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone, Search } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
@@ -9,9 +10,14 @@ import {
 import { Button } from '../ui';
 import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
-import { getErrorMessage } from '../../utils/errors';
 import { notify } from '../../utils/notify';
 import { resolveJobCityId, resolveJobCityName } from '../../utils/jobCity';
+import {
+  buildLocalAssignBlockMessage,
+  parseAssignTechnicianError,
+  technicianMissingServiceAreas,
+  type AssignTechnicianError,
+} from '../../utils/assignTechnicianErrors';
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -24,7 +30,8 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<AssignTechnicianError | null>(null);
+  const [bookingCityLabel, setBookingCityLabel] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -36,7 +43,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const fetchTechnicians = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setAssignError(null);
       let booking = jobCard;
       if (jobCard?.id) {
         try {
@@ -47,6 +54,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       }
       const cityId = resolveJobCityId(booking);
       const cityName = resolveJobCityName(booking);
+      setBookingCityLabel(cityName || null);
       const activeTechnicians = await enhancedApiService.getActiveTechnicians({
         fresh: true,
         jobId: booking?.id,
@@ -55,7 +63,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       });
       setTechnicians(activeTechnicians);
     } catch (err) {
-      setError('Failed to load technicians');
+      setAssignError({
+        message: 'Failed to load technicians. Please try again.',
+        code: 'unknown',
+      });
       console.error(err);
     } finally {
       setLoading(false);
@@ -64,11 +75,25 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
   const handleAssign = async (techId: number) => {
     if (!jobCard) return;
+    const tech = technicians.find((row) => row.id === techId) || null;
+    if (!tech) return;
+
+    if (bookingCityLabel && technicianMissingServiceAreas(tech)) {
+      setAssignError({
+        message: buildLocalAssignBlockMessage(tech.name, bookingCityLabel),
+        code: 'technician_no_service_area',
+        technicianId: tech.id,
+        technicianName: tech.name,
+        serviceCityName: bookingCityLabel,
+        editTechnicianPath: `/technicians/edit/${tech.id}`,
+      });
+      return;
+    }
+
     try {
       setAssigning(techId);
-      setError(null);
+      setAssignError(null);
       const updated = await enhancedApiService.assignTechnician(jobCard.id, techId);
-      const tech = technicians.find((row) => row.id === techId) || null;
       fireAndForget(
         sendTechAssignedPairApi(updated || {
           ...jobCard,
@@ -80,7 +105,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to assign technician'));
+      setAssignError(parseAssignTechnicianError(err, 'Failed to assign technician'));
       console.error(err);
     } finally {
       setAssigning(null);
@@ -134,10 +159,41 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
         {/* Content */}
         <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar bg-gray-50/30">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 animate-shake">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p className="text-xs font-bold">{error}</p>
+          {assignError && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 animate-shake">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 space-y-2">
+                  <p className="text-xs font-bold leading-snug">{assignError.message}</p>
+                  {(assignError.code === 'technician_no_service_area' ||
+                    assignError.code === 'technician_outside_service_area') && (
+                    <p className="text-[10px] font-semibold text-red-600/90">
+                      {assignError.code === 'technician_no_service_area'
+                        ? 'Service Areas are required before this technician can take bookings in this city.'
+                        : 'Add the booking city to this technician’s Service Areas, then try again.'}
+                    </p>
+                  )}
+                  {assignError.editTechnicianPath && (
+                    <Link
+                      to={assignError.editTechnicianPath}
+                      className="inline-flex text-[10px] font-black uppercase tracking-wide text-red-800 underline underline-offset-2 hover:text-red-950"
+                      onClick={onClose}
+                    >
+                      Edit technician service areas →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {bookingCityLabel && (
+            <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                Showing technicians assigned to <strong>{bookingCityLabel}</strong> only.
+                Staff without Service Areas are hidden.
+              </span>
             </div>
           )}
 
@@ -176,10 +232,14 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
             ) : technicians.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
                 <p className="text-xs font-bold text-gray-700">
-                  No available technicians found for this service area.
+                  {bookingCityLabel
+                    ? `No technicians serve ${bookingCityLabel}.`
+                    : 'No available technicians found for this service area.'}
                 </p>
-                <p className="text-[10px] text-gray-400 mt-2 font-semibold px-6">
-                  Assign service areas on the technician edit page, or check that staff are marked Active.
+                <p className="text-[10px] text-gray-500 mt-2 font-semibold px-6 leading-relaxed">
+                  {bookingCityLabel
+                    ? `Open Technicians → Edit, add ${bookingCityLabel} under Service Areas, mark Active, then return here.`
+                    : 'Assign service areas on the technician edit page, or check that staff are marked Active.'}
                 </p>
               </div>
             ) : filteredTechnicians.length === 0 ? (
