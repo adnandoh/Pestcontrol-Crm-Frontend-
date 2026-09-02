@@ -32,28 +32,34 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        {/* Solid dark scrim — not bg-background/80 (undefined / washed-out white) */}
+        <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-900/55 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
           className={cn(
-            'fixed left-[50%] top-[50%] z-[100] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+            'fixed left-[50%] top-[50%] z-[100] flex w-[calc(100%-1.5rem)] max-h-[min(90vh,880px)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl outline-none duration-200',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
             sizeClasses[size],
-            className
+            className,
           )}
         >
-          <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-            {title && (
-              <Dialog.Title className="text-lg font-semibold leading-tight tracking-tight">
-                {title}
-              </Dialog.Title>
-            )}
-            {description && (
-              <Dialog.Description className="text-sm text-muted-foreground leading-relaxed">
-                {description}
-              </Dialog.Description>
-            )}
+          {(title || description) && (
+            <div className="shrink-0 border-b border-slate-100 bg-white px-5 py-4 pr-12 sm:px-6">
+              {title && (
+                <Dialog.Title className="text-lg font-semibold leading-tight tracking-tight text-slate-900">
+                  {title}
+                </Dialog.Title>
+              )}
+              {description && (
+                <Dialog.Description className="mt-1 text-sm leading-relaxed text-slate-500">
+                  {description}
+                </Dialog.Description>
+              )}
+            </div>
+          )}
+          <div className="min-h-0 flex-1 overflow-y-auto bg-white px-5 py-4 sm:px-6">
+            {children}
           </div>
-          {children}
-          <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+          <Dialog.Close className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </Dialog.Close>

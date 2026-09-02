@@ -90,6 +90,9 @@ function previewGst(amount: number, gstPercent: number, includes: boolean) {
 const formatInr = (n: number | string | undefined | null) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
+const pricingFieldClass =
+  'w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#2d8a2f] focus:ring-2 focus:ring-[#2d8a2f]/20';
+
 const PricingMaster: React.FC = () => {
   const { user } = useAuth();
   const canEdit = isPricingAdmin(user);
@@ -490,123 +493,153 @@ const PricingMaster: React.FC = () => {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         title={selectedRate ? 'Edit Pricing Rate' : 'Add Pricing Rate'}
+        description="Set region, service, amount, and GST. Preview updates as you type."
         size="lg"
       >
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">Region *</label>
-              <select
-                value={formData.region}
-                onChange={(e) => setFormData({ ...formData, region: Number(e.target.value) })}
-                className="w-full mt-1 h-10 px-3 border border-gray-300 rounded-lg"
-                required
-              >
-                {regions.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
+        <form onSubmit={handleSave} className="space-y-5">
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Service details
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Region <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.region}
+                  onChange={(e) => setFormData({ ...formData, region: Number(e.target.value) })}
+                  className={pricingFieldClass}
+                  required
+                >
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Service <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.service_package}
+                  onChange={(e) => setFormData({ ...formData, service_package: e.target.value })}
+                  className={pricingFieldClass}
+                  required
+                >
+                  {SERVICE_PACKAGES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Plan type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.plan_type}
+                  onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })}
+                  className={pricingFieldClass}
+                  required
+                >
+                  {PLAN_TYPES.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Property category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.property_category}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      property_category: e.target.value as PricingPropertyCategory,
+                    })
+                  }
+                  className={pricingFieldClass}
+                  required
+                >
+                  {PROPERTY_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Area / size key <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={formData.area_key}
+                  onChange={(e) => setFormData({ ...formData, area_key: e.target.value })}
+                  placeholder="e.g. 1 BHK, 2 BHK, Up to 1,000 Sq.Ft."
+                  className={pricingFieldClass}
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">Service *</label>
-              <select
-                value={formData.service_package}
-                onChange={(e) => setFormData({ ...formData, service_package: e.target.value })}
-                className="w-full mt-1 h-10 px-3 border border-gray-300 rounded-lg"
-                required
-              >
-                {SERVICE_PACKAGES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+          </section>
+
+          <section className="space-y-3 border-t border-slate-100 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Pricing &amp; GST
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                  className={pricingFieldClass}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">GST %</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  value={formData.gst_percent}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gst_percent: Number(e.target.value) })
+                  }
+                  className={pricingFieldClass}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">Plan Type *</label>
-              <select
-                value={formData.plan_type}
-                onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })}
-                className="w-full mt-1 h-10 px-3 border border-gray-300 rounded-lg"
-                required
-              >
-                {PLAN_TYPES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">Property Category *</label>
-              <select
-                value={formData.property_category}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    property_category: e.target.value as PricingPropertyCategory,
-                  })
-                }
-                className="w-full mt-1 h-10 px-3 border border-gray-300 rounded-lg"
-                required
-              >
-                {PROPERTY_CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-xs font-bold text-gray-600 uppercase">Area / Size Key *</label>
-              <Input
-                value={formData.area_key}
-                onChange={(e) => setFormData({ ...formData, area_key: e.target.value })}
-                placeholder="e.g. 2 BHK, Up to 1,000 Sq.Ft., Windows"
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">Amount (₹) *</label>
-              <Input
-                type="number"
-                min={0}
-                step={1}
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase">GST %</label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                step={0.01}
-                value={formData.gst_percent}
-                onChange={(e) => setFormData({ ...formData, gst_percent: Number(e.target.value) })}
-                className="mt-1"
-              />
-            </div>
-            <div className="sm:col-span-2 flex flex-col gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:border-slate-300">
                 <input
                   type="checkbox"
                   checked={formData.price_includes_gst}
                   onChange={(e) =>
                     setFormData({ ...formData, price_includes_gst: e.target.checked })
                   }
-                  className="h-4 w-4 rounded"
+                  className="h-4 w-4 rounded border-slate-300 text-[#2d8a2f] focus:ring-[#2d8a2f]"
                 />
-                <span className="text-sm font-semibold">Price includes GST</span>
+                <span className="text-sm font-medium text-slate-800">Price includes GST</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:border-slate-300">
                 <input
                   type="checkbox"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="h-4 w-4 rounded"
+                  className="h-4 w-4 rounded border-slate-300 text-[#2d8a2f] focus:ring-[#2d8a2f]"
                 />
-                <span className="text-sm font-semibold">Active (used for new bookings)</span>
+                <span className="text-sm font-medium text-slate-800">Active for new bookings</span>
               </label>
             </div>
+
             {(() => {
               const preview = previewGst(
                 formData.amount,
@@ -614,27 +647,33 @@ const PricingMaster: React.FC = () => {
                 formData.price_includes_gst,
               );
               return (
-                <div className="sm:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800 mb-2">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+                  <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                     GST preview
                   </p>
                   <div className="grid grid-cols-3 gap-3 text-sm">
                     <div>
-                      <div className="text-[11px] text-gray-500">Base</div>
-                      <div className="font-bold tabular-nums">{formatInr(preview.base)}</div>
+                      <div className="text-xs text-slate-500">Base</div>
+                      <div className="font-semibold tabular-nums text-slate-900">
+                        {formatInr(preview.base)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[11px] text-gray-500">GST ({formData.gst_percent}%)</div>
-                      <div className="font-bold tabular-nums">{formatInr(preview.gst)}</div>
+                      <div className="text-xs text-slate-500">
+                        GST ({formData.gst_percent}%)
+                      </div>
+                      <div className="font-semibold tabular-nums text-slate-900">
+                        {formatInr(preview.gst)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[11px] text-gray-500">Customer total</div>
-                      <div className="font-black text-[#2d8a2f] tabular-nums">
+                      <div className="text-xs text-slate-500">Customer total</div>
+                      <div className="text-base font-bold tabular-nums text-[#2d8a2f]">
                         {formatInr(preview.total)}
                       </div>
                     </div>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-2">
+                  <p className="mt-2 text-xs text-slate-500">
                     {formData.price_includes_gst
                       ? 'Amount is tax-inclusive. Base is back-calculated from GST %.'
                       : 'Amount is tax-exclusive. GST is added on top for the customer total.'}
@@ -642,21 +681,32 @@ const PricingMaster: React.FC = () => {
                 </div>
               );
             })()}
-            <div className="sm:col-span-2">
-              <label className="text-xs font-bold text-gray-600 uppercase">Notes</label>
-              <Input
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Optional internal note"
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+          </section>
+
+          <section className="space-y-2 border-t border-slate-100 pt-4">
+            <label className="block text-sm font-medium text-slate-700">Notes</label>
+            <input
+              value={formData.notes || ''}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Optional internal note"
+              className={pricingFieldClass}
+            />
+          </section>
+
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+              className="min-w-[88px] bg-white"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving} className="bg-[#2d8a2f] text-white">
+            <Button
+              type="submit"
+              disabled={saving}
+              className="min-w-[120px] bg-[#2d8a2f] text-white hover:bg-[#267a28]"
+            >
               {saving ? 'Saving...' : selectedRate ? 'Update Rate' : 'Create Rate'}
             </Button>
           </div>
