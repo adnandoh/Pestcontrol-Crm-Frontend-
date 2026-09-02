@@ -1191,6 +1191,9 @@ export interface Quotation {
   discount: number;
   tax_amount: number;
   grand_total: number;
+  gst_percent?: number;
+  price_includes_gst?: boolean;
+  base_amount?: number | string;
   is_amc: boolean;
   visit_count: number;
   contract_amount: number;

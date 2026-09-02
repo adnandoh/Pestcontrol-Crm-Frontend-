@@ -1,7 +1,6 @@
-/**
- * Quotation totals — run: npx tsx scripts/test-quotation-totals.mjs
- */
+// Quotation GST — run: npx tsx scripts/test-quotation-totals.mjs
 import {
+  gstBreakdown,
   resolveQuotationTotals,
   sumQuotationItems,
 } from '../src/utils/quotationTotals.ts';
@@ -37,4 +36,34 @@ if (sumQuotationItems(items) !== 3500) {
   process.exit(1);
 }
 
-console.log('Quotation totals OK — AMC visit_count=3 no longer overrides ₹3500');
+// Inclusive GST: grand total unchanged, GST extracted
+const inclusive = resolveQuotationTotals({
+  items: [{ service_name: 'Test', frequency: 'One Time', quantity: 1, rate: 1180, total: 1180 }],
+  discount: 0,
+  gst_percent: 18,
+  price_includes_gst: true,
+});
+if (inclusive.grand_total !== 1180 || inclusive.tax_amount !== 180) {
+  console.error('FAIL: inclusive GST', inclusive);
+  process.exit(1);
+}
+
+// Exclusive GST: GST added on top
+const exclusive = resolveQuotationTotals({
+  items: [{ service_name: 'Test', frequency: 'One Time', quantity: 1, rate: 1000, total: 1000 }],
+  discount: 0,
+  gst_percent: 18,
+  price_includes_gst: false,
+});
+if (exclusive.grand_total !== 1180 || exclusive.tax_amount !== 180) {
+  console.error('FAIL: exclusive GST', exclusive);
+  process.exit(1);
+}
+
+const bd = gstBreakdown(1180, 18, true);
+if (bd.base_amount !== 1000 || bd.gst_amount !== 180) {
+  console.error('FAIL: gstBreakdown', bd);
+  process.exit(1);
+}
+
+console.log('Quotation totals OK — AMC + GST breakdown');

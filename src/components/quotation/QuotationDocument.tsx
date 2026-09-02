@@ -83,6 +83,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
   const scopes = resolveQuotationDisplayScopes(quotation);
   const paymentTerms = quotation.payment_terms || [];
   const totals = resolveQuotationTotals(quotation);
+  const showGst = Number(totals.tax_amount || quotation.tax_amount || 0) > 0;
   const structured = hasStructuredScopes(scopes);
   const isPerServiceScope = (title: string) => title.includes(' — ') || title === 'Area Covered';
   const scopeContent = (title: string) => scopes.find((s) => s.title === title)?.content;
@@ -353,6 +354,21 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, classN
                 <td className="q-totals-label">Discount</td>
                 <td className="q-totals-value q-num">- Rs.{fmt(quotation.discount)}</td>
               </tr>
+            )}
+            {showGst && (
+              <>
+                <tr>
+                  <td className="q-totals-label">Base (ex-GST)</td>
+                  <td className="q-totals-value q-num">Rs.{fmt(totals.base_amount)}</td>
+                </tr>
+                <tr>
+                  <td className="q-totals-label">
+                    GST ({quotation.gst_percent ?? 18}%)
+                    {quotation.price_includes_gst === false ? ' (added)' : ''}
+                  </td>
+                  <td className="q-totals-value q-num">Rs.{fmt(totals.tax_amount)}</td>
+                </tr>
+              </>
             )}
             <tr className="q-grand-total-row">
               <td className="q-grand-total-label">Grand Total</td>

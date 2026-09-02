@@ -95,6 +95,8 @@ const CreateQuotation: React.FC = () => {
     discount: 0,
     tax_amount: 0,
     grand_total: 0,
+    gst_percent: 18,
+    price_includes_gst: true,
     license_number: COMPANY.license,
     expiry_date: defaultExpiry(),
     notes: '',
@@ -131,10 +133,26 @@ const CreateQuotation: React.FC = () => {
         existingQuotation.items || [],
         existingQuotation.template_service_type,
       );
+      const totals = resolveQuotationTotalsFromForm(
+        sortedItems,
+        Number(existingQuotation.discount ?? 0),
+        Boolean(existingQuotation.is_amc),
+        Number(existingQuotation.contract_amount ?? 0),
+        Number(existingQuotation.visit_count ?? 1),
+        Number(existingQuotation.gst_percent ?? 18),
+        existingQuotation.price_includes_gst !== false,
+      );
       setFormData({
         ...existingQuotation,
         items: sortedItems,
         scopes: resolvedScopes,
+        gst_percent: totals.gst_percent,
+        price_includes_gst: totals.price_includes_gst,
+        total_amount: totals.total_amount,
+        tax_amount: totals.tax_amount,
+        grand_total: totals.grand_total,
+        contract_amount: totals.contract_amount,
+        base_amount: totals.base_amount,
       } as QuotationFormData);
     }
   }, [existingQuotation]);
@@ -289,26 +307,45 @@ const CreateQuotation: React.FC = () => {
   const calculateTotals = (
     items: QuotationItem[],
     discount: number = formData.discount ?? 0,
-    opts?: { is_amc?: boolean; contract_amount?: number; visit_count?: number },
+    opts?: {
+      is_amc?: boolean;
+      contract_amount?: number;
+      visit_count?: number;
+      gst_percent?: number;
+      price_includes_gst?: boolean;
+    },
   ) => {
     const isAmc = opts?.is_amc ?? formData.is_amc;
     const contractAmt = opts?.contract_amount ?? formData.contract_amount ?? 0;
     const visitCount = opts?.visit_count ?? formData.visit_count ?? 1;
+    const gstPercent = opts?.gst_percent ?? formData.gst_percent ?? 18;
+    const priceIncludesGst = opts?.price_includes_gst ?? formData.price_includes_gst !== false;
 
-    const { total_amount, grand_total, contract_amount } = resolveQuotationTotalsFromForm(
+    const {
+      total_amount,
+      tax_amount,
+      grand_total,
+      contract_amount,
+      base_amount,
+    } = resolveQuotationTotalsFromForm(
       items,
       discount,
       Boolean(isAmc),
       contractAmt,
       visitCount,
+      gstPercent,
+      priceIncludesGst,
     );
 
     setFormData((prev) => ({
       ...prev,
       total_amount,
-      tax_amount: 0,
+      tax_amount,
       grand_total,
       contract_amount,
+      gst_percent: gstPercent,
+      price_includes_gst: priceIncludesGst,
+      base_amount,
     }));
   };
 
@@ -375,6 +412,8 @@ const CreateQuotation: React.FC = () => {
       Boolean(formData.is_amc),
       formData.contract_amount ?? 0,
       formData.visit_count ?? 1,
+      formData.gst_percent ?? 18,
+      formData.price_includes_gst !== false,
     );
     const scopes =
       formData.property_type && servicePlans.length
@@ -391,7 +430,9 @@ const CreateQuotation: React.FC = () => {
       customer_name: getQuotationDisplayName(formData),
       pincode: '',
       terms_and_conditions: '',
-      tax_amount: 0,
+      gst_percent: resolved.gst_percent,
+      price_includes_gst: resolved.price_includes_gst,
+      tax_amount: resolved.tax_amount,
       total_amount: resolved.total_amount,
       grand_total: resolved.grand_total,
       contract_amount: resolved.contract_amount,
@@ -930,6 +971,47 @@ const CreateQuotation: React.FC = () => {
                   }}
                 />
               </div>
+              <div className="flex justify-between items-center text-sm opacity-80 gap-3">
+                <span>GST %</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  className="w-20 bg-white/10 border-none rounded px-2 py-1 text-right outline-none focus:ring-1 focus:ring-white/30"
+                  value={formData.gst_percent ?? 18}
+                  onChange={(e) => {
+                    const gst_percent = Number(e.target.value);
+                    setFormData((prev) => ({ ...prev, gst_percent }));
+                    calculateTotals(formData.items, formData.discount ?? 0, { gst_percent });
+                  }}
+                />
+              </div>
+              <label className="flex items-center justify-between gap-3 text-sm opacity-90 cursor-pointer">
+                <span>Price includes GST</span>
+                <input
+                  type="checkbox"
+                  checked={formData.price_includes_gst !== false}
+                  onChange={(e) => {
+                    const price_includes_gst = e.target.checked;
+                    setFormData((prev) => ({ ...prev, price_includes_gst }));
+                    calculateTotals(formData.items, formData.discount ?? 0, { price_includes_gst });
+                  }}
+                  className="h-4 w-4 rounded border-white/30 bg-white/10"
+                />
+              </label>
+              {Number(formData.tax_amount || 0) > 0 && (
+                <>
+                  <div className="flex justify-between text-sm opacity-80">
+                    <span>Base (ex-GST)</span>
+                    <span>₹{Number(formData.base_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm opacity-80">
+                    <span>GST ({formData.gst_percent ?? 18}%)</span>
+                    <span>₹{Number(formData.tax_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </>
+              )}
               <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
                   <span className="text-xs font-bold uppercase opacity-60">Grand Total</span>
