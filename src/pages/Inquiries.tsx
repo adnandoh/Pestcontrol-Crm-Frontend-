@@ -499,7 +499,20 @@ const Inquiries: React.FC = () => {
                     </p>
                   </td>
                   <td className={cn(crmTdCompactClass, 'text-slate-500 tabular-nums whitespace-nowrap')}>
-                    {new Date(inquiry.created_at).toLocaleDateString('en-GB')}
+                    <p className="text-[11px] font-medium text-slate-700 leading-tight">
+                      {new Date(inquiry.created_at).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      {new Date(inquiry.created_at).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </p>
                   </td>
                   <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
                     <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} compact />
