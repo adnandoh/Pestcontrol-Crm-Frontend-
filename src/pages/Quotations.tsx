@@ -201,28 +201,29 @@ const Quotations: React.FC = () => {
       {/* Quotations Table */}
       <Card className="overflow-hidden border-gray-100 shadow-sm bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Quotation</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[140px]">Remark</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Quotation</th>
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total</th>
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="sticky right-0 z-10 bg-gray-50 px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right min-w-[220px] shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.25)]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={7} className="px-6 py-4 h-16 bg-gray-50/50"></td>
+                    <td colSpan={6} className="px-4 py-4 h-16 bg-gray-50/50"></td>
                   </tr>
                 ))
               ) : quotationsData?.results.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
                         <FileText className="h-10 w-10" />
@@ -238,13 +239,13 @@ const Quotations: React.FC = () => {
               ) : (
                 quotationsData?.results.map((q: Quotation) => (
                   <tr key={q.id} className="hover:bg-gray-50/80 transition-colors group">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-blue-600">{q.quotation_no}</span>
                         <span className="text-[10px] text-gray-400 font-medium">{format(new Date(q.created_at), 'dd MMM yyyy')}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">{getQuotationDisplayName(q)}</span>
                         <div className="flex items-center gap-2">
@@ -255,7 +256,7 @@ const Quotations: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="text-xs font-semibold text-gray-700">{q.quotation_type}</span>
                         {q.is_amc && (
@@ -263,26 +264,19 @@ const Quotations: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-gray-900">₹{q.grand_total.toLocaleString()}</span>
+                    <td className="px-4 py-4">
+                      <span className="text-sm font-black text-gray-900">₹{Number(q.grand_total || 0).toLocaleString()}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       {getStatusBadge(q.status)}
-                    </td>
-                    <td className="px-6 py-4">
                       {q.notes?.trim() ? (
-                        <p
-                          className="max-w-[180px] truncate text-xs font-medium text-gray-700"
-                          title={q.notes}
-                        >
+                        <p className="mt-1 max-w-[140px] truncate text-[10px] text-violet-700" title={q.notes}>
                           {q.notes}
                         </p>
-                      ) : (
-                        <span className="text-xs italic text-gray-400">No remark</span>
-                      )}
+                      ) : null}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="sticky right-0 z-10 bg-white group-hover:bg-gray-50/80 px-4 py-4 text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.25)]">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
                         <QuotationRemarkButton
                           quotation={q}
                           onSaved={(updated) => {
@@ -300,35 +294,33 @@ const Quotations: React.FC = () => {
                             );
                           }}
                         />
-                        <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <Link to={`/quotations/preview/${q.id}`}>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                              <Eye className="h-4 w-4" />
+                        <Link to={`/quotations/preview/${q.id}`}>
+                          <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        {q.status !== 'Converted' && (
+                          <Link to={`/quotations/edit/${q.id}`}>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200">
+                              <Edit2 className="h-4 w-4" />
                             </Button>
                           </Link>
-                          {q.status !== 'Converted' && (
-                            <Link to={`/quotations/edit/${q.id}`}>
-                              <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200">
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          )}
-                          {q.status === 'Approved' && (
-                            <Button 
-                              variant="primary" 
-                              size="sm" 
-                              className="h-8 bg-green-600 hover:bg-green-700 text-white rounded-lg gap-1.5 px-3"
-                              onClick={() => handleConvert(q.id)}
-                              disabled={convertMutation.isPending}
-                            >
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              <span className="text-[10px] font-bold uppercase tracking-tight">Convert</span>
-                            </Button>
-                          )}
-                          <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200">
-                            <Share2 className="h-4 w-4" />
+                        )}
+                        {q.status === 'Approved' && (
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            className="h-8 bg-green-600 hover:bg-green-700 text-white rounded-lg gap-1.5 px-3"
+                            onClick={() => handleConvert(q.id)}
+                            disabled={convertMutation.isPending}
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Convert</span>
                           </Button>
-                        </div>
+                        )}
+                        <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200">
+                          <Share2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
