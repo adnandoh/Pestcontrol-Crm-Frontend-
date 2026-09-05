@@ -2120,6 +2120,15 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async updateQuotationRemark(id: number, remark: string): Promise<Quotation> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<Quotation>(`${API_ENDPOINTS.QUOTATIONS}${id}/remark/`, { remark })
+    );
+    apiCache.deletePattern(CACHE_KEYS.QUOTATIONS);
+    apiCache.deletePattern(`${API_ENDPOINTS.QUOTATIONS}${id}`);
+    return result.data;
+  }
+
   async convertQuotationToBooking(id: number): Promise<{ booking_id: number; booking_code: string }> {
     const result = await this.retryRequest(() =>
       this.api.post<{ booking_id: number; booking_code: string }>(`${API_ENDPOINTS.QUOTATIONS}${id}/convert_to_booking/`)

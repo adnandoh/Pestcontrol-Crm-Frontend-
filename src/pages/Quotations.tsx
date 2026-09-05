@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import CopyablePhone from '../components/crm/CopyablePhone';
+import QuotationRemarkButton from '../components/crm/QuotationRemarkButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
@@ -23,7 +24,6 @@ import { Badge } from '../components/ui/Badge';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
 import { getQuotationDisplayName } from '../constants/quotation';
 import { showAlert } from '../utils/notify';
-
 const PAGE_SIZE = 10;
 
 const Quotations: React.FC = () => {
@@ -209,6 +209,7 @@ const Quotations: React.FC = () => {
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[140px]">Remark</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -216,12 +217,12 @@ const Quotations: React.FC = () => {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-4 h-16 bg-gray-50/50"></td>
+                    <td colSpan={7} className="px-6 py-4 h-16 bg-gray-50/50"></td>
                   </tr>
                 ))
               ) : quotationsData?.results.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
                         <FileText className="h-10 w-10" />
@@ -268,35 +269,66 @@ const Quotations: React.FC = () => {
                     <td className="px-6 py-4">
                       {getStatusBadge(q.status)}
                     </td>
+                    <td className="px-6 py-4">
+                      {q.notes?.trim() ? (
+                        <p
+                          className="max-w-[180px] truncate text-xs font-medium text-gray-700"
+                          title={q.notes}
+                        >
+                          {q.notes}
+                        </p>
+                      ) : (
+                        <span className="text-xs italic text-gray-400">No remark</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link to={`/quotations/preview/${q.id}`}>
-                          <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        {q.status !== 'Converted' && (
-                          <Link to={`/quotations/edit/${q.id}`}>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200">
-                              <Edit2 className="h-4 w-4" />
+                      <div className="flex items-center justify-end gap-2">
+                        <QuotationRemarkButton
+                          quotation={q}
+                          onSaved={(updated) => {
+                            queryClient.setQueryData(
+                              ['quotations', filters, page, PAGE_SIZE],
+                              (prev: { results?: Quotation[]; count?: number } | undefined) => {
+                                if (!prev?.results) return prev;
+                                return {
+                                  ...prev,
+                                  results: prev.results.map((row) =>
+                                    row.id === updated.id ? { ...row, notes: updated.notes } : row,
+                                  ),
+                                };
+                              },
+                            );
+                          }}
+                        />
+                        <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <Link to={`/quotations/preview/${q.id}`}>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
+                              <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                        )}
-                        {q.status === 'Approved' && (
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
-                            className="h-8 bg-green-600 hover:bg-green-700 text-white rounded-lg gap-1.5 px-3"
-                            onClick={() => handleConvert(q.id)}
-                            disabled={convertMutation.isPending}
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-bold uppercase tracking-tight">Convert</span>
+                          {q.status !== 'Converted' && (
+                            <Link to={`/quotations/edit/${q.id}`}>
+                              <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200">
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          )}
+                          {q.status === 'Approved' && (
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              className="h-8 bg-green-600 hover:bg-green-700 text-white rounded-lg gap-1.5 px-3"
+                              onClick={() => handleConvert(q.id)}
+                              disabled={convertMutation.isPending}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              <span className="text-[10px] font-bold uppercase tracking-tight">Convert</span>
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200">
+                            <Share2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200">
-                          <Share2 className="h-4 w-4" />
-                        </Button>
+                        </div>
                       </div>
                     </td>
                   </tr>
