@@ -1138,7 +1138,7 @@ const EditJobCard: React.FC = () => {
                      serviceItems={serviceItems}
                      pricingConfig={pricingConfig}
                      commercialType={formData.commercial_type}
-                     technicianSharePercent={formData.technician_share_percent ?? 40}
+                     technicianSharePercent={Number(formData.technician_share_percent ?? 40) || 40}
                      onPlanChange={handleServicePlanChange}
                      onAreaChange={handleServiceAreaChange}
                      onBaseAmountChange={handleServiceBaseAmountChange}
