@@ -37,7 +37,11 @@ import {
   computeBookingGstSummary,
   computePerServicePricing,
   deriveServiceCategoryFromItems,
+  finalizeServiceLinePricing,
   getServicePackageOptions,
+  mergeCatalogIntoServiceItems,
+  priceLinesFromServiceItems,
+  summarizeServicePricing,
   supportsAutoPricing,
   validateServiceConfigs,
   type PricingConfig,
@@ -78,6 +82,8 @@ const CreateJobCard: React.FC = () => {
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [serviceConfigs, setServiceConfigs] = useState<ServiceConfigMap>({});
   const [serviceItems, setServiceItems] = useState<ServiceItemConfig[]>([]);
+  const serviceItemsRef = useRef<ServiceItemConfig[]>([]);
+  serviceItemsRef.current = serviceItems;
   const [serviceConfigErrors, setServiceConfigErrors] = useState<string[]>([]);
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
@@ -171,7 +177,7 @@ const CreateJobCard: React.FC = () => {
     );
   }, [selectedPackages.join('|'), pricingConfig, formData.commercial_type]);
 
-  // Per-service pricing total (city-aware via pricingConfig)
+  // Per-service pricing total (city-aware via pricingConfig) — preserves discounts.
   useEffect(() => {
     if (
       !pricingConfigReady ||
@@ -182,36 +188,32 @@ const CreateJobCard: React.FC = () => {
         setPriceBreakdown([]);
         setServiceItems([]);
         setServiceConfigErrors([]);
-        setFormData((prev) => ({ ...prev, price: '0.00' }));
+        setFormData((prev) => ({ ...prev, price: '0.00', discount_amount: 0 }));
       }
       return;
     }
 
-    const { total, lines, items } = computePerServicePricing(serviceConfigs, pricingConfig);
+    const { lines: catalogLines, items: catalogItems } = computePerServicePricing(
+      serviceConfigs,
+      pricingConfig,
+    );
     const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
     setServiceConfigErrors(configErrors);
 
-    const category = deriveServiceCategoryFromItems(items);
-    const primaryArea = items.find((i) => i.area)?.area || '';
-
-    if (supportsAutoPricing(formData.commercial_type, pricingConfig)) {
-      setPriceBreakdown(lines);
-      setServiceItems(items);
-      setFormData((prev) => ({
-        ...prev,
-        price: total.toFixed(2),
-        service_category: category,
-        bhk_size: primaryArea || prev.bhk_size,
-      }));
-      return;
-    }
-
-    // Office/hotel/society/other: keep estimated price, still persist service_items + area.
-    setServiceItems(items);
-    setFormData((prev) => ({
-      ...prev,
+    const merged = mergeCatalogIntoServiceItems(catalogItems, serviceItemsRef.current);
+    const totals = summarizeServicePricing(merged);
+    const category = deriveServiceCategoryFromItems(merged);
+    const primaryArea = merged.find((i) => i.area)?.area || '';
+    setServiceItems(merged);
+    setPriceBreakdown(priceLinesFromServiceItems(merged, catalogLines));
+    setFormData((formPrev) => ({
+      ...formPrev,
+      ...(supportsAutoPricing(formPrev.commercial_type, pricingConfig)
+        ? { price: totals.finalAmount.toFixed(2) }
+        : {}),
+      discount_amount: totals.totalDiscount,
       service_category: category,
-      bhk_size: primaryArea || prev.bhk_size,
+      bhk_size: primaryArea || formPrev.bhk_size,
     }));
   }, [
     selectedPackages,
@@ -419,6 +421,44 @@ const CreateJobCard: React.FC = () => {
     }));
   };
 
+  const syncTotalsFromItems = (items: ServiceItemConfig[]) => {
+    const totals = summarizeServicePricing(items);
+    setPriceBreakdown(priceLinesFromServiceItems(items));
+    setFormData((prev) => ({
+      ...prev,
+      price: totals.finalAmount.toFixed(2),
+      discount_amount: totals.totalDiscount,
+    }));
+  };
+
+  const handleServiceBaseAmountChange = (service: string, baseAmount: number) => {
+    setServiceItems((prev) => {
+      const next = prev.map((item) => {
+        if (item.service !== service) return item;
+        return {
+          ...item,
+          ...finalizeServiceLinePricing(baseAmount, item.discount || 0),
+        };
+      });
+      syncTotalsFromItems(next);
+      return next;
+    });
+  };
+
+  const handleServiceDiscountChange = (service: string, discount: number) => {
+    setServiceItems((prev) => {
+      const next = prev.map((item) => {
+        if (item.service !== service) return item;
+        return {
+          ...item,
+          ...finalizeServiceLinePricing(item.baseAmount ?? item.amount, discount),
+        };
+      });
+      syncTotalsFromItems(next);
+      return next;
+    });
+  };
+
   // Check if client exists by mobile number
   const checkClientExists = async (mobile: string) => {
     if (mobile.length !== 10) return;
@@ -509,7 +549,18 @@ const CreateJobCard: React.FC = () => {
         society_billing_type: isSocietyBooking(formData)
           ? (formData.society_billing_type || 'Paid')
           : null,
-        service_items: serviceItems,
+        service_items: serviceItems.map((item) => ({
+          service: item.service,
+          plan: item.plan,
+          area: item.area,
+          base_amount: item.baseAmount,
+          discount: item.discount,
+          amount: item.amount,
+        })),
+        discount_amount: summarizeServicePricing(serviceItems).totalDiscount,
+        ...(supportsAutoPricing(formData.commercial_type, pricingConfig)
+          ? { price: summarizeServicePricing(serviceItems).finalAmount.toFixed(2) }
+          : {}),
         service_category: deriveServiceCategoryFromItems(serviceItems),
       };
       if (!submitData.next_service_date && submitData.schedule_datetime) {
@@ -975,6 +1026,8 @@ const CreateJobCard: React.FC = () => {
                   onChange={(field, value) =>
                     handleInputChange(field as keyof JobCardFormData, value as never)
                   }
+                  hideBookingDiscount
+                  serviceDiscountTotal={summarizeServicePricing(serviceItems).totalDiscount}
                 />
               )}
               <div>
@@ -1048,12 +1101,17 @@ const CreateJobCard: React.FC = () => {
                   <PerServicePricingSection
                     selectedPackages={selectedPackages}
                     serviceConfigs={serviceConfigs}
+                    serviceItems={serviceItems}
                     pricingConfig={pricingConfig}
                     commercialType={formData.commercial_type}
+                    technicianSharePercent={formData.technician_share_percent ?? 40}
                     onPlanChange={handleServicePlanChange}
                     onAreaChange={handleServiceAreaChange}
+                    onBaseAmountChange={handleServiceBaseAmountChange}
+                    onDiscountChange={handleServiceDiscountChange}
                     validationErrors={serviceConfigErrors}
                     scheduleDate={formData.schedule_datetime}
+                    showPricingFields={supportsAutoPricing(formData.commercial_type, pricingConfig)}
                   />
                 </div>
 

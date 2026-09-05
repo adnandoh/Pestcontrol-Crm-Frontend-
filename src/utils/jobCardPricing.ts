@@ -80,14 +80,92 @@ export interface ServicePriceLine {
   plan?: string;
   area?: string;
   note?: string;
+  baseAmount?: number;
+  discount?: number;
 }
 
-/** Per-service plan/area selection (create & edit booking forms). */
+/** Per-service plan/area/pricing (create & edit booking forms). */
 export interface ServiceItemConfig {
   service: string;
   plan: string;
   area: string;
+  /** Catalog / staff base price before discount. */
+  baseAmount: number;
+  /** Discount belonging only to this service. */
+  discount: number;
+  /** Net final price (baseAmount - discount). Ledger uses this. */
   amount: number;
+}
+
+export interface ServicePricingTotals {
+  subtotal: number;
+  totalDiscount: number;
+  finalAmount: number;
+}
+
+export function roundMoney(n: number): number {
+  return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+}
+
+/** Clamp discount and compute net amount for one service line. */
+export function finalizeServiceLinePricing(
+  baseAmount: number,
+  discount: number,
+): Pick<ServiceItemConfig, 'baseAmount' | 'discount' | 'amount'> {
+  const base = Math.max(0, roundMoney(baseAmount || 0));
+  const rawDiscount = Math.max(0, roundMoney(discount || 0));
+  const clamped = Math.min(rawDiscount, base);
+  return {
+    baseAmount: base,
+    discount: clamped,
+    amount: roundMoney(base - clamped),
+  };
+}
+
+export function summarizeServicePricing(items: ServiceItemConfig[]): ServicePricingTotals {
+  const subtotal = roundMoney(items.reduce((sum, i) => sum + (i.baseAmount ?? i.amount ?? 0), 0));
+  const totalDiscount = roundMoney(items.reduce((sum, i) => sum + (i.discount ?? 0), 0));
+  const finalAmount = roundMoney(items.reduce((sum, i) => sum + (i.amount ?? 0), 0));
+  return { subtotal, totalDiscount, finalAmount };
+}
+
+/**
+ * Merge catalog rates into existing lines without wiping per-service discounts.
+ * Plan/area change → refresh base from catalog, keep discount (clamped).
+ * Same plan/area → keep staff base + discount overrides.
+ */
+export function mergeCatalogIntoServiceItems(
+  catalogItems: ServiceItemConfig[],
+  previous: ServiceItemConfig[],
+): ServiceItemConfig[] {
+  return catalogItems.map((cat) => {
+    const prev = previous.find((p) => p.service === cat.service);
+    const catalogBase = roundMoney(cat.baseAmount ?? cat.amount ?? 0);
+    if (!prev) {
+      return {
+        service: cat.service,
+        plan: cat.plan,
+        area: cat.area,
+        ...finalizeServiceLinePricing(catalogBase, 0),
+      };
+    }
+    const planAreaChanged = prev.plan !== cat.plan || prev.area !== cat.area;
+    if (planAreaChanged) {
+      return {
+        service: cat.service,
+        plan: cat.plan,
+        area: cat.area,
+        ...finalizeServiceLinePricing(catalogBase, prev.discount || 0),
+      };
+    }
+    const base = prev.baseAmount != null ? prev.baseAmount : catalogBase;
+    return {
+      service: cat.service,
+      plan: cat.plan,
+      area: cat.area,
+      ...finalizeServiceLinePricing(base, prev.discount || 0),
+    };
+  });
 }
 
 export type ServiceConfigMap = Record<string, { plan: string; area: string }>;
@@ -329,6 +407,8 @@ export function computePerServicePricing(
         plan,
         area,
         price: 0,
+        baseAmount: 0,
+        discount: 0,
         note: !plan ? 'Select service type' : 'Select area',
       });
       continue;
@@ -340,9 +420,16 @@ export function computePerServicePricing(
         plan,
         area,
         price: 0,
+        baseAmount: 0,
+        discount: 0,
         note: 'Rate not available for this area/type',
       });
-      items.push({ service, plan, area, amount: 0 });
+      items.push({
+        service,
+        plan,
+        area,
+        ...finalizeServiceLinePricing(0, 0),
+      });
       continue;
     }
     if (unit === 0) {
@@ -351,20 +438,35 @@ export function computePerServicePricing(
         plan,
         area,
         price: 0,
+        baseAmount: 0,
+        discount: 0,
         note:
           service === 'Hotel / Commercial'
             ? 'Inspection required'
             : 'Price after visit',
       });
-      items.push({ service, plan, area, amount: 0 });
+      items.push({
+        service,
+        plan,
+        area,
+        ...finalizeServiceLinePricing(0, 0),
+      });
       continue;
     }
-    lines.push({ service, plan, area, price: unit });
-    items.push({ service, plan, area, amount: unit });
+    const priced = finalizeServiceLinePricing(unit, 0);
+    lines.push({
+      service,
+      plan,
+      area,
+      price: priced.amount,
+      baseAmount: priced.baseAmount,
+      discount: priced.discount,
+    });
+    items.push({ service, plan, area, ...priced });
   }
 
   const total = lines.reduce((sum, line) => sum + line.price, 0);
-  return { total, lines, items };
+  return { total: roundMoney(total), lines, items };
 }
 
 export function getRateGstDetail(
@@ -468,37 +570,44 @@ export function serviceItemsToConfigMap(
   return map;
 }
 
-/** Align per-service line amounts with a manually overridden booking total. */
+/** Align per-service line amounts with a manually overridden booking total.
+ * Clears per-service discounts (total override replaces service-level pricing). */
 export function syncServiceItemAmountsToTotal(
   items: ServiceItemConfig[],
   total: number,
 ): ServiceItemConfig[] {
   if (!items.length) return items;
 
-  const target = Math.round(total * 100) / 100;
+  const target = roundMoney(total);
   if (items.length === 1) {
-    return [{ ...items[0], amount: target }];
+    return [{
+      ...items[0],
+      ...finalizeServiceLinePricing(target, 0),
+    }];
   }
 
   const autoTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
   if (autoTotal <= 0) {
     return items.map((item, index) => ({
       ...item,
-      amount: index === 0 ? target : 0,
+      ...finalizeServiceLinePricing(index === 0 ? target : 0, 0),
     }));
   }
 
-  const adjusted = items.map((item) => ({
-    ...item,
-    amount: Math.round(((item.amount || 0) / autoTotal) * target * 100) / 100,
-  }));
+  const adjusted = items.map((item) => {
+    const share = roundMoney(((item.amount || 0) / autoTotal) * target);
+    return {
+      ...item,
+      ...finalizeServiceLinePricing(share, 0),
+    };
+  });
   const sum = adjusted.reduce((s, item) => s + item.amount, 0);
-  const diff = Math.round((target - sum) * 100) / 100;
+  const diff = roundMoney(target - sum);
   if (diff !== 0) {
     const last = adjusted[adjusted.length - 1];
     adjusted[adjusted.length - 1] = {
       ...last,
-      amount: Math.round((last.amount + diff) * 100) / 100,
+      ...finalizeServiceLinePricing(roundMoney(last.amount + diff), 0),
     };
   }
   return adjusted;
@@ -515,9 +624,30 @@ export function priceLinesFromServiceItems(
       plan: item.plan,
       area: item.area,
       price: item.amount,
+      baseAmount: item.baseAmount,
+      discount: item.discount,
       note: template?.note,
     };
   });
+}
+
+/** Normalize API/legacy service_items into ServiceItemConfig with base/discount/amount. */
+export function normalizeServiceItemConfig(
+  item: Partial<ServiceItemConfig> & { service: string; plan: string; area: string; amount?: number; base_amount?: number },
+): ServiceItemConfig {
+  const amount = roundMoney(Number(item.amount ?? 0) || 0);
+  const explicitBase = item.baseAmount ?? item.base_amount;
+  const discount = Number(item.discount ?? 0) || 0;
+  const base =
+    explicitBase != null && !Number.isNaN(Number(explicitBase))
+      ? Number(explicitBase)
+      : amount + discount;
+  return {
+    service: item.service,
+    plan: item.plan,
+    area: item.area,
+    ...finalizeServiceLinePricing(base, discount),
+  };
 }
 
 /** Backfill per-service config from legacy single plan/area bookings. */

@@ -660,7 +660,13 @@ export interface ServiceItemConfig {
   service: string;
   plan: string;
   area: string;
+  /** Catalog / staff base before discount. */
+  baseAmount?: number;
+  /** Per-service discount (API may also send `discount`). */
+  discount?: number;
+  /** Net final amount used by ledger (API field `amount`). */
   amount: number;
+  base_amount?: number;
 }
 
 export interface ServiceTimelineVisit {

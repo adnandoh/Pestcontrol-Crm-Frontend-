@@ -7,6 +7,10 @@ interface RevenueModelFieldsProps {
   /** Show live pool estimate (create/edit). */
   showPreview?: boolean;
   eligiblePartnerCount?: number;
+  /** Hide booking-level discount; discounts are entered per service. */
+  hideBookingDiscount?: boolean;
+  /** Sum of per-service discounts (read-only display). */
+  serviceDiscountTotal?: number;
   readOnlySnapshots?: {
     payout_status?: string;
     visit_revenue_amount?: number | string;
@@ -36,6 +40,8 @@ export default function RevenueModelFields({
   onChange,
   showPreview = true,
   eligiblePartnerCount = 1,
+  hideBookingDiscount = false,
+  serviceDiscountTotal,
   readOnlySnapshots,
 }: RevenueModelFieldsProps) {
   const economics = inferEconomics(formData);
@@ -50,6 +56,10 @@ export default function RevenueModelFields({
   });
 
   const isLegacy = readOnlySnapshots?.payout_status === 'legacy_exempt';
+  const discountDisplay =
+    serviceDiscountTotal != null
+      ? serviceDiscountTotal
+      : Number(formData.discount_amount ?? 0) || 0;
 
   return (
     <div className="md:col-span-3 mt-2 rounded-lg border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
@@ -122,22 +132,31 @@ export default function RevenueModelFields({
             />
           </div>
           <div>
-            <label className="text-[11px] font-bold text-gray-700 mb-1 block">Discount ₹</label>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={formData.discount_amount ?? 0}
-              onChange={(e) => onChange('discount_amount', Number(e.target.value) || 0)}
-              className="w-full h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white"
-            />
+            <label className="text-[11px] font-bold text-gray-700 mb-1 block">
+              {hideBookingDiscount ? 'Service Discounts ₹' : 'Discount ₹'}
+            </label>
+            {hideBookingDiscount ? (
+              <div className="w-full h-9 px-2 text-sm border border-gray-200 rounded-lg bg-gray-50 flex items-center font-semibold text-gray-700">
+                {discountDisplay.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                <span className="ml-2 text-[10px] font-bold text-gray-400 uppercase">per service</span>
+              </div>
+            ) : (
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={formData.discount_amount ?? 0}
+                onChange={(e) => onChange('discount_amount', Number(e.target.value) || 0)}
+                className="w-full h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white"
+              />
+            )}
           </div>
         </div>
       )}
 
       {showPreview && !isLegacy && formData.payment_model !== 'salaried' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
-          <PreviewStat label="Visit revenue" value={preview.visitRevenue} />
+          <PreviewStat label="Visit revenue (net)" value={preview.visitRevenue} />
           <PreviewStat label="Partner share (40%)" value={preview.technicianPool} />
           <PreviewStat label="Company (60%)" value={preview.companyShare} />
           <PreviewStat

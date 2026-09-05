@@ -10,21 +10,30 @@ import {
   supportsAmcMode,
 } from '../../constants/bookingPropertyTypes';
 import {
+  finalizeServiceLinePricing,
   getAreaOptionsForService,
+  roundMoney,
+  summarizeServicePricing,
   type PricingConfig,
   type ServiceConfigMap,
+  type ServiceItemConfig,
 } from '../../utils/jobCardPricing';
 import { previewServiceSchedule } from '../../utils/bookingSchedule';
 
 interface PerServicePricingSectionProps {
   selectedPackages: string[];
   serviceConfigs: ServiceConfigMap;
+  serviceItems: ServiceItemConfig[];
   pricingConfig: PricingConfig;
   commercialType: string;
+  technicianSharePercent?: number;
   onPlanChange: (service: string, plan: string) => void;
   onAreaChange: (service: string, area: string) => void;
+  onBaseAmountChange: (service: string, baseAmount: number) => void;
+  onDiscountChange: (service: string, discount: number) => void;
   validationErrors?: string[];
   scheduleDate?: string;
+  showPricingFields?: boolean;
 }
 
 function areaOptionsForService(
@@ -39,32 +48,46 @@ function areaOptionsForService(
   return [...PROPERTY_LOCATIONS];
 }
 
+function inr(n: number): string {
+  return `₹${roundMoney(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
 const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
   selectedPackages,
   serviceConfigs,
+  serviceItems,
   pricingConfig,
   commercialType,
+  technicianSharePercent = 40,
   onPlanChange,
   onAreaChange,
+  onBaseAmountChange,
+  onDiscountChange,
   validationErrors = [],
   scheduleDate = '',
+  showPricingFields = true,
 }) => {
   if (selectedPackages.length === 0) {
     return null;
   }
 
+  const totals = summarizeServicePricing(serviceItems);
+  const techPct = Number(technicianSharePercent) || 40;
+  const companyPct = Math.max(0, roundMoney(100 - techPct));
+
   return (
     <div className="space-y-4">
       <div>
         <h4 className="text-[13px] font-bold text-gray-800 mb-1">
-          Selected Services Configuration
+          Service Pricing
         </h4>
         <p className="text-[11px] text-gray-500 mb-3">
-          Choose <strong>One Time</strong> or <strong>AMC package</strong> per service. Bed Bugs is always a <strong>2-service package</strong> (2nd visit after 15 days). Set booking date in Assignment & Payment to preview upcoming visits.
+          Each selected service has its own base price and discount. Technician/company shares are calculated from that service&apos;s final price — never by splitting the combined booking total.
         </p>
         <div className="space-y-4">
           {selectedPackages.map((service) => {
             const cfg = serviceConfigs[service] || { plan: '', area: '' };
+            const item = serviceItems.find((row) => row.service === service);
             const areaOptions = areaOptionsForService(service, pricingConfig, commercialType);
             const canAmc = supportsAmcMode(service);
             const mode: 'one_time' | 'amc' = isAmcPlan(cfg.plan) ? 'amc' : 'one_time';
@@ -72,6 +95,13 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
             const preview = cfg.plan
               ? previewServiceSchedule(service, cfg.plan, scheduleDate)
               : null;
+
+            const base = item?.baseAmount ?? item?.amount ?? 0;
+            const discount = item?.discount ?? 0;
+            const finalPrice = item?.amount ?? 0;
+            const discountTooHigh = discount > base + 0.001;
+            const techShare = roundMoney((finalPrice * techPct) / 100);
+            const companyShare = roundMoney(finalPrice - techShare);
 
             return (
               <div
@@ -83,7 +113,6 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* One Time vs AMC */}
                   <div>
                     <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide mb-1 block">
                       Service Mode *
@@ -115,7 +144,6 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                     )}
                   </div>
 
-                  {/* AMC package or termite note */}
                   <div>
                     {mode === 'amc' && canAmc ? (
                       <>
@@ -166,7 +194,65 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Schedule preview */}
+                {showPricingFields && cfg.plan && cfg.area && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide mb-1 block">
+                          Base Price ₹
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={base}
+                          onChange={(e) => onBaseAmountChange(service, Number(e.target.value) || 0)}
+                          className="w-full h-10 px-3 text-sm font-semibold border border-gray-300 rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide mb-1 block">
+                          Discount ₹
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          max={base}
+                          value={discount}
+                          onChange={(e) => onDiscountChange(service, Number(e.target.value) || 0)}
+                          className={`w-full h-10 px-3 text-sm font-semibold border rounded-lg bg-white ${
+                            discountTooHigh ? 'border-red-400' : 'border-gray-300'
+                          }`}
+                        />
+                        {discountTooHigh && (
+                          <p className="text-[10px] font-bold text-red-600 mt-1">
+                            Discount cannot be greater than the service price.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-emerald-100">
+                      <span className="text-[11px] font-bold text-gray-600 uppercase">Final Price</span>
+                      <span className="text-lg font-black text-emerald-900">{inr(finalPrice)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
+                        <div className="text-[9px] font-bold text-gray-500 uppercase">
+                          Technician Share ({techPct}%)
+                        </div>
+                        <div className="font-extrabold text-emerald-900">{inr(techShare)}</div>
+                      </div>
+                      <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
+                        <div className="text-[9px] font-bold text-gray-500 uppercase">
+                          Company Share ({companyPct}%)
+                        </div>
+                        <div className="font-extrabold text-emerald-900">{inr(companyShare)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {cfg.plan && cfg.area && preview && (
                   <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -219,6 +305,29 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
         </div>
       </div>
 
+      {showPricingFields && serviceItems.length > 0 && (
+        <div className="rounded-xl border-2 border-gray-800 bg-gray-900 text-white p-4 space-y-2">
+          <h5 className="text-[11px] font-black uppercase tracking-widest text-gray-300">Booking Total</h5>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-300">Subtotal</span>
+            <span className="font-bold">{inr(totals.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-300">Total Discount</span>
+            <span className="font-bold text-amber-300">− {inr(totals.totalDiscount)}</span>
+          </div>
+          <div className="flex justify-between text-base pt-2 border-t border-gray-700">
+            <span className="font-black">Final Amount</span>
+            <span className="font-black text-emerald-300">{inr(totals.finalAmount)}</span>
+          </div>
+          {selectedPackages.length > 1 && (
+            <p className="text-[10px] text-gray-400 pt-1">
+              Shares above are per service on that service&apos;s final price (not {inr(totals.finalAmount)} ÷ {selectedPackages.length}).
+            </p>
+          )}
+        </div>
+      )}
+
       {validationErrors.length > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3">
           {validationErrors.map((msg) => (
@@ -231,3 +340,6 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
 };
 
 export default PerServicePricingSection;
+
+// Re-export helper for callers that need clamp without importing utils twice
+export { finalizeServiceLinePricing };

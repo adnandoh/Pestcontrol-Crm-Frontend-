@@ -44,11 +44,15 @@ import {
   computeBookingGstSummary,
   computePerServicePricing,
   deriveServiceCategoryFromItems,
+  finalizeServiceLinePricing,
   getServicePackageOptions,
   legacyServiceConfigFromJob,
+  mergeCatalogIntoServiceItems,
+  normalizeServiceItemConfig,
   parsePackagesFromServiceType,
   priceLinesFromServiceItems,
   serviceItemsToConfigMap,
+  summarizeServicePricing,
   supportsAutoPricing,
   syncServiceItemAmountsToTotal,
   validateServiceConfigs,
@@ -71,6 +75,18 @@ import { isSocietyBooking, deriveSocietyContractDuration } from '../constants/bo
 import { getErrorMessage, logErrorForDev } from '../utils/errors';
 import { showAlert, notify } from '../utils/notify';
 import { FormErrorBanner } from '../components/errors';
+
+
+function serviceItemsMatchPrice(items: ServiceItemConfig[], price: number): boolean {
+  const sumAmount = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  if (Math.abs(sumAmount - price) <= 0.009) return true;
+  const sumNet = items.reduce((sum, item) => {
+    const base = Number(item.baseAmount ?? (item as any).base_amount ?? item.amount) || 0;
+    const discount = Number(item.discount) || 0;
+    return sum + Math.max(0, base - discount);
+  }, 0);
+  return Math.abs(sumNet - price) <= 0.009;
+}
 
 const EditJobCard: React.FC = () => {
   const navigate = useNavigate();
@@ -97,6 +113,8 @@ const EditJobCard: React.FC = () => {
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [serviceConfigs, setServiceConfigs] = useState<ServiceConfigMap>({});
   const [serviceItems, setServiceItems] = useState<ServiceItemConfig[]>([]);
+  const serviceItemsRef = React.useRef<ServiceItemConfig[]>([]);
+  serviceItemsRef.current = serviceItems;
   const [serviceConfigErrors, setServiceConfigErrors] = useState<string[]>([]);
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
@@ -200,13 +218,16 @@ const EditJobCard: React.FC = () => {
         }
       }
 
-      setPriceBreakdown(lines);
-      setServiceItems(items);
-      const category = deriveServiceCategoryFromItems(items);
-      const primaryArea = items.find((i) => i.area)?.area || '';
+      const merged = mergeCatalogIntoServiceItems(items, serviceItemsRef.current);
+      const totals = summarizeServicePricing(merged);
+      setPriceBreakdown(priceLinesFromServiceItems(merged, lines));
+      setServiceItems(merged);
+      const category = deriveServiceCategoryFromItems(merged);
+      const primaryArea = merged.find((i) => i.area)?.area || '';
       setFormData((prev) => ({
         ...prev,
-        price: total.toFixed(2),
+        price: totals.finalAmount.toFixed(2),
+        discount_amount: totals.totalDiscount,
         service_category: category,
         bhk_size: primaryArea || prev.bhk_size,
       }));
@@ -216,11 +237,13 @@ const EditJobCard: React.FC = () => {
 
     if (!supportsAutoPricing(formData.commercial_type, pricingConfig)) {
       const { items } = computePerServicePricing(serviceConfigs, pricingConfig);
-      const primaryArea = items.find((i) => i.area)?.area || '';
-      setServiceItems(items);
+      const merged = mergeCatalogIntoServiceItems(items, serviceItemsRef.current);
+      const primaryArea = merged.find((i) => i.area)?.area || '';
+      setServiceItems(merged);
       setFormData((prev) => ({
         ...prev,
-        service_category: deriveServiceCategoryFromItems(items),
+        service_category: deriveServiceCategoryFromItems(merged),
+        discount_amount: summarizeServicePricing(merged).totalDiscount,
         bhk_size: primaryArea || prev.bhk_size,
       }));
       setServiceConfigErrors(
@@ -333,19 +356,32 @@ const EditJobCard: React.FC = () => {
         const packages = parsePackagesFromServiceType(data.service_type || '');
         setSelectedPackages(packages);
         if (data.service_items?.length) {
-          setServiceConfigs(serviceItemsToConfigMap(data.service_items));
-          const itemsSum = data.service_items.reduce(
+          const normalizedItems = data.service_items.map((item: any) =>
+            normalizeServiceItemConfig(item),
+          );
+          setServiceConfigs(serviceItemsToConfigMap(normalizedItems));
+          const itemsSum = normalizedItems.reduce(
             (sum, item) => sum + (Number(item.amount) || 0),
             0,
           );
-          if (savedPrice > 0 && Math.abs(savedPrice - itemsSum) > 0.009) {
+          if (
+            savedPrice > 0
+            && Math.abs(savedPrice - itemsSum) > 0.009
+            && !serviceItemsMatchPrice(normalizedItems, savedPrice)
+          ) {
+            // Only redistribute when lines cannot explain the saved price
+            // (preserves service-level discounts when nets already match).
             setIsPriceManuallyEdited(true);
             savedPriceOnLoadRef.current = null;
-            const syncedItems = syncServiceItemAmountsToTotal(data.service_items, savedPrice);
+            const syncedItems = syncServiceItemAmountsToTotal(normalizedItems, savedPrice);
             setServiceItems(syncedItems);
             setPriceBreakdown(priceLinesFromServiceItems(syncedItems));
           } else {
-            setServiceItems(data.service_items);
+            setServiceItems(normalizedItems);
+            if (savedPrice > 0 && Math.abs(savedPrice - itemsSum) > 0.009) {
+              // Nets explain the price via base-discount; keep line discounts.
+              savedPriceOnLoadRef.current = null;
+            }
           }
         } else {
           let inferredType = data.service_category || '';
@@ -480,6 +516,42 @@ const EditJobCard: React.FC = () => {
     setIsPriceManuallyEdited(false);
   };
 
+  const syncTotalsFromItems = (items: ServiceItemConfig[]) => {
+    const totals = summarizeServicePricing(items);
+    setPriceBreakdown(priceLinesFromServiceItems(items));
+    setFormData((prev) => ({
+      ...prev,
+      price: totals.finalAmount.toFixed(2),
+      discount_amount: totals.totalDiscount,
+    }));
+    setIsPriceManuallyEdited(false);
+  };
+
+  const handleServiceBaseAmountChange = (service: string, baseAmount: number) => {
+    setServiceItems((prev) => {
+      const next = prev.map((item) => {
+        if (item.service !== service) return item;
+        return { ...item, ...finalizeServiceLinePricing(baseAmount, item.discount || 0) };
+      });
+      syncTotalsFromItems(next);
+      return next;
+    });
+  };
+
+  const handleServiceDiscountChange = (service: string, discount: number) => {
+    setServiceItems((prev) => {
+      const next = prev.map((item) => {
+        if (item.service !== service) return item;
+        return {
+          ...item,
+          ...finalizeServiceLinePricing(item.baseAmount ?? item.amount, discount),
+        };
+      });
+      syncTotalsFromItems(next);
+      return next;
+    });
+  };
+
   // Auto-calculate next service date (AMC +4 months, Bed Bug +15 days)
   useEffect(() => {
     if (loading || isNextDateManual) return;
@@ -539,21 +611,45 @@ const EditJobCard: React.FC = () => {
       setSubmitError('');
       // Ensure schedule_datetime is in ISO format
       const manualPrice = finalPrice;
-      const itemsForSubmit = isPriceManuallyEdited
-        ? syncServiceItemAmountsToTotal(serviceItems, manualPrice)
-        : serviceItems;
+      const shouldRedistribute =
+        isPriceManuallyEdited
+        && manualPrice > 0
+        && !serviceItemsMatchPrice(serviceItems, manualPrice);
+      const itemsForSubmit = (
+        shouldRedistribute
+          ? syncServiceItemAmountsToTotal(serviceItems, manualPrice)
+          : serviceItems
+      ).map((item) => ({
+        service: item.service,
+        plan: item.plan,
+        area: item.area,
+        base_amount: item.baseAmount,
+        discount: item.discount,
+        amount: item.amount,
+      }));
+      const pricingTotals = summarizeServicePricing(
+        itemsForSubmit.map((item) => normalizeServiceItemConfig(item as any)),
+      );
       const submitData = {
         ...formData,
-        price: manualPrice > 0 ? manualPrice.toFixed(2) : formData.price,
+        price: (shouldRedistribute && manualPrice > 0
+          ? manualPrice
+          : pricingTotals.finalAmount
+        ).toFixed(2),
+        discount_amount: pricingTotals.totalDiscount,
         job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
         contract_duration: isSocietyBooking(formData)
-          ? (formData.contract_duration || deriveSocietyContractDuration(itemsForSubmit))
+          ? (formData.contract_duration || deriveSocietyContractDuration(
+              itemsForSubmit.map((item) => normalizeServiceItemConfig(item as any)),
+            ))
           : formData.contract_duration,
         society_billing_type: isSocietyBooking(formData)
           ? (formData.society_billing_type || 'Paid')
           : null,
         service_items: itemsForSubmit,
-        service_category: deriveServiceCategoryFromItems(itemsForSubmit),
+        service_category: deriveServiceCategoryFromItems(
+          itemsForSubmit.map((item) => normalizeServiceItemConfig(item as any)),
+        ),
       };
       if (submitData.schedule_datetime) {
         // Create a dayjs object from the date part in IST
@@ -1039,12 +1135,17 @@ const EditJobCard: React.FC = () => {
                    <PerServicePricingSection
                      selectedPackages={selectedPackages}
                      serviceConfigs={serviceConfigs}
+                     serviceItems={serviceItems}
                      pricingConfig={pricingConfig}
                      commercialType={formData.commercial_type}
+                     technicianSharePercent={formData.technician_share_percent ?? 40}
                      onPlanChange={handleServicePlanChange}
                      onAreaChange={handleServiceAreaChange}
+                     onBaseAmountChange={handleServiceBaseAmountChange}
+                     onDiscountChange={handleServiceDiscountChange}
                      validationErrors={serviceConfigErrors}
                      scheduleDate={formData.schedule_datetime}
+                     showPricingFields={supportsAutoPricing(formData.commercial_type, pricingConfig)}
                    />
                 </div>
 
@@ -1262,6 +1363,8 @@ const EditJobCard: React.FC = () => {
                   onChange={(field, value) =>
                     handleInputChange(field as keyof JobCardFormData, value as never)
                   }
+                  hideBookingDiscount
+                  serviceDiscountTotal={summarizeServicePricing(serviceItems).totalDiscount}
                   readOnlySnapshots={
                     loadedJob
                       ? {
