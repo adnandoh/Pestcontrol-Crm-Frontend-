@@ -567,6 +567,8 @@ const TechnicianLedgerReport: React.FC = () => {
                       filters.settlement_status === value
                         ? value === 'complaints'
                           ? 'bg-rose-600 text-white'
+                          : value === 'history'
+                            ? 'bg-teal-700 text-white'
                           : 'bg-emerald-600 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
                     )}
@@ -576,6 +578,12 @@ const TechnicianLedgerReport: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {filters.settlement_status === 'history' && (
+              <div className="border-b border-teal-100 bg-teal-50 px-3 py-2 text-[11px] font-semibold text-teal-900">
+                Showing all Old Service Call records for this technician. Date range above does not hide these historical rows.
+              </div>
+            )}
 
             {settleMessage && (
               <div className="border-b border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
@@ -612,11 +620,15 @@ const TechnicianLedgerReport: React.FC = () => {
                 <p className="text-xs font-bold text-gray-500">
                   {filters.settlement_status === 'complaints'
                     ? 'No complaint calls found'
+                    : filters.settlement_status === 'history'
+                      ? 'No old service call records found'
                     : 'No bookings found'}
                 </p>
                 <p className="mt-0.5 text-[11px] text-gray-400">
                   {filters.settlement_status === 'complaints'
                     ? 'Complaint service calls for this technician will appear here.'
+                    : filters.settlement_status === 'history'
+                      ? 'Records moved to Old Service, or imported as legacy history, will appear here.'
                     : 'Widen the date range or clear filters.'}
                 </p>
               </div>
@@ -639,7 +651,7 @@ const TechnicianLedgerReport: React.FC = () => {
                 </ul>
 
                 <div className="hidden overflow-x-auto lg:block">
-                  <table className="w-full min-w-[1320px] text-left text-[11px]">
+                  <table className="w-full min-w-[1480px] text-left text-[11px]">
                     <thead className="bg-gray-50 text-[9px] uppercase tracking-wider text-gray-500">
                       <tr>
                         <th className="px-2 py-2 font-black">
@@ -655,13 +667,14 @@ const TechnicianLedgerReport: React.FC = () => {
                         <th className="px-3 py-2 font-black">Customer</th>
                         <th className="px-3 py-2 font-black">Client No.</th>
                         <th className="px-3 py-2 font-black">Property</th>
-                        <th className="px-3 py-2 font-black">Service</th>
-                        <th className="px-3 py-2 font-black">Type / #</th>
+                        <th className="min-w-[140px] px-3 py-2 font-black">Service</th>
+                        <th className="px-3 py-2 font-black">Technician</th>
+                        <th className="min-w-[130px] px-3 py-2 font-black">Type / #</th>
                         <th className="px-3 py-2 font-black">Visit / Pay</th>
-                        <th className="px-3 py-2 text-right font-black">Booking</th>
                         <th className="px-3 py-2 text-right font-black">Service ₹</th>
-                        <th className="px-3 py-2 text-right font-black">Share %</th>
-                        <th className="px-3 py-2 text-right font-black">Tech pay</th>
+                        <th className="px-3 py-2 text-right font-black">Tech 40%</th>
+                        <th className="px-3 py-2 text-right font-black">Company 60%</th>
+                        <th className="px-3 py-2 font-black">Status</th>
                         <th className="px-3 py-2 text-right font-black">Settled on</th>
                         <th className="px-3 py-2 font-black">Actions</th>
                       </tr>
@@ -926,8 +939,18 @@ const StatusPill = ({ status, done }: { status: string; done?: boolean }) => (
 );
 
 const TypePill = ({ label }: { label: string }) => (
-  <span className="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-black text-blue-700">
+  <span className="inline-flex items-center whitespace-nowrap rounded-md bg-blue-50 px-2 py-1 text-[10px] font-black text-blue-700 ring-1 ring-inset ring-blue-200/70">
     {label}
+  </span>
+);
+
+/** Orange highlight so service name stands out in the ledger table. */
+const ServiceName = ({ name }: { name?: string }) => (
+  <span
+    className="inline-flex max-w-full items-center rounded-md bg-orange-50 px-2 py-1 text-[11px] font-black leading-snug text-orange-700 ring-1 ring-inset ring-orange-200"
+    title={name || undefined}
+  >
+    <span className="truncate">{name || '—'}</span>
   </span>
 );
 
@@ -938,6 +961,38 @@ const visitLabel = (row: TechnicianLedgerRow) => {
   if (row.booking_type === 'one_time') return null;
   if (!row.planned_visits && !row.service_cycle) return null;
   return `V${row.service_cycle || '—'}/${row.planned_visits || '—'}`;
+};
+
+/** Normalize backend labels into a clear “Service 1 of 2” style string. */
+const serviceSequenceLabel = (row: TechnicianLedgerRow): string | null => {
+  const raw = (row.service_number || visitLabel(row) || '').trim();
+  if (!raw || raw === '—') return null;
+  if (/^one[-\s]?time$/i.test(raw)) return 'One-Time';
+  const vMatch = raw.match(/^V\s*(\d+|—)\s*\/\s*(\d+|—)$/i);
+  if (vMatch) return `Service ${vMatch[1]} of ${vMatch[2]}`;
+  const compact = raw.match(/^(\d+)\s*(?:of|\/)\s*(\d+)$/i);
+  if (compact) return `Service ${compact[1]} of ${compact[2]}`;
+  return raw;
+};
+
+/** Larger chip for visit sequence — e.g. Service 1 of 2. */
+const ServiceSequenceBadge = ({ row }: { row: TechnicianLedgerRow }) => {
+  const label = serviceSequenceLabel(row);
+  if (!label) return null;
+  const isOneTime = label === 'One-Time';
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1 text-[10px] font-black tracking-wide',
+        isOneTime
+          ? 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200'
+          : 'bg-violet-50 text-violet-800 ring-1 ring-inset ring-violet-200',
+      )}
+      title={label}
+    >
+      {label}
+    </span>
+  );
 };
 
 const SettlementPill = ({ row }: { row: TechnicianLedgerRow }) => {
@@ -1031,25 +1086,32 @@ const BookingRow = ({
       <td className="max-w-[90px] truncate px-3 py-1.5 text-gray-600">
         {row.property_type || '—'}
       </td>
-      <td className="px-3 py-1.5">
-        <p className="truncate font-semibold text-gray-800">{row.service_type || '—'}</p>
-        <p className="text-[10px] text-gray-500">{row.city || '—'}</p>
+      <td className="min-w-[140px] max-w-[200px] px-3 py-2 align-middle">
+        <div className="flex flex-col gap-1">
+          <ServiceName name={row.service_type} />
+          <p className="truncate pl-0.5 text-[10px] font-semibold text-gray-500">
+            {row.city || '—'}
+          </p>
+        </div>
       </td>
-      <td className="px-3 py-1.5">
-        <TypePill label={row.booking_type_label} />
-        <p className="mt-0.5 text-[9px] text-gray-500">
-          {row.service_number || visitLabel(row) || '—'}
-        </p>
+      <td className="max-w-[110px] truncate px-3 py-2 align-middle font-semibold text-gray-700">
+        {row.assigned_technicians || '—'}
+      </td>
+      <td className="min-w-[130px] px-3 py-2 align-middle">
+        <div className="flex flex-col items-start gap-1.5">
+          <TypePill label={row.booking_type_label} />
+          <ServiceSequenceBadge row={row} />
+        </div>
       </td>
       <td className="px-3 py-1.5">
         <VisitPayStatus row={row} />
       </td>
-      <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{money(row.booking_amount)}</td>
-      <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{money(row.visit_revenue)}</td>
-      <td className="px-3 py-1.5 text-right font-semibold text-gray-600">
-        {row.technician_share_percent || '40'}%
+      <td className="px-3 py-1.5 text-right font-semibold text-amber-800">{money(row.visit_revenue || row.booking_amount)}</td>
+      <td className="px-3 py-1.5 text-right font-black text-blue-700">{money(row.technician_share)}</td>
+      <td className="px-3 py-1.5 text-right font-bold text-emerald-700">{money(row.company_share)}</td>
+      <td className="px-3 py-1.5">
+        <SettlementPill row={row} />
       </td>
-      <td className="px-3 py-1.5 text-right font-black text-emerald-700">{money(row.technician_share)}</td>
       <td className="px-3 py-1.5 text-right text-gray-600">
         {row.settlement_date ? prettyDate(row.settlement_date) : '—'}
       </td>
@@ -1112,28 +1174,39 @@ const BookingCard = ({
         </div>
         <VisitPayStatus row={row} />
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-gray-500">
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <ServiceName name={row.service_type} />
         <TypePill label={row.booking_type_label} />
-        <span>{row.service_type || '—'}</span>
-        {row.property_type && <span>· {row.property_type}</span>}
-        {row.service_number && <span>· {row.service_number}</span>}
+        <ServiceSequenceBadge row={row} />
+        {row.assigned_technicians && row.assigned_technicians !== '—' && (
+          <span className="text-[10px] font-semibold text-gray-500">
+            · {row.assigned_technicians}
+          </span>
+        )}
+        {row.property_type && (
+          <span className="text-[10px] font-semibold text-gray-500">
+            · {row.property_type}
+          </span>
+        )}
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-lg bg-gray-50 p-2 text-center">
+      <div className="mt-2 grid grid-cols-2 gap-1.5 rounded-lg bg-gray-50 p-2 text-center sm:grid-cols-4">
         <div>
-          <p className="text-[9px] font-bold uppercase text-gray-400">Booking</p>
-          <p className="text-xs font-black">{money(row.booking_amount)}</p>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Service ₹</p>
+          <p className="text-xs font-black text-amber-800">{money(row.visit_revenue || row.booking_amount)}</p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase text-gray-400">Tech pay</p>
-          <p className="text-xs font-black text-emerald-700">{money(row.technician_share)}</p>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Tech 40%</p>
+          <p className="text-xs font-black text-blue-700">{money(row.technician_share)}</p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase text-gray-400">
-            {row.settlement_status === 'settled' ? 'Settled' : 'Unsettled'}
-          </p>
-          <p className="text-xs font-black text-rose-700">
-            {row.settlement_date ? prettyDate(row.settlement_date) : money(row.pending_amount)}
-          </p>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Company 60%</p>
+          <p className="text-xs font-black text-emerald-700">{money(row.company_share)}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-bold uppercase text-gray-400">Status</p>
+          <div className="mt-0.5 flex justify-center">
+            <SettlementPill row={row} />
+          </div>
         </div>
       </div>
       <div className="mt-2">

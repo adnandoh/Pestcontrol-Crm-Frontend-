@@ -240,9 +240,26 @@ const Quotations: React.FC = () => {
                 quotationsData?.results.map((q: Quotation) => (
                   <tr key={q.id} className="hover:bg-gray-50/80 transition-colors group">
                     <td className="px-4 py-4">
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-0.5">
                         <span className="text-sm font-bold text-blue-600">{q.quotation_no}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">{format(new Date(q.created_at), 'dd MMM yyyy')}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {format(new Date(q.created_at), 'dd MMM yyyy')}
+                        </span>
+                        {q.last_remark_at ? (
+                          <span
+                            className="mt-0.5 inline-flex max-w-[200px] items-center gap-1 text-[10px] font-semibold text-violet-700"
+                            title={format(new Date(q.last_remark_at), 'dd MMM yyyy, hh:mm a')}
+                          >
+                            <Clock className="h-3 w-3 shrink-0 text-violet-500" />
+                            <span className="truncate">
+                              Last Remark: {format(new Date(q.last_remark_at), 'dd MMM yyyy, hh:mm a')}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 text-[10px] font-medium text-gray-400">
+                            No Remark
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -287,7 +304,14 @@ const Quotations: React.FC = () => {
                                 return {
                                   ...prev,
                                   results: prev.results.map((row) =>
-                                    row.id === updated.id ? { ...row, notes: updated.notes } : row,
+                                    row.id === updated.id
+                                      ? {
+                                          ...row,
+                                          ...updated,
+                                          notes: updated.notes,
+                                          last_remark_at: updated.last_remark_at ?? null,
+                                        }
+                                      : row,
                                   ),
                                 };
                               },

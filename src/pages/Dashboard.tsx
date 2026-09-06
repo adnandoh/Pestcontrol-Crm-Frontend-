@@ -20,6 +20,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 import { Card, CardContent, PageLoading } from '../components/ui';
 import { RevenueTargetCard } from '../components/dashboard/RevenueTargetCard';
+import { RevenueSharingPanel } from '../components/dashboard/RevenueSharingPanel';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { DashboardStatisticsResponse } from '../types';
@@ -358,19 +359,21 @@ const Dashboard: React.FC = () => {
       ) && (
         <div className="space-y-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">
-            Selected date range — bookings / service / complaints by city
+            Selected date range — unique new bookings by city
           </p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wide text-indigo-700">
-                  Bookings
+                  New bookings
                 </span>
                 <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black text-indigo-800">
                   {stats?.range_booking_count ?? stats?.today_booking_count ?? 0}
                 </span>
               </div>
-              {(stats?.range_booking_city_stats?.length || 0) === 0 ? (
+              <p className="mb-2 text-[10px] font-medium text-gray-400">
+                One booking ID = 1 (excludes service calls & follow-ups)
+              </p>              {(stats?.range_booking_city_stats?.length || 0) === 0 ? (
                 <p className="text-[11px] text-gray-400">None in range</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
@@ -562,6 +565,8 @@ const Dashboard: React.FC = () => {
           onRetry={handleRefresh}
         />
       </div>
+
+      <RevenueSharingPanel stats={stats} loading={isLoading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up delay-400">
         {/* 📍 6. SMART INSIGHTS */}

@@ -81,6 +81,19 @@ const QuotationRemarkButton: React.FC<QuotationRemarkButtonProps> = ({
             <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-3 py-2.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Current remark</p>
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{existing}</p>
+              {quotation.last_remark_at ? (
+                <p className="mt-2 text-[10px] font-semibold text-violet-600">
+                  Last Remark: {new Date(quotation.last_remark_at).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata',
+                  })}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

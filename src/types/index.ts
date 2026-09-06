@@ -921,9 +921,43 @@ export interface DashboardStatisticsResponse {
     property_type: string;
     count: number;
   }>;
+  sharing_breakdown?: RevenueSharingBreakdown;
   status: string;
   timestamp: string;
   cache_hit: boolean;
+}
+
+export interface RevenueSharingDayRow {
+  date: string;
+  bookings: number;
+  revenue: number;
+  technician_share: number;
+  company_share: number;
+}
+
+export interface RevenueSharingMonthRow {
+  year: number;
+  month: number;
+  month_label: string;
+  bookings: number;
+  revenue: number;
+  technician_share: number;
+  company_share: number;
+}
+
+export interface RevenueSharingBreakdown {
+  from: string;
+  to: string;
+  technician_percent: number;
+  company_percent: number;
+  summary: {
+    bookings: number;
+    revenue: number;
+    technician_share: number;
+    company_share: number;
+  };
+  daily: RevenueSharingDayRow[];
+  monthly: RevenueSharingMonthRow[];
 }
 
 export interface DashboardCounts {
@@ -1226,6 +1260,8 @@ export interface Quotation {
   created_by_name?: string;
   license_number: string;
   notes?: string;
+  /** ISO datetime of latest remark (Asia/Kolkata); null when no remark. */
+  last_remark_at?: string | null;
   terms_and_conditions?: string;
   items: QuotationItem[];
   scopes: QuotationScope[];
