@@ -430,16 +430,26 @@ class EnhancedApiService {
         ).toString()}`
       : cacheKey;
 
+    const onlyAssignable = (rows: Technician[] | unknown): Technician[] => {
+      const list = Array.isArray(rows) ? rows : [];
+      return list.filter(
+        (tech) =>
+          tech?.is_active !== false &&
+          tech?.presence_status !== 'suspended',
+      );
+    };
+
     if (options?.fresh || options?.jobId || options?.cityId || options?.cityName) {
-      return this.retryRequest(() =>
+      const rows = await this.retryRequest(() =>
         this.makeRequest(
           queryKey,
           () => this.api.get<Technician[]>(cacheKey, { params }),
         ),
       );
+      return onlyAssignable(rows);
     }
 
-    return this.cachedRequest(
+    const rows = await this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
@@ -449,6 +459,7 @@ class EnhancedApiService {
       ),
       5 * 60 * 1000,
     );
+    return onlyAssignable(rows);
   }
 
   async createTechnician(data: Partial<Technician>): Promise<Technician> {

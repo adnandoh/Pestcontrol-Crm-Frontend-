@@ -88,7 +88,14 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
         fresh: true,
         jobId: booking?.id,
       });
-      setTechnicians(activeTechnicians);
+      // Hard client filter — never list inactive/suspended staff in assign popup.
+      setTechnicians(
+        (Array.isArray(activeTechnicians) ? activeTechnicians : []).filter(
+          (tech) =>
+            tech.is_active !== false &&
+            tech.presence_status !== 'suspended',
+        ),
+      );
     } catch (err) {
       setAssignError({
         message: 'Failed to load technicians. Please try again.',
