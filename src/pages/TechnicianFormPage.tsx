@@ -8,6 +8,7 @@ import type { City, Technician } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { showAlert } from '../utils/notify';
 import TechnicianMonthlyPerformancePanel from '../components/crm/TechnicianMonthlyPerformancePanel';
+import { SERVICE_TYPES } from '../constants/pricing';
 
 const fieldClass =
   'w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600';
@@ -20,6 +21,7 @@ type FormState = {
   age: string;
   alternative_mobile: string;
   service_city_ids: number[];
+  base_services: string[];
   is_active: boolean;
   technician_type: 'partner' | 'salaried';
   branch: string;
@@ -30,12 +32,15 @@ type FormState = {
   security_deposit_amount: string;
 };
 
+const BASE_SERVICE_OPTIONS = Object.keys(SERVICE_TYPES) as string[];
+
 const emptyForm: FormState = {
   name: '',
   mobile: '',
   age: '',
   alternative_mobile: '',
   service_city_ids: [],
+  base_services: [],
   is_active: true,
   technician_type: 'partner',
   branch: '',
@@ -82,6 +87,11 @@ const TechnicianFormPage: React.FC = () => {
           age: tech.age?.toString() || '',
           alternative_mobile: tech.alternative_mobile || '',
           service_city_ids: fromM2M,
+          base_services: tech.base_services?.length
+            ? [...tech.base_services]
+            : tech.skills?.length
+              ? [...tech.skills]
+              : [],
           is_active: tech.is_active,
           technician_type: tech.technician_type || 'partner',
           branch: tech.branch || '',
@@ -129,6 +139,15 @@ const TechnicianFormPage: React.FC = () => {
     );
   };
 
+  const toggleBaseService = (service: string) => {
+    setField(
+      'base_services',
+      form.base_services.includes(service)
+        ? form.base_services.filter((s) => s !== service)
+        : [...form.base_services, service],
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const mobile = form.mobile.replace(/\D/g, '').slice(0, 10);
@@ -146,6 +165,7 @@ const TechnicianFormPage: React.FC = () => {
           ? form.alternative_mobile.replace(/\D/g, '').slice(0, 10)
           : '',
         service_city_ids: form.service_city_ids,
+        base_services: form.base_services,
         is_active: form.is_active,
       };
 
@@ -328,6 +348,42 @@ const TechnicianFormPage: React.FC = () => {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className={labelClass}>Base Services</label>
+              <p className="mb-2 text-xs text-gray-500">
+                Select the pest services this technician is qualified to handle. Partner App
+                New Bookings only show matching services. Leave empty to allow all services
+                until configured.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {BASE_SERVICE_OPTIONS.map((service) => {
+                  const checked = form.base_services.includes(service);
+                  return (
+                    <label
+                      key={service}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                        checked
+                          ? 'border-blue-300 bg-blue-50 text-blue-900'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleBaseService(service)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-600"
+                      />
+                      {service}
+                    </label>
+                  );
+                })}
+              </div>
+              {form.base_services.length > 0 && (
+                <p className="mt-2 text-xs font-medium text-blue-700">
+                  Selected: {form.base_services.join(' · ')}
+                </p>
+              )}
             </div>
             <div>
               <label className={labelClass}>Branch</label>

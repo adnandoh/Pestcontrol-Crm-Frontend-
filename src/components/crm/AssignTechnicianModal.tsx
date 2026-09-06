@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone, Search } from 'lucide-react';
+import { X, User, Briefcase, ChevronRight, Loader2, AlertCircle, MapPin, Clock, Phone, Search, Wrench } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, Technician } from '../../types';
 import {
@@ -12,6 +12,45 @@ import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { notify } from '../../utils/notify';
 import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
+
+/** Normalize booking / tech service labels for overlap checks. */
+function serviceMatchKey(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/／/g, '/')
+    .trim();
+}
+
+function bookingServiceLabels(job: JobCard | null): string[] {
+  if (!job) return [];
+  const fromItems = (job.service_items || [])
+    .map((item) => String((item as { service?: string })?.service || '').trim())
+    .filter(Boolean);
+  if (fromItems.length) return [...new Set(fromItems)];
+  const source = String((job as JobCard & { source_service?: string }).source_service || '').trim();
+  if (source) return [source];
+  return String(job.service_type || '')
+    .split(/[,|]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function techBaseServices(tech: Technician): string[] {
+  if (tech.base_services?.length) return tech.base_services;
+  if (tech.skills?.length) return tech.skills;
+  return [];
+}
+
+function techCoversBooking(tech: Technician, bookingServices: string[]): boolean {
+  const services = techBaseServices(tech);
+  if (!services.length || !bookingServices.length) return false;
+  const allowed = new Set(services.map(serviceMatchKey));
+  return bookingServices.some((s) => {
+    const key = serviceMatchKey(s);
+    return [...allowed].some((a) => a === key || a.includes(key) || key.includes(a));
+  });
+}
 
 interface AssignTechnicianModalProps {
   isOpen: boolean;
@@ -92,14 +131,26 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     }
   };
 
+  const bookingServices = bookingServiceLabels(jobCard);
+
   const filteredTechnicians = technicians.filter((tech) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
     const mobile = (tech.mobile || tech.phone || '').replace(/\D/g, '');
+    const services = techBaseServices(tech).join(' ').toLowerCase();
     return (
       tech.name.toLowerCase().includes(q) ||
-      mobile.includes(q.replace(/\D/g, ''))
+      mobile.includes(q.replace(/\D/g, '')) ||
+      services.includes(q)
     );
+  });
+
+  // Qualified (matching base services) first, then others — still all assignable.
+  const orderedTechnicians = [...filteredTechnicians].sort((a, b) => {
+    const aMatch = techCoversBooking(a, bookingServices) ? 0 : 1;
+    const bMatch = techCoversBooking(b, bookingServices) ? 0 : 1;
+    if (aMatch !== bMatch) return aMatch - bMatch;
+    return a.name.localeCompare(b.name);
   });
 
   if (!isOpen) return null;
@@ -165,9 +216,27 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           )}
 
           <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug">
-            All active technicians are listed. Service Areas are shown for reference only —
-            CRM desk can assign anyone to this booking.
+            All active technicians are listed. Base Services and Service Areas are shown for
+            reference — CRM desk can still assign anyone. Matching Base Services appear first.
           </div>
+
+          {bookingServices.length > 0 && (
+            <div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900 leading-snug">
+              <span className="font-black uppercase tracking-wide text-[10px] text-indigo-700">
+                Booking services
+              </span>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {bookingServices.map((svc) => (
+                  <span
+                    key={svc}
+                    className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-bold text-indigo-800"
+                  >
+                    {svc}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {jobCard?.parent_job ? (
             <div className="mb-4 p-3 bg-violet-50 border border-violet-100 rounded-xl text-[11px] text-violet-900 leading-snug">
@@ -216,9 +285,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 </p>
               </div>
             ) : (
-              filteredTechnicians.map((tech) => {
+              orderedTechnicians.map((tech) => {
                 // Informational only — CRM desk assign has no active-job capacity limit.
                 const workload = tech.active_jobs || 0;
+                const services = techBaseServices(tech);
+                const covers = techCoversBooking(tech, bookingServices);
 
                 return (
                   <button
@@ -229,6 +300,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                     title="Click to assign — no job limit"
                     className={cn(
                       "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-center justify-between",
+                      covers && "border-emerald-300 ring-1 ring-emerald-100",
                       assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
                       assigning !== null && assigning !== tech.id && "opacity-60"
                     )}
@@ -241,6 +313,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                       <div className="min-w-0">
                         <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-none mb-1">
                           {tech.name}
+                          {covers && (
+                            <span className="ml-2 inline-flex align-middle rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-800">
+                              Matches booking
+                            </span>
+                          )}
                         </h4>
                         <div className="flex items-center gap-2">
                          <div className="flex flex-col gap-1.5">
@@ -258,6 +335,15 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                                 phone={tech.mobile || tech.phone}
                                 className="text-[10px] font-bold text-gray-500"
                               />
+                            </span>
+
+                            <span className="text-[10px] font-bold text-violet-700 flex items-start gap-1">
+                              <Wrench className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span className="leading-snug">
+                                {services.length > 0
+                                  ? services.join(' · ')
+                                  : 'All services (not configured)'}
+                              </span>
                             </span>
 
                             {(tech.service_cities && tech.service_cities.length > 0

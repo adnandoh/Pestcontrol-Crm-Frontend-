@@ -50,6 +50,9 @@ export interface Technician {
   pan?: string;
   security_deposit_amount?: number | string;
   security_deposit_status?: 'pending' | 'collected' | 'refunded';
+  /** Canonical pest services this technician handles (Termite, Rodent, …). */
+  base_services?: string[];
+  /** @deprecated Prefer base_services — kept in sync by the API. */
   skills?: string[];
   star_rating?: number | string;
   presence_status?: 'online' | 'offline' | 'busy' | 'on_service' | 'on_leave' | 'suspended';
