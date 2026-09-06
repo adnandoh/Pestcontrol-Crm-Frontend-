@@ -157,7 +157,7 @@ export const RevenueTargetCard: React.FC<RevenueTargetCardProps> = ({
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-50">Monthly Target</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Target you&apos;ve set for each month
+            New booking revenue only (service calls excluded)
           </p>
           <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
             {monthLabel}
