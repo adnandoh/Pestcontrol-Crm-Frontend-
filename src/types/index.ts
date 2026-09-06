@@ -886,6 +886,21 @@ export interface DashboardStatisticsResponse {
     city: string;
     count: number;
   }>;
+  range_booking_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
+  range_service_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
+  range_complaint_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
+  range_booking_count?: number;
+  range_service_call_count?: number;
+  range_complaint_call_count?: number;
   today_city_stats?: Array<{
     city: string;
     count: number;

@@ -350,23 +350,92 @@ const Dashboard: React.FC = () => {
           )}
         </section>
       </div>
-      {(stats?.city_stats?.length || 0) > 0 && (
-        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-          <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-gray-400">
-            Selected date range (all jobs)
+      {(
+        (stats?.range_booking_city_stats?.length || 0) > 0
+        || (stats?.range_service_city_stats?.length || 0) > 0
+        || (stats?.range_complaint_city_stats?.length || 0) > 0
+        || (stats?.city_stats?.length || 0) > 0
+      ) && (
+        <div className="space-y-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+            Selected date range — bookings / service / complaints by city
           </p>
-          <div className="flex flex-wrap gap-2">
-            {(stats?.city_stats || []).map((row) => (
-              <span
-                key={`range-${row.city}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 text-[11px] font-bold text-gray-700"
-              >
-                <span className="text-gray-900">{row.city}</span>
-                <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-black tabular-nums">
-                  {row.count}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-indigo-700">
+                  Bookings
                 </span>
-              </span>
-            ))}
+                <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black text-indigo-800">
+                  {stats?.range_booking_count ?? stats?.today_booking_count ?? 0}
+                </span>
+              </div>
+              {(stats?.range_booking_city_stats?.length || 0) === 0 ? (
+                <p className="text-[11px] text-gray-400">None in range</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {(stats?.range_booking_city_stats || []).map((row) => (
+                    <span
+                      key={`rb-${row.city}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-[11px] font-bold text-indigo-800"
+                    >
+                      {row.city}
+                      <span className="tabular-nums">{row.count}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                  Service calls
+                </span>
+                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-800">
+                  {stats?.range_service_call_count ?? stats?.today_service_call_count ?? 0}
+                </span>
+              </div>
+              {(stats?.range_service_city_stats?.length || 0) === 0 ? (
+                <p className="text-[11px] text-gray-400">None in range</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {(stats?.range_service_city_stats || []).map((row) => (
+                    <span
+                      key={`rs-${row.city}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-800"
+                    >
+                      {row.city}
+                      <span className="tabular-nums">{row.count}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-rose-700">
+                  Complaints
+                </span>
+                <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-black text-rose-800">
+                  {stats?.range_complaint_call_count ?? stats?.today_complaint_call_count ?? 0}
+                </span>
+              </div>
+              {(stats?.range_complaint_city_stats?.length || 0) === 0 ? (
+                <p className="text-[11px] text-gray-400">None in range</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {(stats?.range_complaint_city_stats || []).map((row) => (
+                    <span
+                      key={`rc-${row.city}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-100 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-800"
+                    >
+                      {row.city}
+                      <span className="tabular-nums">{row.count}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
