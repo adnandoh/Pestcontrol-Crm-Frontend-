@@ -15,6 +15,11 @@ const fieldClass =
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700';
 const selectClass = fieldClass;
 
+/** Pest services only — Hotel / Commercial is a property category, not a base service. */
+const BASE_SERVICE_OPTIONS = (Object.keys(SERVICE_TYPES) as string[]).filter(
+  (name) => name !== 'Hotel / Commercial',
+);
+
 type FormState = {
   name: string;
   mobile: string;
@@ -32,15 +37,14 @@ type FormState = {
   security_deposit_amount: string;
 };
 
-const BASE_SERVICE_OPTIONS = Object.keys(SERVICE_TYPES) as string[];
-
 const emptyForm: FormState = {
   name: '',
   mobile: '',
   age: '',
   alternative_mobile: '',
   service_city_ids: [],
-  base_services: [],
+  // Technicians handle all pest work by default; staff can narrow later.
+  base_services: [...BASE_SERVICE_OPTIONS],
   is_active: true,
   technician_type: 'partner',
   branch: '',
@@ -81,17 +85,22 @@ const TechnicianFormPage: React.FC = () => {
       .getTechnician(techId)
       .then((tech) => {
         const fromM2M = (tech.service_cities || []).map((c) => c.id);
+        const rawServices = tech.base_services?.length
+          ? [...tech.base_services]
+          : tech.skills?.length
+            ? [...tech.skills]
+            : [];
+        const cleaned = rawServices.filter(
+          (s) => s && s !== 'Hotel / Commercial' && BASE_SERVICE_OPTIONS.includes(s),
+        );
         setForm({
           name: tech.name || '',
           mobile: tech.mobile || '',
           age: tech.age?.toString() || '',
           alternative_mobile: tech.alternative_mobile || '',
           service_city_ids: fromM2M,
-          base_services: tech.base_services?.length
-            ? [...tech.base_services]
-            : tech.skills?.length
-              ? [...tech.skills]
-              : [],
+          // Empty / legacy → all pest services selected (current default).
+          base_services: cleaned.length ? cleaned : [...BASE_SERVICE_OPTIONS],
           is_active: tech.is_active,
           technician_type: tech.technician_type || 'partner',
           branch: tech.branch || '',
@@ -352,9 +361,8 @@ const TechnicianFormPage: React.FC = () => {
             <div className="md:col-span-2 lg:col-span-3">
               <label className={labelClass}>Base Services</label>
               <p className="mb-2 text-xs text-gray-500">
-                Select the pest services this technician is qualified to handle. Partner App
-                New Bookings only show matching services. Leave empty to allow all services
-                until configured.
+                Pest services this technician can handle. All are selected by default.
+                Uncheck only if you want Partner App New Bookings limited to specific services.
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {BASE_SERVICE_OPTIONS.map((service) => {

@@ -944,15 +944,21 @@ const TypePill = ({ label }: { label: string }) => (
   </span>
 );
 
-/** Orange highlight so service name stands out in the ledger table. */
-const ServiceName = ({ name }: { name?: string }) => (
-  <span
-    className="inline-flex max-w-full items-center rounded-md bg-orange-50 px-2 py-1 text-[11px] font-black leading-snug text-orange-700 ring-1 ring-inset ring-orange-200"
-    title={name || undefined}
-  >
-    <span className="truncate">{name || '—'}</span>
-  </span>
-);
+/**
+ * Pest / booking service label — plain text (not a colored chip).
+ * Orange is reserved for visit sequence (“Service 1 of 2”) in Type / #.
+ */
+const ServiceName = ({ name }: { name?: string }) => {
+  const raw = (name || '').trim();
+  if (!raw) {
+    return <span className="text-[11px] font-semibold text-gray-500">—</span>;
+  }
+  return (
+    <span className="truncate text-[11px] font-semibold text-gray-800" title={raw}>
+      {raw}
+    </span>
+  );
+};
 
 const visitLabel = (row: TechnicianLedgerRow) => {
   if (row.booking_type_label === '2-Service Package') {
@@ -975,7 +981,7 @@ const serviceSequenceLabel = (row: TechnicianLedgerRow): string | null => {
   return raw;
 };
 
-/** Larger chip for visit sequence — e.g. Service 1 of 2. */
+/** Orange chip for visit sequence only — e.g. Service 1 of 2 (not booking type). */
 const ServiceSequenceBadge = ({ row }: { row: TechnicianLedgerRow }) => {
   const label = serviceSequenceLabel(row);
   if (!label) return null;
@@ -986,7 +992,7 @@ const ServiceSequenceBadge = ({ row }: { row: TechnicianLedgerRow }) => {
         'inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1 text-[10px] font-black tracking-wide',
         isOneTime
           ? 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200'
-          : 'bg-violet-50 text-violet-800 ring-1 ring-inset ring-violet-200',
+          : 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200',
       )}
       title={label}
     >
