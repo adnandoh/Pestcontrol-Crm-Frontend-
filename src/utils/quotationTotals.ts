@@ -31,8 +31,8 @@ export function gstBreakdown(
 
 /**
  * Resolve quotation money fields for display and save.
- * Line items are the source of truth when they have amounts; contract_amount applies
- * only when it exceeds the items subtotal (full AMC package price).
+ * Line items are the source of truth when they have amounts; contract_amount is the
+ * fallback package price used only when no line carries an amount.
  */
 export function resolveQuotationTotals(quotation: {
   items?: QuotationItem[];
@@ -73,10 +73,10 @@ export function resolveQuotationTotals(quotation: {
 
   const effectiveContract = contractLooksLikeVisitCount ? 0 : storedContract;
 
+  // Priced line items always win; contract_amount is only the fallback for a
+  // quotation whose lines carry no price.
   let total_amount = itemsSubtotal;
-  if (quotation.is_amc && effectiveContract > total_amount) {
-    total_amount = effectiveContract;
-  } else if (total_amount <= 0 && effectiveContract > 0) {
+  if (total_amount <= 0 && effectiveContract > 0) {
     total_amount = effectiveContract;
   } else if (total_amount <= 0) {
     total_amount = Math.max(
@@ -88,9 +88,9 @@ export function resolveQuotationTotals(quotation: {
   const taxable_amount = Math.max(0, total_amount - discount);
   const gst = gstBreakdown(taxable_amount, gstPercent, priceIncludesGst);
   const grand_total = gst.total_with_gst;
-  const contract_amount = quotation.is_amc
-    ? Math.max(effectiveContract, grand_total)
-    : 0;
+  // Echo back exactly what the operator entered. Raising this to the grand total
+  // filled in a field they had left blank and then blocked every price reduction.
+  const contract_amount = quotation.is_amc ? effectiveContract : 0;
 
   return {
     itemsSubtotal,

@@ -133,12 +133,20 @@ const CreateQuotation: React.FC = () => {
         existingQuotation.items || [],
         existingQuotation.template_service_type,
       );
+      // A saved is_amc can disagree with the plans on the lines: older records kept
+      // the flag after every plan was moved to One Time. Trust the plans, so the form
+      // behaves the way the screen reads rather than the way the flag remembers.
+      const flags = configs.length ? deriveQuotationFlags(configs) : null;
+      const is_amc = flags ? flags.is_amc : Boolean(existingQuotation.is_amc);
+      const visit_count = flags?.is_amc
+        ? flags.visit_count
+        : Number(existingQuotation.visit_count ?? 1);
       const totals = resolveQuotationTotalsFromForm(
         sortedItems,
         Number(existingQuotation.discount ?? 0),
-        Boolean(existingQuotation.is_amc),
+        is_amc,
         Number(existingQuotation.contract_amount ?? 0),
-        Number(existingQuotation.visit_count ?? 1),
+        visit_count,
         Number(existingQuotation.gst_percent ?? 18),
         existingQuotation.price_includes_gst !== false,
       );
@@ -146,6 +154,8 @@ const CreateQuotation: React.FC = () => {
         ...existingQuotation,
         items: sortedItems,
         scopes: resolvedScopes,
+        is_amc,
+        visit_count,
         gst_percent: totals.gst_percent,
         price_includes_gst: totals.price_includes_gst,
         total_amount: totals.total_amount,
@@ -294,6 +304,8 @@ const CreateQuotation: React.FC = () => {
       enhancedApiService.updateQuotation(Number(id), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      // Without this the edit form and the preview re-read the pre-save copy.
+      queryClient.invalidateQueries({ queryKey: ['quotation', id] });
       if (previewAfterSave && id) {
         navigate(`/quotations/preview/${id}`);
       } else {
@@ -937,8 +949,9 @@ const CreateQuotation: React.FC = () => {
                       className="bg-white font-bold"
                     />
                     <p className="text-[10px] text-gray-500">
-                      Optional package price. Leave blank to use the line-item total above. Do not
-                      enter visit count here.
+                      Optional package price, used only when no service line above has a
+                      Rate. Whenever the lines are priced, their total is the quotation
+                      price. Do not enter visit count here.
                     </p>
                   </div>
                 </div>
