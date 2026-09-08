@@ -75,6 +75,48 @@ describe('resolveQuotationTotals', () => {
     expect(t.base_amount).toBe(8474.58);
   });
 
+  it('does not inflate the price when "Price includes GST" is toggled repeatedly', () => {
+    // Reported as "select, unselect, select again and the price doubles". Each pass
+    // fed the previous grand total back in as the new base, compounding by 1.18.
+    const items = [line(39432.77)];
+    let contract = 46530.67; // stale value left by the old auto-fill
+    const seen: number[] = [];
+
+    for (let i = 0; i < 6; i += 1) {
+      const t = resolveQuotationTotals({
+        items,
+        is_amc: true,
+        visit_count: 12,
+        contract_amount: contract,
+        gst_percent: 18,
+        price_includes_gst: i % 2 === 0,
+      });
+      contract = t.contract_amount; // fed back exactly as the form does
+      seen.push(t.grand_total);
+    }
+
+    expect(seen.filter((_, i) => i % 2 === 0)).toEqual([39432.77, 39432.77, 39432.77]);
+    expect(seen.filter((_, i) => i % 2 === 1)).toEqual([46530.67, 46530.67, 46530.67]);
+    expect(contract).toBe(46530.67);
+  });
+
+  it('does not grow an unpriced quotation by the GST rate on every save', () => {
+    let stored = { total_amount: 1000, grand_total: 1180 };
+
+    for (let i = 0; i < 5; i += 1) {
+      const t = resolveQuotationTotals({
+        items: [line(0)],
+        gst_percent: 18,
+        price_includes_gst: false,
+        ...stored,
+      });
+      stored = { total_amount: t.total_amount, grand_total: t.grand_total };
+    }
+
+    expect(stored.total_amount).toBe(1000);
+    expect(stored.grand_total).toBe(1180);
+  });
+
   it('adds GST on top when the price excludes it', () => {
     const t = resolveQuotationTotals({
       items: [line(10000)],

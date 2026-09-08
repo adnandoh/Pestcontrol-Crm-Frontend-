@@ -79,10 +79,10 @@ export function resolveQuotationTotals(quotation: {
   if (total_amount <= 0 && effectiveContract > 0) {
     total_amount = effectiveContract;
   } else if (total_amount <= 0) {
-    total_amount = Math.max(
-      Number(quotation.total_amount || 0),
-      Number(quotation.grand_total || 0),
-    );
+    // grand_total is only a last resort for legacy rows that never stored a
+    // total_amount. Taking max() of the two made an ex-GST grand total become the
+    // next base, inflating the price by the GST rate on every save.
+    total_amount = Number(quotation.total_amount || 0) || Number(quotation.grand_total || 0);
   }
 
   const taxable_amount = Math.max(0, total_amount - discount);
