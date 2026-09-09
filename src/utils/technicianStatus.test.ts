@@ -54,8 +54,8 @@ describe('technician status', () => {
     });
 
     it('on-leave staff remain listable for read-only pickers', () => {
-      // The ledger report and complaint form still have to reach someone who
-      // is merely away today. Suspended stays hidden there too.
+      // The complaint form still has to reach someone who is merely away
+      // today. Suspended stays hidden there too. The ledger uses assignable.
       expect(isTechnicianListable('active')).toBe(true);
       expect(isTechnicianListable('on_leave')).toBe(true);
       expect(isTechnicianListable('suspended')).toBe(false);

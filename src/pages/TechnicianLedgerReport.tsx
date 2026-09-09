@@ -93,9 +93,9 @@ const TechnicianLedgerReport: React.FC = () => {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // A ledger still has to be readable for someone who is away this week, so
-    // this picker keeps on-leave technicians even though assign drops them.
-    enhancedApiService.getActiveTechnicians({ includeOnLeave: true })
+    // Ledger picker matches assign: only Active technicians (not on leave,
+    // suspended, or inactive).
+    enhancedApiService.getActiveTechnicians()
       .then((rows) => {
         setTechnicians(rows);
         setFilters((current) => ({

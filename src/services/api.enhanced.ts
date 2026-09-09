@@ -421,9 +421,10 @@ class EnhancedApiService {
    * Technicians the desk may assign work to: on-leave and suspended are left
    * out both server-side and here.
    *
-   * `includeOnLeave` is for read-only pickers (ledger report, complaint form)
+   * `includeOnLeave` is for the complaint form and other read-only pickers
    * that are not handing out work and still need to reach someone who is away
-   * today. Suspended stays hidden either way.
+   * today. Suspended stays hidden either way. The technician ledger does not
+   * use this flag — it only lists Active technicians.
    */
   async getActiveTechnicians(options?: {
     fresh?: boolean;

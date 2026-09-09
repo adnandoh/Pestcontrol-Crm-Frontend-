@@ -74,10 +74,11 @@ export function isTechnicianAssignable(value: string | null | undefined): boolea
 }
 
 /**
- * Whether this technician belongs in a read-only picker — the ledger report or
- * the complaint form. Looser than `isTechnicianAssignable` on purpose: you
- * still need to pull the ledger of someone who is merely away this week.
- * Suspended stays hidden, matching `?include_on_leave=1` on the API.
+ * Whether this technician belongs in a looser read-only picker (e.g. the
+ * complaint form). Looser than `isTechnicianAssignable` on purpose: you may
+ * still need to reach someone who is merely away this week. Suspended stays
+ * hidden, matching `?include_on_leave=1` on the API. The technician ledger
+ * uses `isTechnicianAssignable` instead and only shows Active staff.
  */
 export function isTechnicianListable(value: string | null | undefined): boolean {
   return normalizeTechnicianStatus(value) !== 'suspended';
