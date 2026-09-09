@@ -15,16 +15,33 @@
  * can stay symmetrical without doubling up against a container gap.
  */
 export const SERVICE_PICKER_CARD =
-  'rounded-lg border border-gray-200 bg-white p-4 sm:p-5 flex flex-col divide-y divide-gray-100';
+  'rounded-lg border border-gray-200 bg-white p-3.5 sm:p-4 flex flex-col divide-y divide-gray-100';
 
-export const SERVICE_GROUP = 'py-5 first:pt-0 last:pb-0';
+/**
+ * The rule between families already separates them, so this only needs enough
+ * room to keep the label off it. It was `py-5`, which put 40px between one
+ * row of tiles and the next family's label and made a list of eleven services
+ * scroll for no reason.
+ */
+export const SERVICE_GROUP = 'py-2.5 first:pt-0 last:pb-0';
 
 export const SERVICE_GROUP_LABEL =
-  'mb-2.5 text-[11px] font-bold uppercase tracking-wide text-gray-500';
+  'mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500';
 
-/** Column gap matches FIELD_GRID; rows sit tighter since tiles are one line. */
-export const SERVICE_TILE_GRID =
-  'grid grid-cols-1 sm:grid-cols-2 gap-x-4 lg:gap-x-5 gap-y-3';
+/**
+ * Two columns, matching FIELD_GRID's column gap, with tighter rows because a
+ * tile is a single line.
+ *
+ * A family holding one service gets the full row instead. Bed Bugs and Termite
+ * are one service each, and in a fixed two-column grid they left an empty half
+ * row apiece — the widest gaps in the picker were the ones with nothing in them.
+ */
+export function serviceTileGridClass(serviceCount: number): string {
+  return [
+    'grid gap-x-4 lg:gap-x-5 gap-y-2.5',
+    serviceCount > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
+  ].join(' ');
+}
 
 export const SERVICE_TILE_CHECKBOX =
   'h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500';

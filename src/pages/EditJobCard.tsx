@@ -68,7 +68,7 @@ import {
   SERVICE_PICKER_CARD,
   SERVICE_GROUP,
   SERVICE_GROUP_LABEL,
-  SERVICE_TILE_GRID,
+  serviceTileGridClass,
   SERVICE_TILE_CHECKBOX,
   serviceTileClass,
 } from '../constants/serviceTileStyles';
@@ -1128,7 +1128,7 @@ const EditJobCard: React.FC = () => {
                         {serviceGroups.map((group) => (
                           <div key={group.family} className={SERVICE_GROUP}>
                             <div className={SERVICE_GROUP_LABEL}>{group.family}</div>
-                            <div className={SERVICE_TILE_GRID}>
+                            <div className={serviceTileGridClass(group.services.length)}>
                               {group.services.map((service) => {
                                 const checked = selectedPackages.includes(service);
                                 const retired = !servicePackageOptions.includes(service);
