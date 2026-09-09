@@ -4,6 +4,8 @@ import { enhancedApiService } from '../../services/api.enhanced';
 import type { TechnicianRemark } from '../../types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import ClockTimePicker from '../ui/ClockTimePicker';
+import { toClockDisplay, toStorageTime } from '../../utils/clockTime';
 
 const fieldClass =
   'w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600';
@@ -13,15 +15,12 @@ interface Props {
   technicianId: number;
 }
 
-/** "14:30" for an <input type="time">, tolerating the API's "14:30:00". */
-function toTimeInput(value: string): string {
-  return (value || '').slice(0, 5);
-}
-
 function formatRemarkStamp(remark: TechnicianRemark): string {
-  const parsed = new Date(`${remark.remark_date}T${toTimeInput(remark.remark_time)}`);
+  // toStorageTime also trims the seconds the API includes on a TimeField.
+  const at = toStorageTime(remark.remark_time);
+  const parsed = new Date(`${remark.remark_date}T${at}`);
   if (Number.isNaN(parsed.getTime())) {
-    return `${remark.remark_date} ${toTimeInput(remark.remark_time)}`;
+    return `${remark.remark_date} ${at}`;
   }
   return parsed.toLocaleString('en-IN', {
     day: '2-digit',
@@ -160,15 +159,12 @@ export default function TechnicianRemarksPanel({ technicianId }: Props) {
           />
         </div>
         <div>
-          <label className={labelClass} htmlFor="technician-remark-time">
-            Time
-          </label>
-          <Input
-            id="technician-remark-time"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={fieldClass}
+          {/* No htmlFor: the clock picker is a button, not a labelable input. */}
+          <label className={labelClass}>Time</label>
+          <ClockTimePicker
+            value={toClockDisplay(time)}
+            onChange={(val) => setTime(toStorageTime(val))}
+            placeholder="Select time"
           />
         </div>
       </div>

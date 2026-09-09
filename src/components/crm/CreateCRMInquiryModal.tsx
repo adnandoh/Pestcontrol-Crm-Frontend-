@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, Calendar } from 'lucide-react';
-import { Button, Input } from '../ui';
+import { Button, ClockTimePicker, Input } from '../ui';
+import { toClockDisplay, toStorageTime } from '../../utils/clockTime';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { CRMInquiryFormData, PestType, State, City } from '../../types';
 import { PEST_TYPES } from '../../constants/pestTypes';
@@ -286,11 +287,10 @@ const CreateCRMInquiryModal: React.FC<CreateCRMInquiryModalProps> = ({ isOpen, o
                  </div>
                  <div className="space-y-1">
                    <label className="text-[10px] font-extrabold text-gray-500 uppercase">Reminder Time</label>
-                   <Input
-                     type="time"
-                     value={formData.reminder_time || ''}
-                     onChange={(e) => setFormData({ ...formData, reminder_time: e.target.value })}
-                     className="h-10 text-sm border-gray-300 focus:ring-0 focus:border-blue-600 rounded"
+                   <ClockTimePicker
+                     value={toClockDisplay(formData.reminder_time)}
+                     onChange={(val) => setFormData({ ...formData, reminder_time: toStorageTime(val) })}
+                     placeholder="Select time"
                    />
                  </div>
                  <div className="md:col-span-2 space-y-1">

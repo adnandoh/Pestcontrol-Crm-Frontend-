@@ -565,7 +565,7 @@ export interface ActivityLog {
 
 export interface Reminder {
   id: number;
-  inquiry_type: 'crm' | 'website';
+  inquiry_type: 'crm' | 'website' | 'booking';
   inquiry_id: number;
   customer_name: string;
   mobile_number: string;
@@ -696,7 +696,7 @@ export interface CRMInquiryFormData {
 }
 
 export interface ReminderFormData {
-  inquiry_type: 'crm' | 'website';
+  inquiry_type: 'crm' | 'website' | 'booking';
   inquiry_id: number;
   customer_name: string;
   mobile_number: string;

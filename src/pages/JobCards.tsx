@@ -56,6 +56,13 @@ function bookingCategoryLabel(job: JobCard): string {
   return job.service_category || '';
 }
 
+/** How each reminder source is labelled on the Reminders tab. */
+const REMINDER_SOURCE: Record<Reminder['inquiry_type'], { label: string; tone: string }> = {
+  crm: { label: 'CRM Inquiry', tone: 'bg-purple-50 text-purple-700 border-purple-200' },
+  website: { label: 'Website', tone: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  booking: { label: 'Booking', tone: 'bg-blue-50 text-blue-700 border-blue-200' },
+};
+
 const TableSkeleton: React.FC = () => (
   <>
     {[...Array(5)].map((_, i) => (
@@ -1007,9 +1014,9 @@ const JobCards: React.FC = () => {
                       <td className="px-4 py-4">
                         <span className={cn(
                           "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest border",
-                          reminder.inquiry_type === 'crm' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          REMINDER_SOURCE[reminder.inquiry_type]?.tone ?? REMINDER_SOURCE.website.tone
                         )}>
-                          {reminder.inquiry_type === 'crm' ? 'CRM Inquiry' : 'Website'}
+                          {REMINDER_SOURCE[reminder.inquiry_type]?.label ?? reminder.inquiry_type}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -1048,14 +1055,16 @@ const JobCards: React.FC = () => {
                           )}
                           <button 
                             onClick={() => {
-                              if (reminder.inquiry_type === 'crm') {
+                              if (reminder.inquiry_type === 'booking') {
+                                navigate(`/jobcards/edit/${reminder.inquiry_id}`);
+                              } else if (reminder.inquiry_type === 'crm') {
                                 navigate(`/crm-inquiries`);
                               } else {
                                 navigate(`/inquiries`);
                               }
                             }}
                             className="p-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded shadow-xs border border-blue-100 transition-all group/convert"
-                            title="Go to Inquiry to Convert"
+                            title={reminder.inquiry_type === 'booking' ? 'Open Booking' : 'Go to Inquiry to Convert'}
                           >
                             <ArrowRight className="h-3.5 w-3.5" />
                           </button>
