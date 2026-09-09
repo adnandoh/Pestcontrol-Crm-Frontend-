@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } fro
 import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
 import { TECHNICIAN_LEDGER_PAGE_SIZE } from '../constants/technicianLedger';
 import { apiCache } from './apiCache';
+import { isTechnicianAssignable } from '../utils/technicianStatus';
 import {
   forceSessionLogout,
   refreshAccessTokenFromStorage,
@@ -19,6 +20,8 @@ import type {
   JobCard,
   Renewal,
   Technician,
+  TechnicianRemark,
+  TechnicianRemarkFormData,
   PaginatedResponse,
   Feedback,
   TechnicianPerformance,
@@ -436,7 +439,7 @@ class EnhancedApiService {
       return list.filter(
         (tech) =>
           tech?.is_active !== false &&
-          tech?.presence_status !== 'suspended',
+          isTechnicianAssignable(tech?.presence_status),
       );
     };
 
@@ -494,6 +497,43 @@ class EnhancedApiService {
     );
     apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data;
+  }
+
+  async getTechnicianRemarks(technicianId: number): Promise<TechnicianRemark[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<TechnicianRemark[]>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/remarks/`,
+      ),
+    );
+    return Array.isArray(result.data) ? result.data : [];
+  }
+
+  async addTechnicianRemark(
+    technicianId: number,
+    data: TechnicianRemarkFormData,
+  ): Promise<TechnicianRemark> {
+    const result = await this.retryRequest(() =>
+      this.api.post<TechnicianRemark>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/remarks/`,
+        data,
+      ),
+    );
+    // The technician payload embeds remarks and latest_remark, so a cached
+    // list would keep showing the old newest note.
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
+    return result.data;
+  }
+
+  async deleteTechnicianRemark(
+    technicianId: number,
+    remarkId: number,
+  ): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/remarks/${remarkId}/`,
+      ),
+    );
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
   }
 
   async approvePartnerApp(technicianId: number): Promise<Technician> {

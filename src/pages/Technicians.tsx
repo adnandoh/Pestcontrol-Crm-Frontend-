@@ -19,6 +19,11 @@ import { cn } from '../utils/cn';
 import { showAlert } from '../utils/notify';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { technicianTypeLabel, technicianTypeTone } from '../utils/technicianType';
+import {
+  isTechnicianAvailable,
+  technicianStatusLabel,
+  technicianStatusTone,
+} from '../utils/technicianStatus';
 
 const PAGE_SIZE = 10;
 
@@ -225,6 +230,14 @@ const Technicians: React.FC = () => {
                           : `${tech.service_area || ''}${tech.service_area && tech.city ? ' - ' : ''}${tech.city || ''}`}
                       </div>
                     )}
+                    {tech.latest_remark && (
+                      <div
+                        className="mt-0.5 text-[10px] leading-snug text-red-600 line-clamp-2"
+                        title={tech.latest_remark.remark}
+                      >
+                        {tech.latest_remark.remark}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     <CopyablePhone phone={tech.mobile} className="text-sm font-bold text-gray-600" />
@@ -242,6 +255,19 @@ const Technicians: React.FC = () => {
                     }`}>
                       {tech.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
+                    {/* Work status is a separate axis from is_active, and is
+                        shown whether or not the revenue model is enabled. */}
+                    {!isTechnicianAvailable(tech.presence_status) && (
+                      <div className="mt-1">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${technicianStatusTone(
+                            tech.presence_status,
+                          )}`}
+                        >
+                          {technicianStatusLabel(tech.presence_status)}
+                        </span>
+                      </div>
+                    )}
                   </td>
                   {revenueModelEnabled && (
                     <td className="px-3 py-2.5">
@@ -252,11 +278,6 @@ const Technicians: React.FC = () => {
                       >
                         {technicianTypeLabel(tech.technician_type)}
                       </span>
-                      {tech.presence_status && tech.presence_status !== 'offline' && (
-                        <div className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">
-                          {tech.presence_status.replace('_', ' ')}
-                        </div>
-                      )}
                     </td>
                   )}
                   <td className="px-3 py-2.5">

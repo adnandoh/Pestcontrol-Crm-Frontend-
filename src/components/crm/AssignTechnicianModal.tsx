@@ -12,6 +12,12 @@ import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { notify } from '../../utils/notify';
 import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
+import {
+  isTechnicianAssignable,
+  isTechnicianAvailable,
+  technicianStatusLabel,
+  technicianStatusTone,
+} from '../../utils/technicianStatus';
 
 /** Normalize booking / tech service labels for overlap checks. */
 function serviceMatchKey(raw: string): string {
@@ -92,8 +98,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       setTechnicians(
         (Array.isArray(activeTechnicians) ? activeTechnicians : []).filter(
           (tech) =>
-            tech.is_active !== false &&
-            tech.presence_status !== 'suspended',
+            tech.is_active !== false && isTechnicianAssignable(tech.presence_status),
         ),
       );
     } catch (err) {
@@ -325,7 +330,28 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                               Matches booking
                             </span>
                           )}
+                          {/* On-leave staff stay assignable so a job can be
+                              scheduled for their return, but the desk has to
+                              see it before clicking. */}
+                          {!isTechnicianAvailable(tech.presence_status) && (
+                            <span
+                              className={cn(
+                                'ml-2 inline-flex align-middle rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide ring-1 ring-inset',
+                                technicianStatusTone(tech.presence_status),
+                              )}
+                            >
+                              {technicianStatusLabel(tech.presence_status)}
+                            </span>
+                          )}
                         </h4>
+                        {tech.latest_remark && (
+                          <p
+                            className="mb-1 text-[10px] leading-snug text-red-600 line-clamp-2"
+                            title={tech.latest_remark.remark}
+                          >
+                            {tech.latest_remark.remark}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2">
                          <div className="flex flex-col gap-1.5">
                             <span className={cn(

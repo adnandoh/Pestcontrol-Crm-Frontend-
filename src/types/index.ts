@@ -26,6 +26,38 @@ export interface Client {
  */
 export type TechnicianType = 'partner' | 'salaried' | 'secondary';
 
+/**
+ * The technician's work status, set by the CRM desk.
+ *
+ * These are the only three values the backend accepts, and the partner app
+ * reads the same field — there is no separate app-side status.
+ *
+ * active    — available for work; sees the app booking pool.
+ * on_leave  — temporarily away; no broadcast, no push, cannot accept a job.
+ * suspended — blocked; also hidden from the assign dropdown.
+ */
+export type TechnicianStatus = 'active' | 'on_leave' | 'suspended';
+
+/** A dated note against a technician, newest first. Append-only. */
+export interface TechnicianRemark {
+  id: number;
+  technician?: number;
+  remark: string;
+  /** Date the remark refers to, which may predate when it was typed. */
+  remark_date: string;
+  remark_time: string;
+  created_by?: number | null;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TechnicianRemarkFormData {
+  remark: string;
+  remark_date: string;
+  remark_time: string;
+}
+
 export interface Technician {
   id: number;
   name: string;
@@ -63,10 +95,17 @@ export interface Technician {
   /** @deprecated Prefer base_services — kept in sync by the API. */
   skills?: string[];
   star_rating?: number | string;
-  presence_status?: 'online' | 'offline' | 'busy' | 'on_service' | 'on_leave' | 'suspended';
+  presence_status?: TechnicianStatus;
+  /** Server-rendered label for presence_status ("On Leave"). */
+  presence_label?: string;
+  /** False when on leave, suspended, or deactivated. */
+  is_available_for_work?: boolean;
   suspended_at?: string | null;
   suspend_reason?: string;
   reactivated_at?: string | null;
+  /** Newest-first remark history. */
+  remarks?: TechnicianRemark[];
+  latest_remark?: TechnicianRemark | null;
   active_job_details?: {
     id: number;
     client__full_name: string;

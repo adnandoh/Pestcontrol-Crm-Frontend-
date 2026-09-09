@@ -4,11 +4,16 @@ import { ArrowLeft, Loader2, Save, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { City, Technician } from '../types';
+import type { City, Technician, TechnicianStatus } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { showAlert } from '../utils/notify';
 import TechnicianMonthlyPerformancePanel from '../components/crm/TechnicianMonthlyPerformancePanel';
+import TechnicianRemarksPanel from '../components/crm/TechnicianRemarksPanel';
 import { SERVICE_TYPES } from '../constants/pricing';
+import {
+  TECHNICIAN_STATUS_OPTIONS,
+  normalizeTechnicianStatus,
+} from '../utils/technicianStatus';
 
 const fieldClass =
   'w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600';
@@ -32,7 +37,8 @@ type FormState = {
   branch: string;
   aadhaar: string;
   pan: string;
-  presence_status: NonNullable<Technician['presence_status']>;
+  presence_status: TechnicianStatus;
+  suspend_reason: string;
   security_deposit_status: NonNullable<Technician['security_deposit_status']>;
   security_deposit_amount: string;
 };
@@ -50,7 +56,8 @@ const emptyForm: FormState = {
   branch: '',
   aadhaar: '',
   pan: '',
-  presence_status: 'offline',
+  presence_status: 'active',
+  suspend_reason: '',
   security_deposit_status: 'pending',
   security_deposit_amount: '',
 };
@@ -106,7 +113,8 @@ const TechnicianFormPage: React.FC = () => {
           branch: tech.branch || '',
           aadhaar: tech.aadhaar || '',
           pan: tech.pan || '',
-          presence_status: tech.presence_status || 'offline',
+          presence_status: normalizeTechnicianStatus(tech.presence_status),
+          suspend_reason: tech.suspend_reason || '',
           security_deposit_status: tech.security_deposit_status || 'pending',
           security_deposit_amount: tech.security_deposit_amount?.toString() || '',
         });
@@ -125,6 +133,13 @@ const TechnicianFormPage: React.FC = () => {
   const selectedCities = useMemo(
     () => cities.filter((c) => form.service_city_ids.includes(c.id)),
     [cities, form.service_city_ids],
+  );
+
+  const statusHint = useMemo(
+    () =>
+      TECHNICIAN_STATUS_OPTIONS.find((o) => o.value === form.presence_status)
+        ?.hint ?? '',
+    [form.presence_status],
   );
 
   const availableCities = useMemo(() => {
@@ -176,6 +191,11 @@ const TechnicianFormPage: React.FC = () => {
         service_city_ids: form.service_city_ids,
         base_services: form.base_services,
         is_active: form.is_active,
+        // Sent regardless of the revenue-model flag: this is the one status
+        // the partner app and every dispatch check read.
+        presence_status: form.presence_status,
+        suspend_reason:
+          form.presence_status === 'active' ? '' : form.suspend_reason.trim(),
       };
 
       if (revenueModelEnabled) {
@@ -184,7 +204,6 @@ const TechnicianFormPage: React.FC = () => {
           branch: form.branch.trim(),
           aadhaar: form.aadhaar.trim(),
           pan: form.pan.trim().toUpperCase(),
-          presence_status: form.presence_status,
           security_deposit_status: form.security_deposit_status,
           security_deposit_amount: form.security_deposit_amount
             ? Number(form.security_deposit_amount)
@@ -402,6 +421,29 @@ const TechnicianFormPage: React.FC = () => {
                 className={fieldClass}
               />
             </div>
+            {/* Work status lives here rather than under Payment & Compliance:
+                it is not a payment setting, and it has to be editable whether
+                or not the revenue model flag is on. */}
+            <div>
+              <label className={labelClass}>Presence Status</label>
+              <select
+                value={form.presence_status}
+                onChange={(e) =>
+                  setField(
+                    'presence_status',
+                    e.target.value as FormState['presence_status'],
+                  )
+                }
+                className={selectClass}
+              >
+                {TECHNICIAN_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-gray-500">{statusHint}</p>
+            </div>
             <div className="flex items-end pb-1">
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
                 <input
@@ -413,6 +455,27 @@ const TechnicianFormPage: React.FC = () => {
                 Active / available for assignment
               </label>
             </div>
+            {form.presence_status !== 'active' && (
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelClass}>
+                  Reason{' '}
+                  <span className="font-normal text-gray-500">(optional)</span>
+                </label>
+                <Input
+                  value={form.suspend_reason}
+                  onChange={(e) => setField('suspend_reason', e.target.value)}
+                  placeholder={
+                    form.presence_status === 'suspended'
+                      ? 'e.g. Documents pending verification'
+                      : 'e.g. Back on 20 September'
+                  }
+                  className={fieldClass}
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Shown to the technician in the partner app alongside their status.
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -447,26 +510,6 @@ const TechnicianFormPage: React.FC = () => {
                     staff must assign each job manually. Pay stays 40/60.
                   </p>
                 )}
-              </div>
-              <div>
-                <label className={labelClass}>Presence Status</label>
-                <select
-                  value={form.presence_status}
-                  onChange={(e) =>
-                    setField(
-                      'presence_status',
-                      e.target.value as FormState['presence_status'],
-                    )
-                  }
-                  className={selectClass}
-                >
-                  <option value="offline">Offline</option>
-                  <option value="online">Online</option>
-                  <option value="busy">Busy</option>
-                  <option value="on_service">On Service</option>
-                  <option value="on_leave">On Leave</option>
-                  <option value="suspended">Suspended</option>
-                </select>
               </div>
               <div>
                 <label className={labelClass}>Deposit Status</label>
@@ -515,6 +558,11 @@ const TechnicianFormPage: React.FC = () => {
               </div>
             </div>
           </section>
+        )}
+
+        {/* Remarks need a saved technician to attach to, so this is edit-only. */}
+        {isEdit && techId != null && (
+          <TechnicianRemarksPanel technicianId={techId} />
         )}
 
         <div className="flex justify-end gap-3">
