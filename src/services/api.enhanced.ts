@@ -517,6 +517,13 @@ class EnhancedApiService {
     return result.data;
   }
 
+  async deleteTechnician(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.TECHNICIANS}${id}/`),
+    );
+    apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
+  }
+
   async getTechnicianRemarks(technicianId: number): Promise<TechnicianRemark[]> {
     const result = await this.retryRequest(() =>
       this.api.get<TechnicianRemark[]>(

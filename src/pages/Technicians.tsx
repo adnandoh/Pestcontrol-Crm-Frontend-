@@ -7,10 +7,12 @@ import {
   MapPin,
   Check,
   X,
+  Trash2,
 } from 'lucide-react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
+  ConfirmationModal,
   Pagination,
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -33,6 +35,8 @@ const Technicians: React.FC = () => {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionBusyId, setActionBusyId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Technician | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [pagination, setPagination] = useState({
@@ -135,6 +139,31 @@ const Technicians: React.FC = () => {
     } catch {
       showAlert('Could not reject Partner App');
     } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleteBusy(true);
+      setActionBusyId(deleteTarget.id);
+      await enhancedApiService.deleteTechnician(deleteTarget.id);
+      showAlert(`${deleteTarget.name} permanently deleted`);
+      setDeleteTarget(null);
+      const pageAfterDelete =
+        technicians.length === 1 && pagination.current > 1
+          ? pagination.current - 1
+          : pagination.current;
+      await loadTechnicians(pageAfterDelete, searchInput);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Could not delete technician';
+      showAlert(message);
+    } finally {
+      setDeleteBusy(false);
       setActionBusyId(null);
     }
   };
@@ -334,6 +363,15 @@ const Technicians: React.FC = () => {
                       >
                         <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600" />
                       </button>
+                      <button
+                        type="button"
+                        disabled={busy || deleteBusy}
+                        onClick={() => setDeleteTarget(tech)}
+                        className="p-1.5 bg-gray-100 hover:bg-red-100 rounded transition-all group disabled:opacity-50"
+                        title="Delete technician permanently"
+                      >
+                        <Trash2 className="h-3 w-3 text-gray-400 group-hover:text-red-600" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -360,6 +398,20 @@ const Technicians: React.FC = () => {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Technician"
+        message="Are you sure you want to permanently delete this technician? This action cannot be undone."
+        confirmText="Delete Permanently"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={deleteBusy}
+      />
     </div>
   );
 };
