@@ -68,7 +68,7 @@ import {
   SERVICE_PICKER_CARD,
   SERVICE_GROUP,
   SERVICE_GROUP_LABEL,
-  serviceTileGridClass,
+  SERVICE_TILE_ROW,
   SERVICE_TILE_CHECKBOX,
   serviceTileClass,
 } from '../constants/serviceTileStyles';
@@ -1128,7 +1128,7 @@ const EditJobCard: React.FC = () => {
                         {serviceGroups.map((group) => (
                           <div key={group.family} className={SERVICE_GROUP}>
                             <div className={SERVICE_GROUP_LABEL}>{group.family}</div>
-                            <div className={serviceTileGridClass(group.services.length)}>
+                            <div className={SERVICE_TILE_ROW}>
                               {group.services.map((service) => {
                                 const checked = selectedPackages.includes(service);
                                 const retired = !servicePackageOptions.includes(service);
@@ -1146,7 +1146,11 @@ const EditJobCard: React.FC = () => {
                                     />
                                     <span className="text-sm font-semibold text-gray-800">{service}</span>
                                     {retired && (
-                                      <span className="ml-auto text-[10px] font-bold uppercase text-amber-600">
+                                      // Was `ml-auto`, which pushed this to the
+                                      // far edge of a full-width tile. Tiles are
+                                      // label-width now, so there is no spare
+                                      // room for it to push against.
+                                      <span className="ml-1 text-[10px] font-bold uppercase text-amber-600">
                                         Retired
                                       </span>
                                     )}
