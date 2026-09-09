@@ -12,19 +12,26 @@
  */
 
 /**
- * `divide-y` draws the rule between families only, so the group padding below
- * can stay symmetrical without doubling up against a container gap.
+ * Families sit two to a row rather than stacked one per row.
+ *
+ * Stacked, every family owned the full width of the card but only Full
+ * Coverage / IPM had enough services to use it — Bed Bugs is one tile against
+ * roughly 850px of nothing. Pairing the families fills that width and roughly
+ * halves the height, while keeping each family a labelled block of its own.
+ *
+ * Two columns and no more: at three, the wider families ("Mosquito Cold
+ * Fogging" beside "Mosquito Thermal Fogging") no longer fit on one line and
+ * wrap, which adds back the height this is meant to save.
  */
 export const SERVICE_PICKER_CARD =
-  'rounded-lg border border-gray-200 bg-white p-3.5 sm:p-4 flex flex-col divide-y divide-gray-100';
+  'rounded-lg border border-gray-200 bg-white p-3.5 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4';
 
 /**
- * The rule between families already separates them, so this only needs enough
- * room to keep the label off it. It was `py-5`, which put 40px between one
- * row of tiles and the next family's label and made a list of eleven services
- * scroll for no reason.
+ * `min-w-0` lets the block shrink to its share of the row. Tailwind's
+ * `grid-cols-2` already uses `minmax(0, 1fr)`, so this is only guarding the
+ * block's own content from pushing past the column it was given.
  */
-export const SERVICE_GROUP = 'py-2.5 first:pt-0 last:pb-0';
+export const SERVICE_GROUP = 'min-w-0';
 
 export const SERVICE_GROUP_LABEL =
   'mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500';
