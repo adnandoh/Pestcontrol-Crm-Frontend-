@@ -3,6 +3,7 @@ import { enhancedApiService } from '../../services/api.enhanced';
 import type { JobCard, JobCardTechnicianParticipation, Technician } from '../../types';
 import { payoutStatusLabel, previewVisitPayout } from '../../utils/revenuePayoutPreview';
 import { resolveJobCityId, resolveJobCityName } from '../../utils/jobCity';
+import { technicianTypeLabel } from '../../utils/technicianType';
 
 interface JobCrewPanelProps {
   job: JobCard;
@@ -226,11 +227,17 @@ export default function JobCrewPanel({ job, onJobUpdated }: JobCrewPanelProps) {
                     </td>
                     <td className="px-2 py-1.5 uppercase">{p.role}</td>
                     <td className="px-2 py-1.5">
-                      {p.technician_type === 'salaried' ? (
-                        <span className="text-slate-600 font-bold">Salaried</span>
-                      ) : (
-                        <span className="text-emerald-700 font-bold">Partner</span>
-                      )}
+                      <span
+                        className={
+                          p.technician_type === 'salaried'
+                            ? 'text-slate-600 font-bold'
+                            : p.technician_type === 'secondary'
+                              ? 'text-amber-700 font-bold'
+                              : 'text-emerald-700 font-bold'
+                        }
+                      >
+                        {technicianTypeLabel(p.technician_type)}
+                      </span>
                     </td>
                     <td className="px-2 py-1.5">
                       <select
@@ -291,7 +298,7 @@ export default function JobCrewPanel({ job, onJobUpdated }: JobCrewPanelProps) {
                 .filter((t) => !participants.some((p) => p.technician === t.id))
                 .map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name} ({t.technician_type || 'partner'})
+                    {t.name} ({technicianTypeLabel(t.technician_type)})
                   </option>
                 ))}
             </select>

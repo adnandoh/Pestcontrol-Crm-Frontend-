@@ -18,6 +18,14 @@ export interface Client {
   updated_at: string;
 }
 
+/**
+ * partner   — 40/60 share, sees the open booking broadcast in the partner app.
+ * salaried  — fixed salary, no 40% pool share.
+ * secondary — 40/60 share like a partner, but no broadcast: office staff
+ *             assign each booking manually.
+ */
+export type TechnicianType = 'partner' | 'salaried' | 'secondary';
+
 export interface Technician {
   id: number;
   name: string;
@@ -44,7 +52,7 @@ export interface Technician {
   partner_app_approved?: boolean;
   partner_id?: number | null;
   partner_name?: string | null;
-  technician_type?: 'partner' | 'salaried';
+  technician_type?: TechnicianType;
   branch?: string;
   aadhaar?: string;
   pan?: string;
@@ -74,7 +82,7 @@ export interface Technician {
 export interface TechnicianMonthlyPerformance {
   technician_id: number;
   technician_name: string;
-  technician_type?: 'partner' | 'salaried' | string;
+  technician_type?: TechnicianType | string;
   year: number;
   month: number;
   month_label: string;
@@ -108,7 +116,7 @@ export interface JobCardTechnicianParticipation {
   technician: number;
   technician_name?: string;
   technician_mobile?: string;
-  technician_type?: 'partner' | 'salaried';
+  technician_type?: TechnicianType;
   partner?: number | null;
   partner_name?: string | null;
   role: 'lead' | 'crew';
@@ -1412,7 +1420,15 @@ export type PricingPropertyCategory =
   | 'villa'
   | 'fogging'
   | 'rodent'
-  | 'commercial';
+  | 'commercial'
+  // Segments the 2026 master rate chart prices separately.
+  | 'society'
+  | 'hospital'
+  | 'hotel'
+  | 'corporate'
+  | 'corporate_monthly'
+  | 'multi_site'
+  | 'addon';
 
 export interface PricingRate {
   id: number;
@@ -1424,6 +1440,10 @@ export interface PricingRate {
   area_key: string;
   property_category: PricingPropertyCategory;
   amount: number | string;
+  /** Internal lowest acceptable rate for negotiation. Never shown to customers. */
+  floor_amount?: number | string | null;
+  /** How the rate is billed, e.g. "Per month", "Per outlet/month". */
+  billing_basis?: string;
   gst_percent?: number | string;
   price_includes_gst?: boolean;
   base_amount?: number | string;
@@ -1444,10 +1464,21 @@ export interface PricingRateFormData {
   area_key: string;
   property_category: PricingPropertyCategory;
   amount: number;
+  /** Blank clears the floor; the API rejects a floor above the rate. */
+  floor_amount: number | null;
+  billing_basis: string;
   gst_percent: number;
   price_includes_gst: boolean;
   is_active: boolean;
   notes?: string;
+}
+
+/** Distinct values already stored, so the rate form's dropdowns match the data. */
+export interface PricingRateOptions {
+  service_packages: string[];
+  plan_types: string[];
+  billing_bases: string[];
+  property_categories: { value: PricingPropertyCategory; label: string }[];
 }
 
 export interface PricingRateAuditLog {

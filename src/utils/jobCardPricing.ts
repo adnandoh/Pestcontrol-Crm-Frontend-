@@ -715,21 +715,40 @@ export function pestsFromPackages(packages: string[]): string[] {
   return Array.from(pests);
 }
 
-/** Parse stored service_type into pricing package labels (create + edit forms). */
-export function parsePackagesFromServiceType(serviceType: string): string[] {
+/**
+ * Parse stored service_type into pricing package labels (create + edit forms).
+ *
+ * Pass the live config so services from Pricing Master are recognised. Matching
+ * only against the hardcoded list dropped the selection when reopening a
+ * booking made with a 2026 service such as "Cockroach Premium".
+ */
+export function parsePackagesFromServiceType(
+  serviceType: string,
+  config?: PricingConfig,
+): string[] {
   if (!serviceType?.trim()) return [];
 
+  const known = new Set([
+    ...SERVICE_PACKAGE_OPTIONS,
+    ...Object.keys(config?.pricing || {}),
+  ]);
   const parts = serviceType.split(',').map((s) => s.trim()).filter(Boolean);
-  const direct = parts.filter((p) => SERVICE_PACKAGE_OPTIONS.includes(p));
+  const direct = parts.filter((p) => known.has(p));
   if (direct.length > 0) return direct;
 
+  // Legacy rows store pest names ("Cockroach, Ants") rather than package labels.
   const inferred = new Set<string>();
   for (const part of parts) {
     for (const [pkg, pests] of Object.entries(SERVICE_PACKAGE_TO_PESTS)) {
       if (pests.includes(part)) inferred.add(pkg);
     }
   }
-  return Array.from(inferred);
+  if (inferred.size > 0) return Array.from(inferred);
+
+  // Neither a known package nor a pest name: a Pricing Master service that this
+  // caller has no config for yet. Keep the labels — returning nothing would
+  // clear the booking's services the moment the form is saved.
+  return parts;
 }
 
 /** Legacy single-package type list (for reference). */

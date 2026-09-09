@@ -17,6 +17,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { TECHNICIAN_LEDGER_PAGE_SIZE } from '../constants/technicianLedger';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
+import { technicianTypeLabel } from '../utils/technicianType';
 import type {
   Technician,
   TechnicianLedgerPayment,
@@ -490,7 +491,7 @@ const TechnicianLedgerReport: React.FC = () => {
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-black text-gray-900">{data.technician.name}</h2>
                 <p className="text-[10px] font-medium text-gray-500">
-                  {data.technician.technician_type === 'salaried' ? 'Salaried' : 'Partner'}
+                  {technicianTypeLabel(data.technician.technician_type)}
                   {data.technician.mobile ? ` · ${data.technician.mobile}` : ''}
                   {' · '}
                   {prettyDate(filters.from)} – {prettyDate(filters.to)}

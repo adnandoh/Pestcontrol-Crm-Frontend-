@@ -66,6 +66,7 @@ import type {
   PricingRate,
   PricingRateFormData,
   PricingRateFilters,
+  PricingRateOptions,
   PricingRateAuditLog,
   BookingPaymentRecord,
   PendingPaymentStats,
@@ -2057,6 +2058,12 @@ class EnhancedApiService {
 
   async getPricingRates(params?: PricingRateFilters): Promise<PaginatedResponse<PricingRate>> {
     return this.api.get<PaginatedResponse<PricingRate>>(API_ENDPOINTS.PRICING_RATES, { params }).then((r) => r.data);
+  }
+
+  async getPricingRateOptions(): Promise<PricingRateOptions> {
+    return this.api
+      .get<PricingRateOptions>(`${API_ENDPOINTS.PRICING_RATES}options/`)
+      .then((r) => r.data);
   }
 
   async createPricingRate(data: PricingRateFormData): Promise<PricingRate> {

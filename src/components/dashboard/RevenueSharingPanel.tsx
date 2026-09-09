@@ -80,7 +80,7 @@ export const RevenueSharingPanel: React.FC<Props> = ({ stats, loading }) => {
               60 / 40 Model
             </span>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
-              Completed calls
+              Completed bookings
             </span>
           </div>
           <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
@@ -132,7 +132,7 @@ export const RevenueSharingPanel: React.FC<Props> = ({ stats, loading }) => {
         <StatPill
           label="Total revenue"
           value={loading ? '…' : formatINR(summary?.revenue)}
-          hint="Visit / booking amount"
+          hint="Booking amount only"
           tone="amber"
           icon={<IndianRupee className="h-4 w-4" />}
         />
@@ -235,8 +235,9 @@ export const RevenueSharingPanel: React.FC<Props> = ({ stats, loading }) => {
 
         <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 sm:grid-cols-3">
           <p>
-            <span className="font-black text-slate-800">Bookings:</span> completed Done jobs in
-            the selected dates (complaints & salaried excluded).
+            <span className="font-black text-slate-800">Bookings:</span> completed Done bookings
+            in the selected dates (service calls, AMC follow-ups, complaints & salaried
+            excluded).
           </p>
           <p>
             <span className="font-black text-blue-800">Technician {techPct}%:</span> payout pool

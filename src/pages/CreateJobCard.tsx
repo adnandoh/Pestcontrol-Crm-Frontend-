@@ -6,7 +6,10 @@ import {
   Phone,
   IndianRupee,
   Calendar,
-  MessageCircle
+  MessageCircle,
+  Building2,
+  SprayCan,
+  StickyNote
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -24,7 +27,6 @@ import { useFormValidation, jobCardValidationRules } from '../hooks/useFormValid
 import { enhancedApiService } from '../services/api.enhanced';
 import type { JobCardFormData, State, City } from '../types';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
-import RevenueModelFields from '../components/crm/RevenueModelFields';
 import {
   fireAndForget,
   sendBookingConfirmationApi,
@@ -71,6 +73,27 @@ import {
   deriveSocietyContractDuration,
 } from '../constants/bookingPropertyTypes';
 
+/**
+ * Layout tokens for this form. Every section reuses these so the vertical
+ * rhythm, column gaps, label offsets and control heights stay identical from
+ * the top of the page to the footer. Change a value here rather than on an
+ * individual field, otherwise rows stop lining up across sections.
+ */
+const FORM_STACK = 'space-y-4 sm:space-y-5';
+/** Padding/radius only — each section adds its own border and background colour. */
+const SECTION_CARD_BASE = 'p-4 sm:p-5 lg:p-6 rounded-xl border shadow-sm';
+const SECTION_CARD = `bg-white border-gray-200 ${SECTION_CARD_BASE}`;
+/** Spacing/typography only — each section adds its own text and divider colour. */
+const SECTION_HEADING =
+  'text-[13px] font-extrabold uppercase tracking-widest mb-4 sm:mb-5 flex items-center gap-2 border-b pb-2.5';
+/** Three columns on desktop, two on tablet, one on mobile. */
+const FIELD_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 lg:gap-x-5 gap-y-4 sm:gap-y-5';
+const FIELD_LABEL = 'text-[13px] font-bold text-gray-700 mb-1.5 block';
+const FIELD_HELP = 'text-[10px] text-gray-500 mt-1.5';
+const FIELD_ERROR = 'text-[10px] text-red-500 font-bold mt-1.5 uppercase';
+const TEXTAREA_CONTROL =
+  'w-full min-h-[76px] border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-y';
+
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
 
@@ -88,7 +111,15 @@ const CreateJobCard: React.FC = () => {
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
   const [pricingConfigReady, setPricingConfigReady] = useState(false);
+  const [pricingConfigFailed, setPricingConfigFailed] = useState(false);
   const pricingFetchIdRef = useRef(0);
+
+  /**
+   * The seeded config is a hardcoded pre-2026 list whose services the rate
+   * chart import deactivated, so it must never be offered as a real choice.
+   * Only a payload from the API carries `source`.
+   */
+  const catalogueLoaded = Boolean(pricingConfig.source);
 
   // Initial form state
   const getInitialFormData = (): JobCardFormData => {
@@ -287,16 +318,19 @@ const CreateJobCard: React.FC = () => {
   // 3. Load city-specific pricing when Service City changes (ignore stale responses)
   useEffect(() => {
     const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
-    if (!formData.master_city && !cityName) {
-      setPricingConfigReady(false);
-      return;
-    }
+    const hasCity = Boolean(formData.master_city || cityName);
 
     const fetchId = ++pricingFetchIdRef.current;
     const controller = new AbortController();
-    const params = formData.master_city
-      ? { master_city: formData.master_city }
-      : { city: cityName || 'Mumbai' };
+    // With no city yet, load the default region's catalogue anyway so the
+    // service list shows the real services. Bailing out here left the form on
+    // the hardcoded fallback, which still lists the pre-2026 services that the
+    // rate chart import deactivated.
+    const params = !hasCity
+      ? {}
+      : formData.master_city
+        ? { master_city: formData.master_city }
+        : { city: cityName || 'Mumbai' };
 
     setPricingConfigReady(false);
 
@@ -305,13 +339,17 @@ const CreateJobCard: React.FC = () => {
       .then((config) => {
         if (fetchId !== pricingFetchIdRef.current) return;
         setPricingConfig(config);
-        setPricingConfigReady(true);
+        setPricingConfigFailed(false);
+        // Auto-pricing stays off until a city is chosen: rates differ by region
+        // and the default catalogue would quote the wrong one.
+        setPricingConfigReady(hasCity);
       })
       .catch((err) => {
         if (fetchId !== pricingFetchIdRef.current) return;
         if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
         console.error('Error fetching pricing config:', err);
         setPricingConfigReady(false);
+        setPricingConfigFailed(true);
       });
 
     return () => controller.abort();
@@ -613,10 +651,12 @@ const CreateJobCard: React.FC = () => {
     }
   };
 
+  // The app shell (main#crm-app-main) already applies px-4 py-4, so the page
+  // root only tops that up on wider screens rather than setting its own padding.
   return (
-    <div className="space-y-4 px-1 sm:px-0 bg-gray-50/10 h-full pb-10 relative">
-      {/* Page Title Area (Simplified) */}
-      <div className="flex items-center gap-3 px-4 py-4 -mx-4 sm:mx-0 mb-2">
+    <div className="bg-gray-50/10 h-full relative sm:px-2 lg:px-4 pb-10">
+      {/* Page Title Area — shares the form's container so it aligns with the cards. */}
+      <div className="max-w-6xl mx-auto flex items-center gap-3 pb-4 sm:pb-5">
         <button type="button" onClick={() => navigate('/jobcards')} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm bg-white/50">
           <ArrowLeft className="h-4 w-4 text-gray-500" />
         </button>
@@ -627,18 +667,18 @@ const CreateJobCard: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className={FORM_STACK}>
           <FormErrorBanner message={submitError} />
           
           {/* Section: Client & Location */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+          <div className={SECTION_CARD}>
+            <h4 className={`${SECTION_HEADING} text-blue-600 border-gray-100`}>
               <User className="h-4 w-4" /> Client & Service Location
             </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
+
+            <div className={FIELD_GRID}>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Mobile Number *</label>
+                <label className={FIELD_LABEL}>Mobile Number *</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -651,12 +691,12 @@ const CreateJobCard: React.FC = () => {
                     required
                   />
                 </div>
-                {errors.client_mobile && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.client_mobile}</p>}
-                {clientCheckStatus === 'found' && <p className="text-[10px] text-green-600 font-bold mt-1 uppercase">Found: {foundClientName}</p>}
+                {errors.client_mobile && <p className={FIELD_ERROR}>{errors.client_mobile}</p>}
+                {clientCheckStatus === 'found' && <p className="text-[10px] text-green-600 font-bold mt-1.5 uppercase">Found: {foundClientName}</p>}
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Client Name *</label>
+                <label className={FIELD_LABEL}>Client Name *</label>
                 <Input
                   name="client_name"
                   type="text"
@@ -667,11 +707,11 @@ const CreateJobCard: React.FC = () => {
                   disabled={clientCheckStatus === 'found'}
                   required
                 />
-                {errors.client_name && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.client_name}</p>}
+                {errors.client_name && <p className={FIELD_ERROR}>{errors.client_name}</p>}
               </div>
 
-              <div className="lg:col-span-2">
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Email Address</label>
+              <div>
+                <label className={FIELD_LABEL}>Email Address</label>
                 <Input
                   name="client_email"
                   type="email"
@@ -683,7 +723,7 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service State *</label>
+                <label className={FIELD_LABEL}>Service State *</label>
                 <select
                   value={formData.master_state || ''}
                   onChange={(e) => handleInputChange('master_state', Number(e.target.value))}
@@ -696,7 +736,7 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service City *</label>
+                <label className={FIELD_LABEL}>Service City *</label>
                 <select
                   value={formData.master_city || ''}
                   onChange={(e) => handleInputChange('master_city', Number(e.target.value))}
@@ -710,7 +750,7 @@ const CreateJobCard: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Location *</label>
+                <label className={FIELD_LABEL}>Service Location *</label>
                 <LocationSearchSelect
                   value={formData.master_location}
                   error={errors.master_location}
@@ -726,13 +766,12 @@ const CreateJobCard: React.FC = () => {
                   }}
                 />
                 {errors.master_location && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.master_location}</p>
+                  <p className={FIELD_ERROR}>{errors.master_location}</p>
                 )}
               </div>
 
-
-              <div className="lg:col-span-4">
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Detailed Address *</label>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className={FIELD_LABEL}>Detailed Address *</label>
                 <GooglePlacesAddressInput
                   id="client_address"
                   name="client_address"
@@ -759,10 +798,14 @@ const CreateJobCard: React.FC = () => {
           </div>
 
           {/* Section: Property */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={SECTION_CARD}>
+            <h4 className={`${SECTION_HEADING} text-blue-600 border-gray-100`}>
+              <Building2 className="h-4 w-4" /> Property Details
+            </h4>
+
+            <div className={FIELD_GRID}>
                   <div>
-                    <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking For *</label>
+                    <label className={FIELD_LABEL}>Booking For *</label>
                     <select
                       value={bookingKindFromCommercialType(formData.commercial_type)}
                       onChange={(e) => {
@@ -789,12 +832,12 @@ const CreateJobCard: React.FC = () => {
                           }));
                         }
                       }}
-                      className="w-full h-10 px-3 text-sm font-bold border border-gray-200 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
+                      className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none focus:border-blue-500 bg-white"
                     >
                       <option value="home">Home (Residential)</option>
                       <option value="commercial">Commercial Property</option>
                     </select>
-                    <p className="text-[10px] text-gray-500 mt-1">
+                    <p className={FIELD_HELP}>
                       {formData.commercial_type === 'home'
                         ? 'Flat / home — choose BHK in each service.'
                         : 'Select property type on the right (Society, Hotel, Office, etc.).'}
@@ -803,7 +846,7 @@ const CreateJobCard: React.FC = () => {
 
                   {bookingKindFromCommercialType(formData.commercial_type) === 'commercial' ? (
                     <div>
-                      <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Property Type *</label>
+                      <label className={FIELD_LABEL}>Property Type *</label>
                       <select
                         value={formData.property_type || ''}
                         onChange={(e) => {
@@ -829,22 +872,22 @@ const CreateJobCard: React.FC = () => {
                         ))}
                       </select>
                       {errors.property_type && (
-                        <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.property_type}</p>
+                        <p className={FIELD_ERROR}>{errors.property_type}</p>
                       )}
                     </div>
                   ) : null}
-                </div>
+            </div>
 
-                {isSocietyBooking(formData) && (
-                  <div className="mt-4 pt-4 border-t border-purple-100">
-                    <label className="text-[13px] font-bold text-gray-700 mb-2 block">
+            {isSocietyBooking(formData) && (
+                  <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-purple-100">
+                    <label className={FIELD_LABEL}>
                       Society Service Billing *
                     </label>
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-3">
                       {(['Paid', 'Free'] as const).map((option) => (
                         <label
                           key={option}
-                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-bold cursor-pointer transition-colors ${
+                          className={`inline-flex h-10 items-center gap-2 px-4 rounded-lg border text-sm font-bold cursor-pointer transition-colors ${
                             formData.society_billing_type === option
                               ? option === 'Free'
                                 ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
@@ -866,7 +909,7 @@ const CreateJobCard: React.FC = () => {
                         </label>
                       ))}
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-2">
+                    <p className={FIELD_HELP}>
                       Mark whether this society contract is a paid service or a free service for staff reference.
                     </p>
                   </div>
@@ -874,14 +917,14 @@ const CreateJobCard: React.FC = () => {
           </div>
 
           {/* Section: Assignment & Payment (schedule + booking type + payment) */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <h4 className="text-[13px] font-extrabold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+          <div className={SECTION_CARD}>
+            <h4 className={`${SECTION_HEADING} text-blue-600 border-gray-100`}>
               <Calendar className="h-4 w-4" /> Assignment & Payment
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={FIELD_GRID}>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Date *</label>
+                <label className={FIELD_LABEL}>Booking Date *</label>
                 <Input
                   id="schedule_datetime"
                   name="schedule_datetime"
@@ -892,22 +935,22 @@ const CreateJobCard: React.FC = () => {
                   required
                 />
                 {errors.schedule_datetime && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.schedule_datetime}</p>
+                  <p className={FIELD_ERROR}>{errors.schedule_datetime}</p>
                 )}
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Time Slot *</label>
+                <label className={FIELD_LABEL}>Time Slot *</label>
                 <ClockTimePicker
                   value={formData.time_slot || ''}
                   onChange={(val) => handleInputChange('time_slot', val)}
                   placeholder="Select Time"
                 />
                 {errors.time_slot && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>
+                  <p className={FIELD_ERROR}>{errors.time_slot}</p>
                 )}
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Booking Type *</label>
+                <label className={FIELD_LABEL}>Booking Type *</label>
                 <select
                   value={formData.is_amc_main_booking ? 'amc_main' : formData.is_followup_visit ? 'amc_followup' : formData.is_complaint_call ? 'complaint' : 'new'}
                   onChange={(e) => {
@@ -962,7 +1005,7 @@ const CreateJobCard: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
+                <label className={FIELD_LABEL}>Service Price Override</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -991,13 +1034,13 @@ const CreateJobCard: React.FC = () => {
                     }}
                     className="w-full h-10 px-3 text-sm font-bold border-blue-200 bg-blue-50/50 rounded-lg shadow-sm focus:border-blue-500"
                   />
-                  <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase italic">
+                  <p className="text-[10px] text-blue-600 font-bold mt-1.5 uppercase italic">
                     {nextServiceDateHint(selectedPackages, '', formData.service_category, serviceItems)}
                   </p>
                 </div>
               )}
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Status</label>
+                <label className={FIELD_LABEL}>Payment Status</label>
                 <select
                   value={formData.payment_status}
                   onChange={(e) => handleInputChange('payment_status', e.target.value)}
@@ -1009,7 +1052,7 @@ const CreateJobCard: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Payment Mode</label>
+                <label className={FIELD_LABEL}>Payment Mode</label>
                 <select
                   value={formData.payment_mode || ''}
                   onChange={(e) => handleInputChange('payment_mode', e.target.value)}
@@ -1020,18 +1063,11 @@ const CreateJobCard: React.FC = () => {
                   <option value="Online">Online</option>
                 </select>
               </div>
-              {revenueModelEnabled && (
-                <RevenueModelFields
-                  formData={formData}
-                  onChange={(field, value) =>
-                    handleInputChange(field as keyof JobCardFormData, value as never)
-                  }
-                  hideBookingDiscount
-                  serviceDiscountTotal={summarizeServicePricing(serviceItems).totalDiscount}
-                />
-              )}
+              {/* The 40/60 revenue panel is not shown while creating a booking. New
+                  bookings still default to revenue_sharing at 40/60 (see form state
+                  and the effect above); the split is reviewed on the edit screen. */}
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reference *</label>
+                <label className={FIELD_LABEL}>Reference *</label>
                 <select
                   name="reference"
                   value={formData.reference}
@@ -1049,29 +1085,39 @@ const CreateJobCard: React.FC = () => {
                   ))}
                 </select>
                 {errors.reference && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.reference}</p>
+                  <p className={FIELD_ERROR}>{errors.reference}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Section: Service Selection */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+          <div className={`${SECTION_CARD} relative overflow-hidden`}>
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
-             <div className="relative z-10 flex flex-col gap-5">
-             <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                <div className="flex-1 flex flex-col gap-4">
+             <div className="relative z-10">
+             <h4 className={`${SECTION_HEADING} text-blue-600 border-gray-100`}>
+               <SprayCan className="h-4 w-4" /> Service & Pricing
+             </h4>
+             <div className="flex flex-col lg:flex-row lg:items-start gap-4 sm:gap-5">
+                <div className="flex-1 min-w-0 flex flex-col gap-4 sm:gap-5">
                   <div>
-                    <label className="text-[13px] font-bold text-gray-700 mb-2 block">
+                    <label className={FIELD_LABEL}>
                       Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
                     </label>
-                    <div className="rounded-lg border border-gray-200 bg-white p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {!catalogueLoaded ? (
+                      <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-500">
+                        {pricingConfigFailed
+                          ? 'Could not load the service list. Refresh the page or check your connection.'
+                          : 'Loading services…'}
+                      </div>
+                    ) : (
+                    <div className="rounded-lg border border-gray-200 bg-white p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {servicePackageOptions.map((service) => {
                         const checked = selectedPackages.includes(service);
                         return (
                           <label
                             key={service}
-                            className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                            className={`flex min-h-10 items-center gap-2.5 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
                               checked
                                 ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
                                 : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
@@ -1088,13 +1134,14 @@ const CreateJobCard: React.FC = () => {
                         );
                       })}
                     </div>
+                    )}
                     {selectedPackages.length > 0 && (
-                      <p className="text-[11px] font-bold text-blue-700 mt-2">
+                      <p className="text-[11px] font-bold text-blue-700 mt-1.5">
                         Selected: {selectedPackages.join(' + ')}
                       </p>
                     )}
                     {errors.service_type && (
-                      <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.service_type}</p>
+                      <p className={FIELD_ERROR}>{errors.service_type}</p>
                     )}
                   </div>
 
@@ -1115,8 +1162,8 @@ const CreateJobCard: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex flex-col items-start lg:items-end justify-start min-w-[200px] lg:max-w-[240px] pl-0 lg:pl-4 lg:border-l border-gray-200">
-                   <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                <div className="flex flex-col items-start lg:items-end justify-start w-full lg:w-56 lg:shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 lg:pl-5 lg:border-l border-gray-200">
+                   <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
                      {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
                    </span>
                    {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
@@ -1146,23 +1193,23 @@ const CreateJobCard: React.FC = () => {
                    )}
                 </div>
              </div>
-             </div>
-             
+
              {formData.commercial_type !== 'home' && (
-               <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+               <div className="mt-4 sm:mt-5 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
                </div>
              )}
+             </div>
           </div>
 
           {/* Section: Reminders */}
-          <div className="bg-white p-5 rounded-xl border border-orange-200 shadow-sm bg-orange-50/10">
-            <h4 className="text-[13px] font-extrabold text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-orange-100 pb-2">
+          <div className={`bg-orange-50/10 border-orange-200 ${SECTION_CARD_BASE}`}>
+            <h4 className={`${SECTION_HEADING} text-orange-600 border-orange-100`}>
               <Calendar className="h-4 w-4" /> Set Follow-up Reminder
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={FIELD_GRID}>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Date</label>
+                <label className={FIELD_LABEL}>Reminder Date</label>
                 <Input
                   type="date"
                   value={formData.reminder_date || ''}
@@ -1171,7 +1218,7 @@ const CreateJobCard: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Time</label>
+                <label className={FIELD_LABEL}>Reminder Time</label>
                 <Input
                   type="time"
                   value={formData.reminder_time || ''}
@@ -1179,13 +1226,13 @@ const CreateJobCard: React.FC = () => {
                   className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Note</label>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className={FIELD_LABEL}>Reminder Note</label>
                 <textarea
                   value={formData.reminder_note || ''}
                   onChange={(e) => handleInputChange('reminder_note', e.target.value)}
-                  rows={1}
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
+                  rows={2}
+                  className={TEXTAREA_CONTROL}
                   placeholder="e.g., Call client for feedback..."
                 />
               </div>
@@ -1193,23 +1240,25 @@ const CreateJobCard: React.FC = () => {
           </div>
 
           {/* Section: Notes */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-             <label className="text-[13px] font-bold text-gray-700 mb-2 block">Additional Internal Notes</label>
+          <div className={SECTION_CARD}>
+             <h4 className={`${SECTION_HEADING} text-blue-600 border-gray-100`}>
+               <StickyNote className="h-4 w-4" /> Additional Internal Notes
+             </h4>
              <textarea
                value={formData.notes || ''}
                onChange={(e) => handleInputChange('notes', e.target.value)}
-               rows={2}
-               className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium outline-none focus:border-blue-500 shadow-sm"
+               rows={3}
+               className={TEXTAREA_CONTROL}
                placeholder="Enter any special instructions or customer preferences here..."
              />
           </div>
 
           {/* Action Footer (Non-Sticky) */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className={`${SECTION_CARD} flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4`}>
              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden sm:block">All fields marked with * are required.</p>
-             <div className="flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto">
+             <div className="flex flex-wrap items-center sm:justify-end gap-3 w-full sm:w-auto">
                <button type="button" onClick={() => navigate('/jobcards')} className="flex-1 sm:flex-none h-10 px-5 text-[13px] font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">Discard</button>
-               
+
                <button
                   type="button"
                   disabled={savingInquiry || submitting}

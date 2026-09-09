@@ -353,7 +353,7 @@ const EditJobCard: React.FC = () => {
           setIsNextDateManual(true);
         }
         
-        const packages = parsePackagesFromServiceType(data.service_type || '');
+        const packages = parsePackagesFromServiceType(data.service_type || '', pricingConfig);
         setSelectedPackages(packages);
         if (data.service_items?.length) {
           const normalizedItems = data.service_items.map((item: any) =>
@@ -449,16 +449,18 @@ const EditJobCard: React.FC = () => {
   useEffect(() => {
     if (loading) return;
     const cityName = formData.city || masterCities.find((c) => c.id === formData.master_city)?.name;
-    if (!formData.master_city && !cityName) {
-      setPricingConfigReady(false);
-      return;
-    }
+    const hasCity = Boolean(formData.master_city || cityName);
 
     const fetchId = ++pricingFetchIdRef.current;
     const controller = new AbortController();
-    const params = formData.master_city
-      ? { master_city: formData.master_city }
-      : { city: cityName || 'Mumbai' };
+    // A booking with no city still needs the real catalogue; bailing out left
+    // the form on the hardcoded pre-2026 list. Readiness is unchanged for that
+    // case (it was already false), so auto-pricing behaves as before.
+    const params = !hasCity
+      ? {}
+      : formData.master_city
+        ? { master_city: formData.master_city }
+        : { city: cityName || 'Mumbai' };
 
     setPricingConfigReady(false);
 
@@ -467,7 +469,7 @@ const EditJobCard: React.FC = () => {
       .then((config) => {
         if (fetchId !== pricingFetchIdRef.current) return;
         setPricingConfig(config);
-        setPricingConfigReady(true);
+        setPricingConfigReady(hasCity);
       })
       .catch((err) => {
         if (fetchId !== pricingFetchIdRef.current) return;

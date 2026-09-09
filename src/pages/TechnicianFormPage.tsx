@@ -28,7 +28,7 @@ type FormState = {
   service_city_ids: number[];
   base_services: string[];
   is_active: boolean;
-  technician_type: 'partner' | 'salaried';
+  technician_type: 'partner' | 'salaried' | 'secondary';
   branch: string;
   aadhaar: string;
   pan: string;
@@ -422,7 +422,8 @@ const TechnicianFormPage: React.FC = () => {
               Payment Type & Compliance
             </h2>
             <p className="mb-4 text-xs text-emerald-800/80">
-              Partner = 40% share · Salaried = fixed salary (no 40% pool)
+              Partner = 40% share · Salaried = fixed salary (no 40% pool) ·
+              Secondary = 40% share, manual assignment only
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div>
@@ -438,7 +439,14 @@ const TechnicianFormPage: React.FC = () => {
                 >
                   <option value="partner">Partner (40/60)</option>
                   <option value="salaried">Salaried</option>
+                  <option value="secondary">Secondary (Manual Assign)</option>
                 </select>
+                {form.technician_type === 'secondary' && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-amber-700">
+                    New bookings will not appear in this technician's app. Office
+                    staff must assign each job manually. Pay stays 40/60.
+                  </p>
+                )}
               </div>
               <div>
                 <label className={labelClass}>Presence Status</label>

@@ -18,6 +18,7 @@ import type { PaginatedResponse, Technician } from '../types';
 import { cn } from '../utils/cn';
 import { showAlert } from '../utils/notify';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
+import { technicianTypeLabel, technicianTypeTone } from '../utils/technicianType';
 
 const PAGE_SIZE = 10;
 
@@ -245,13 +246,11 @@ const Technicians: React.FC = () => {
                   {revenueModelEnabled && (
                     <td className="px-3 py-2.5">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
-                          tech.technician_type === 'salaried'
-                            ? 'bg-slate-50 text-slate-700 ring-slate-600/20'
-                            : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                        }`}
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${technicianTypeTone(
+                          tech.technician_type,
+                        )}`}
                       >
-                        {tech.technician_type === 'salaried' ? 'Salaried' : 'Partner'}
+                        {technicianTypeLabel(tech.technician_type)}
                       </span>
                       {tech.presence_status && tech.presence_status !== 'offline' && (
                         <div className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">

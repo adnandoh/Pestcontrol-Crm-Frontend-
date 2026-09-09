@@ -28,3 +28,6 @@ dist-ssr
 *.sln
 *.sw?
 
+
+# Vercel local project link
+.vercel/

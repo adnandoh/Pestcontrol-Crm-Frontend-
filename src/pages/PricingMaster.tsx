@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   IndianRupee,
   Plus,
@@ -24,12 +24,12 @@ import { isPricingAdmin } from '../utils/roles';
 import type {
   PricingRate,
   PricingRateFormData,
+  PricingRateOptions,
   PricingRateAuditLog,
   PricingRegion,
   PricingPropertyCategory,
 } from '../types';
 import { cn } from '../utils/cn';
-import { showAlert } from '../utils/notify';
 
 const PAGE_SIZE = 10;
 
@@ -50,13 +50,52 @@ const PLAN_TYPES = [
   'AMC 12 Services',
 ];
 
-const PROPERTY_CATEGORIES: { value: PricingPropertyCategory; label: string }[] = [
-  { value: 'residential', label: 'Residential (BHK/RK)' },
-  { value: 'villa', label: 'Villa / Bungalow' },
-  { value: 'fogging', label: 'Fogging' },
-  { value: 'rodent', label: 'Rodent / Reptile' },
-  { value: 'commercial', label: 'Commercial' },
+/**
+ * Grouped so the list reads as segments rather than a flat mix. "Fogging" used
+ * to sit here as if it were a property type; the two area-priced rows are now
+ * described by the area they price, matching the backend labels.
+ */
+const PROPERTY_CATEGORY_GROUPS: {
+  group: string;
+  options: { value: PricingPropertyCategory; label: string }[];
+}[] = [
+  {
+    group: 'Residential',
+    options: [
+      { value: 'residential', label: 'Residential (BHK/RK)' },
+      { value: 'villa', label: 'Villa / Bungalow (Sq.Ft.)' },
+    ],
+  },
+  {
+    group: 'Commercial',
+    options: [
+      { value: 'commercial', label: 'Commercial' },
+      { value: 'society', label: 'Housing Society (Common Area)' },
+      { value: 'hospital', label: 'Hospital / Clinic' },
+      { value: 'hotel', label: 'Hotel / Restaurant / Cloud Kitchen' },
+      { value: 'corporate', label: 'Corporate One-Time' },
+      { value: 'corporate_monthly', label: 'Corporate Monthly Contract' },
+      { value: 'multi_site', label: 'Multi-Site Chain (Per Outlet)' },
+    ],
+  },
+  {
+    group: 'Priced by treated area',
+    options: [
+      { value: 'fogging', label: 'Open / Outdoor Area (Sq.Ft.)' },
+      { value: 'rodent', label: 'Rodent / Reptile Zone (Sq.Ft.)' },
+    ],
+  },
+  {
+    group: 'Not bookable directly',
+    options: [{ value: 'addon', label: 'Add-On / Equipment / SLA' }],
+  },
 ];
+
+const PROPERTY_CATEGORIES = PROPERTY_CATEGORY_GROUPS.flatMap((g) => g.options);
+
+/** Falls back to the raw value so a category added server-side still renders. */
+const categoryLabel = (value: string) =>
+  PROPERTY_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
 const emptyForm = (): PricingRateFormData => ({
   region: 0,
@@ -65,6 +104,8 @@ const emptyForm = (): PricingRateFormData => ({
   area_key: '',
   property_category: 'residential',
   amount: 0,
+  floor_amount: null,
+  billing_basis: '',
   gst_percent: 18,
   price_includes_gst: true,
   is_active: true,
@@ -85,6 +126,25 @@ function previewGst(amount: number, gstPercent: number, includes: boolean) {
   }
   const gst = Math.round((selling * rate) / 100 * 100) / 100;
   return { base: selling, gst, total: Math.round((selling + gst) * 100) / 100 };
+}
+
+/**
+ * Surface the API's actual complaint instead of a generic failure. Duplicate
+ * region+service+plan+area rows and a floor above the rate both come back as
+ * DRF field errors, and staff cannot act on "check all fields and try again".
+ */
+function pricingApiError(err: unknown): string {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    const parts: string[] = [];
+    for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
+      const text = Array.isArray(value) ? value.join(' ') : String(value);
+      parts.push(field === 'non_field_errors' ? text : `${field}: ${text}`);
+    }
+    if (parts.length > 0) return parts.join(' · ');
+  }
+  return 'Failed to save pricing rate. Check all fields and try again.';
 }
 
 const formatInr = (n: number | string | undefined | null) =>
@@ -115,6 +175,39 @@ const PricingMaster: React.FC = () => {
   const [selectedRate, setSelectedRate] = useState<PricingRate | null>(null);
   const [formData, setFormData] = useState<PricingRateFormData>(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [options, setOptions] = useState<PricingRateOptions | null>(null);
+  const [formError, setFormError] = useState('');
+
+  /**
+   * Service and plan dropdowns come from the values already stored, merged with
+   * the canonical defaults. Hard-coding them meant most of the imported rate
+   * chart could not be selected, and editing a rate whose plan was missing
+   * showed the wrong option.
+   */
+  const servicePackageOptions = useMemo(
+    () => Array.from(new Set([...(options?.service_packages ?? []), ...SERVICE_PACKAGES])).sort(),
+    [options],
+  );
+  const planTypeOptions = useMemo(
+    () => Array.from(new Set([...(options?.plan_types ?? []), ...PLAN_TYPES])).sort(),
+    [options],
+  );
+  /**
+   * Area keys are free text but must match the booking form's size option
+   * exactly, so suggest the ones already used in the same segment. Drawn from
+   * the loaded page rather than the whole table — enough to stop a typo.
+   */
+  const areaKeySuggestions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          rates
+            .filter((r) => r.property_category === formData.property_category)
+            .map((r) => r.area_key),
+        ),
+      ).sort(),
+    [rates, formData.property_category],
+  );
 
   const fetchRegions = useCallback(async () => {
     const res = await enhancedApiService.getPricingRegions({ page_size: 100 });
@@ -173,6 +266,14 @@ const PricingMaster: React.FC = () => {
   }, [fetchRegions]);
 
   useEffect(() => {
+    enhancedApiService
+      .getPricingRateOptions()
+      .then(setOptions)
+      // Non-fatal: the dropdowns fall back to the canonical defaults.
+      .catch((err) => console.error('Failed to load pricing options:', err));
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (tab === 'rates') fetchRates();
       else fetchAudit();
@@ -186,6 +287,7 @@ const PricingMaster: React.FC = () => {
 
   const openCreate = () => {
     setSelectedRate(null);
+    setFormError('');
     setFormData({
       ...emptyForm(),
       region: regions[0]?.id ?? 0,
@@ -195,6 +297,7 @@ const PricingMaster: React.FC = () => {
 
   const openEdit = (rate: PricingRate) => {
     setSelectedRate(rate);
+    setFormError('');
     setFormData({
       region: rate.region,
       service_package: rate.service_package,
@@ -202,6 +305,11 @@ const PricingMaster: React.FC = () => {
       area_key: rate.area_key,
       property_category: rate.property_category,
       amount: Number(rate.amount),
+      floor_amount:
+        rate.floor_amount === null || rate.floor_amount === undefined
+          ? null
+          : Number(rate.floor_amount),
+      billing_basis: rate.billing_basis || '',
       gst_percent: Number(rate.gst_percent ?? 18),
       price_includes_gst: rate.price_includes_gst !== false,
       is_active: rate.is_active,
@@ -213,18 +321,46 @@ const PricingMaster: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+
+    // Mirror the API's rules so staff see the problem before a failed round trip.
+    if (!formData.region) {
+      setFormError('Select a region.');
+      return;
+    }
+    if (!formData.area_key.trim()) {
+      setFormError('Area / size key is required — it identifies the rate row.');
+      return;
+    }
+    if (!(formData.amount > 0)) {
+      setFormError('Amount must be greater than zero.');
+      return;
+    }
+    if (formData.floor_amount !== null && formData.floor_amount > formData.amount) {
+      setFormError(
+        `Internal floor (₹${formData.floor_amount}) cannot be above the rate ` +
+          `(₹${formData.amount}).`,
+      );
+      return;
+    }
+    setFormError('');
+
     try {
       setSaving(true);
+      const payload: PricingRateFormData = {
+        ...formData,
+        area_key: formData.area_key.trim(),
+        billing_basis: formData.billing_basis.trim(),
+      };
       if (selectedRate) {
-        await enhancedApiService.updatePricingRate(selectedRate.id, formData);
+        await enhancedApiService.updatePricingRate(selectedRate.id, payload);
       } else {
-        await enhancedApiService.createPricingRate(formData);
+        await enhancedApiService.createPricingRate(payload);
       }
       setIsModalOpen(false);
       fetchRates();
     } catch (err: unknown) {
       console.error('Save failed:', err);
-      showAlert('Failed to save pricing rate. Check all fields and try again.');
+      setFormError(pricingApiError(err));
     } finally {
       setSaving(false);
     }
@@ -319,7 +455,7 @@ const PricingMaster: React.FC = () => {
                   className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
                 >
                   <option value="">All Services</option>
-                  {SERVICE_PACKAGES.map((s) => (
+                  {servicePackageOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -329,7 +465,7 @@ const PricingMaster: React.FC = () => {
                   className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
                 >
                   <option value="">All Plans</option>
-                  {PLAN_TYPES.map((p) => (
+                  {planTypeOptions.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
@@ -375,14 +511,29 @@ const PricingMaster: React.FC = () => {
                       <td className="py-3 pr-3 font-semibold">{rate.region_name}</td>
                       <td className="py-3 pr-3">{rate.service_package}</td>
                       <td className="py-3 pr-3 text-gray-600">{rate.plan_type}</td>
-                      <td className="py-3 pr-3 font-medium">{rate.area_key}</td>
+                      <td className="py-3 pr-3 font-medium">
+                        {rate.area_key}
+                        {rate.billing_basis && (
+                          <div className="text-[10px] font-normal text-gray-400">
+                            {rate.billing_basis}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3 pr-3">
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {rate.property_category}
+                        <Badge variant="outline" className="text-[10px]">
+                          {categoryLabel(rate.property_category)}
                         </Badge>
                       </td>
                       <td className="py-3 pr-3 text-right font-black text-gray-900 tabular-nums">
                         {formatInr(rate.amount)}
+                        {rate.floor_amount !== null && rate.floor_amount !== undefined && (
+                          <div
+                            className="text-[10px] font-medium text-gray-400"
+                            title="Internal negotiation floor — never shown to customers"
+                          >
+                            Floor {formatInr(rate.floor_amount)}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 pr-3 text-xs text-gray-600">
                         <div className="font-semibold">{Number(rate.gst_percent ?? 18)}%</div>
@@ -497,6 +648,14 @@ const PricingMaster: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-5">
+          {formError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+            >
+              {formError}
+            </div>
+          )}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Service details
@@ -516,6 +675,9 @@ const PricingMaster: React.FC = () => {
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Rates are priced per region.
+                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -527,10 +689,13 @@ const PricingMaster: React.FC = () => {
                   className={pricingFieldClass}
                   required
                 >
-                  {SERVICE_PACKAGES.map((s) => (
+                  {servicePackageOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Existing service names only, so the booking list stays clean.
+                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -542,10 +707,13 @@ const PricingMaster: React.FC = () => {
                   className={pricingFieldClass}
                   required
                 >
-                  {PLAN_TYPES.map((p) => (
+                  {planTypeOptions.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  One-time, AMC or a visit frequency.
+                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -562,12 +730,21 @@ const PricingMaster: React.FC = () => {
                   className={pricingFieldClass}
                   required
                 >
-                  {PROPERTY_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
+                  {PROPERTY_CATEGORY_GROUPS.map((g) => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.options.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {formData.property_category === 'addon'
+                    ? 'Add-ons are hidden from the booking service list and priced separately.'
+                    : 'Decides which rate table a booking looks in.'}
+                </p>
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Area / size key <span className="text-red-500">*</span>
                 </label>
@@ -576,8 +753,37 @@ const PricingMaster: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, area_key: e.target.value })}
                   placeholder="e.g. 1 BHK, 2 BHK, Up to 1,000 Sq.Ft."
                   className={pricingFieldClass}
+                  list="pricing-area-keys"
                   required
                 />
+                <datalist id="pricing-area-keys">
+                  {areaKeySuggestions.map((a) => (
+                    <option key={a} value={a} />
+                  ))}
+                </datalist>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Must match the booking form's size option exactly.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Billing basis
+                </label>
+                <input
+                  value={formData.billing_basis}
+                  onChange={(e) => setFormData({ ...formData, billing_basis: e.target.value })}
+                  placeholder="e.g. Per month, Per outlet/month"
+                  className={pricingFieldClass}
+                  list="pricing-billing-bases"
+                />
+                <datalist id="pricing-billing-bases">
+                  {(options?.billing_bases ?? []).map((b) => (
+                    <option key={b} value={b} />
+                  ))}
+                </datalist>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  How the amount is charged. Leave blank for a one-off price.
+                </p>
               </div>
             </div>
           </section>
@@ -586,7 +792,7 @@ const PricingMaster: React.FC = () => {
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Pricing &amp; GST
             </h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Amount (₹) <span className="text-red-500">*</span>
@@ -600,6 +806,38 @@ const PricingMaster: React.FC = () => {
                   className={pricingFieldClass}
                   required
                 />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {formData.price_includes_gst
+                    ? 'Tax-inclusive: what the customer pays.'
+                    : 'Tax-exclusive: GST is added on top.'}
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Internal floor (₹)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={formData.floor_amount ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      floor_amount: e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
+                  placeholder="No floor set"
+                  className={cn(
+                    pricingFieldClass,
+                    formData.floor_amount !== null &&
+                      formData.floor_amount > formData.amount &&
+                      'border-red-400 focus:border-red-500 focus:ring-red-500/20',
+                  )}
+                />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Lowest rate staff may negotiate to. Never shown to customers.
+                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">GST %</label>
@@ -677,7 +915,21 @@ const PricingMaster: React.FC = () => {
                     {formData.price_includes_gst
                       ? 'Amount is tax-inclusive. Base is back-calculated from GST %.'
                       : 'Amount is tax-exclusive. GST is added on top for the customer total.'}
+                    {formData.billing_basis.trim() && ` Billed ${formData.billing_basis.trim().toLowerCase()}.`}
                   </p>
+                  {formData.floor_amount !== null && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Internal floor {formatInr(formData.floor_amount)} ={' '}
+                      {formatInr(
+                        previewGst(
+                          formData.floor_amount,
+                          formData.gst_percent,
+                          formData.price_includes_gst,
+                        ).total,
+                      )}{' '}
+                      to the customer.
+                    </p>
+                  )}
                 </div>
               );
             })()}
