@@ -406,7 +406,7 @@ const Technicians: React.FC = () => {
         }}
         onConfirm={handleConfirmDelete}
         title="Delete Technician"
-        message="Are you sure you want to permanently delete this technician? This action cannot be undone."
+        message={`Are you sure you want to permanently delete ${deleteTarget?.name ?? 'this technician'}? This action cannot be undone.`}
         confirmText="Delete Permanently"
         cancelText="Cancel"
         type="danger"
