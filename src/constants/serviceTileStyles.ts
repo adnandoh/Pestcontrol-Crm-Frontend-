@@ -31,20 +31,27 @@ export const SERVICE_GROUP_LABEL =
   'w-full shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500 sm:w-32 sm:pt-2';
 
 /**
- * Two fixed columns, with the tiles left where their own text ends.
+ * Two columns, each capped rather than sharing the row.
  *
  * Free-wrapping tiles gave every row its own edges — the second tile of one
- * family began 7px off the second tile of the next, which is close enough to
- * aligned to look like a mistake rather than a choice. A grid gives them two
- * positions to sit at.
+ * family began 7px off the second tile of the next, close enough to aligned to
+ * look like a mistake. A grid gives them two positions to sit at.
  *
- * `justify-items-start` is what keeps them honest: without it a grid item
- * stretches to its column, which is how "Bed Bugs" ended up as wide as
- * "Mosquito Thermal Fogging". Aligned edges and label-width tiles are not in
- * conflict; they just both need saying.
+ * The cap is what keeps the middle tight. Plain `grid-cols-2` is two `1fr`
+ * tracks, so the columns absorb the whole row: on a 1600px window that pushed
+ * the second column 406px clear of the first. 15rem holds the longest service
+ * name ("Mosquito Thermal Fogging", 215px) with room to spare and does not
+ * grow with the viewport.
+ *
+ * `justify-items-start` stops a tile stretching to its track, which is how
+ * "Bed Bugs" came out as wide as the longest name. Aligned edges and
+ * label-width tiles are not in conflict; they just both have to be asked for.
+ *
+ * Some gap after a short tile is unavoidable — the track has to fit the
+ * longest name in it — but it is now a margin rather than a void.
  */
 export const SERVICE_TILE_ROW =
-  'grid flex-1 min-w-0 grid-cols-1 sm:grid-cols-2 justify-items-start gap-x-3 gap-y-2';
+  'grid flex-1 min-w-0 grid-cols-1 sm:grid-cols-[repeat(2,minmax(0,15rem))] justify-items-start gap-x-3 gap-y-2';
 
 export const SERVICE_TILE_CHECKBOX =
   'h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
