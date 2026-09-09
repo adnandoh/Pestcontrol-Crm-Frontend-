@@ -81,9 +81,12 @@ const ClockTimePicker: React.FC<ClockTimePickerProps> = ({
         ref={triggerRef}
         type="button"
         onClick={openPicker}
-        className="w-full h-10 px-3 flex items-center gap-2 text-xs font-bold border border-gray-200 rounded-lg outline-none bg-white shadow-sm hover:border-blue-400 transition-colors"
+        // Matches the height, border and type scale of the date inputs and
+        // selects it sits beside; it used to be a shade lighter and a size
+        // smaller, which read as a different kind of control.
+        className="w-full h-10 px-3 flex items-center gap-2 text-sm font-medium border border-gray-300 rounded-lg outline-none bg-white shadow-sm hover:border-blue-400 transition-colors"
       >
-        <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+        <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
         <span className={value ? 'text-gray-800' : 'text-gray-400'}>{value || placeholder}</span>
       </button>
 

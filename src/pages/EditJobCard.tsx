@@ -61,6 +61,7 @@ import {
   type ServiceItemConfig,
   type ServicePriceLine,
 } from '../utils/jobCardPricing';
+import { toClockDisplay, toStorageTime } from '../utils/clockTime';
 import { groupServiceOptions } from '../utils/serviceGrouping';
 import PerServicePricingSection from '../components/crm/PerServicePricingSection';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
@@ -1461,11 +1462,12 @@ const EditJobCard: React.FC = () => {
               </div>
               <div>
                 <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Reminder Time</label>
-                <Input
-                  type="time"
-                  value={formData.reminder_time || ''}
-                  onChange={(e) => handleInputChange('reminder_time', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border-gray-300 rounded-lg shadow-sm"
+                {/* Same clock face as the Time Slot field, rather than the
+                    browser's native time control. Stored 24-hour. */}
+                <ClockTimePicker
+                  value={toClockDisplay(formData.reminder_time)}
+                  onChange={(val) => handleInputChange('reminder_time', toStorageTime(val))}
+                  placeholder="Select time"
                 />
               </div>
               <div className="md:col-span-2">
