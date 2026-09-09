@@ -3,7 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } fro
 import { apiConfig, API_ENDPOINTS, CACHE_KEYS } from '../config/api.config';
 import { TECHNICIAN_LEDGER_PAGE_SIZE } from '../constants/technicianLedger';
 import { apiCache } from './apiCache';
-import { isTechnicianAssignable } from '../utils/technicianStatus';
+import { isTechnicianAssignable, isTechnicianListable } from '../utils/technicianStatus';
 import {
   forceSessionLogout,
   refreshAccessTokenFromStorage,
@@ -417,16 +417,26 @@ class EnhancedApiService {
     );
   }
 
+  /**
+   * Technicians the desk may assign work to: on-leave and suspended are left
+   * out both server-side and here.
+   *
+   * `includeOnLeave` is for read-only pickers (ledger report, complaint form)
+   * that are not handing out work and still need to reach someone who is away
+   * today. Suspended stays hidden either way.
+   */
   async getActiveTechnicians(options?: {
     fresh?: boolean;
     jobId?: number;
     cityId?: number;
     cityName?: string;
+    includeOnLeave?: boolean;
   }): Promise<Technician[]> {
     const params: Record<string, number | string> = {};
     if (options?.jobId) params.job_id = options.jobId;
     if (options?.cityId) params.city_id = options.cityId;
     if (options?.cityName) params.city_name = options.cityName;
+    if (options?.includeOnLeave) params.include_on_leave = 1;
     const cacheKey = `${API_ENDPOINTS.TECHNICIANS}active/`;
     const queryKey = Object.keys(params).length
       ? `${cacheKey}?${new URLSearchParams(
@@ -434,16 +444,23 @@ class EnhancedApiService {
         ).toString()}`
       : cacheKey;
 
+    const allowed = options?.includeOnLeave
+      ? isTechnicianListable
+      : isTechnicianAssignable;
     const onlyAssignable = (rows: Technician[] | unknown): Technician[] => {
       const list = Array.isArray(rows) ? rows : [];
       return list.filter(
-        (tech) =>
-          tech?.is_active !== false &&
-          isTechnicianAssignable(tech?.presence_status),
+        (tech) => tech?.is_active !== false && allowed(tech?.presence_status),
       );
     };
 
-    if (options?.fresh || options?.jobId || options?.cityId || options?.cityName) {
+    if (
+      options?.fresh
+      || options?.jobId
+      || options?.cityId
+      || options?.cityName
+      || options?.includeOnLeave
+    ) {
       const rows = await this.retryRequest(() =>
         this.makeRequest(
           queryKey,
@@ -2100,9 +2117,49 @@ class EnhancedApiService {
     return this.api.get<PaginatedResponse<PricingRate>>(API_ENDPOINTS.PRICING_RATES, { params }).then((r) => r.data);
   }
 
-  async getPricingRateOptions(): Promise<PricingRateOptions> {
+  /**
+   * Every rate matching the filters, following the API's pages internally.
+   *
+   * Pricing Master shows one city at a time with no pagination, so it needs the
+   * whole filtered set. The server caps `page_size` at 2000, which one city
+   * comfortably fits inside today — the loop is what keeps that from becoming a
+   * silent truncation as the rate card grows.
+   */
+  async getAllPricingRates(params?: PricingRateFilters): Promise<PricingRate[]> {
+    const pageSize = 500;
+    const rows: PricingRate[] = [];
+    let page = 1;
+
+    for (;;) {
+      const res = await this.getPricingRates({ ...params, page, page_size: pageSize });
+      rows.push(...res.results);
+      if (!res.next || res.results.length === 0) break;
+      page += 1;
+      // Belt and braces against a malformed `next` that never clears.
+      if (page > 100) break;
+    }
+    return rows;
+  }
+
+  /**
+   * Distinct stored values, optionally scoped.
+   *
+   * Pricing Master calls this three ways: unscoped for the Add/Edit form (any
+   * city can be priced), by `region` for the plan tabs, and by region plus plan
+   * for the service tabs — so a tab is never offered with no rates behind it.
+   */
+  async getPricingRateOptions(scope?: {
+    region?: number;
+    planTypes?: string[];
+  }): Promise<PricingRateOptions> {
+    const params: Record<string, string | number> = {};
+    if (scope?.region) params.region = scope.region;
+    if (scope?.planTypes?.length) params.plan_type__in = scope.planTypes.join(',');
+
     return this.api
-      .get<PricingRateOptions>(`${API_ENDPOINTS.PRICING_RATES}options/`)
+      .get<PricingRateOptions>(`${API_ENDPOINTS.PRICING_RATES}options/`, {
+        params: Object.keys(params).length ? params : undefined,
+      })
       .then((r) => r.data);
   }
 

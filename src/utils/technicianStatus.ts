@@ -21,7 +21,7 @@ export const TECHNICIAN_STATUS_OPTIONS: {
   {
     value: 'on_leave',
     label: 'On Leave',
-    hint: 'Temporarily away. No new bookings are sent to their app.',
+    hint: 'Temporarily away. No new bookings, and hidden from the assign list.',
   },
   {
     value: 'suspended',
@@ -64,11 +64,21 @@ export function isTechnicianAvailable(value: string | null | undefined): boolean
 /**
  * Whether desk staff may hand this technician a job.
  *
- * Deliberately looser than `isTechnicianAvailable`: only suspended is hidden.
- * On-leave technicians stay pickable so a job can be scheduled for after they
- * return — the UI labels them so the choice is informed. This mirrors the
- * backend's `crm_assign_technicians_queryset`.
+ * On-leave and suspended are both excluded: dispatch does not reach either, so
+ * listing them in the assign popup or the crew panel would only invite a
+ * booking that goes nowhere. Mirrors the backend's
+ * `crm_assign_technicians_queryset`.
  */
 export function isTechnicianAssignable(value: string | null | undefined): boolean {
+  return isTechnicianAvailable(value);
+}
+
+/**
+ * Whether this technician belongs in a read-only picker — the ledger report or
+ * the complaint form. Looser than `isTechnicianAssignable` on purpose: you
+ * still need to pull the ledger of someone who is merely away this week.
+ * Suspended stays hidden, matching `?include_on_leave=1` on the API.
+ */
+export function isTechnicianListable(value: string | null | undefined): boolean {
   return normalizeTechnicianStatus(value) !== 'suspended';
 }

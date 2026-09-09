@@ -1542,6 +1542,11 @@ export interface PricingRateFilters {
   region?: number;
   service_package?: string;
   plan_type?: string;
+  /**
+   * Comma-separated plan types, so one Pricing Master tab can cover a whole
+   * plan family (e.g. all three AMC plans) in a single server-side query.
+   */
+  plan_type__in?: string;
   property_category?: string;
   is_active?: boolean;
   page?: number;

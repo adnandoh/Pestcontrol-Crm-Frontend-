@@ -12,12 +12,7 @@ import { cn } from '../../utils/cn';
 import CopyablePhone from './CopyablePhone';
 import { notify } from '../../utils/notify';
 import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
-import {
-  isTechnicianAssignable,
-  isTechnicianAvailable,
-  technicianStatusLabel,
-  technicianStatusTone,
-} from '../../utils/technicianStatus';
+import { isTechnicianAssignable } from '../../utils/technicianStatus';
 
 /** Normalize booking / tech service labels for overlap checks. */
 function serviceMatchKey(raw: string): string {
@@ -94,7 +89,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
         fresh: true,
         jobId: booking?.id,
       });
-      // Hard client filter — never list inactive/suspended staff in assign popup.
+      // Hard client filter — the server already excludes them, but a cached
+      // response from before a status change must not leak an unassignable
+      // technician into the popup.
       setTechnicians(
         (Array.isArray(activeTechnicians) ? activeTechnicians : []).filter(
           (tech) =>
@@ -208,9 +205,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 space-y-2">
                   <p className="text-xs font-bold leading-snug">{assignError.message}</p>
-                  {assignError.code === 'technician_inactive' && (
+                  {(assignError.code === 'technician_inactive'
+                    || assignError.code === 'technician_unavailable') && (
                     <p className="text-[10px] font-semibold text-red-600/90">
-                      Mark the technician Active on the Technicians page, then try again.
+                      Set the technician to Active on their profile, then try again.
                     </p>
                   )}
                   {assignError.editTechnicianPath && (
@@ -219,7 +217,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                       className="inline-flex text-[10px] font-black uppercase tracking-wide text-red-800 underline underline-offset-2 hover:text-red-950"
                       onClick={onClose}
                     >
-                      Edit technician service areas →
+                      {assignError.code === 'technician_unavailable'
+                        ? 'Edit technician status →'
+                        : 'Edit technician service areas →'}
                     </Link>
                   )}
                 </div>
@@ -228,8 +228,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           )}
 
           <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug">
-            All active technicians are listed. Base Services and Service Areas are shown for
-            reference — CRM desk can still assign anyone. Matching Base Services appear first.
+            Only Active technicians are listed — anyone On Leave or Suspended is hidden until
+            their status changes. Base Services and Service Areas are shown for reference;
+            matching Base Services appear first.
           </div>
 
           {bookingServices.length > 0 && (
@@ -328,19 +329,6 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                           {covers && (
                             <span className="ml-2 inline-flex align-middle rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-800">
                               Matches booking
-                            </span>
-                          )}
-                          {/* On-leave staff stay assignable so a job can be
-                              scheduled for their return, but the desk has to
-                              see it before clicking. */}
-                          {!isTechnicianAvailable(tech.presence_status) && (
-                            <span
-                              className={cn(
-                                'ml-2 inline-flex align-middle rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide ring-1 ring-inset',
-                                technicianStatusTone(tech.presence_status),
-                              )}
-                            >
-                              {technicianStatusLabel(tech.presence_status)}
                             </span>
                           )}
                         </h4>

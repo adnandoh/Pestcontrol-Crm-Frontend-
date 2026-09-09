@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TECHNICIAN_STATUS_OPTIONS,
   isTechnicianAssignable,
+  isTechnicianListable,
   isTechnicianAvailable,
   normalizeTechnicianStatus,
   technicianStatusLabel,
@@ -44,12 +45,28 @@ describe('technician status', () => {
       expect(isTechnicianAvailable('suspended')).toBe(false);
     });
 
-    it('on-leave staff stay assignable, suspended staff do not', () => {
-      // Automatic dispatch skips on-leave technicians, but the desk can still
-      // schedule them for after they return.
+    it('neither on-leave nor suspended staff are assignable', () => {
+      // Dispatch does not reach either, so the assign popup and crew panel
+      // must not offer them.
       expect(isTechnicianAssignable('active')).toBe(true);
-      expect(isTechnicianAssignable('on_leave')).toBe(true);
+      expect(isTechnicianAssignable('on_leave')).toBe(false);
       expect(isTechnicianAssignable('suspended')).toBe(false);
+    });
+
+    it('on-leave staff remain listable for read-only pickers', () => {
+      // The ledger report and complaint form still have to reach someone who
+      // is merely away today. Suspended stays hidden there too.
+      expect(isTechnicianListable('active')).toBe(true);
+      expect(isTechnicianListable('on_leave')).toBe(true);
+      expect(isTechnicianListable('suspended')).toBe(false);
+    });
+
+    it('assignable is strictly narrower than listable', () => {
+      for (const status of ['active', 'on_leave', 'suspended']) {
+        if (isTechnicianAssignable(status)) {
+          expect(isTechnicianListable(status)).toBe(true);
+        }
+      }
     });
   });
 });

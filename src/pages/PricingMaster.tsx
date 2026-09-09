@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   IndianRupee,
   Plus,
-  Search,
   Edit2,
-  History,
   Filter,
   CheckCircle2,
   XCircle,
@@ -12,26 +10,26 @@ import {
 import {
   Card,
   Button,
-  Input,
   Badge,
   Modal,
   PageLoading,
 } from '../components/ui';
-import { Pagination } from '../components/ui/Pagination';
 import { enhancedApiService } from '../services/api.enhanced';
 import { useAuth } from '../hooks/useAuth';
 import { isPricingAdmin } from '../utils/roles';
 import type {
   PricingRate,
+  PricingRateFilters,
   PricingRateFormData,
   PricingRateOptions,
-  PricingRateAuditLog,
   PricingRegion,
   PricingPropertyCategory,
 } from '../types';
+import {
+  buildPlanGroups,
+  type PricingPlanGroupId,
+} from '../utils/pricingPlanGroups';
 import { cn } from '../utils/cn';
-
-const PAGE_SIZE = 10;
 
 const SERVICE_PACKAGES = [
   'Cockroach / Ants',
@@ -153,23 +151,67 @@ const formatInr = (n: number | string | undefined | null) =>
 const pricingFieldClass =
   'w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#2d8a2f] focus:ring-2 focus:ring-[#2d8a2f]/20';
 
+/**
+ * One labelled row of filter pills. The label matters here: three stacked rows
+ * of pills are ambiguous without saying which dimension each one filters.
+ */
+const FilterTabRow: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+    <span className="w-16 shrink-0 pt-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+      {label}
+    </span>
+    <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
+  </div>
+);
+
+/** Pill-style filter tab. `title` lists the underlying values it covers. */
+const PlanTab: React.FC<{
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  title?: string;
+}> = ({ label, active, onClick, title }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    title={title}
+    aria-pressed={active}
+    className={cn(
+      'h-9 rounded-full border px-4 text-xs font-bold transition-colors',
+      active
+        ? 'border-[#2d8a2f] bg-[#2d8a2f] text-white'
+        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50',
+    )}
+  >
+    {label}
+  </button>
+);
+
 const PricingMaster: React.FC = () => {
   const { user } = useAuth();
   const canEdit = isPricingAdmin(user);
 
-  const [tab, setTab] = useState<'rates' | 'audit'>('rates');
   const [rates, setRates] = useState<PricingRate[]>([]);
-  const [auditLogs, setAuditLogs] = useState<PricingRateAuditLog[]>([]);
   const [regions, setRegions] = useState<PricingRegion[]>([]);
+  const [regionsLoaded, setRegionsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(1);
 
-  const [search, setSearch] = useState('');
-  const [filterRegion, setFilterRegion] = useState('');
-  const [filterService, setFilterService] = useState('');
-  const [filterPlan, setFilterPlan] = useState('');
-  const [filterActive, setFilterActive] = useState('');
+  /** Selected city tab. Defaults to the region flagged `is_default` (Mumbai). */
+  const [activeRegionId, setActiveRegionId] = useState<number | null>(null);
+  const [activePlan, setActivePlan] = useState<PricingPlanGroupId | 'all'>('all');
+  /**
+   * Selected service tab. This is where the Standard / Premium split lives —
+   * it is part of the service name ("Cockroach Standard", "Cockroach Premium"),
+   * not a separate plan or tier column.
+   */
+  const [activeService, setActiveService] = useState<string>('all');
+  /** Plan types present in the selected city, used to build the plan tabs. */
+  const [cityPlanTypes, setCityPlanTypes] = useState<string[]>([]);
+  /** Services present in the selected city *and* plan, for the service tabs. */
+  const [cityServices, setCityServices] = useState<string[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<PricingRate | null>(null);
@@ -209,62 +251,44 @@ const PricingMaster: React.FC = () => {
     [rates, formData.property_category],
   );
 
-  const fetchRegions = useCallback(async () => {
-    const res = await enhancedApiService.getPricingRegions({ page_size: 100 });
-    setRegions(res.results);
-    if (!formData.region && res.results.length > 0) {
-      setFormData((prev) => ({ ...prev, region: res.results[0].id }));
-    }
-  }, [formData.region]);
+  const planGroups = useMemo(() => buildPlanGroups(cityPlanTypes), [cityPlanTypes]);
 
-  const fetchRates = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params: Record<string, unknown> = {
-        page,
-        page_size: PAGE_SIZE,
-        ordering: 'region__name,service_package,plan_type,area_key',
-      };
-      if (search.trim()) params.search = search.trim();
-      if (filterRegion) params.region = Number(filterRegion);
-      if (filterService) params.service_package = filterService;
-      if (filterPlan) params.plan_type = filterPlan;
-      if (filterActive !== '') params.is_active = filterActive === 'true';
+  const activeRegion = useMemo(
+    () => regions.find((r) => r.id === activeRegionId) ?? null,
+    [regions, activeRegionId],
+  );
 
-      const res = await enhancedApiService.getPricingRates(params);
-      setRates(res.results);
-      setTotalCount(res.count);
-    } catch (err) {
-      console.error('Failed to load pricing rates:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterRegion, filterService, filterPlan, filterActive]);
-
-  const fetchAudit = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await enhancedApiService.getPricingAuditLogs({
-        page,
-        page_size: PAGE_SIZE,
-        search: search.trim() || undefined,
-        region_slug: filterRegion
-          ? regions.find((r) => r.id === Number(filterRegion))?.slug
-          : undefined,
-      });
-      setAuditLogs(res.results);
-      setTotalCount(res.count);
-    } catch (err) {
-      console.error('Failed to load audit logs:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterRegion, regions]);
-
+  /**
+   * Cities come from the configured pricing regions, not the master city list.
+   * A city without its own rate card falls back to Mumbai's pricing at booking
+   * time, so a tab for it would only ever show an empty table.
+   */
   useEffect(() => {
-    fetchRegions();
-  }, [fetchRegions]);
+    let cancelled = false;
+    enhancedApiService
+      .getPricingRegions({ page_size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setRegions(res.results);
+        setActiveRegionId((current) => {
+          if (current !== null) return current;
+          const preferred = res.results.find((r) => r.is_default) ?? res.results[0];
+          return preferred?.id ?? null;
+        });
+      })
+      .catch((err) => console.error('Failed to load pricing cities:', err))
+      .finally(() => {
+        if (!cancelled) setRegionsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
+  /**
+   * The form's selects list every stored value so a rate can be added for any
+   * city, independently of whatever the tabs are currently filtered to.
+   */
   useEffect(() => {
     enhancedApiService
       .getPricingRateOptions()
@@ -273,24 +297,98 @@ const PricingMaster: React.FC = () => {
       .catch((err) => console.error('Failed to load pricing options:', err));
   }, []);
 
+  /** Plan tabs: scoped to the city only, so changing plan never rebuilds them. */
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (tab === 'rates') fetchRates();
-      else fetchAudit();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [tab, fetchRates, fetchAudit]);
+    if (activeRegionId === null) return;
+    let cancelled = false;
+    enhancedApiService
+      .getPricingRateOptions({ region: activeRegionId })
+      .then((res) => {
+        if (!cancelled) setCityPlanTypes(res.plan_types ?? []);
+      })
+      .catch((err) => {
+        if (!cancelled) setCityPlanTypes([]);
+        console.error('Failed to load plan tabs:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRegionId]);
+
+  const activePlanTypes = useMemo(
+    () => planGroups.find((g) => g.id === activePlan)?.planTypes ?? [],
+    [planGroups, activePlan],
+  );
+
+  /**
+   * Service tabs: scoped to city *and* plan, so a plan is never offered a
+   * service with no rates behind it. A selected service that disappears when
+   * the plan changes falls back to All Services rather than emptying the table.
+   */
+  useEffect(() => {
+    if (activeRegionId === null) return;
+    let cancelled = false;
+    enhancedApiService
+      .getPricingRateOptions({ region: activeRegionId, planTypes: activePlanTypes })
+      .then((res) => {
+        if (cancelled) return;
+        const services = res.service_packages ?? [];
+        setCityServices(services);
+        setActiveService((current) =>
+          current !== 'all' && !services.includes(current) ? 'all' : current,
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) setCityServices([]);
+        console.error('Failed to load service tabs:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRegionId, activePlanTypes]);
+
+  /** Reset both tabs when the city changes so a stale one cannot empty the table. */
+  useEffect(() => {
+    setActivePlan('all');
+    setActiveService('all');
+  }, [activeRegionId]);
+
+  const fetchRates = useCallback(async () => {
+    if (activeRegionId === null) {
+      setRates([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      // City, plan and service are all applied by the API — the table never
+      // holds rows outside the current selection.
+      const params: PricingRateFilters = {
+        region: activeRegionId,
+        ordering: 'service_package,plan_type,area_key',
+      };
+      if (activePlanTypes.length) params.plan_type__in = activePlanTypes.join(',');
+      if (activeService !== 'all') params.service_package = activeService;
+
+      setRates(await enhancedApiService.getAllPricingRates(params));
+    } catch (err) {
+      console.error('Failed to load pricing rates:', err);
+      setRates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeRegionId, activePlanTypes, activeService]);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, filterRegion, filterService, filterPlan, filterActive, tab]);
+    fetchRates();
+  }, [fetchRates]);
 
   const openCreate = () => {
     setSelectedRate(null);
     setFormError('');
     setFormData({
       ...emptyForm(),
-      region: regions[0]?.id ?? 0,
+      region: activeRegionId ?? regions[0]?.id ?? 0,
     });
     setIsModalOpen(true);
   };
@@ -324,7 +422,7 @@ const PricingMaster: React.FC = () => {
 
     // Mirror the API's rules so staff see the problem before a failed round trip.
     if (!formData.region) {
-      setFormError('Select a region.');
+      setFormError('Select a city.');
       return;
     }
     if (!formData.area_key.trim()) {
@@ -357,7 +455,14 @@ const PricingMaster: React.FC = () => {
         await enhancedApiService.createPricingRate(payload);
       }
       setIsModalOpen(false);
-      fetchRates();
+
+      // A rate saved against another city would be invisible under the current
+      // tab, which reads as a failed save. Follow it instead.
+      if (payload.region !== activeRegionId) {
+        setActiveRegionId(payload.region);
+      } else {
+        fetchRates();
+      }
     } catch (err: unknown) {
       console.error('Save failed:', err);
       setFormError(pricingApiError(err));
@@ -366,11 +471,7 @@ const PricingMaster: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount);
-
-  if (loading && rates.length === 0 && auditLogs.length === 0 && regions.length === 0) {
+  if (!regionsLoaded) {
     return <PageLoading text="Loading Pricing Master..." />;
   }
 
@@ -386,7 +487,7 @@ const PricingMaster: React.FC = () => {
             Single master for One-Time and AMC rates with GST. Changes apply to new bookings and the customer catalog — existing bookings keep their stored price.
           </p>
         </div>
-        {canEdit && tab === 'rates' && (
+        {canEdit && (
           <Button onClick={openCreate} className="bg-[#2d8a2f] hover:bg-[#246b27] text-white gap-2">
             <Plus className="h-4 w-4" />
             Add Rate
@@ -394,242 +495,182 @@ const PricingMaster: React.FC = () => {
         )}
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setTab('rates')}
-          className={cn(
-            'px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors',
-            tab === 'rates'
-              ? 'border-[#1e5a9e] text-[#1e5a9e]'
-              : 'border-transparent text-gray-500 hover:text-gray-800',
-          )}
-        >
-          <IndianRupee className="inline h-4 w-4 mr-1.5" />
-          Rates
-        </button>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => setTab('audit')}
-            className={cn(
-              'px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors',
-              tab === 'audit'
-                ? 'border-[#1e5a9e] text-[#1e5a9e]'
-                : 'border-transparent text-gray-500 hover:text-gray-800',
-            )}
-          >
-            <History className="inline h-4 w-4 mr-1.5" />
-            Audit Log
-          </button>
-        )}
-      </div>
+      {/* City tabs. One city at a time — the list is never mixed. */}
+      {regions.length === 0 ? (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3 font-medium">
+          No pricing cities are configured yet.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2 border-b border-gray-200">
+          {regions.map((region) => (
+            <button
+              key={region.id}
+              type="button"
+              onClick={() => setActiveRegionId(region.id)}
+              className={cn(
+                'px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors',
+                region.id === activeRegionId
+                  ? 'border-[#1e5a9e] text-[#1e5a9e]'
+                  : 'border-transparent text-gray-500 hover:text-gray-800',
+              )}
+            >
+              {region.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <Card className="p-4">
-        <div className="flex flex-col lg:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search service, area, region..."
-              className="pl-10"
+        {/* Plan tabs, built from the plan types this city actually has. */}
+        {planGroups.length > 0 && (
+          <FilterTabRow label="Plan">
+            <PlanTab
+              label="All Plans"
+              active={activePlan === 'all'}
+              onClick={() => setActivePlan('all')}
             />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={filterRegion}
-              onChange={(e) => setFilterRegion(e.target.value)}
-              className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
-            >
-              <option value="">All Regions</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-            {tab === 'rates' && (
-              <>
-                <select
-                  value={filterService}
-                  onChange={(e) => setFilterService(e.target.value)}
-                  className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
-                >
-                  <option value="">All Services</option>
-                  {servicePackageOptions.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <select
-                  value={filterPlan}
-                  onChange={(e) => setFilterPlan(e.target.value)}
-                  className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
-                >
-                  <option value="">All Plans</option>
-                  {planTypeOptions.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-                <select
-                  value={filterActive}
-                  onChange={(e) => setFilterActive(e.target.value)}
-                  className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white"
-                >
-                  <option value="">All Status</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </>
-            )}
-          </div>
-        </div>
-
-        {tab === 'rates' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                  <th className="py-3 pr-3">Region</th>
-                  <th className="py-3 pr-3">Service</th>
-                  <th className="py-3 pr-3">Plan</th>
-                  <th className="py-3 pr-3">Area / Size</th>
-                  <th className="py-3 pr-3">Category</th>
-                  <th className="py-3 pr-3 text-right">Amount</th>
-                  <th className="py-3 pr-3">GST</th>
-                  <th className="py-3 pr-3 text-right">Total</th>
-                  <th className="py-3 pr-3">Status</th>
-                  {canEdit && <th className="py-3 text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={10} className="py-8 text-center text-gray-400">Loading...</td></tr>
-                ) : rates.length === 0 ? (
-                  <tr><td colSpan={10} className="py-8 text-center text-gray-400">No pricing rates found. Click Add Rate to create one.</td></tr>
-                ) : (
-                  rates.map((rate) => (
-                    <tr key={rate.id} className="border-b border-gray-100 hover:bg-gray-50/80">
-                      <td className="py-3 pr-3 font-semibold">{rate.region_name}</td>
-                      <td className="py-3 pr-3">{rate.service_package}</td>
-                      <td className="py-3 pr-3 text-gray-600">{rate.plan_type}</td>
-                      <td className="py-3 pr-3 font-medium">
-                        {rate.area_key}
-                        {rate.billing_basis && (
-                          <div className="text-[10px] font-normal text-gray-400">
-                            {rate.billing_basis}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 pr-3">
-                        <Badge variant="outline" className="text-[10px]">
-                          {categoryLabel(rate.property_category)}
-                        </Badge>
-                      </td>
-                      <td className="py-3 pr-3 text-right font-black text-gray-900 tabular-nums">
-                        {formatInr(rate.amount)}
-                        {rate.floor_amount !== null && rate.floor_amount !== undefined && (
-                          <div
-                            className="text-[10px] font-medium text-gray-400"
-                            title="Internal negotiation floor — never shown to customers"
-                          >
-                            Floor {formatInr(rate.floor_amount)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 pr-3 text-xs text-gray-600">
-                        <div className="font-semibold">{Number(rate.gst_percent ?? 18)}%</div>
-                        <div className="text-[10px] text-gray-400">
-                          {rate.price_includes_gst !== false ? 'Incl. GST' : 'Excl. GST'}
-                        </div>
-                      </td>
-                      <td className="py-3 pr-3 text-right font-bold text-[#2d8a2f] tabular-nums">
-                        {formatInr(rate.total_with_gst ?? rate.amount)}
-                      </td>
-                      <td className="py-3 pr-3">
-                        {rate.is_active ? (
-                          <span className="inline-flex items-center gap-1 text-green-700 text-xs font-bold">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-gray-400 text-xs font-bold">
-                            <XCircle className="h-3.5 w-3.5" /> Inactive
-                          </span>
-                        )}
-                      </td>
-                      {canEdit && (
-                        <td className="py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(rate)}
-                              className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
-                              title="Edit"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                  <th className="py-3 pr-3">When</th>
-                  <th className="py-3 pr-3">Action</th>
-                  <th className="py-3 pr-3">Region</th>
-                  <th className="py-3 pr-3">Service</th>
-                  <th className="py-3 pr-3">Area</th>
-                  <th className="py-3 pr-3 text-right">Old → New</th>
-                  <th className="py-3 pr-3">By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-400">Loading...</td></tr>
-                ) : auditLogs.length === 0 ? (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-400">No audit entries yet.</td></tr>
-                ) : (
-                  auditLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-gray-100">
-                      <td className="py-3 pr-3 text-gray-500 text-xs">
-                        {new Date(log.created_at).toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-3 pr-3 capitalize font-semibold">{log.action}</td>
-                      <td className="py-3 pr-3">{log.region_slug}</td>
-                      <td className="py-3 pr-3">{log.service_package}</td>
-                      <td className="py-3 pr-3">{log.area_key}</td>
-                      <td className="py-3 pr-3 text-right tabular-nums">
-                        {log.old_amount != null ? `₹${Number(log.old_amount)}` : '—'}
-                        {' → '}
-                        {log.new_amount != null ? `₹${Number(log.new_amount)}` : '—'}
-                      </td>
-                      <td className="py-3 pr-3 text-gray-600">{log.changed_by_name || 'System'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+            {planGroups.map((group) => (
+              <PlanTab
+                key={group.id}
+                label={group.label}
+                title={group.planTypes.join(', ')}
+                active={activePlan === group.id}
+                onClick={() => setActivePlan(group.id)}
+              />
+            ))}
+          </FilterTabRow>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t border-gray-100">
-          <p className="text-xs text-gray-500 font-medium">
-            Showing {rangeStart}–{rangeEnd} of {totalCount}
+        {/* Service tabs. Standard / Premium appear here because that is where
+            the split actually lives — in the service name. */}
+        {cityServices.length > 0 && (
+          <FilterTabRow label="Service">
+            <PlanTab
+              label="All Services"
+              active={activeService === 'all'}
+              onClick={() => setActiveService('all')}
+            />
+            {cityServices.map((service) => (
+              <PlanTab
+                key={service}
+                label={service}
+                active={activeService === service}
+                onClick={() => setActiveService(service)}
+              />
+            ))}
+          </FilterTabRow>
+        )}
+
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-xs font-semibold text-gray-500">
+            {loading
+              ? 'Loading…'
+              : `${rates.length.toLocaleString('en-IN')} ${rates.length === 1 ? 'rate' : 'rates'}`}
+            {activeRegion && !loading && ` · ${activeRegion.name}`}
+            {activePlan !== 'all' && !loading
+              && ` · ${planGroups.find((g) => g.id === activePlan)?.label ?? ''}`}
+            {activeService !== 'all' && !loading && ` · ${activeService}`}
           </p>
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            totalItems={totalCount}
-            itemsPerPage={PAGE_SIZE}
-            onPageChange={setPage}
-            showPageSizeSelector={false}
-          />
+        </div>
+
+        {/* Scroll container with a sticky header: all matching rates are
+            rendered at once, so the header has to survive scrolling. */}
+        <div className="overflow-auto max-h-[calc(100vh-22rem)] min-h-[12rem] rounded-lg border border-gray-100">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-white shadow-[0_1px_0_0_rgb(229,231,235)]">
+              <tr className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <th className="py-3 pl-3 pr-3">City</th>
+                <th className="py-3 pr-3">Service</th>
+                <th className="py-3 pr-3">Plan</th>
+                <th className="py-3 pr-3">Area / Size</th>
+                <th className="py-3 pr-3">Category</th>
+                <th className="py-3 pr-3 text-right">Amount</th>
+                <th className="py-3 pr-3">GST</th>
+                <th className="py-3 pr-3 text-right">Total</th>
+                <th className="py-3 pr-3">Status</th>
+                {canEdit && <th className="py-3 text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={10} className="py-8 text-center text-gray-400">Loading...</td></tr>
+              ) : rates.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-gray-400">
+                    {activePlan === 'all'
+                      ? `No rates for ${activeRegion?.name ?? 'this city'} yet. Click Add Rate to create one.`
+                      : `No ${planGroups.find((g) => g.id === activePlan)?.label ?? ''} rates for ${activeRegion?.name ?? 'this city'}.`}
+                  </td>
+                </tr>
+              ) : (
+                rates.map((rate) => (
+                  <tr key={rate.id} className="border-b border-gray-100 hover:bg-gray-50/80">
+                    <td className="py-3 pl-3 pr-3 font-semibold">{rate.region_name}</td>
+                    <td className="py-3 pr-3">{rate.service_package}</td>
+                    <td className="py-3 pr-3 text-gray-600">{rate.plan_type}</td>
+                    <td className="py-3 pr-3 font-medium">
+                      {rate.area_key}
+                      {rate.billing_basis && (
+                        <div className="text-[10px] font-normal text-gray-400">
+                          {rate.billing_basis}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 pr-3">
+                      <Badge variant="outline" className="text-[10px]">
+                        {categoryLabel(rate.property_category)}
+                      </Badge>
+                    </td>
+                    <td className="py-3 pr-3 text-right font-black text-gray-900 tabular-nums">
+                      {formatInr(rate.amount)}
+                      {rate.floor_amount !== null && rate.floor_amount !== undefined && (
+                        <div
+                          className="text-[10px] font-medium text-gray-400"
+                          title="Internal negotiation floor — never shown to customers"
+                        >
+                          Floor {formatInr(rate.floor_amount)}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 pr-3 text-xs text-gray-600">
+                      <div className="font-semibold">{Number(rate.gst_percent ?? 18)}%</div>
+                      <div className="text-[10px] text-gray-400">
+                        {rate.price_includes_gst !== false ? 'Incl. GST' : 'Excl. GST'}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3 text-right font-bold text-[#2d8a2f] tabular-nums">
+                      {formatInr(rate.total_with_gst ?? rate.amount)}
+                    </td>
+                    <td className="py-3 pr-3">
+                      {rate.is_active ? (
+                        <span className="inline-flex items-center gap-1 text-green-700 text-xs font-bold">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-gray-400 text-xs font-bold">
+                          <XCircle className="h-3.5 w-3.5" /> Inactive
+                        </span>
+                      )}
+                    </td>
+                    {canEdit && (
+                      <td className="py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(rate)}
+                            className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
@@ -644,7 +685,7 @@ const PricingMaster: React.FC = () => {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         title={selectedRate ? 'Edit Pricing Rate' : 'Add Pricing Rate'}
-        description="Set region, service, amount, and GST. Preview updates as you type."
+        description="Set city, service, amount, and GST. Preview updates as you type."
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-5">
@@ -663,7 +704,7 @@ const PricingMaster: React.FC = () => {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Region <span className="text-red-500">*</span>
+                  City <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.region}
@@ -676,7 +717,7 @@ const PricingMaster: React.FC = () => {
                   ))}
                 </select>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Rates are priced per region.
+                  Rates are priced per city.
                 </p>
               </div>
               <div>

@@ -50,7 +50,9 @@ const ComplaintModal: React.FC<ComplaintModalProps> = ({ isOpen, onClose, bookin
 
   const fetchTechnicians = async () => {
     try {
-      const data = await enhancedApiService.getActiveTechnicians();
+      // A complaint is usually about a visit that already happened, so an
+      // on-leave technician must stay selectable here.
+      const data = await enhancedApiService.getActiveTechnicians({ includeOnLeave: true });
       setTechnicians(data);
     } catch (err) {
       console.error('Error fetching technicians:', err);

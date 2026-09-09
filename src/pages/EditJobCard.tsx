@@ -64,6 +64,14 @@ import {
 import { groupServiceOptions } from '../utils/serviceGrouping';
 import PerServicePricingSection from '../components/crm/PerServicePricingSection';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
+import {
+  SERVICE_PICKER_CARD,
+  SERVICE_GROUP,
+  SERVICE_GROUP_LABEL,
+  SERVICE_TILE_GRID,
+  SERVICE_TILE_CHECKBOX,
+  serviceTileClass,
+} from '../constants/serviceTileStyles';
 import LocationSearchSelect from '../components/forms/LocationSearchSelect';
 import GooglePlacesAddressInput from '../components/forms/GooglePlacesAddressInput';
 import { applyGooglePlaceToJobForm } from '../utils/applyGooglePlaceToJobForm';
@@ -1116,13 +1124,11 @@ const EditJobCard: React.FC = () => {
                       <label className="text-[13px] font-bold text-gray-700 mb-2 block">
                         Select Service * <span className="font-normal text-gray-500">(multi-select)</span>
                       </label>
-                      <div className="rounded-lg border border-gray-200 bg-white p-3 flex flex-col gap-3">
+                      <div className={SERVICE_PICKER_CARD}>
                         {serviceGroups.map((group) => (
-                          <div key={group.family}>
-                            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                              {group.family}
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div key={group.family} className={SERVICE_GROUP}>
+                            <div className={SERVICE_GROUP_LABEL}>{group.family}</div>
+                            <div className={SERVICE_TILE_GRID}>
                               {group.services.map((service) => {
                                 const checked = selectedPackages.includes(service);
                                 const retired = !servicePackageOptions.includes(service);
@@ -1130,15 +1136,11 @@ const EditJobCard: React.FC = () => {
                                   <label
                                     key={service}
                                     title={retired ? 'No longer in Pricing Master — kept so you can see it' : undefined}
-                                    className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                                      checked
-                                        ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
-                                        : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
-                                    }`}
+                                    className={serviceTileClass(checked)}
                                   >
                                     <input
                                       type="checkbox"
-                                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                      className={SERVICE_TILE_CHECKBOX}
                                       checked={checked}
                                       onChange={() => toggleServicePackage(service)}
                                     />
