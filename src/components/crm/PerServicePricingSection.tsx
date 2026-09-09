@@ -2,16 +2,15 @@ import React from 'react';
 import { PROPERTY_LOCATIONS } from '../../constants/pricing';
 import {
   formatPlanLabel,
-  getAmcPackageOptions,
   isAmcPlan,
   isBedBugService,
   isTermiteService,
-  oneTimePlanValue,
-  supportsAmcMode,
 } from '../../constants/bookingPropertyTypes';
 import {
+  amcPlanOptionsForService,
   finalizeServiceLinePricing,
   getAreaOptionsForService,
+  oneTimePlanForService,
   roundMoney,
   summarizeServicePricing,
   type PricingConfig,
@@ -89,9 +88,11 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
             const cfg = serviceConfigs[service] || { plan: '', area: '' };
             const item = serviceItems.find((row) => row.service === service);
             const areaOptions = areaOptionsForService(service, pricingConfig, commercialType);
-            const canAmc = supportsAmcMode(service);
+            // Driven by the rate card, not a hardcoded service-name list, so a
+            // service offers AMC exactly when it has AMC rates.
+            const amcOptions = amcPlanOptionsForService(service, pricingConfig);
+            const canAmc = amcOptions.length > 0;
             const mode: 'one_time' | 'amc' = isAmcPlan(cfg.plan) ? 'amc' : 'one_time';
-            const amcOptions = getAmcPackageOptions(service);
             const preview = cfg.plan
               ? previewServiceSchedule(service, cfg.plan, scheduleDate)
               : null;
@@ -133,7 +134,7 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                           if (nextMode === 'amc' && amcOptions[0]) {
                             onPlanChange(service, amcOptions[0].value);
                           } else {
-                            onPlanChange(service, oneTimePlanValue(service));
+                            onPlanChange(service, oneTimePlanForService(service, pricingConfig));
                           }
                         }}
                         className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg bg-white"

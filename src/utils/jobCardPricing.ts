@@ -1,5 +1,14 @@
 import { PRICING_DATA, PROPERTY_LOCATIONS, SERVICE_TYPES, COMMERCIAL_AREA_OPTION } from '../constants/pricing';
-import { getAllPlanValuesForService, oneTimePlanValue } from '../constants/bookingPropertyTypes';
+import {
+  formatPlanLabel,
+  getAllPlanValuesForService,
+  getAmcPackageOptions,
+  isAmcPlan,
+  isBedBugService,
+  isTermiteService,
+  oneTimePlanValue,
+  parseAmcCountFromPlan,
+} from '../constants/bookingPropertyTypes';
 
 export interface RateGstDetail {
   amount: string | number;
@@ -342,6 +351,65 @@ export function getPricingTypesForService(
   return merged.sort((a, b) => order(a) - order(b));
 }
 
+/**
+ * AMC plans the live rate card holds for this service, for the Service Mode
+ * dropdown on the booking form.
+ *
+ * This used to come from `SERVICE_AMC_PACKAGES`, a hardcoded map keyed on the
+ * pre-2026 service names ('Cockroach / Ants', 'Rodent', 'Mosquito'). The 2026
+ * rate chart renamed those into tiers — 'Cockroach Standard', 'Cockroach
+ * Premium' — so nothing the picker can now offer matched a key, and every
+ * service silently lost its AMC option even though the rates exist.
+ *
+ * Reading the rate card instead means a service gets AMC exactly when it has
+ * AMC rates, with no name list to keep in step. The hardcoded packages remain
+ * the fallback for a service the rate card does not cover at all, so anything
+ * priced by hand keeps working.
+ */
+export function amcPlanOptionsForService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): Array<{ value: string; label: string }> {
+  // Both are fixed-shape packages with no AMC variant; the form renders them
+  // as a static box rather than a dropdown.
+  if (isBedBugService(service) || isTermiteService(service)) return [];
+
+  const fromConfig = Object.keys(config.pricing?.[service] ?? {});
+  if (fromConfig.length === 0) return getAmcPackageOptions(service);
+
+  return fromConfig
+    .filter(isAmcPlan)
+    .sort((a, b) => (parseAmcCountFromPlan(a) ?? 99) - (parseAmcCountFromPlan(b) ?? 99))
+    .map((plan) => ({ value: plan, label: formatPlanLabel(service, plan) }));
+}
+
+/** Whether the Service Mode dropdown should offer AMC for this service. */
+export function serviceSupportsAmc(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): boolean {
+  return amcPlanOptionsForService(service, config).length > 0;
+}
+
+/**
+ * The one-time plan this service is actually priced under.
+ *
+ * Most services use 'One Time Service' and termite uses 'One Time Treatment',
+ * but a service from the rate card may have no one-time rate at all (the
+ * recurring-only contract plans). Falling back to the first available plan
+ * keeps the form from selecting a plan that has no price behind it.
+ */
+export function oneTimePlanForService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string {
+  const preferred = oneTimePlanValue(service);
+  const fromConfig = Object.keys(config.pricing?.[service] ?? {});
+  if (fromConfig.length === 0 || fromConfig.includes(preferred)) return preferred;
+
+  return fromConfig.find((plan) => !isAmcPlan(plan)) ?? fromConfig[0] ?? preferred;
+}
+
 /** Area options for one service (not intersected across services). */
 export function getAreaOptionsForService(
   service: string,
@@ -351,12 +419,16 @@ export function getAreaOptionsForService(
   return getAreaOptions([service], config, commercialType);
 }
 
+/**
+ * Selecting a service always starts on its one-time plan — AMC is an explicit
+ * choice, never inferred. The config is consulted so a recurring-only service
+ * does not start on a plan it has no rate for.
+ */
 export function getDefaultPlanForService(
   service: string,
-  _config?: PricingConfig,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string {
-  void _config;
-  return oneTimePlanValue(service);
+  return oneTimePlanForService(service, config);
 }
 
 export function createDefaultServiceConfig(

@@ -207,6 +207,9 @@ export function getAllPlanValuesForService(service: string): string[] {
   return [oneTimePlanValue(service), ...counts.map(amcPlanValue)];
 }
 
+/** The "AMC 3 Services" shape, as opposed to a named contract cadence. */
+const CANONICAL_AMC_PLAN = /^amc\s*\d+\s*services?$/i;
+
 /** Human label for dropdowns. */
 export function formatPlanLabel(service: string, plan: string): string {
   if (isBedBugService(service)) {
@@ -216,11 +219,20 @@ export function formatPlanLabel(service: string, plan: string): string {
     return 'One Time Treatment — 4 free check-ups over 2 years';
   }
   const count = parseAmcCountFromPlan(plan);
-  if (count) {
+  // Only the canonical "AMC N Services" form gets an interval appended. A
+  // contract plan such as "Monthly AMC - 1 Visit/Month" already states its own
+  // cadence, and deriving a visit count from it produced "AMC 12 Services" —
+  // a plan name that exists in no rate card.
+  if (count && CANONICAL_AMC_PLAN.test(plan.trim())) {
+    // The service used to be appended here, with Cockroach rewritten to
+    // "General Pest Control". The 2026 rate chart made General Pest Control a
+    // service of its own, so that turned a Cockroach AMC into the name of a
+    // different service. The label always renders inside a control scoped to
+    // one service, so the suffix was redundant as well as wrong.
     const interval = AMC_INTERVAL_LABELS[count] || '';
-    const svc = service.includes('Cockroach') ? 'General Pest Control' : service;
-    return `AMC ${count} Services — ${interval} (${svc})`;
+    return interval ? `AMC ${count} Services — ${interval}` : `AMC ${count} Services`;
   }
+  if (count) return plan;
   if (plan.toLowerCase().includes('one time')) return 'One Time Service';
   return plan;
 }
