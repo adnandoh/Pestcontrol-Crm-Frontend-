@@ -408,13 +408,6 @@ const CreateJobCard: React.FC = () => {
     applyServerErrors,
   } = useFormValidation(jobCardValidationRules);
 
-  // Payment status options
-  const paymentStatusOptions = [
-    'Paid',
-    'Unpaid'
-  ];
-
-
   // Handle input changes with localStorage persistence and validation
   const handleInputChange = (field: keyof JobCardFormData, value: any) => {
     let updatedFormData = {
@@ -1045,30 +1038,10 @@ const CreateJobCard: React.FC = () => {
                   </p>
                 </div>
               )}
-              <div>
-                <label className={FIELD_LABEL}>Payment Status</label>
-                <select
-                  value={formData.payment_status}
-                  onChange={(e) => handleInputChange('payment_status', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
-                >
-                  {paymentStatusOptions.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={FIELD_LABEL}>Payment Mode</label>
-                <select
-                  value={formData.payment_mode || ''}
-                  onChange={(e) => handleInputChange('payment_mode', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg shadow-sm outline-none bg-white"
-                >
-                  <option value="">Select Mode</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Online">Online</option>
-                </select>
-              </div>
+              {/* Payment Status and Payment Mode are not collected while creating a
+                  booking; payment is recorded once it is actually taken. The fields
+                  remain in form state at their defaults (Unpaid / blank), and the
+                  AMC follow-up and complaint types still set Paid above. */}
               {/* The 40/60 revenue panel is not shown while creating a booking. New
                   bookings still default to revenue_sharing at 40/60 (see form state
                   and the effect above); the split is reviewed on the edit screen. */}

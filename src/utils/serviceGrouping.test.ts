@@ -1,20 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { groupServiceOptions } from './serviceGrouping';
 
-/** The 13 bookable services the 2026 rate chart produces. */
+/** The 12 bookable services the 2026 rate chart produces. */
 const CHART_2026 = [
   'Bed Bugs',
   'Cockroach Premium',
   'Cockroach Standard',
-  'Complete IPM',
-  'Essential IPM',
+  'Complete IPM Society',
+  'Essential IPM Society',
   'General Pest Control',
   'Integrated IPM',
   'Kill-Rodent System',
   'Mosquito Cold Fogging',
   'Mosquito Thermal Fogging',
   'Regular Rodent',
-  'Rodent Control',
   'Termite Spot Treatment',
 ];
 
@@ -50,12 +49,19 @@ describe('groupServiceOptions', () => {
   });
 
   it('puts the plain base service above its variants', () => {
-    const groups = groupServiceOptions(['Rodent Control', 'Regular Rodent', 'Kill-Rodent System']);
-    // "Regular" is a tier keyword; the untiered names lead, shortest first.
-    expect(groups[0].services).toEqual([
-      'Rodent Control',
-      'Kill-Rodent System',
-      'Regular Rodent',
+    const groups = groupServiceOptions(['Regular Rodent', 'Kill-Rodent System']);
+    // "Regular" is a tier keyword, so the untiered name leads.
+    expect(groups[0].services).toEqual(['Kill-Rodent System', 'Regular Rodent']);
+  });
+
+  it('keeps the society IPM plans in the IPM group, essential before complete', () => {
+    const groups = groupServiceOptions(CHART_2026);
+    const ipm = groups.find((g) => g.family === 'Full Coverage / IPM');
+    expect(ipm?.services).toEqual([
+      'General Pest Control',
+      'Essential IPM Society',
+      'Complete IPM Society',
+      'Integrated IPM',
     ]);
   });
 
