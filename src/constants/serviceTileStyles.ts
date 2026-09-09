@@ -12,40 +12,39 @@
  */
 
 /**
- * Families sit two to a row rather than stacked one per row.
+ * One row per family: its name on the left, its services to the right.
  *
- * Stacked, every family owned the full width of the card but only Full
- * Coverage / IPM had enough services to use it — Bed Bugs is one tile against
- * roughly 850px of nothing. Pairing the families fills that width and roughly
- * halves the height, while keeping each family a labelled block of its own.
- *
- * Two columns and no more: at three, the wider families ("Mosquito Cold
- * Fogging" beside "Mosquito Thermal Fogging") no longer fit on one line and
- * wrap, which adds back the height this is meant to save.
+ * The label sat above its tiles before, which cost a line per family, and the
+ * families were paired two across so the tiles started at four different
+ * horizontal positions depending on how wide the name beside them happened to
+ * be. Putting the name in a fixed-width rail leaves the tiles a single
+ * consistent area to line up in.
  */
 export const SERVICE_PICKER_CARD =
-  'rounded-lg border border-gray-200 bg-white p-3.5 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4';
+  'rounded-lg border border-gray-200 bg-white p-3.5 sm:p-4 flex flex-col gap-3';
 
-/**
- * `min-w-0` lets the block shrink to its share of the row. Tailwind's
- * `grid-cols-2` already uses `minmax(0, 1fr)`, so this is only guarding the
- * block's own content from pushing past the column it was given.
- */
-export const SERVICE_GROUP = 'min-w-0';
+/** One family band. Stacks to label-above-tiles on a narrow screen. */
+export const SERVICE_GROUP =
+  'flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3';
 
 export const SERVICE_GROUP_LABEL =
-  'mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500';
+  'w-full shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500 sm:w-32 sm:pt-2';
 
 /**
- * Tiles wrap and take only the width of their own label.
+ * Two fixed columns, with the tiles left where their own text ends.
  *
- * This was a two-column grid, which stretched every tile to the column width:
- * "Bed Bugs" came out as wide as "Mosquito Thermal Fogging", and a family with
- * one service ran the full row. Wrapping sizes each tile to its text and fits
- * as many per row as will go, so the picker is denser and the boxes read as
- * options rather than as empty input fields.
+ * Free-wrapping tiles gave every row its own edges — the second tile of one
+ * family began 7px off the second tile of the next, which is close enough to
+ * aligned to look like a mistake rather than a choice. A grid gives them two
+ * positions to sit at.
+ *
+ * `justify-items-start` is what keeps them honest: without it a grid item
+ * stretches to its column, which is how "Bed Bugs" ended up as wide as
+ * "Mosquito Thermal Fogging". Aligned edges and label-width tiles are not in
+ * conflict; they just both need saying.
  */
-export const SERVICE_TILE_ROW = 'flex flex-wrap gap-x-2.5 gap-y-2';
+export const SERVICE_TILE_ROW =
+  'grid flex-1 min-w-0 grid-cols-1 sm:grid-cols-2 justify-items-start gap-x-3 gap-y-2';
 
 export const SERVICE_TILE_CHECKBOX =
   'h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
