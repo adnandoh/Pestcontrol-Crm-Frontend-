@@ -75,6 +75,7 @@ export const API_ENDPOINTS = {
   ECARD_MARK_SENT: '/v1/e-card/mark-sent/',
   REMINDERS: '/v1/reminders/',
   QUOTATIONS: '/v1/quotations/',
+  INVOICES: '/v1/invoices/',
   PENDING_PAYMENTS: '/v1/pending-payments/',
   PRICING_CONFIG: '/pricing-config/',
   PRICING_REGIONS: '/pricing-regions/',
@@ -113,6 +114,7 @@ export const CACHE_KEYS = {
   REMINDERS: 'reminders',
   DASHBOARD_COUNTS: 'dashboard_counts',
   QUOTATIONS: 'quotations',
+  INVOICES: 'invoices',
   PRICING_RATES: 'pricing_rates',
   PRICING_REGIONS: 'pricing_regions',
 } as const;

@@ -37,6 +37,8 @@ export interface ManualInvoiceInput {
   billedToName: string;
   billedToMobile?: string;
   billedToAddress?: string;
+  /** Customer GSTIN; shown as `GSTIN …` on the PDF when set. */
+  billedToGstNumber?: string;
   bookingCode?: string;
   bookingCreatedAt?: string;
   nextServiceDate?: string;
@@ -54,6 +56,7 @@ interface RenderInvoicePayload {
   billedToName: string;
   billedToMobile: string;
   billedToAddress: string;
+  billedToGstNumber: string;
   bookingCode: string;
   bookingCreatedAt: string;
   nextServiceDate: string;
@@ -69,6 +72,14 @@ interface RenderInvoicePayload {
     amount: string;
   }>;
 }
+
+const formatGstinLine = (value?: string) => {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (upper.startsWith("GSTIN")) return upper.replace(/\s+/g, " ").trim();
+  return `GSTIN ${upper}`;
+};
 
 const buildSignatureBlockHtml = () => `
   <div style="margin-top:22px;display:flex;justify-content:flex-end;padding-right:4px">
@@ -204,6 +215,11 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
           <div>
             <div class="inv-muted" style="font-size:11px;color:#6b7280;font-weight:700">BILLED TO</div>
             <div style="font-size:14px;font-weight:700;margin-top:5px">${payload.billedToName}</div>
+            ${
+              payload.billedToGstNumber
+                ? `<div style="font-size:12px;color:#111827;line-height:1.6;margin-top:2px">${payload.billedToGstNumber}</div>`
+                : ""
+            }
             <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6">Mobile: ${payload.billedToMobile}</div>
             <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6">Address: ${payload.billedToAddress}</div>
           </div>
@@ -300,6 +316,7 @@ export const downloadInvoicePdf = async (job: JobCard) => {
     billedToName: job.client_name || "-",
     billedToMobile: job.client_mobile || "-",
     billedToAddress: job.client_address || "-",
+    billedToGstNumber: "",
     bookingCode: job.code || "-",
     bookingCreatedAt: formatDate(job.created_at),
     nextServiceDate: formatDate(job.next_service_date),
@@ -347,6 +364,7 @@ export const downloadManualInvoicePdf = async (data: ManualInvoiceInput) => {
     billedToName: data.billedToName.trim() || "-",
     billedToMobile: data.billedToMobile?.trim() || "-",
     billedToAddress: data.billedToAddress?.trim() || "-",
+    billedToGstNumber: formatGstinLine(data.billedToGstNumber),
     bookingCode: data.bookingCode?.trim() || "-",
     bookingCreatedAt: formatDate(data.bookingCreatedAt),
     nextServiceDate: formatDate(data.nextServiceDate),

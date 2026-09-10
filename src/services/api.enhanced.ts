@@ -61,6 +61,8 @@ import type {
   Quotation,
   QuotationFormData,
   QuotationFilters,
+  Invoice,
+  InvoiceFormData,
   PartnerJobSelfie,
   InquiryRemarkEntry,
   BookingReportClient,
@@ -2265,6 +2267,37 @@ class EnhancedApiService {
     const result = await this.retryRequest(() =>
       this.api.get<{ total: number; pending: number; approved: number; converted: number; revenue: number }>(`${API_ENDPOINTS.QUOTATIONS}stats/`)
     );
+    return result.data;
+  }
+
+  async getInvoices(params?: { search?: string; page?: number; page_size?: number }): Promise<PaginatedResponse<Invoice>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<Invoice>>(API_ENDPOINTS.INVOICES, { params })
+    );
+    return result.data;
+  }
+
+  async getInvoice(id: number): Promise<Invoice> {
+    const result = await this.retryRequest(() =>
+      this.api.get<Invoice>(`${API_ENDPOINTS.INVOICES}${id}/`)
+    );
+    return result.data;
+  }
+
+  async createInvoice(data: InvoiceFormData): Promise<Invoice> {
+    const result = await this.retryRequest(() =>
+      this.api.post<Invoice>(API_ENDPOINTS.INVOICES, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.INVOICES);
+    return result.data;
+  }
+
+  async updateInvoice(id: number, data: Partial<InvoiceFormData>): Promise<Invoice> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<Invoice>(`${API_ENDPOINTS.INVOICES}${id}/`, data)
+    );
+    apiCache.deletePattern(CACHE_KEYS.INVOICES);
+    apiCache.deletePattern(`${API_ENDPOINTS.INVOICES}${id}`);
     return result.data;
   }
 

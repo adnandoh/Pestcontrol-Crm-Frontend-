@@ -1329,6 +1329,46 @@ export interface QuotationFormData extends Partial<Omit<Quotation, 'id' | 'quota
   items: QuotationItem[];
 }
 
+// ─── CRM Invoices ────────────────────────────────────────────────────────────
+
+export interface InvoiceItem {
+  id?: number;
+  service: string;
+  schedule?: string;
+  technician?: string;
+  amount: number | string;
+}
+
+export interface Invoice {
+  id: number;
+  invoice_no: string;
+  invoice_date: string;
+  billed_by_name?: string;
+  billed_by_address?: string;
+  customer_name: string;
+  customer_mobile?: string;
+  customer_address?: string;
+  /** GSTIN snapshot stored on the invoice at create/edit time. */
+  customer_gst_number?: string;
+  booking_code?: string;
+  booking_created_at?: string | null;
+  next_service_date?: string | null;
+  reference?: string;
+  tax_amount?: number | string;
+  subtotal?: number | string;
+  grand_total?: number | string;
+  notes?: string;
+  created_by?: number;
+  created_by_name?: string;
+  items: InvoiceItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceFormData extends Partial<Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'created_by_name' | 'subtotal' | 'grand_total'>> {
+  items: InvoiceItem[];
+}
+
 // ─── Blog CMS ────────────────────────────────────────────────────────────────
 
 export type BlogStatus = 'draft' | 'published';
