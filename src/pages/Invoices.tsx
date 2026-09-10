@@ -3,7 +3,7 @@ import { Download, Plus, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { downloadManualInvoicePdf, type ManualInvoiceInput } from "../utils/invoicePdf";
-import { INVOICE_DEFAULTS } from "../constants/quotation";
+import { COMPANY, INVOICE_DEFAULTS, formatCompanyGstin } from "../constants/quotation";
 import { showAlert } from "../utils/notify";
 import { enhancedApiService } from "../services/api.enhanced";
 import type { Invoice } from "../types";
@@ -304,8 +304,17 @@ const Invoices: React.FC = () => {
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase">Billed By</p>
             <input className="w-full px-3 py-2 border rounded-lg" placeholder="Company Name" value={form.billedByName} onChange={(e) => updateFormField("billedByName", e.target.value)} />
+            <input
+              className="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700"
+              value={formatCompanyGstin() || COMPANY.gstin}
+              readOnly
+              title="Company seller GSTIN (from company settings)"
+              aria-label="Company GSTIN"
+            />
             <textarea className="w-full px-3 py-2 border rounded-lg min-h-[80px]" placeholder="Company Address" value={form.billedByAddress} onChange={(e) => updateFormField("billedByAddress", e.target.value)} />
-            <p className="text-[10px] text-gray-500">Default includes Multi Pest Care LLP, +91 8080 74 8282, and website.</p>
+            <p className="text-[10px] text-gray-500">
+              Company GSTIN {COMPANY.gstin} is fixed on every invoice PDF. Customer GST is separate below.
+            </p>
           </div>
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase">Customer Details</p>

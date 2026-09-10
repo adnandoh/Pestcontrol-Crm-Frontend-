@@ -1,7 +1,7 @@
 import html2pdf from "html2pdf.js";
 import type { JobCard } from "../types";
 import { COMPANY_LOGO_URL, COMPANY_SIGNATURE_STAMP_URL } from "../constants/companyAssets";
-import { COMPANY, INVOICE_DEFAULTS, formatCompanyPhone } from "../constants/quotation";
+import { COMPANY, INVOICE_DEFAULTS, formatCompanyGstin, formatCompanyPhone } from "../constants/quotation";
 import { waitForImagesInElement } from "./pdfImagePreload";
 
 const formatDate = (value?: string) => {
@@ -209,6 +209,11 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
           <div>
             <div class="inv-muted" style="font-size:11px;color:#6b7280;font-weight:700">BILLED BY</div>
             <div style="font-size:14px;font-weight:700;margin-top:5px">${payload.billedByName}</div>
+            ${
+              formatCompanyGstin()
+                ? `<div style="font-size:12px;color:#111827;line-height:1.6;margin-top:2px">${formatCompanyGstin()}</div>`
+                : ""
+            }
             <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6;white-space:pre-line">${payload.billedByAddress}</div>
             <div class="inv-muted" style="font-size:11px;color:#4b5563;margin-top:4px">${COMPANY.brandName} | ${formatCompanyPhone()}</div>
           </div>

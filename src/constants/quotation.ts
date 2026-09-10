@@ -12,11 +12,21 @@ export const COMPANY = {
   phoneDisplay: '8080 74 8282',
   license: 'LAID020185',
   address: 'Mumbai, Maharashtra, India',
-  gstin: '', // add when available
+  /** Seller GSTIN (GST REG-06) — Multi Pest Care LLP */
+  gstin: '27ACEFM4002G1ZM',
 } as const;
 
 export function formatCompanyPhone(): string {
   return `+91 ${COMPANY.phoneDisplay}`;
+}
+
+/** Seller GSTIN line for invoice/quotation letterhead. */
+export function formatCompanyGstin(): string {
+  const raw = (COMPANY.gstin || '').trim();
+  if (!raw) return '';
+  const upper = raw.toUpperCase();
+  if (upper.startsWith('GSTIN')) return upper.replace(/\s+/g, ' ').trim();
+  return `GSTIN ${upper}`;
 }
 
 export const INVOICE_DEFAULTS = {
