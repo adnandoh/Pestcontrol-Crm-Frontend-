@@ -829,14 +829,16 @@ const CreateJobCard: React.FC = () => {
                             price: supportsAutoPricing('home', pricingConfig) ? prev.price : '0.00',
                           }));
                         } else {
+                          const nextType = 'other';
+                          const auto = supportsAutoPricing(nextType, pricingConfig);
                           setFormData((prev) => ({
                             ...prev,
-                            commercial_type: 'other',
+                            commercial_type: nextType,
                             property_type: '',
                             job_type: 'Customer',
                             society_billing_type: 'Paid',
-                            is_price_estimated: true,
-                            price: '0.00',
+                            is_price_estimated: !auto,
+                            price: auto ? prev.price : '0.00',
                           }));
                         }
                       }}
@@ -848,7 +850,7 @@ const CreateJobCard: React.FC = () => {
                     <p className={FIELD_HELP}>
                       {formData.commercial_type === 'home'
                         ? 'Flat / home — choose BHK in each service.'
-                        : 'Select property type on the right (Society, Hotel, Office, etc.).'}
+                        : 'Select property type, then set plan and area per service (same pricing boxes as Home).'}
                     </p>
                   </div>
 
@@ -1155,7 +1157,7 @@ const CreateJobCard: React.FC = () => {
 
                 <div className="flex w-full flex-col items-start justify-start rounded-lg border border-gray-200 bg-white/70 p-4 lg:w-56 lg:shrink-0 lg:items-end">
                    <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
-                     {formData.commercial_type === 'home' ? 'Total Price' : 'Estimated Price'}
+                     {supportsAutoPricing(formData.commercial_type, pricingConfig) ? 'Total Price' : 'Estimated Price'}
                    </span>
                    {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
                      <>
@@ -1185,7 +1187,7 @@ const CreateJobCard: React.FC = () => {
                 </div>
              </div>
 
-             {formData.commercial_type !== 'home' && (
+             {!supportsAutoPricing(formData.commercial_type, pricingConfig) && (
                <div className="mt-4 sm:mt-5 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
                </div>

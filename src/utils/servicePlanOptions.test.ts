@@ -87,14 +87,23 @@ describe('amcPlanOptionsForService', () => {
     expect(labels.join(' ')).not.toContain('AMC 12 Services');
   });
 
+  it('maps legacy Cockroach / Ants onto the chart service AMC plans', () => {
+    expect(amcPlanOptionsForService('Cockroach / Ants', CONFIG).map((o) => o.value)).toEqual([
+      'AMC 3 Services',
+    ]);
+  });
+
   it('falls back to the hardcoded packages for a service outside the rate card', () => {
-    // Nothing priced by hand should lose its AMC option.
-    const values = amcPlanOptionsForService('Cockroach / Ants', CONFIG).map((o) => o.value);
+    // Mosquito is absent from this trimmed config and does not alias onto a
+    // priced package here, so the pre-2026 AMC list remains the fallback.
+    const values = amcPlanOptionsForService('Mosquito', CONFIG).map((o) => o.value);
     expect(values).toEqual([
       'AMC 3 Services',
       'AMC 4 Services',
       'AMC 6 Services',
       'AMC 12 Services',
+      'AMC 24 Services',
+      'AMC 48 Services',
     ]);
   });
 

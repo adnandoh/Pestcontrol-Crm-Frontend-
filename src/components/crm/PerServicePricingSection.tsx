@@ -42,7 +42,13 @@ function areaOptionsForService(
 ): string[] {
   const fromPricing = getAreaOptionsForService(service, pricingConfig, commercialType);
   if (fromPricing.length > 0) return fromPricing;
-  if (service === 'Rodent') return ['Windows', 'Society Area', 'Commercial'];
+  // Commercial must not fall back to residential BHK sizes — only chart areas.
+  if (commercialType !== 'home' && commercialType !== 'villa') {
+    return [];
+  }
+  if (service === 'Rodent' || /rodent/i.test(service)) {
+    return ['Windows', 'Society Area', 'Commercial'];
+  }
   if (service === 'Hotel / Commercial') return ['Commercial Space'];
   return [...PROPERTY_LOCATIONS];
 }
@@ -192,6 +198,12 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                         <option key={loc} value={loc}>{loc}</option>
                       ))}
                     </select>
+                    {areaOptions.length === 0 && (
+                      <p className="text-[10px] font-semibold text-amber-700 mt-1">
+                        No Pricing Master areas for this service under the selected property type.
+                        Pick a chart service that matches (e.g. hotel cockroach tiers, or Integrated IPM for offices).
+                      </p>
+                    )}
                   </div>
                 </div>
 

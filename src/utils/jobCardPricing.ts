@@ -17,6 +17,8 @@ export interface RateGstDetail {
   base_amount: string | number;
   gst_amount: string | number;
   total_with_gst: string | number;
+  /** Pricing Master property_category (residential, hotel, corporate, …). */
+  property_category?: string;
 }
 
 export interface PricingConfig {
@@ -55,14 +57,196 @@ export { COMMERCIAL_AREA_OPTION } from '../constants/pricing';
 
 export const SERVICE_PACKAGE_TO_PESTS: Record<string, string[]> = {
   'Cockroach / Ants': ['Cockroach', 'Ants'],
+  'Cockroach Standard': ['Cockroach', 'Ants'],
+  'Cockroach Premium': ['Cockroach', 'Ants'],
   'Bed Bugs': ['Bed Bug'],
   'Termite': ['Termite'],
+  'Termite Spot Treatment': ['Termite'],
   'Rodent': ['Rodent'],
+  'Regular Rodent': ['Rodent'],
+  'Kill-Rodent System': ['Rodent'],
   'Mosquito': ['Mosquito'],
+  'Mosquito Cold Fogging': ['Mosquito'],
+  'Mosquito Thermal Fogging': ['Mosquito'],
   'Hotel / Commercial': [],
 };
 
-/** Office/hotel/society/other commercial bookings get a Commercial area option. */
+/**
+ * Legacy booking labels → preferred 2026 Pricing Master packages (priority order).
+ * Lookups try each candidate that exists in the live config — never invent rates.
+ */
+export const LEGACY_SERVICE_PACKAGE_ALIASES: Record<string, string[]> = {
+  'Cockroach / Ants': ['Cockroach Standard', 'Cockroach Premium'],
+  Cockroach: ['Cockroach Standard', 'Cockroach Premium'],
+  Ants: ['Cockroach Standard', 'Cockroach Premium'],
+  Rodent: ['Regular Rodent', 'Kill-Rodent System'],
+  Mosquito: ['Mosquito Cold Fogging', 'Mosquito Thermal Fogging'],
+  Termite: ['Termite Spot Treatment', 'Termite'],
+  'General Pest': ['General Pest Control'],
+};
+
+/** Resolve a stored service label to a package key present in the live rate matrix. */
+export function resolvePricingService(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string {
+  const name = (service || '').trim();
+  if (!name) return name;
+  const pricing = config.pricing || {};
+  if (pricing[name]) return name;
+
+  const aliases = LEGACY_SERVICE_PACKAGE_ALIASES[name] || [];
+  for (const candidate of aliases) {
+    if (pricing[candidate]) return candidate;
+  }
+
+  const lower = name.toLowerCase();
+  const fuzzy: string[] = [];
+  if (lower.includes('cockroach') || lower === 'ants' || lower === 'ant') {
+    fuzzy.push('Cockroach Standard', 'Cockroach Premium');
+  } else if (lower.includes('rodent') || lower === 'rat' || lower === 'rats') {
+    fuzzy.push('Regular Rodent', 'Kill-Rodent System');
+  } else if (lower.includes('mosquito')) {
+    fuzzy.push('Mosquito Cold Fogging', 'Mosquito Thermal Fogging');
+  } else if (lower.includes('termite')) {
+    fuzzy.push('Termite Spot Treatment', 'Termite');
+  }
+  for (const candidate of fuzzy) {
+    if (pricing[candidate]) return candidate;
+  }
+  return name;
+}
+
+function isHotelLikeArea(area: string): boolean {
+  return /hotel|restaurant|cloud kitchen/i.test(area);
+}
+
+function isCorporateLikeArea(area: string): boolean {
+  return /corporate|office|bank|retail|warehouse|school|factory|outlet|dark store|multi.?site/i.test(
+    area,
+  );
+}
+
+function isHospitalLikeArea(area: string): boolean {
+  return /hospital|clinic|ward/i.test(area);
+}
+
+function isSocietyLikeArea(area: string): boolean {
+  return /^(small|medium|large)$/i.test(area.trim());
+}
+
+/** Pricing Master categories that belong to each booking commercial_type. */
+export function propertyCategoriesForCommercialType(commercialType: string): string[] {
+  switch (commercialType) {
+    case 'home':
+      return ['residential'];
+    case 'villa':
+      return ['villa', 'residential', 'fogging'];
+    case 'hotel':
+      return ['hotel', 'hospital'];
+    case 'office':
+      return ['corporate', 'corporate_monthly'];
+    case 'society':
+      return ['society'];
+    case 'other':
+      return ['hotel', 'hospital', 'corporate', 'corporate_monthly', 'commercial'];
+    default:
+      return ['residential'];
+  }
+}
+
+/** Areas under a (possibly aliased) service in the live pricing matrix. */
+export function areasFromPricingMatrix(
+  service: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  const resolved = resolvePricingService(service, config);
+  const serviceData = config.pricing?.[resolved] || config.pricing?.[service];
+  if (!serviceData) return [];
+  const areas = new Set<string>();
+  for (const planData of Object.values(serviceData)) {
+    if (planData && typeof planData === 'object') {
+      Object.keys(planData as Record<string, number>).forEach((a) => areas.add(a));
+    }
+  }
+  return Array.from(areas);
+}
+
+/**
+ * Prefer property_category from rate_gst (Pricing Master). Fall back to area-key
+ * heuristics when GST metadata is missing (legacy hardcoded config).
+ */
+export function filterAreasForCommercialType(
+  areas: string[],
+  commercialType: string,
+  service?: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  const allowed = new Set(propertyCategoriesForCommercialType(commercialType));
+  const resolved = service ? resolvePricingService(service, config) : '';
+  const gstTree = resolved
+    ? config.rate_gst?.[resolved] || config.rate_gst?.[service || '']
+    : undefined;
+
+  if (gstTree) {
+    const areaAllow = areas.length > 0 ? new Set(areas) : null;
+    const byCategory: string[] = [];
+    const seen = new Set<string>();
+    for (const planData of Object.values(gstTree)) {
+      if (!planData || typeof planData !== 'object') continue;
+      for (const [area, detail] of Object.entries(planData)) {
+        if (areaAllow && !areaAllow.has(area)) continue;
+        const category = (detail as RateGstDetail)?.property_category || '';
+        if (category && allowed.has(category) && !seen.has(area)) {
+          seen.add(area);
+          byCategory.push(area);
+        }
+      }
+    }
+    // When the caller passed a candidate list, only return category matches
+    // inside that list. When called with matrix areas for one service, this
+    // is the full commercial/home band set.
+    if (byCategory.length > 0) return byCategory;
+  }
+
+  if (commercialType === 'home') {
+    return areas.filter(
+      (a) =>
+        a !== COMMERCIAL_AREA_OPTION &&
+        !isHotelLikeArea(a) &&
+        !isCorporateLikeArea(a) &&
+        !isHospitalLikeArea(a) &&
+        !isSocietyLikeArea(a),
+    );
+  }
+  if (commercialType === 'hotel') {
+    return areas.filter((a) => isHotelLikeArea(a) || isHospitalLikeArea(a));
+  }
+  if (commercialType === 'office') {
+    return areas.filter((a) => isCorporateLikeArea(a));
+  }
+  if (commercialType === 'society') {
+    return areas.filter((a) => isSocietyLikeArea(a));
+  }
+  if (commercialType === 'other') {
+    return areas.filter(
+      (a) =>
+        isHotelLikeArea(a) ||
+        isCorporateLikeArea(a) ||
+        isHospitalLikeArea(a) ||
+        a === COMMERCIAL_AREA_OPTION,
+    );
+  }
+  return areas.filter(
+    (a) =>
+      a !== COMMERCIAL_AREA_OPTION &&
+      !isHotelLikeArea(a) &&
+      !isCorporateLikeArea(a) &&
+      !isHospitalLikeArea(a),
+  );
+}
+
+/** Office/hotel/society/other commercial bookings — legacy Commercial catch-all. */
 export const COMMERCIAL_PROPERTY_TYPES = new Set(['office', 'other', 'hotel', 'society']);
 
 export function usesCommercialAreaOption(commercialType: string): boolean {
@@ -73,7 +257,11 @@ function appendCommercialAreaOption(
   options: string[],
   commercialType: string,
   selectedServices: string[],
+  config?: PricingConfig,
 ): string[] {
+  // Live Pricing Master configs expose real commercial bands — do not invent
+  // a "Commercial" catch-all that has no rate in the 2026 chart.
+  if (config?.source === 'database') return options;
   if (!usesCommercialAreaOption(commercialType)) return options;
   const residential = selectedServices.filter(
     (s) => s !== 'Rodent' && s !== 'Hotel / Commercial',
@@ -195,7 +383,8 @@ export function resolvePlanForPricing(
   plan: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string {
-  const serviceData = config.pricing[service];
+  const resolved = resolvePricingService(service, config);
+  const serviceData = config.pricing[resolved] || config.pricing[service];
   if (!serviceData) return plan;
   if (serviceData[plan]) return plan;
   for (const candidate of pricingPlanCandidates(service, plan)) {
@@ -210,7 +399,8 @@ export function getUnitPrice(
   pricingArea: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): number | null {
-  const serviceData = config.pricing[service];
+  const resolved = resolvePricingService(service, config);
+  const serviceData = config.pricing[resolved] || config.pricing[service];
   if (!serviceData) return null;
 
   for (const planKey of pricingPlanCandidates(service, pricingType)) {
@@ -232,7 +422,8 @@ export function getSharedPricingTypes(
   if (selectedServices.length === 0) return [];
   let shared: string[] | null = null;
   for (const service of selectedServices) {
-    const types = Object.keys(config.pricing[service] || {});
+    const resolved = resolvePricingService(service, config);
+    const types = Object.keys(config.pricing[resolved] || config.pricing[service] || {});
     if (shared === null) {
       shared = types;
     } else {
@@ -249,19 +440,33 @@ export function getAreaOptions(
 ): string[] {
   if (!selectedServices.length) return [];
 
+  // Prefer live Pricing Master areas, filtered by booking type / property category.
+  const fromMatrix: string[] = [];
+  for (const service of selectedServices) {
+    const raw = areasFromPricingMatrix(service, config);
+    if (!raw.length) continue;
+    fromMatrix.push(...filterAreasForCommercialType(raw, commercialType, service, config));
+  }
+  if (fromMatrix.length > 0) {
+    return Array.from(new Set(fromMatrix));
+  }
+
+  // Legacy hardcoded fallback (pre-2026 Mumbai/Lonavala constants only).
   if (config.region === 'lonavala') {
     const options: string[] = [];
-    const hasRodent = selectedServices.includes('Rodent');
+    const hasRodent = selectedServices.some(
+      (s) => s === 'Rodent' || s.toLowerCase().includes('rodent'),
+    );
     const hasCommercial = selectedServices.includes('Hotel / Commercial');
     const residential = selectedServices.filter(
       (s) => s !== 'Rodent' && s !== 'Hotel / Commercial',
     );
 
     if (commercialType === 'villa') {
-      if (selectedServices.includes('Cockroach / Ants')) {
+      if (selectedServices.some((s) => /cockroach|ants/i.test(s))) {
         options.push(...config.villa_locations);
       }
-      if (selectedServices.includes('Mosquito')) {
+      if (selectedServices.some((s) => /mosquito/i.test(s))) {
         options.push(
           'Up to 1,000 Sq.Ft.',
           '1,001-2,000 Sq.Ft.',
@@ -269,44 +474,45 @@ export function getAreaOptions(
           '5,001-10,000 Sq.Ft.',
         );
       }
-      if (hasRodent) {
-        options.push(...config.rodent_locations);
-      }
-      if (residential.some((s) => ['Bed Bugs', 'Termite'].includes(s))) {
+      if (hasRodent) options.push(...config.rodent_locations);
+      if (residential.some((s) => /bed bug|termite/i.test(s))) {
         options.push('1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK');
       }
-    } else {
+    } else if (commercialType === 'home') {
       if (residential.length > 0) {
-        if (residential.some((s) => ['Bed Bugs', 'Termite'].includes(s))) {
+        if (residential.some((s) => /bed bug|termite/i.test(s))) {
           options.push('1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK');
         }
-        if (residential.some((s) => ['Cockroach / Ants', 'Mosquito'].includes(s))) {
+        if (residential.some((s) => /cockroach|ants|mosquito/i.test(s))) {
           options.push(...config.residential_locations);
         }
       }
-      if (hasRodent) {
-        options.push(...config.rodent_locations);
-      }
-      if (hasCommercial) {
-        options.push('Commercial Space');
-      }
+      if (hasRodent) options.push(...config.rodent_locations);
+      if (hasCommercial) options.push('Commercial Space');
     }
 
     return appendCommercialAreaOption(
       Array.from(new Set(options)),
       commercialType,
       selectedServices,
+      config,
     );
   }
 
-  const hasRodent = selectedServices.includes('Rodent');
+  if (commercialType !== 'home') {
+    // No chart areas for this commercial service — do not invent BHK sizes.
+    return [];
+  }
+
+  const hasRodent = selectedServices.some(
+    (s) => s === 'Rodent' || s.toLowerCase().includes('rodent'),
+  );
   const hasCommercial = selectedServices.includes('Hotel / Commercial');
   const residential = selectedServices.filter(
     (s) => s !== 'Rodent' && s !== 'Hotel / Commercial',
   );
 
   const options = new Set<string>();
-
   if (residential.length > 0) {
     config.residential_locations.forEach((loc) => options.add(loc));
   }
@@ -321,6 +527,7 @@ export function getAreaOptions(
     Array.from(options),
     commercialType,
     selectedServices,
+    config,
   );
 }
 
@@ -340,8 +547,9 @@ export function getPricingTypesForService(
   service: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string[] {
+  const resolved = resolvePricingService(service, config);
   const fromBooking = getAllPlanValuesForService(service);
-  const fromConfig = Object.keys(config.pricing[service] || {});
+  const fromConfig = Object.keys(config.pricing[resolved] || config.pricing[service] || {});
   const merged = [...new Set([...fromBooking, ...fromConfig])];
   const order = (p: string) => {
     if (p.toLowerCase().includes('one time')) return 0;
@@ -374,7 +582,10 @@ export function amcPlanOptionsForService(
   // as a static box rather than a dropdown.
   if (isBedBugService(service) || isTermiteService(service)) return [];
 
-  const fromConfig = Object.keys(config.pricing?.[service] ?? {});
+  const resolved = resolvePricingService(service, config);
+  const fromConfig = Object.keys(
+    config.pricing?.[resolved] ?? config.pricing?.[service] ?? {},
+  );
   if (fromConfig.length === 0) return getAmcPackageOptions(service);
 
   return fromConfig
@@ -404,7 +615,10 @@ export function oneTimePlanForService(
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string {
   const preferred = oneTimePlanValue(service);
-  const fromConfig = Object.keys(config.pricing?.[service] ?? {});
+  const resolved = resolvePricingService(service, config);
+  const fromConfig = Object.keys(
+    config.pricing?.[resolved] ?? config.pricing?.[service] ?? {},
+  );
   if (fromConfig.length === 0 || fromConfig.includes(preferred)) return preferred;
 
   return fromConfig.find((plan) => !isAmcPlan(plan)) ?? fromConfig[0] ?? preferred;
@@ -549,10 +763,13 @@ export function getRateGstDetail(
 ): RateGstDetail | null {
   const gstTree = config.rate_gst;
   if (!gstTree) return null;
+  const resolved = resolvePricingService(service, config);
   const candidates = pricingPlanCandidates(service, plan);
-  for (const p of candidates) {
-    const detail = gstTree[service]?.[p]?.[area];
-    if (detail) return detail;
+  for (const pkg of [resolved, service]) {
+    for (const p of candidates) {
+      const detail = gstTree[pkg]?.[p]?.[area];
+      if (detail) return detail;
+    }
   }
   return null;
 }
@@ -809,11 +1026,22 @@ export function parsePackagesFromServiceType(
   if (direct.length > 0) return direct;
 
   // Legacy rows store pest names ("Cockroach, Ants") rather than package labels.
+  // Prefer the historic package label when several chart tiers share the same pests.
+  const preferredInfer = [
+    'Cockroach / Ants',
+    'Bed Bugs',
+    'Termite',
+    'Rodent',
+    'Mosquito',
+  ];
   const inferred = new Set<string>();
   for (const part of parts) {
-    for (const [pkg, pests] of Object.entries(SERVICE_PACKAGE_TO_PESTS)) {
-      if (pests.includes(part)) inferred.add(pkg);
-    }
+    const matches = Object.entries(SERVICE_PACKAGE_TO_PESTS)
+      .filter(([, pests]) => pests.includes(part))
+      .map(([pkg]) => pkg);
+    const preferred = preferredInfer.find((p) => matches.includes(p));
+    if (preferred) inferred.add(preferred);
+    else matches.forEach((pkg) => inferred.add(pkg));
   }
   if (inferred.size > 0) return Array.from(inferred);
 
@@ -828,15 +1056,29 @@ export function typesForPackage(
   service: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): string[] {
-  return config.service_types[service] || Object.keys(config.pricing[service] || {});
+  const resolved = resolvePricingService(service, config);
+  return (
+    config.service_types[resolved]
+    || config.service_types[service]
+    || Object.keys(config.pricing[resolved] || config.pricing[service] || {})
+  );
 }
 
+/**
+ * Commercial bookings use the same per-service pricing boxes as Home once
+ * Pricing Master rates exist. Legacy hardcoded cards still auto-price homes
+ * (and Lonavala villas) only.
+ */
 export function supportsAutoPricing(
   commercialType: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
 ): boolean {
   if (commercialType === 'home') return true;
   if (config.region === 'lonavala' && commercialType === 'villa') return true;
+  // Database / 2026 chart: hotel, office, society, other get catalog prices.
+  if (config.source === 'database') {
+    return ['hotel', 'office', 'society', 'other', 'villa'].includes(commercialType);
+  }
   return false;
 }
 
