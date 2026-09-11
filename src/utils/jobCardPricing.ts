@@ -824,8 +824,16 @@ export function validateServiceConfigs(
   selectedServices: string[],
   serviceConfigs: ServiceConfigMap,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  options?: {
+    /** When true, missing catalog rates do not block save (manual Base Price). */
+    allowMissingRates?: boolean;
+    /** When true, area can be empty (post-visit commercial price entry). */
+    allowMissingArea?: boolean;
+  },
 ): string[] {
   const errors: string[] = [];
+  const allowMissingRates = options?.allowMissingRates === true;
+  const allowMissingArea = options?.allowMissingArea === true;
   for (const service of selectedServices) {
     const cfg = serviceConfigs[service];
     if (!cfg?.plan) {
@@ -833,11 +841,14 @@ export function validateServiceConfigs(
       continue;
     }
     if (!cfg.area) {
-      errors.push(`${service}: select an area.`);
+      if (!allowMissingArea) {
+        errors.push(`${service}: select an area.`);
+      }
       continue;
     }
     const unit = getUnitPrice(service, cfg.plan, cfg.area, config);
     if (unit === null) {
+      if (allowMissingRates) continue;
       const planL = cfg.plan.toLowerCase();
       // AMC packages / termite may not exist in Pricing Master yet — allow manual total
       if (planL.includes('amc') || planL.includes('one time treatment')) {
@@ -1079,6 +1090,23 @@ export function supportsAutoPricing(
   if (config.source === 'database') {
     return ['hotel', 'office', 'society', 'other', 'villa'].includes(commercialType);
   }
+  return false;
+}
+
+/**
+ * Whether Edit Booking should show the same Base / Discount / Total Price
+ * controls as residential. Commercial historically used “price after visit”
+ * (estimated) — once the booking is Done, staff must be able to enter the
+ * final price the same way as Home, even without catalog auto-pricing.
+ */
+export function allowsEditableServicePricing(
+  commercialType: string,
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  options?: { status?: string | null },
+): boolean {
+  if (supportsAutoPricing(commercialType, config)) return true;
+  const status = String(options?.status || '').trim().toLowerCase();
+  if (status === 'done') return true;
   return false;
 }
 

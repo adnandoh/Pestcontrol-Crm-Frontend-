@@ -194,6 +194,9 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                       className="w-full h-10 px-3 text-sm font-medium border border-gray-300 rounded-lg bg-white"
                     >
                       <option value="">Select area</option>
+                      {cfg.area && !areaOptions.includes(cfg.area) && (
+                        <option value={cfg.area}>{cfg.area}</option>
+                      )}
                       {areaOptions.map((loc) => (
                         <option key={loc} value={loc}>{loc}</option>
                       ))}
@@ -207,7 +210,9 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                   </div>
                 </div>
 
-                {showPricingFields && cfg.plan && cfg.area && (
+                {/* Plan is enough to enter price — commercial Done bookings often
+                    still need manual Base/Discount before a chart area is picked. */}
+                {showPricingFields && cfg.plan && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>

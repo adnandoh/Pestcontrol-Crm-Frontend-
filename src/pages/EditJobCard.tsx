@@ -54,6 +54,7 @@ import {
   serviceItemsToConfigMap,
   summarizeServicePricing,
   supportsAutoPricing,
+  allowsEditableServicePricing,
   syncServiceItemAmountsToTotal,
   validateServiceConfigs,
   type PricingConfig,
@@ -511,6 +512,15 @@ const EditJobCard: React.FC = () => {
     [serviceConfigs, pricingConfig],
   );
 
+  /** Same per-service price boxes as Home — including commercial after Done. */
+  const canEditServicePrices = useMemo(
+    () =>
+      allowsEditableServicePricing(formData.commercial_type, pricingConfig, {
+        status: formData.status,
+      }),
+    [formData.commercial_type, formData.status, pricingConfig],
+  );
+
   useEffect(() => {
     const label = selectedPackages.join(', ');
     setFormData((prev) => (prev.service_type === label ? prev : { ...prev, service_type: label }));
@@ -554,10 +564,20 @@ const EditJobCard: React.FC = () => {
 
   const handleServiceBaseAmountChange = (service: string, baseAmount: number) => {
     setServiceItems((prev) => {
-      const next = prev.map((item) => {
-        if (item.service !== service) return item;
-        return { ...item, ...finalizeServiceLinePricing(baseAmount, item.discount || 0) };
-      });
+      const cfg = serviceConfigs[service] || { plan: '', area: '' };
+      const existing = prev.find((item) => item.service === service);
+      const priced = finalizeServiceLinePricing(baseAmount, existing?.discount || 0);
+      const next = existing
+        ? prev.map((item) => (item.service === service ? { ...item, ...priced } : item))
+        : [
+            ...prev,
+            {
+              service,
+              plan: cfg.plan || '',
+              area: cfg.area || '',
+              ...priced,
+            },
+          ];
       syncTotalsFromItems(next);
       return next;
     });
@@ -565,13 +585,23 @@ const EditJobCard: React.FC = () => {
 
   const handleServiceDiscountChange = (service: string, discount: number) => {
     setServiceItems((prev) => {
-      const next = prev.map((item) => {
-        if (item.service !== service) return item;
-        return {
-          ...item,
-          ...finalizeServiceLinePricing(item.baseAmount ?? item.amount, discount),
-        };
-      });
+      const cfg = serviceConfigs[service] || { plan: '', area: '' };
+      const existing = prev.find((item) => item.service === service);
+      const priced = finalizeServiceLinePricing(
+        existing?.baseAmount ?? existing?.amount ?? 0,
+        discount,
+      );
+      const next = existing
+        ? prev.map((item) => (item.service === service ? { ...item, ...priced } : item))
+        : [
+            ...prev,
+            {
+              service,
+              plan: cfg.plan || '',
+              area: cfg.area || '',
+              ...priced,
+            },
+          ];
       syncTotalsFromItems(next);
       return next;
     });
@@ -612,7 +642,16 @@ const EditJobCard: React.FC = () => {
       showAlert('Please select at least one service.');
       return;
     }
-    const configErrors = validateServiceConfigs(selectedPackages, serviceConfigs, pricingConfig);
+    const configErrors = validateServiceConfigs(
+      selectedPackages,
+      serviceConfigs,
+      pricingConfig,
+      {
+        // Commercial / post-visit edits often have chart gaps — staff sets Base Price.
+        allowMissingRates: true,
+        allowMissingArea: canEditServicePrices && formData.status === 'Done',
+      },
+    );
     if (configErrors.length > 0) {
       setServiceConfigErrors(configErrors);
       showAlert(configErrors.join('\n'));
@@ -659,9 +698,20 @@ const EditJobCard: React.FC = () => {
         ...formData,
         price: (shouldRedistribute && manualPrice > 0
           ? manualPrice
-          : pricingTotals.finalAmount
+          : pricingTotals.finalAmount > 0
+            ? pricingTotals.finalAmount
+            : manualPrice
         ).toFixed(2),
         discount_amount: pricingTotals.totalDiscount,
+        // Final price after visit / Done is no longer an estimate.
+        is_price_estimated: (
+          (shouldRedistribute && manualPrice > 0
+            ? manualPrice
+            : pricingTotals.finalAmount > 0
+              ? pricingTotals.finalAmount
+              : manualPrice
+          ) <= 0
+        ) && Boolean(formData.is_price_estimated),
         job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
         contract_duration: isSocietyBooking(formData)
           ? (formData.contract_duration || deriveSocietyContractDuration(
@@ -1184,15 +1234,15 @@ const EditJobCard: React.FC = () => {
                      onDiscountChange={handleServiceDiscountChange}
                      validationErrors={serviceConfigErrors}
                      scheduleDate={formData.schedule_datetime}
-                     showPricingFields={supportsAutoPricing(formData.commercial_type, pricingConfig)}
+                     showPricingFields={canEditServicePrices}
                    />
                 </div>
 
                 <div className="flex flex-col items-start lg:items-end justify-center min-w-[140px] pl-4 lg:border-l border-gray-200">
                    <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1">
-                     {supportsAutoPricing(formData.commercial_type, pricingConfig) ? 'Total Price' : 'Estimated Price'}
+                     {canEditServicePrices ? 'Total Price' : 'Estimated Price'}
                    </span>
-                   {supportsAutoPricing(formData.commercial_type, pricingConfig) ? (
+                   {canEditServicePrices ? (
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
@@ -1215,9 +1265,18 @@ const EditJobCard: React.FC = () => {
                 </div>
              </div>
              
-             {!supportsAutoPricing(formData.commercial_type, pricingConfig) && (
+             {!canEditServicePrices && (
                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                  <p className="text-xs font-bold text-amber-700 italic">“Technician visit ke baad final rate diya jayega.”</p>
+               </div>
+             )}
+             {canEditServicePrices
+               && formData.status === 'Done'
+               && !supportsAutoPricing(formData.commercial_type, pricingConfig) && (
+               <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                 <p className="text-xs font-bold text-emerald-800">
+                   Booking is Done — enter the final agreed price per service (same as Home), then save.
+                 </p>
                </div>
              )}
           </div>

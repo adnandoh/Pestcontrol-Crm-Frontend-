@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allowsEditableServicePricing,
   filterAreasForCommercialType,
   getAreaOptions,
   getUnitPrice,
@@ -135,6 +136,11 @@ const CONFIG: PricingConfig = {
   },
 };
 
+const LEGACY_CONFIG: PricingConfig = {
+  ...CONFIG,
+  source: undefined,
+};
+
 describe('commercial per-service pricing aliases', () => {
   it('maps legacy Cockroach / Ants onto Cockroach Standard', () => {
     expect(resolvePricingService('Cockroach / Ants', CONFIG)).toBe('Cockroach Standard');
@@ -178,6 +184,22 @@ describe('commercial per-service pricing aliases', () => {
     expect(supportsAutoPricing('other', CONFIG)).toBe(true);
   });
 
+  it('unlocks editable price boxes for commercial once booking is Done', () => {
+    expect(supportsAutoPricing('hotel', LEGACY_CONFIG)).toBe(false);
+    expect(
+      allowsEditableServicePricing('hotel', LEGACY_CONFIG, { status: 'Pending' }),
+    ).toBe(false);
+    expect(
+      allowsEditableServicePricing('hotel', LEGACY_CONFIG, { status: 'Done' }),
+    ).toBe(true);
+    expect(
+      allowsEditableServicePricing('office', CONFIG, { status: 'Done' }),
+    ).toBe(true);
+    expect(
+      allowsEditableServicePricing('home', LEGACY_CONFIG, { status: 'Done' }),
+    ).toBe(true);
+  });
+
   it('validates multi-service commercial configs without rate-not-found', () => {
     const errors = validateServiceConfigs(
       ['Cockroach / Ants', 'Bed Bugs'],
@@ -186,6 +208,30 @@ describe('commercial per-service pricing aliases', () => {
         'Bed Bugs': { plan: 'One Time Service', area: 'Hotel - Minimum 3 affected rooms' },
       },
       CONFIG,
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it('allows missing catalog rates when staff enters manual price after Done', () => {
+    const errors = validateServiceConfigs(
+      ['Cockroach / Ants'],
+      {
+        'Cockroach / Ants': { plan: 'One Time Service', area: 'Commercial' },
+      },
+      CONFIG,
+      { allowMissingRates: true },
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it('allows missing area on Done commercial price entry', () => {
+    const errors = validateServiceConfigs(
+      ['Cockroach / Ants'],
+      {
+        'Cockroach / Ants': { plan: 'One Time Service', area: '' },
+      },
+      CONFIG,
+      { allowMissingArea: true, allowMissingRates: true },
     );
     expect(errors).toEqual([]);
   });
