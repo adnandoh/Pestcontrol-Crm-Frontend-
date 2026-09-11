@@ -8,6 +8,7 @@ import {
   getTechnicianEarningsPreview,
   getTechnicianSharePercent,
 } from '../../utils/bookingPayment';
+import { gstBreakdown } from '../../utils/quotationTotals';
 
 export type PaymentCollectionType = 'full' | 'half' | 'custom';
 
@@ -16,6 +17,9 @@ export interface CompleteJobPaymentPayload {
   paymentCollectionType: PaymentCollectionType;
   completionPaidAmount?: number;
   completionPendingAmount?: number;
+  gstPaid: boolean;
+  hasExtraAmount: boolean;
+  extraAmount: number;
 }
 
 interface CompleteJobModalProps {
@@ -72,6 +76,9 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
   const [customInputMode, setCustomInputMode] = useState<'pending' | 'received'>('pending');
   const [customValue, setCustomValue] = useState('');
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'Online' | null>(null);
+  const [gstPaid, setGstPaid] = useState<boolean | null>(null);
+  const [hasExtraAmount, setHasExtraAmount] = useState(false);
+  const [extraAmountValue, setExtraAmountValue] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -80,8 +87,16 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
     setCustomInputMode('pending');
     setCustomValue('');
     setPaymentMode(null);
+    setGstPaid(null);
+    setHasExtraAmount(false);
+    setExtraAmountValue('');
     setError('');
   }, [isOpen, jobCard?.id]);
+
+  const gstPreview = useMemo(
+    () => gstBreakdown(paymentAmount, 18, true),
+    [paymentAmount],
+  );
 
   const { paidAmount, pendingAmount } = useMemo(() => {
     if (collectionType === 'full') {
@@ -107,6 +122,15 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
   const validate = (): string => {
     if (paymentAmount <= 0) {
       return 'This visit is included in the package — no payment to collect.';
+    }
+    if (gstPaid === null) {
+      return 'Select whether GST was paid (Yes or No).';
+    }
+    if (gstPaid && hasExtraAmount) {
+      const extra = parseAmount(extraAmountValue);
+      if (!extraAmountValue.trim() || extra <= 0) {
+        return 'Enter an extra amount greater than zero.';
+      }
     }
     if (collectionType === 'custom') {
       const custom = parseAmount(customValue);
@@ -143,11 +167,15 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
       setError(validationError);
       return;
     }
-    if (!paymentMode) return;
+    if (!paymentMode || gstPaid === null) return;
 
+    const allowExtra = gstPaid === true && hasExtraAmount;
     const payload: CompleteJobPaymentPayload = {
       paymentMode,
       paymentCollectionType: collectionType,
+      gstPaid,
+      hasExtraAmount: allowExtra,
+      extraAmount: allowExtra ? parseAmount(extraAmountValue) : 0,
     };
 
     if (collectionType === 'custom') {
@@ -312,6 +340,111 @@ const CompleteJobModal: React.FC<CompleteJobModalProps> = ({
               <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Pending Amount</p>
               <p className="text-xl font-black text-amber-800 mt-1">₹{formatMoney(pendingAmount)}</p>
             </div>
+          </div>
+
+          <div>
+            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
+              GST Paid
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setGstPaid(true);
+                  setError('');
+                }}
+                disabled={isLoading}
+                className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                  gstPaid === true
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setGstPaid(false);
+                  setHasExtraAmount(false);
+                  setExtraAmountValue('');
+                  setError('');
+                }}
+                disabled={isLoading}
+                className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                  gstPaid === false
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                }`}
+              >
+                No
+              </button>
+            </div>
+            {gstPaid === true && paymentAmount > 0 && (
+              <p className="mt-2 text-[11px] font-medium text-gray-500">
+                Includes GST @ 18%: base ₹{formatMoney(gstPreview.base_amount)} + GST ₹
+                {formatMoney(gstPreview.gst_amount)} = ₹{formatMoney(gstPreview.total_with_gst)}
+              </p>
+            )}
+            {gstPaid === false && (
+              <p className="mt-2 text-[11px] font-medium text-gray-500">
+                Customer paid base only (no GST). Extra amount is not allowed.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
+              Extra Amount
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (gstPaid !== true) return;
+                  setHasExtraAmount(true);
+                  setError('');
+                }}
+                disabled={isLoading || gstPaid !== true}
+                className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                  hasExtraAmount && gstPaid === true
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasExtraAmount(false);
+                  setExtraAmountValue('');
+                  setError('');
+                }}
+                disabled={isLoading || gstPaid === null}
+                className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all disabled:opacity-50 ${
+                  !hasExtraAmount && gstPaid !== null
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                }`}
+              >
+                No
+              </button>
+            </div>
+            {gstPaid === true && hasExtraAmount && (
+              <input
+                type="number"
+                min={0.01}
+                step="0.01"
+                value={extraAmountValue}
+                onChange={(e) => {
+                  setExtraAmountValue(e.target.value);
+                  setError('');
+                }}
+                placeholder="Extra amount (₹)"
+                className="mt-3 w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            )}
           </div>
 
           <div>

@@ -413,6 +413,9 @@ export interface JobCard {
   total_amount?: number | string;
   paid_amount?: number | string;
   pending_amount?: number | string;
+  gst_paid?: boolean | null;
+  has_extra_amount?: boolean;
+  extra_amount?: number | string;
   service_type: string;
   service_items?: ServiceItemConfig[];
   schedule_datetime: string;
@@ -768,6 +771,9 @@ export interface JobCardFormData {
   completion_paid_amount?: number;
   completion_pending_amount?: number;
   payment_remarks?: string;
+  gst_paid?: boolean | null;
+  has_extra_amount?: boolean;
+  extra_amount?: number | string;
   assigned_to?: string;
   technician?: number | null;
   price: number | string;

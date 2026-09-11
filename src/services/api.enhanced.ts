@@ -1264,6 +1264,9 @@ class EnhancedApiService {
       requestData.completion_pending_amount = data.completion_pending_amount;
     }
     if (data.payment_remarks !== undefined) requestData.payment_remarks = data.payment_remarks;
+    if (data.gst_paid !== undefined) requestData.gst_paid = data.gst_paid;
+    if (data.has_extra_amount !== undefined) requestData.has_extra_amount = data.has_extra_amount;
+    if (data.extra_amount !== undefined) requestData.extra_amount = data.extra_amount;
     if (data.assigned_to !== undefined) requestData.assigned_to = data.assigned_to;
     if (data.technician !== undefined) requestData.technician = data.technician;
     if (data.price !== undefined) {

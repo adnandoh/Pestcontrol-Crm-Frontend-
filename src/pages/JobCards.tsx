@@ -567,6 +567,9 @@ const JobCards: React.FC = () => {
         payment_collection_type: payload.paymentCollectionType,
         completion_paid_amount: payload.completionPaidAmount,
         completion_pending_amount: payload.completionPendingAmount,
+        gst_paid: payload.gstPaid,
+        has_extra_amount: payload.hasExtraAmount,
+        extra_amount: payload.extraAmount,
       });
       if (job) fireAndForget(sendBookingDonePairApi(job));
       setDoneId(null);
