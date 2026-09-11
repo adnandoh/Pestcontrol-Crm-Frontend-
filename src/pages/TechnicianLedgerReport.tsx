@@ -280,7 +280,7 @@ const TechnicianLedgerReport: React.FC = () => {
     const headings = [
       'Booking Date', 'Booking ID', 'Customer', 'Client Number', 'Property Type', 'Service', 'City',
       'Booking Type', 'Service Number', 'Visit Status',
-      'Payment Status', 'Settlement Date', 'Booking Amount', 'Service Value',
+      'Payment Status', 'Settlement Date', 'Booking Amount (excl GST)', 'Service Value (excl GST)',
       'Tech Share %', 'Technician Payable', 'Company Share', 'Bonus', 'Penalty',
       'Already Paid', 'Still To Pay', 'Rating',
     ];
@@ -674,7 +674,7 @@ const TechnicianLedgerReport: React.FC = () => {
                         <th className="px-3 py-2 font-black">Technician</th>
                         <th className="min-w-[130px] px-3 py-2 font-black">Type / #</th>
                         <th className="px-3 py-2 font-black">Visit / Pay</th>
-                        <th className="px-3 py-2 text-right font-black">Service ₹</th>
+                        <th className="px-3 py-2 text-right font-black">Service ₹ (excl GST)</th>
                         <th className="px-3 py-2 text-right font-black">Tech 40%</th>
                         <th className="px-3 py-2 text-right font-black">Company 60%</th>
                         <th className="px-3 py-2 font-black">Status</th>
