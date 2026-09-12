@@ -16,7 +16,7 @@ import { Button, Pagination } from "../components/ui";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { downloadManualInvoicePdf, type ManualInvoiceInput } from "../utils/invoicePdf";
-import { COMPANY, INVOICE_DEFAULTS, formatCompanyGstin } from "../constants/quotation";
+import { COMPANY, INVOICE_DEFAULTS } from "../constants/quotation";
 import { showAlert } from "../utils/notify";
 import { enhancedApiService } from "../services/api.enhanced";
 import type { Invoice } from "../types";
@@ -42,6 +42,7 @@ type InvoiceFormState = {
   invoiceDate: string;
   billedByName: string;
   billedByAddress: string;
+  billedByGstNumber: string;
   billedToName: string;
   billedToMobile: string;
   billedToAddress: string;
@@ -59,6 +60,7 @@ const emptyForm = (): InvoiceFormState => ({
   invoiceDate: new Date().toISOString().slice(0, 10),
   billedByName: INVOICE_DEFAULTS.billedByName,
   billedByAddress: INVOICE_DEFAULTS.billedByAddress,
+  billedByGstNumber: COMPANY.gstin,
   billedToName: "",
   billedToMobile: "",
   billedToAddress: "",
@@ -76,6 +78,10 @@ const invoiceToPdfPayload = (invoice: Invoice): ManualInvoiceInput => ({
   invoiceDate: invoice.invoice_date,
   billedByName: invoice.billed_by_name || INVOICE_DEFAULTS.billedByName,
   billedByAddress: invoice.billed_by_address || INVOICE_DEFAULTS.billedByAddress,
+  billedByGstNumber:
+    invoice.billed_by_gst_number !== undefined && invoice.billed_by_gst_number !== null
+      ? invoice.billed_by_gst_number
+      : COMPANY.gstin,
   billedToName: invoice.customer_name,
   billedToMobile: invoice.customer_mobile || "",
   billedToAddress: invoice.customer_address || "",
@@ -204,6 +210,10 @@ const Invoices: React.FC = () => {
       invoiceDate: invoice.invoice_date || new Date().toISOString().slice(0, 10),
       billedByName: invoice.billed_by_name || INVOICE_DEFAULTS.billedByName,
       billedByAddress: invoice.billed_by_address || INVOICE_DEFAULTS.billedByAddress,
+      billedByGstNumber:
+        invoice.billed_by_gst_number !== undefined && invoice.billed_by_gst_number !== null
+          ? invoice.billed_by_gst_number
+          : COMPANY.gstin,
       billedToName: invoice.customer_name || "",
       billedToMobile: invoice.customer_mobile || "",
       billedToAddress: invoice.customer_address || "",
@@ -264,6 +274,7 @@ const Invoices: React.FC = () => {
       invoice_date: form.invoiceDate || undefined,
       billed_by_name: form.billedByName,
       billed_by_address: form.billedByAddress,
+      billed_by_gst_number: form.billedByGstNumber.trim(),
       customer_name: form.billedToName.trim(),
       customer_mobile: form.billedToMobile.trim(),
       customer_address: form.billedToAddress.trim(),
@@ -293,6 +304,10 @@ const Invoices: React.FC = () => {
       setForm((prev) => ({
         ...prev,
         invoiceNo: saved.invoice_no || prev.invoiceNo,
+        billedByGstNumber:
+          saved.billed_by_gst_number !== undefined && saved.billed_by_gst_number !== null
+            ? saved.billed_by_gst_number
+            : prev.billedByGstNumber,
         billedToGstNumber: saved.customer_gst_number || "",
       }));
 
@@ -301,6 +316,10 @@ const Invoices: React.FC = () => {
         invoiceDate: saved.invoice_date || form.invoiceDate,
         billedByName: saved.billed_by_name || form.billedByName,
         billedByAddress: saved.billed_by_address || form.billedByAddress,
+        billedByGstNumber:
+          saved.billed_by_gst_number !== undefined && saved.billed_by_gst_number !== null
+            ? saved.billed_by_gst_number
+            : form.billedByGstNumber,
         billedToName: saved.customer_name,
         billedToMobile: saved.customer_mobile || "",
         billedToAddress: saved.customer_address || "",
@@ -613,13 +632,40 @@ const Invoices: React.FC = () => {
                   value={form.billedByName}
                   onChange={(e) => updateFormField("billedByName", e.target.value)}
                 />
-                <input
-                  className="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700"
-                  value={formatCompanyGstin() || COMPANY.gstin}
-                  readOnly
-                  title="Company seller GSTIN (from company settings)"
-                  aria-label="Company GSTIN"
-                />
+                <div className="flex gap-2 items-center">
+                  <input
+                    className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="Company GST Number (optional)"
+                    value={form.billedByGstNumber}
+                    onChange={(e) => updateFormField("billedByGstNumber", e.target.value)}
+                    maxLength={30}
+                    title="Company seller GSTIN for this invoice"
+                    aria-label="Company GSTIN"
+                  />
+                  {form.billedByGstNumber.trim() ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 whitespace-nowrap text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => updateFormField("billedByGstNumber", "")}
+                      title="Remove company GST from this invoice"
+                    >
+                      Remove GST
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 whitespace-nowrap"
+                      onClick={() => updateFormField("billedByGstNumber", COMPANY.gstin)}
+                      title={`Restore default company GSTIN ${COMPANY.gstin}`}
+                    >
+                      Use default
+                    </Button>
+                  )}
+                </div>
                 <textarea
                   className="w-full px-3 py-2 border rounded-lg min-h-[80px]"
                   placeholder="Company Address"
@@ -627,7 +673,9 @@ const Invoices: React.FC = () => {
                   onChange={(e) => updateFormField("billedByAddress", e.target.value)}
                 />
                 <p className="text-[10px] text-gray-500">
-                  Company GSTIN {COMPANY.gstin} is fixed on every invoice PDF. Customer GST is separate below.
+                  {form.billedByGstNumber.trim()
+                    ? `Company GSTIN ${form.billedByGstNumber.trim().toUpperCase().replace(/^GSTIN\s*/i, "")} will appear on this invoice PDF. Customer GST is separate below.`
+                    : "Company GSTIN removed — it will not appear on this invoice PDF. Customer GST is separate below."}
                 </p>
               </div>
               <div className="space-y-3">

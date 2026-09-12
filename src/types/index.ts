@@ -1351,6 +1351,8 @@ export interface Invoice {
   invoice_date: string;
   billed_by_name?: string;
   billed_by_address?: string;
+  /** Seller/company GSTIN snapshot; empty string omits GSTIN from the PDF. */
+  billed_by_gst_number?: string;
   customer_name: string;
   customer_mobile?: string;
   customer_address?: string;

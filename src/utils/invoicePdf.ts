@@ -34,6 +34,8 @@ export interface ManualInvoiceInput {
   invoiceDate?: string;
   billedByName?: string;
   billedByAddress?: string;
+  /** Seller/company GSTIN; shown under BILLED BY when set. Empty omits it. */
+  billedByGstNumber?: string;
   billedToName: string;
   billedToMobile?: string;
   billedToAddress?: string;
@@ -53,6 +55,7 @@ interface RenderInvoicePayload {
   invoiceDate: string;
   billedByName: string;
   billedByAddress: string;
+  billedByGstNumber: string;
   billedToName: string;
   billedToMobile: string;
   billedToAddress: string;
@@ -210,8 +213,8 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
             <div class="inv-muted" style="font-size:11px;color:#6b7280;font-weight:700">BILLED BY</div>
             <div style="font-size:14px;font-weight:700;margin-top:5px">${payload.billedByName}</div>
             ${
-              formatCompanyGstin()
-                ? `<div style="font-size:12px;color:#111827;line-height:1.6;margin-top:2px">${formatCompanyGstin()}</div>`
+              payload.billedByGstNumber
+                ? `<div style="font-size:12px;color:#111827;line-height:1.6;margin-top:2px">${payload.billedByGstNumber}</div>`
                 : ""
             }
             <div class="inv-muted" style="font-size:12px;color:#4b5563;line-height:1.6;white-space:pre-line">${payload.billedByAddress}</div>
@@ -318,6 +321,7 @@ export const downloadInvoicePdf = async (job: JobCard) => {
     invoiceDate: new Date().toLocaleDateString("en-GB"),
     billedByName: COMPANY.legalName,
     billedByAddress: INVOICE_DEFAULTS.billedByAddress,
+    billedByGstNumber: formatCompanyGstin(),
     billedToName: job.client_name || "-",
     billedToMobile: job.client_mobile || "-",
     billedToAddress: job.client_address || "-",
@@ -366,6 +370,10 @@ export const downloadManualInvoicePdf = async (data: ManualInvoiceInput) => {
     invoiceDate: formatDate(data.invoiceDate) === "-" ? new Date().toLocaleDateString("en-GB") : formatDate(data.invoiceDate),
     billedByName: data.billedByName?.trim() || INVOICE_DEFAULTS.billedByName,
     billedByAddress: data.billedByAddress?.trim() || INVOICE_DEFAULTS.billedByAddress,
+    billedByGstNumber:
+      data.billedByGstNumber === undefined
+        ? formatCompanyGstin()
+        : formatGstinLine(data.billedByGstNumber),
     billedToName: data.billedToName.trim() || "-",
     billedToMobile: data.billedToMobile?.trim() || "-",
     billedToAddress: data.billedToAddress?.trim() || "-",
