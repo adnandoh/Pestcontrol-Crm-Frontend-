@@ -403,17 +403,31 @@ class EnhancedApiService {
     page?: number;
     page_size?: number;
     search?: string;
+    q?: string;
     is_active?: boolean;
     ordering?: string;
   }): Promise<PaginatedResponse<Technician>> {
-    const cacheKey = apiCache.generateKey(API_ENDPOINTS.TECHNICIANS, params);
+    // Backend SEARCH_PARAM is `q`; also send `search` for views that accept both.
+    const term = (params?.q ?? params?.search)?.trim();
+    const apiParams: Record<string, string | number | boolean | undefined> = {
+      ...params,
+    };
+    if (term) {
+      apiParams.q = term;
+      apiParams.search = term;
+    } else {
+      delete apiParams.q;
+      delete apiParams.search;
+    }
+
+    const cacheKey = apiCache.generateKey(API_ENDPOINTS.TECHNICIANS, apiParams);
 
     return this.cachedRequest(
       cacheKey,
       () => this.retryRequest(() =>
         this.makeRequest(
           cacheKey,
-          () => this.api.get<PaginatedResponse<Technician>>(API_ENDPOINTS.TECHNICIANS, { params }),
+          () => this.api.get<PaginatedResponse<Technician>>(API_ENDPOINTS.TECHNICIANS, { params: apiParams }),
         ),
       ),
       2 * 60 * 1000,

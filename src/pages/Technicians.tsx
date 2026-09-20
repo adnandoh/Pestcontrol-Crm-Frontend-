@@ -48,6 +48,20 @@ const Technicians: React.FC = () => {
     totalPages: 0,
   });
 
+  /** Normalize search for API: names as-is; phone-like input → digits (+91/spaces stripped). */
+  const normalizeTechnicianSearch = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    const digits = trimmed.replace(/\D/g, '');
+    const compact = trimmed.replace(/[\s+\-().]/g, '');
+    const phoneLike =
+      digits.length >= 3 && digits.length >= Math.ceil(compact.length * 0.7);
+    if (!phoneLike) return trimmed;
+    if (digits.length > 10 && digits.startsWith('91')) return digits.slice(-10);
+    if (digits.startsWith('0') && digits.length > 1) return digits.replace(/^0+/, '') || digits;
+    return digits;
+  };
+
   const loadTechnicians = useCallback(async (page = 1, currentSearch = searchInput) => {
     try {
       setLoading(true);
@@ -57,14 +71,18 @@ const Technicians: React.FC = () => {
         page_size: number;
         ordering: string;
         search?: string;
+        q?: string;
       } = {
         page,
         page_size: PAGE_SIZE,
         ordering: '-created_at',
       };
 
-      if (currentSearch.trim()) {
-        params.search = currentSearch.trim();
+      const term = normalizeTechnicianSearch(currentSearch);
+      if (term) {
+        // Backend SEARCH_PARAM is `q`; `search` kept for dual-param views.
+        params.q = term;
+        params.search = term;
       }
 
       const response: PaginatedResponse<Technician> = await enhancedApiService.getTechnicians(params);
