@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Save, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Save, Smartphone, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -14,6 +14,7 @@ import {
   TECHNICIAN_STATUS_OPTIONS,
   normalizeTechnicianStatus,
 } from '../utils/technicianStatus';
+import { cn } from '../utils/cn';
 
 const fieldClass =
   'w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600';
@@ -71,9 +72,53 @@ const TechnicianFormPage: React.FC = () => {
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [partnerAppBusy, setPartnerAppBusy] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [cities, setCities] = useState<City[]>([]);
   const [citySearch, setCitySearch] = useState('');
+  /** Partner app flags from the loaded technician (edit only). */
+  const [hasPartnerApp, setHasPartnerApp] = useState(false);
+  const [partnerAppApproved, setPartnerAppApproved] = useState(false);
+  const [technicianName, setTechnicianName] = useState('');
+
+  const applyTechnicianToForm = useCallback((tech: Technician) => {
+    const fromM2M = (tech.service_cities || []).map((c) => c.id);
+    const rawServices = tech.base_services?.length
+      ? [...tech.base_services]
+      : tech.skills?.length
+        ? [...tech.skills]
+        : [];
+    const cleaned = rawServices.filter(
+      (s) => s && s !== 'Hotel / Commercial' && BASE_SERVICE_OPTIONS.includes(s),
+    );
+    setForm({
+      name: tech.name || '',
+      mobile: tech.mobile || '',
+      age: tech.age?.toString() || '',
+      alternative_mobile: tech.alternative_mobile || '',
+      service_city_ids: fromM2M,
+      // Empty / legacy → all pest services selected (current default).
+      base_services: cleaned.length ? cleaned : [...BASE_SERVICE_OPTIONS],
+      is_active: tech.is_active,
+      technician_type: tech.technician_type || 'partner',
+      branch: tech.branch || '',
+      aadhaar: tech.aadhaar || '',
+      pan: tech.pan || '',
+      presence_status: normalizeTechnicianStatus(tech.presence_status),
+      suspend_reason: tech.suspend_reason || '',
+      security_deposit_status: tech.security_deposit_status || 'pending',
+      security_deposit_amount: tech.security_deposit_amount?.toString() || '',
+    });
+    setHasPartnerApp(Boolean(tech.has_partner_app));
+    setPartnerAppApproved(Boolean(tech.partner_app_approved));
+    setTechnicianName(tech.name || '');
+  }, []);
+
+  const refreshTechnician = useCallback(async () => {
+    if (!techId) return;
+    const tech = await enhancedApiService.getTechnician(techId);
+    applyTechnicianToForm(tech);
+  }, [techId, applyTechnicianToForm]);
 
   useEffect(() => {
     enhancedApiService
@@ -91,40 +136,14 @@ const TechnicianFormPage: React.FC = () => {
     enhancedApiService
       .getTechnician(techId)
       .then((tech) => {
-        const fromM2M = (tech.service_cities || []).map((c) => c.id);
-        const rawServices = tech.base_services?.length
-          ? [...tech.base_services]
-          : tech.skills?.length
-            ? [...tech.skills]
-            : [];
-        const cleaned = rawServices.filter(
-          (s) => s && s !== 'Hotel / Commercial' && BASE_SERVICE_OPTIONS.includes(s),
-        );
-        setForm({
-          name: tech.name || '',
-          mobile: tech.mobile || '',
-          age: tech.age?.toString() || '',
-          alternative_mobile: tech.alternative_mobile || '',
-          service_city_ids: fromM2M,
-          // Empty / legacy → all pest services selected (current default).
-          base_services: cleaned.length ? cleaned : [...BASE_SERVICE_OPTIONS],
-          is_active: tech.is_active,
-          technician_type: tech.technician_type || 'partner',
-          branch: tech.branch || '',
-          aadhaar: tech.aadhaar || '',
-          pan: tech.pan || '',
-          presence_status: normalizeTechnicianStatus(tech.presence_status),
-          suspend_reason: tech.suspend_reason || '',
-          security_deposit_status: tech.security_deposit_status || 'pending',
-          security_deposit_amount: tech.security_deposit_amount?.toString() || '',
-        });
+        applyTechnicianToForm(tech);
       })
       .catch(() => {
         showAlert('Technician not found');
         navigate('/technicians');
       })
       .finally(() => setLoading(false));
-  }, [isEdit, techId, navigate]);
+  }, [isEdit, techId, navigate, applyTechnicianToForm]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -170,6 +189,55 @@ const TechnicianFormPage: React.FC = () => {
         ? form.base_services.filter((s) => s !== service)
         : [...form.base_services, service],
     );
+  };
+
+  const handleApprovePartnerApp = async () => {
+    if (!techId) return;
+    const name = technicianName || form.name || 'this technician';
+    if (!window.confirm(`Approve Partner App access for ${name}?`)) return;
+    try {
+      setPartnerAppBusy(true);
+      await enhancedApiService.approvePartnerApp(techId);
+      showAlert(`Partner App approved for ${name}`);
+      await refreshTechnician();
+    } catch {
+      showAlert('Could not approve Partner App');
+    } finally {
+      setPartnerAppBusy(false);
+    }
+  };
+
+  const handleRejectOrRevokePartnerApp = async () => {
+    if (!techId) return;
+    const name = technicianName || form.name || 'this technician';
+    const approved = partnerAppApproved;
+    if (
+      !window.confirm(
+        approved
+          ? `Revoke Partner App access for ${name}?`
+          : `Reject Partner App access for ${name}?`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setPartnerAppBusy(true);
+      await enhancedApiService.revokePartnerApp(techId);
+      showAlert(
+        approved
+          ? `Partner App access revoked for ${name}`
+          : `Partner App access rejected for ${name}`,
+      );
+      await refreshTechnician();
+    } catch {
+      showAlert(
+        approved
+          ? 'Could not revoke Partner App'
+          : 'Could not reject Partner App',
+      );
+    } finally {
+      setPartnerAppBusy(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -557,6 +625,80 @@ const TechnicianFormPage: React.FC = () => {
                 />
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Partner App approve / reject / revoke — same APIs as Technicians list. */}
+        {isEdit && techId != null && (
+          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+            <h2 className="mb-1 flex items-center gap-2 border-b border-gray-100 pb-2 text-base font-semibold text-gray-800">
+              <Smartphone className="h-4 w-4 text-gray-600" />
+              Partner App Access
+            </h2>
+            <p className="mb-4 text-xs text-gray-500">
+              Approve technicians who registered in the partner app. Same actions as the
+              Technicians list.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              {!hasPartnerApp ? (
+                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-gray-50 text-gray-500 ring-1 ring-inset ring-gray-200">
+                  No app
+                </span>
+              ) : partnerAppApproved ? (
+                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                  Approved
+                </span>
+              ) : (
+                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                  Pending approval
+                </span>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                {hasPartnerApp && !partnerAppApproved && (
+                  <button
+                    type="button"
+                    disabled={partnerAppBusy}
+                    onClick={handleApprovePartnerApp}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wide disabled:opacity-50"
+                    title="Approve Partner App"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Approve
+                  </button>
+                )}
+                {hasPartnerApp && (
+                  <button
+                    type="button"
+                    disabled={partnerAppBusy}
+                    onClick={handleRejectOrRevokePartnerApp}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-black uppercase tracking-wide disabled:opacity-50',
+                      partnerAppApproved
+                        ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100'
+                        : 'bg-red-600 hover:bg-red-700 text-white',
+                    )}
+                    title={
+                      partnerAppApproved
+                        ? 'Revoke Partner App access'
+                        : 'Reject Partner App'
+                    }
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    {partnerAppApproved ? 'Revoke' : 'Reject'}
+                  </button>
+                )}
+                {partnerAppBusy && (
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                )}
+              </div>
+            </div>
+            {!hasPartnerApp && (
+              <p className="mt-3 text-xs text-gray-500">
+                This technician has not signed up in the partner app yet. Approve /
+                Reject will appear once they register.
+              </p>
+            )}
           </section>
         )}
 
