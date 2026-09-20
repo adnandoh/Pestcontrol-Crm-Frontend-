@@ -92,7 +92,10 @@ const TechnicianDailyTypeReportPage: React.FC = () => {
           <input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              // Empty value would 400/confuse the report; keep last valid day.
+              if (e.target.value) setDate(e.target.value);
+            }}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium"
           />
           <Button variant="outline" onClick={() => navigate('/technician-reports')}>
