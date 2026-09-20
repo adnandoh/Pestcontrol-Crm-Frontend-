@@ -95,6 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
           ? [{ name: 'Settlements', href: '/settlements', icon: Wallet }]
           : []),
         { name: 'Technician Reports', href: '/technician-reports', icon: BarChart3 },
+        { name: 'Daily Tech Reports', href: '/technician-daily-reports', icon: BarChart3 },
         { name: 'Technician Ledger', href: '/technician-ledger', icon: Receipt },
         { name: 'Technician Selfies', href: '/technician-selfies', icon: Camera },
         { name: 'Staff Performance', href: '/staff-performance', icon: BarChart3 },

@@ -38,6 +38,7 @@ import PendingAmounts from './pages/PendingAmounts';
 import CreateQuotation from './pages/CreateQuotation';
 import QuotationPreview from './pages/QuotationPreview';
 import TechnicianReports from './pages/TechnicianReports';
+import TechnicianDailyTypeReport from './pages/TechnicianDailyTypeReport';
 import TechnicianLedgerReport from './pages/TechnicianLedgerReport';
 import StaffPerformance from './pages/StaffPerformance';
 import TechnicianSelfies from './pages/TechnicianSelfies';
@@ -176,6 +177,7 @@ const AppContent: React.FC = () => {
                     <Route path="/feedbacks" element={<Feedbacks />} />
                     <Route path="/e-card/tracking" element={<ECardTracking />} />
                     <Route path="/technician-reports" element={<TechnicianReports />} />
+                    <Route path="/technician-daily-reports" element={<TechnicianDailyTypeReport />} />
                     <Route path="/technician-ledger" element={<TechnicianLedgerReport />} />
                     <Route path="/technician-selfies" element={<TechnicianSelfies />} />
                     <Route path="/staff-performance" element={<StaffPerformance />} />

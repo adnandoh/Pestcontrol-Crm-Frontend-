@@ -1052,11 +1052,55 @@ export interface Feedback {
   created_at: string;
 }
 
+
+export interface TechnicianDailyServiceCount {
+  service_type: string;
+  count: number;
+}
+
+export interface TechnicianDailyCityEarning {
+  city: string;
+  completed_jobs: number;
+  earnings: string;
+  technician_count?: number;
+}
+
+export interface TechnicianDailyTypeRow {
+  id: number;
+  name: string;
+  mobile: string;
+  technician_type: string;
+  city: string;
+  completed_count: number;
+  services: TechnicianDailyServiceCount[];
+  services_summary: string;
+  earnings: string;
+  city_earnings: TechnicianDailyCityEarning[];
+}
+
+export interface TechnicianDailyTypeReport {
+  date: string;
+  technician_type: string;
+  technician_type_label: string;
+  performing_rule: string;
+  summary: {
+    total_technicians: number;
+    performing_count: number;
+    non_performing_count: number;
+    total_completed_jobs: number;
+    total_earnings: string;
+  };
+  performing: TechnicianDailyTypeRow[];
+  non_performing: TechnicianDailyTypeRow[];
+  city_earnings: TechnicianDailyCityEarning[];
+}
+
 export interface TechnicianPerformance {
   id: number;
   name: string;
   mobile: string;
   is_active: boolean;
+  technician_type?: string;
   service_area?: string;
   city?: string;
   last_active?: string;

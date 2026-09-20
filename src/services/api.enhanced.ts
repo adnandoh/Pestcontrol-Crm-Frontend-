@@ -25,6 +25,7 @@ import type {
   PaginatedResponse,
   Feedback,
   TechnicianPerformance,
+  TechnicianDailyTypeReport,
   TechnicianMonthlyPerformance,
   TechnicianLedgerResponse,
   TechnicianLedgerSettleResponse,
@@ -581,6 +582,19 @@ class EnhancedApiService {
     );
     apiCache.deletePattern(CACHE_KEYS.TECHNICIANS);
     return result.data.technician ?? (result.data as unknown as Technician);
+  }
+
+
+  async getTechnicianDailyTypeReport(params?: {
+    date?: string;
+    technician_type?: string;
+  }): Promise<TechnicianDailyTypeReport> {
+    return this.retryRequest(() =>
+      this.api.get<TechnicianDailyTypeReport>(
+        `${API_ENDPOINTS.TECHNICIANS}daily_type_report/`,
+        { params },
+      ),
+    ).then((result) => result.data);
   }
 
   async getTechnicianPerformance(params?: { from?: string; to?: string; service_type?: string }): Promise<{ stats: any; technicians: TechnicianPerformance[] }> {

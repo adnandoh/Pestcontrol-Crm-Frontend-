@@ -9,7 +9,7 @@ import type { TechnicianType } from '../types';
  * "Partner".
  */
 export const TECHNICIAN_TYPE_LABELS: Record<TechnicianType, string> = {
-  partner: 'Partner',
+  partner: 'Priority (Partner)',
   salaried: 'Salaried',
   secondary: 'Secondary',
 };
