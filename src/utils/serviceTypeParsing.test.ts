@@ -52,6 +52,20 @@ describe('parsePackagesFromServiceType', () => {
     ]);
   });
 
+  it('coalesces dual Ant Control + Cockroach Control service_items', async () => {
+    const { coalesceCockroachFamilyServiceItems } = await import('./jobCardPricing');
+    const merged = coalesceCockroachFamilyServiceItems(
+      [
+        { service: 'Ant Control', plan: 'One Time Service', area: '2 BHK', amount: 0, discount: 0, baseAmount: 0 },
+        { service: 'Cockroach Control', plan: 'One Time Service', area: '2 BHK', amount: 1500, discount: 0, baseAmount: 1500 },
+      ],
+      config2026,
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].service).toBe('Cockroach Standard');
+    expect(merged[0].amount).toBe(1500);
+  });
+
   it('recognises Pricing Master services when given the live config', () => {
     expect(
       parsePackagesFromServiceType('Cockroach Premium, Integrated IPM', config2026),

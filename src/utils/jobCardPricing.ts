@@ -959,6 +959,80 @@ export function normalizeServiceItemConfig(
   };
 }
 
+const LEGACY_COCKROACH_ITEM_LABELS = new Set([
+  'cockroach / ants',
+  'cockroach',
+  'ants',
+  'cockroach control',
+  'ant control',
+  'cockroach standard',
+  'cockroach premium',
+]);
+
+function isCockroachFamilyServiceLabel(service: string): boolean {
+  const lower = (service || '').trim().toLowerCase();
+  if (!lower) return false;
+  if (LEGACY_COCKROACH_ITEM_LABELS.has(lower)) return true;
+  return lower.includes('cockroach') || lower === 'ant' || /\bants?\b/.test(lower);
+}
+
+export { isCockroachFamilyServiceLabel };
+
+/**
+ * Merge Ant Control + Cockroach Control (+ legacy) service_items into one
+ * Cockroach Standard/Premium row so Edit/save never re-creates a false multi.
+ */
+export function coalesceCockroachFamilyServiceItems(
+  items: ServiceItemConfig[],
+  config?: PricingConfig,
+): ServiceItemConfig[] {
+  if (!items?.length) return items || [];
+
+  const cockroach: ServiceItemConfig[] = [];
+  const others: ServiceItemConfig[] = [];
+  for (const item of items) {
+    if (isCockroachFamilyServiceLabel(item.service)) cockroach.push(item);
+    else others.push(item);
+  }
+  if (!cockroach.length) return items;
+
+  const preferPremium = cockroach.some((i) =>
+    (i.service || '').toLowerCase().includes('premium'),
+  );
+  const known = new Set([
+    ...SERVICE_PACKAGE_OPTIONS,
+    ...Object.keys(config?.pricing || {}),
+  ]);
+  const candidates = preferPremium
+    ? ['Cockroach Premium', 'Cockroach Standard']
+    : ['Cockroach Standard', 'Cockroach Premium'];
+  let live = candidates.find((n) => known.has(n)) || candidates[0];
+
+  if (cockroach.length === 1) {
+    return [{ ...cockroach[0], service: live }, ...others];
+  }
+
+  const amount = cockroach.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  const discount = cockroach.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  const baseAmount = cockroach.reduce(
+    (sum, i) => sum + (Number(i.baseAmount ?? i.base_amount ?? i.amount) || 0),
+    0,
+  );
+  const plan = cockroach.find((i) => i.plan)?.plan || 'One Time Service';
+  const area = cockroach.find((i) => i.area)?.area || '';
+  return [
+    normalizeServiceItemConfig({
+      service: live,
+      plan,
+      area,
+      amount,
+      discount,
+      base_amount: baseAmount || amount,
+    }),
+    ...others,
+  ];
+}
+
 /** Backfill per-service config from legacy single plan/area bookings. */
 export function legacyServiceConfigFromJob(
   packages: string[],

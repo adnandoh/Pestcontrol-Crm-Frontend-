@@ -49,6 +49,8 @@ import {
   legacyServiceConfigFromJob,
   mergeCatalogIntoServiceItems,
   normalizeServiceItemConfig,
+  coalesceCockroachFamilyServiceItems,
+  isCockroachFamilyServiceLabel,
   parsePackagesFromServiceType,
   priceLinesFromServiceItems,
   serviceItemsToConfigMap,
@@ -364,12 +366,20 @@ const EditJobCard: React.FC = () => {
           setIsNextDateManual(true);
         }
         
-        const packages = parsePackagesFromServiceType(data.service_type || '', pricingConfig);
-        setSelectedPackages(packages);
+        let packages = parsePackagesFromServiceType(data.service_type || '', pricingConfig);
         if (data.service_items?.length) {
-          const normalizedItems = data.service_items.map((item: any) =>
-            normalizeServiceItemConfig(item),
+          const normalizedItems = coalesceCockroachFamilyServiceItems(
+            data.service_items.map((item: any) => normalizeServiceItemConfig(item)),
+            pricingConfig,
           );
+          // Dual Ant+Cockroach rows → one Cockroach Standard/Premium selection.
+          if (
+            normalizedItems.length === 1
+            && isCockroachFamilyServiceLabel(normalizedItems[0].service)
+          ) {
+            packages = [normalizedItems[0].service];
+          }
+          setSelectedPackages(packages);
           setServiceConfigs(serviceItemsToConfigMap(normalizedItems));
           const itemsSum = normalizedItems.reduce(
             (sum, item) => sum + (Number(item.amount) || 0),
@@ -395,6 +405,7 @@ const EditJobCard: React.FC = () => {
             }
           }
         } else {
+          setSelectedPackages(packages);
           let inferredType = data.service_category || '';
           if (inferredType === 'One-Time Service') inferredType = 'One Time Service';
           if (inferredType === 'AMC') inferredType = 'AMC 3 Services';
