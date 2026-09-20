@@ -22,7 +22,7 @@ import { showAlert } from '../utils/notify';
 import { useRevenueModelV2 } from '../hooks/useRevenueModelV2';
 import { technicianTypeLabel, technicianTypeTone } from '../utils/technicianType';
 import {
-  isTechnicianAvailable,
+  normalizeTechnicianStatus,
   technicianStatusLabel,
   technicianStatusTone,
 } from '../utils/technicianStatus';
@@ -237,21 +237,20 @@ const Technicians: React.FC = () => {
                 {revenueModelEnabled && (
                   <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Type</th>
                 )}
-                <th className="px-3 py-2 text-left font-extrabold tracking-tight italic">Partner App</th>
                 <th className="px-3 py-2 text-center font-extrabold tracking-tight italic">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={revenueModelEnabled ? 9 : 8} className="py-20 text-center">
+                  <td colSpan={revenueModelEnabled ? 8 : 7} className="py-20 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
                     <span className="text-[10px] font-bold text-gray-400 uppercase">Loading Results...</span>
                   </td>
                 </tr>
               ) : technicians.length === 0 ? (
                 <tr>
-                  <td colSpan={revenueModelEnabled ? 9 : 8} className="py-20 text-center text-gray-400 font-bold uppercase italic">
+                  <td colSpan={revenueModelEnabled ? 8 : 7} className="py-20 text-center text-gray-400 font-bold uppercase italic">
                     No Technicians Found
                   </td>
                 </tr>
@@ -259,6 +258,11 @@ const Technicians: React.FC = () => {
                 const busy = actionBusyId === tech.id;
                 const hasApp = Boolean(tech.has_partner_app);
                 const approved = Boolean(tech.partner_app_approved);
+                // Single STATUS badge: presence_status is the work-status source
+                // of truth. is_active only yields "Inactive" when presence is
+                // still active — never stack Active + Suspended/On Leave.
+                const presence = normalizeTechnicianStatus(tech.presence_status);
+                const showInactive = !tech.is_active && presence === 'active';
 
                 return (
                 <tr key={tech.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
@@ -297,23 +301,18 @@ const Technicians: React.FC = () => {
                   <td className="px-3 py-2.5 font-bold text-gray-600">{tech.age || '---'}</td>
                   <td className="px-3 py-2.5 font-bold text-gray-600">{new Date(tech.created_at).toLocaleDateString('en-GB')}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${
-                      tech.is_active ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-gray-50 text-gray-700 ring-gray-600/20'
-                    }`}>
-                      {tech.is_active ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                    {/* Work status is a separate axis from is_active, and is
-                        shown whether or not the revenue model is enabled. */}
-                    {!isTechnicianAvailable(tech.presence_status) && (
-                      <div className="mt-1">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${technicianStatusTone(
-                            tech.presence_status,
-                          )}`}
-                        >
-                          {technicianStatusLabel(tech.presence_status)}
-                        </span>
-                      </div>
+                    {showInactive ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/20">
+                        Inactive
+                      </span>
+                    ) : (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset ${technicianStatusTone(
+                          presence,
+                        )}`}
+                      >
+                        {technicianStatusLabel(presence)}
+                      </span>
                     )}
                   </td>
                   {revenueModelEnabled && (
@@ -327,21 +326,6 @@ const Technicians: React.FC = () => {
                       </span>
                     </td>
                   )}
-                  <td className="px-3 py-2.5">
-                    {!hasApp ? (
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-gray-50 text-gray-500 ring-1 ring-inset ring-gray-200">
-                        No app
-                      </span>
-                    ) : approved ? (
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                        Approved
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20">
-                        Pending approval
-                      </span>
-                    )}
-                  </td>
                   <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">
                       {hasApp && !approved && (
