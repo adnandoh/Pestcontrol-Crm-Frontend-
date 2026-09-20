@@ -79,6 +79,10 @@ export const LEGACY_SERVICE_PACKAGE_ALIASES: Record<string, string[]> = {
   'Cockroach / Ants': ['Cockroach Standard', 'Cockroach Premium'],
   Cockroach: ['Cockroach Standard', 'Cockroach Premium'],
   Ants: ['Cockroach Standard', 'Cockroach Premium'],
+  // Website used to send these marketing labels as JobCard.service_type.
+  'Cockroach Control': ['Cockroach Standard', 'Cockroach Premium'],
+  'Ant Control': ['Cockroach Standard', 'Cockroach Premium'],
+  'Cockroach Control, Ant Control': ['Cockroach Standard', 'Cockroach Premium'],
   Rodent: ['Regular Rodent', 'Kill-Rodent System'],
   Mosquito: ['Mosquito Cold Fogging', 'Mosquito Thermal Fogging'],
   Termite: ['Termite Spot Treatment', 'Termite'],
@@ -102,7 +106,12 @@ export function resolvePricingService(
 
   const lower = name.toLowerCase();
   const fuzzy: string[] = [];
-  if (lower.includes('cockroach') || lower === 'ants' || lower === 'ant') {
+  if (
+    lower.includes('cockroach')
+    || lower === 'ants'
+    || lower === 'ant'
+    || /\bants?\b/.test(lower)
+  ) {
     fuzzy.push('Cockroach Standard', 'Cockroach Premium');
   } else if (lower.includes('rodent') || lower === 'rat' || lower === 'rats') {
     fuzzy.push('Regular Rodent', 'Kill-Rodent System');
@@ -1033,6 +1042,24 @@ export function parsePackagesFromServiceType(
     ...Object.keys(config?.pricing || {}),
   ]);
   const parts = serviceType.split(',').map((s) => s.trim()).filter(Boolean);
+
+  // Website legacy: "Cockroach Control, Ant Control" (or either alone) → one
+  // live chart package. Prefer Premium when the blob already names it.
+  const legacyCockroach = new Set(['cockroach control', 'ant control']);
+  const allLegacyCockroach =
+    parts.length > 0 && parts.every((p) => legacyCockroach.has(p.toLowerCase()));
+  if (allLegacyCockroach) {
+    const blob = serviceType.toLowerCase();
+    const preferPremium = blob.includes('premium');
+    const candidates = preferPremium
+      ? ['Cockroach Premium', 'Cockroach Standard']
+      : ['Cockroach Standard', 'Cockroach Premium'];
+    for (const name of candidates) {
+      if (known.has(name)) return [name];
+    }
+    return ['Cockroach Standard'];
+  }
+
   const direct = parts.filter((p) => known.has(p));
   if (direct.length > 0) return direct;
 

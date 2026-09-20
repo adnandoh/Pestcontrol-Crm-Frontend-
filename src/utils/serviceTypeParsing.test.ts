@@ -13,6 +13,7 @@ const config2026 = {
   region: 'mumbai',
   city: 'Mumbai',
   pricing: {
+    'Cockroach Standard': { 'One Time Service': { '1 BHK': 1475 } },
     'Cockroach Premium': { 'One Time Service': { '2 BHK': 4000 } },
     'Integrated IPM': { '4 Visits/Month': { 'Up to 5,000 Sq.Ft.': 12000 } },
   },
@@ -39,6 +40,15 @@ describe('parsePackagesFromServiceType', () => {
   it('still infers packages from legacy pest names', () => {
     expect(parsePackagesFromServiceType('Cockroach, Ants')).toEqual([
       'Cockroach / Ants',
+    ]);
+  });
+
+  it('collapses retired website Cockroach Control + Ant Control to Cockroach Standard', () => {
+    expect(
+      parsePackagesFromServiceType('Cockroach Control, Ant Control', config2026),
+    ).toEqual(['Cockroach Standard']);
+    expect(parsePackagesFromServiceType('Ant Control', config2026)).toEqual([
+      'Cockroach Standard',
     ]);
   });
 
