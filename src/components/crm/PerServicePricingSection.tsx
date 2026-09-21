@@ -96,7 +96,7 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
             const areaOptions = areaOptionsForService(service, pricingConfig, commercialType);
             // Driven by the rate card, not a hardcoded service-name list, so a
             // service offers AMC exactly when it has AMC rates.
-            const amcOptions = amcPlanOptionsForService(service, pricingConfig);
+            const amcOptions = amcPlanOptionsForService(service, pricingConfig, commercialType);
             const canAmc = amcOptions.length > 0;
             const mode: 'one_time' | 'amc' = isAmcPlan(cfg.plan) ? 'amc' : 'one_time';
             const preview = cfg.plan

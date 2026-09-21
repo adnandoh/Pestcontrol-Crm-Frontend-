@@ -5,9 +5,14 @@ import {
   getAmcPackageOptions,
   isAmcPlan,
   isBedBugService,
+  isCommercialAmcEligibleService,
+  isResidentialCommercialType,
   isTermiteService,
   oneTimePlanValue,
   parseAmcCountFromPlan,
+  amcPlanValue,
+  COMMERCIAL_AMC_PACKAGE_COUNTS,
+  CANONICAL_AMC_PLAN,
 } from '../constants/bookingPropertyTypes';
 
 export interface RateGstDetail {
@@ -569,23 +574,24 @@ export function getPricingTypesForService(
 }
 
 /**
- * AMC plans the live rate card holds for this service, for the Service Mode
- * dropdown on the booking form.
+ * AMC plans shown in the Service Mode / AMC Package dropdowns.
  *
- * This used to come from `SERVICE_AMC_PACKAGES`, a hardcoded map keyed on the
- * pre-2026 service names ('Cockroach / Ants', 'Rodent', 'Mosquito'). The 2026
- * rate chart renamed those into tiers — 'Cockroach Standard', 'Cockroach
- * Premium' — so nothing the picker can now offer matched a key, and every
- * service silently lost its AMC option even though the rates exist.
+ * Residential (home) stays rate-card driven: the 2026 website product only
+ * lists AMC 3 for Cockroach / Rodent / Mosquito, and that is intentional.
  *
- * Reading the rate card instead means a service gets AMC exactly when it has
- * AMC rates, with no name list to keep in step. The hardcoded packages remain
- * the fallback for a service the rate card does not cover at all, so anything
- * priced by hand keeps working.
+ * Commercial bookings used to offer 3 / 6 / 9 / 12 / 24 via SERVICE_AMC_PACKAGES,
+ * then commit 8631789 switched the dropdown to "whatever AMC keys the rate card
+ * has". The chart only has AMC 3 (residential rows merged into the same service),
+ * so Hotel/Office bookings collapsed to a single "AMC 3 Services" option.
+ *
+ * Commercial again gets the full CRM package list for eligible pest services,
+ * unioned with any named contract cadences (Monthly AMC, Weekly AMC, …) from
+ * the rate card. Missing rates leave base price at 0 for manual entry.
  */
 export function amcPlanOptionsForService(
   service: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  commercialType = 'home',
 ): Array<{ value: string; label: string }> {
   // Both are fixed-shape packages with no AMC variant; the form renders them
   // as a static box rather than a dropdown.
@@ -594,21 +600,31 @@ export function amcPlanOptionsForService(
   const resolved = resolvePricingService(service, config);
   const fromConfig = Object.keys(
     config.pricing?.[resolved] ?? config.pricing?.[service] ?? {},
-  );
-  if (fromConfig.length === 0) return getAmcPackageOptions(service);
+  ).filter(isAmcPlan);
 
-  return fromConfig
-    .filter(isAmcPlan)
-    .sort((a, b) => (parseAmcCountFromPlan(a) ?? 99) - (parseAmcCountFromPlan(b) ?? 99))
-    .map((plan) => ({ value: plan, label: formatPlanLabel(service, plan) }));
+  const toOptions = (plans: string[]) =>
+    [...new Set(plans)]
+      .sort((a, b) => (parseAmcCountFromPlan(a) ?? 99) - (parseAmcCountFromPlan(b) ?? 99))
+      .map((plan) => ({ value: plan, label: formatPlanLabel(service, plan) }));
+
+  // Commercial: restore full AMC N menu for cockroach / rodent / mosquito.
+  if (!isResidentialCommercialType(commercialType) && isCommercialAmcEligibleService(service)) {
+    const namedFromCard = fromConfig.filter((p) => !CANONICAL_AMC_PLAN.test(p.trim()));
+    const commercialCanonical = COMMERCIAL_AMC_PACKAGE_COUNTS.map(amcPlanValue);
+    return toOptions([...namedFromCard, ...commercialCanonical]);
+  }
+
+  if (fromConfig.length === 0) return getAmcPackageOptions(service);
+  return toOptions(fromConfig);
 }
 
 /** Whether the Service Mode dropdown should offer AMC for this service. */
 export function serviceSupportsAmc(
   service: string,
   config: PricingConfig = MUMBAI_PRICING_CONFIG,
+  commercialType = 'home',
 ): boolean {
-  return amcPlanOptionsForService(service, config).length > 0;
+  return amcPlanOptionsForService(service, config, commercialType).length > 0;
 }
 
 /**

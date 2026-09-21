@@ -80,7 +80,9 @@ export const AMC_INTERVAL_LABELS: Record<number, string> = {
   3: 'Every 4 Months',
   4: 'Every 3 Months',
   6: 'Every 2 Months',
-  12: 'Every Month',
+  9: 'Every 40 Days',
+  // 12-visit commercial package: 2 services/month with ~15-day gap (~6 months).
+  12: 'Every 15 Days (2×/Month)',
   24: 'Every 15 Days',
   48: 'Every 7 Days (Weekly)',
 };
@@ -89,14 +91,24 @@ export const AMC_PACKAGE_VALUES = [
   'AMC 3 Services',
   'AMC 4 Services',
   'AMC 6 Services',
+  'AMC 9 Services',
   'AMC 12 Services',
   'AMC 24 Services',
   'AMC 48 Services',
 ] as const;
 
 /**
+ * Commercial CRM AMC packages (hotel / office / society / other / villa).
+ * The 2026 residential rate card only lists AMC 3 for website home bookings;
+ * commercial staff still need the full visit-count menu and enter price by hand
+ * when Pricing Master has no row for that package.
+ */
+export const COMMERCIAL_AMC_PACKAGE_COUNTS: number[] = [3, 6, 9, 12, 24];
+
+/**
  * General Pest (Cockroach/Ants), Rodent, Mosquito AMC package counts.
  * Mosquito adds high-frequency 24 / 48 visit packages.
+ * Used as fallback when the rate card has no AMC rows for a service.
  */
 export const SERVICE_AMC_PACKAGES: Record<string, number[]> = {
   'Cockroach / Ants': [3, 4, 6, 12],
@@ -104,22 +116,38 @@ export const SERVICE_AMC_PACKAGES: Record<string, number[]> = {
   Mosquito: [3, 4, 6, 12, 24, 48],
 };
 
+/** The "AMC N Services" shape, as opposed to a named contract cadence. */
+export const CANONICAL_AMC_PLAN = /^amc\s*\d+\s*services?$/i;
+
 export type AmcIntervalUnit = 'month' | 'day';
 
+/**
+ * Visit spacing for AMC N Services.
+ *
+ * - 3 / 4 / 6 → calendar months (4 / 3 / 2)
+ * - 9 → every 40 days (~9 visits / year)
+ * - 12 → every 15 days (2 services/month pattern; ~6 months of coverage, or
+ *   stretch across the year when staff pause between clusters)
+ * - 24 / mosquito 48 → every 15 / 7 days
+ */
 export function getAmcIntervalSpec(
   service: string,
   visitCount: number,
 ): { unit: AmcIntervalUnit; value: number } {
   const svc = service.toLowerCase();
-  if (svc.includes('mosquito')) {
-    if (visitCount === 24) return { unit: 'day', value: 15 };
-    if (visitCount === 48) return { unit: 'day', value: 7 };
+  if (svc.includes('mosquito') && visitCount === 48) {
+    return { unit: 'day', value: 7 };
+  }
+  if (visitCount === 24 || visitCount === 12) {
+    return { unit: 'day', value: 15 };
+  }
+  if (visitCount === 9) {
+    return { unit: 'day', value: 40 };
   }
   const months: Record<number, number> = {
     3: 4,
     4: 3,
     6: 2,
-    12: 1,
   };
   return { unit: 'month', value: months[visitCount] ?? 4 };
 }
@@ -135,6 +163,24 @@ export function isTermiteService(service: string): boolean {
 export function isBedBugService(service: string): boolean {
   const s = service.toLowerCase();
   return s.includes('bed bug') || s.includes('bedbug');
+}
+
+/**
+ * Pest families that offer commercial AMC N packages even without rate-card AMC
+ * rows. Integrated IPM keeps its named contract cadences only.
+ */
+export function isCommercialAmcEligibleService(service: string): boolean {
+  const s = (service || '').toLowerCase();
+  if (!s || isBedBugService(service) || isTermiteService(service)) return false;
+  if (s.includes('ipm')) return false;
+  return (
+    s.includes('cockroach') ||
+    s.includes('ants') ||
+    s.includes('rodent') ||
+    s.includes('mosquito') ||
+    s.includes('general pest') ||
+    service in SERVICE_AMC_PACKAGES
+  );
 }
 
 /** Stored plan value for one-time booking per service. */
@@ -206,9 +252,6 @@ export function getAllPlanValuesForService(service: string): string[] {
   if (!counts) return [oneTimePlanValue(service)];
   return [oneTimePlanValue(service), ...counts.map(amcPlanValue)];
 }
-
-/** The "AMC 3 Services" shape, as opposed to a named contract cadence. */
-const CANONICAL_AMC_PLAN = /^amc\s*\d+\s*services?$/i;
 
 /** Human label for dropdowns. */
 export function formatPlanLabel(service: string, plan: string): string {

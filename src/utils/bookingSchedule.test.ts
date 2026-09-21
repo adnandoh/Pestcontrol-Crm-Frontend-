@@ -31,4 +31,35 @@ describe('previewServiceSchedule', () => {
     expect(preview.totalVisits).toBe(1);
     expect(preview.upcomingVisits).toHaveLength(1);
   });
+
+  it('schedules AMC 12 on a 15-day gap (2×/month pattern)', () => {
+    const preview = previewServiceSchedule(
+      'Cockroach Standard',
+      'AMC 12 Services',
+      '2026-01-10',
+    );
+    expect(preview.totalVisits).toBe(12);
+    expect(preview.intervalHint).toBe('Every 15 Days (2×/Month)');
+    expect(preview.upcomingVisits[1].date).toBe('25 Jan 2026');
+  });
+
+  it('schedules AMC 24 every 15 days', () => {
+    const preview = previewServiceSchedule(
+      'Cockroach Standard',
+      'AMC 24 Services',
+      '2026-06-01',
+    );
+    expect(preview.totalVisits).toBe(24);
+    expect(preview.upcomingVisits[1].date).toBe('16 Jun 2026');
+  });
+
+  it('schedules AMC 9 every 40 days', () => {
+    const preview = previewServiceSchedule(
+      'Cockroach Standard',
+      'AMC 9 Services',
+      '2026-01-01',
+    );
+    expect(preview.totalVisits).toBe(9);
+    expect(preview.upcomingVisits[1].date).toBe('10 Feb 2026');
+  });
 });

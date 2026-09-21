@@ -45,7 +45,9 @@ const PLAN_TYPES = [
   'AMC 3 Services',
   'AMC 4 Services',
   'AMC 6 Services',
+  'AMC 9 Services',
   'AMC 12 Services',
+  'AMC 24 Services',
 ];
 
 /**

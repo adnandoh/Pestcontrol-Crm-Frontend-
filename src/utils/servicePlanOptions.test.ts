@@ -61,6 +61,24 @@ describe('amcPlanOptionsForService', () => {
     ]);
   });
 
+  it('keeps residential home on rate-card AMC 3 only', () => {
+    expect(
+      amcPlanOptionsForService('Cockroach Standard', CONFIG, 'home').map((o) => o.value),
+    ).toEqual(['AMC 3 Services']);
+  });
+
+  it('restores full commercial AMC packages for hotel cockroach', () => {
+    expect(
+      amcPlanOptionsForService('Cockroach Standard', CONFIG, 'hotel').map((o) => o.value),
+    ).toEqual([
+      'AMC 3 Services',
+      'AMC 6 Services',
+      'AMC 9 Services',
+      'AMC 12 Services',
+      'AMC 24 Services',
+    ]);
+  });
+
   it('reports AMC support for both tiers', () => {
     expect(serviceSupportsAmc('Cockroach Standard', CONFIG)).toBe(true);
     expect(serviceSupportsAmc('Cockroach Premium', CONFIG)).toBe(true);
@@ -85,6 +103,15 @@ describe('amcPlanOptionsForService', () => {
     const labels = amcPlanOptionsForService('Integrated IPM', CONFIG).map((o) => o.label);
     expect(labels).toContain('Monthly AMC - 1 Visit/Month');
     expect(labels.join(' ')).not.toContain('AMC 12 Services');
+  });
+
+  it('does not force commercial AMC N packages onto Integrated IPM', () => {
+    expect(
+      amcPlanOptionsForService('Integrated IPM', CONFIG, 'hotel').map((o) => o.value),
+    ).toEqual([
+      'Monthly AMC - 1 Visit/Month',
+      'Weekly AMC - 4 Visits/Month',
+    ]);
   });
 
   it('maps legacy Cockroach / Ants onto the chart service AMC plans', () => {
@@ -122,7 +149,15 @@ describe('formatPlanLabel', () => {
   });
 
   it('keeps the interval hint for the canonical AMC form', () => {
-    expect(formatPlanLabel('Rodent', 'AMC 12 Services')).toBe('AMC 12 Services — Every Month');
+    expect(formatPlanLabel('Rodent', 'AMC 12 Services')).toBe(
+      'AMC 12 Services — Every 15 Days (2×/Month)',
+    );
+    expect(formatPlanLabel('Cockroach Standard', 'AMC 9 Services')).toBe(
+      'AMC 9 Services — Every 40 Days',
+    );
+    expect(formatPlanLabel('Cockroach Standard', 'AMC 24 Services')).toBe(
+      'AMC 24 Services — Every 15 Days',
+    );
   });
 
   it('passes a named contract cadence through untouched', () => {
