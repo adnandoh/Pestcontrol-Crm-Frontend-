@@ -97,7 +97,8 @@ const Inquiries: React.FC = () => {
       const params: Record<string, string | number | undefined> = {
         page,
         page_size: pagination.pageSize,
-        ordering: '-created_at',
+        // updated_at so silent mobile re-captures / detail upgrades surface on top
+        ordering: '-updated_at',
         status: filters.status || undefined,
         search: filters.search || undefined,
         from: dateParams.from,
