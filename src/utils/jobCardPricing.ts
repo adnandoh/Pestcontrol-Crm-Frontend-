@@ -1031,7 +1031,7 @@ export function coalesceCockroachFamilyServiceItems(
   const amount = cockroach.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
   const discount = cockroach.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
   const baseAmount = cockroach.reduce(
-    (sum, i) => sum + (Number(i.baseAmount ?? i.base_amount ?? i.amount) || 0),
+    (sum, i) => sum + (Number(i.baseAmount ?? i.amount) || 0),
     0,
   );
   const plan = cockroach.find((i) => i.plan)?.plan || 'One Time Service';
@@ -1043,7 +1043,7 @@ export function coalesceCockroachFamilyServiceItems(
       area,
       amount,
       discount,
-      base_amount: baseAmount || amount,
+      baseAmount: baseAmount || amount,
     }),
     ...others,
   ];
