@@ -149,6 +149,39 @@ function isSocietyLikeArea(area: string): boolean {
   return /^(small|medium|large)$/i.test(area.trim());
 }
 
+/** Cockroach / ants family labels used on booking forms (live + legacy). */
+export function isCockroachFamilyService(service: string): boolean {
+  const lower = (service || '').trim().toLowerCase();
+  if (!lower) return false;
+  return (
+    lower.includes('cockroach')
+    || lower === 'ants'
+    || lower === 'ant'
+    || /\bants?\b/.test(lower)
+  );
+}
+
+/**
+ * Offices are charted under Integrated IPM Corporate Office sizes. When staff
+ * select Cockroach Standard/Premium (or a legacy cockroach label) for an office
+ * booking and that package has no corporate bands, reuse Integrated IPM areas
+ * and rates so the AREA dropdown is usable.
+ */
+export const OFFICE_COCKROACH_FALLBACK_PACKAGE = 'Integrated IPM';
+
+function officeCockroachFallbackAreas(
+  config: PricingConfig = MUMBAI_PRICING_CONFIG,
+): string[] {
+  if (!config.pricing?.[OFFICE_COCKROACH_FALLBACK_PACKAGE]) return [];
+  const raw = areasFromPricingMatrix(OFFICE_COCKROACH_FALLBACK_PACKAGE, config);
+  return filterAreasForCommercialType(
+    raw,
+    'office',
+    OFFICE_COCKROACH_FALLBACK_PACKAGE,
+    config,
+  );
+}
+
 /** Pricing Master categories that belong to each booking commercial_type. */
 export function propertyCategoriesForCommercialType(commercialType: string): string[] {
   switch (commercialType) {
@@ -415,17 +448,34 @@ export function getUnitPrice(
 ): number | null {
   const resolved = resolvePricingService(service, config);
   const serviceData = config.pricing[resolved] || config.pricing[service];
-  if (!serviceData) return null;
-
-  for (const planKey of pricingPlanCandidates(service, pricingType)) {
-    const typeData = serviceData[planKey];
-    if (typeData === undefined) continue;
-    if (typeof typeData === 'number') return typeData;
-    if (typeof typeData === 'object' && pricingArea in typeData) {
-      const value = (typeData as Record<string, number>)[pricingArea];
-      if (typeof value === 'number') return value;
+  if (serviceData) {
+    for (const planKey of pricingPlanCandidates(service, pricingType)) {
+      const typeData = serviceData[planKey];
+      if (typeData === undefined) continue;
+      if (typeof typeData === 'number') return typeData;
+      if (typeof typeData === 'object' && pricingArea in typeData) {
+        const value = (typeData as Record<string, number>)[pricingArea];
+        if (typeof value === 'number') return value;
+      }
     }
   }
+
+  // Office cockroach areas may only exist under Integrated IPM until / unless
+  // dedicated Cockroach corporate rows are seeded.
+  if (
+    isCockroachFamilyService(service)
+    && isCorporateLikeArea(pricingArea)
+    && resolved !== OFFICE_COCKROACH_FALLBACK_PACKAGE
+    && config.pricing?.[OFFICE_COCKROACH_FALLBACK_PACKAGE]
+  ) {
+    return getUnitPrice(
+      OFFICE_COCKROACH_FALLBACK_PACKAGE,
+      pricingType,
+      pricingArea,
+      config,
+    );
+  }
+
   return null;
 }
 
@@ -463,6 +513,16 @@ export function getAreaOptions(
   }
   if (fromMatrix.length > 0) {
     return Array.from(new Set(fromMatrix));
+  }
+
+  // Office + cockroach: chart prices offices under Integrated IPM Corporate
+  // Office sizes. Reuse those bands when Cockroach Standard has no corporate rows.
+  if (
+    commercialType === 'office'
+    && selectedServices.some((s) => isCockroachFamilyService(s))
+  ) {
+    const fallback = officeCockroachFallbackAreas(config);
+    if (fallback.length > 0) return fallback;
   }
 
   // Legacy hardcoded fallback (pre-2026 Mumbai/Lonavala constants only).
@@ -795,6 +855,13 @@ export function getRateGstDetail(
       const detail = gstTree[pkg]?.[p]?.[area];
       if (detail) return detail;
     }
+  }
+  if (
+    isCockroachFamilyService(service)
+    && isCorporateLikeArea(area)
+    && resolved !== OFFICE_COCKROACH_FALLBACK_PACKAGE
+  ) {
+    return getRateGstDetail(OFFICE_COCKROACH_FALLBACK_PACKAGE, plan, area, config);
   }
   return null;
 }

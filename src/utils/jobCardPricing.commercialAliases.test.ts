@@ -171,6 +171,29 @@ describe('commercial per-service pricing aliases', () => {
     );
   });
 
+  it('offers Integrated IPM office sizes for Cockroach Standard under office', () => {
+    const areas = getAreaOptions(['Cockroach Standard'], CONFIG, 'office');
+    expect(areas).toEqual(
+      expect.arrayContaining([
+        'Corporate Office / Bank - Small',
+        'Retail Outlet - Small',
+      ]),
+    );
+    expect(areas).not.toContain('1 BHK');
+    expect(areas).not.toContain('Hotel - 1-10 rooms');
+  });
+
+  it('prices office Cockroach Standard from Integrated IPM corporate bands', () => {
+    expect(
+      getUnitPrice(
+        'Cockroach Standard',
+        'One Time Service',
+        'Corporate Office / Bank - Small',
+        CONFIG,
+      ),
+    ).toBe(2124);
+  });
+
   it('filters by property_category from rate_gst', () => {
     const raw = ['1 BHK', 'Hotel - 1-10 rooms', 'Corporate Office / Bank - Small'];
     expect(
