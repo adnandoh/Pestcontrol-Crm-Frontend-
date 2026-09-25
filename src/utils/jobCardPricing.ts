@@ -385,12 +385,26 @@ export function mergeCatalogIntoServiceItems(
   return catalogItems.map((cat) => {
     const prev = previous.find((p) => p.service === cat.service);
     const catalogBase = roundMoney(cat.baseAmount ?? cat.amount ?? 0);
+    const withCatalogTotal = (
+      base: number,
+      discount: number,
+    ): Pick<ServiceItemConfig, 'baseAmount' | 'discount' | 'amount'> => {
+      const priced = finalizeServiceLinePricing(base, discount);
+      const catalogAmount = roundMoney(cat.amount ?? 0);
+      if (catalogBase > 0 && catalogAmount > catalogBase + 0.009) {
+        return {
+          ...priced,
+          amount: roundMoney(priced.amount * (catalogAmount / catalogBase)),
+        };
+      }
+      return priced;
+    };
     if (!prev) {
       return {
         service: cat.service,
         plan: cat.plan,
         area: cat.area,
-        ...finalizeServiceLinePricing(catalogBase, 0),
+        ...withCatalogTotal(catalogBase, 0),
       };
     }
     const planAreaChanged = prev.plan !== cat.plan || prev.area !== cat.area;
@@ -399,15 +413,24 @@ export function mergeCatalogIntoServiceItems(
         service: cat.service,
         plan: cat.plan,
         area: cat.area,
-        ...finalizeServiceLinePricing(catalogBase, prev.discount || 0),
+        ...withCatalogTotal(catalogBase, prev.discount || 0),
       };
     }
-    const base = prev.baseAmount != null ? prev.baseAmount : catalogBase;
+    const prevBase = prev.baseAmount != null ? roundMoney(prev.baseAmount) : catalogBase;
+    const storedLooksLikeCustomerTotal = (
+      catalogBase > 0
+      && Math.abs(prevBase - catalogBase) > 1
+      && (
+        Math.abs(prevBase - roundMoney(cat.amount)) <= Math.max(1, cat.amount * 0.01)
+        || Math.abs(roundMoney(prev.amount || 0) - roundMoney(cat.amount)) <= Math.max(1, cat.amount * 0.01)
+      )
+    );
+    const base = storedLooksLikeCustomerTotal ? catalogBase : prevBase;
     return {
       service: cat.service,
       plan: cat.plan,
       area: cat.area,
-      ...finalizeServiceLinePricing(base, prev.discount || 0),
+      ...withCatalogTotal(base, prev.discount || 0),
     };
   });
 }
@@ -784,8 +807,11 @@ export function computePerServicePricing(
       });
       continue;
     }
-    const unit = getUnitPrice(service, plan, area, config);
-    if (unit === null) {
+    const detail = getRateGstDetail(service, plan, area, config);
+    const unit = detail
+      ? roundMoney(Number(detail.base_amount) || 0)
+      : getUnitPrice(service, plan, area, config);
+    if (unit === null && !detail) {
       lines.push({
         service,
         plan,
@@ -825,15 +851,26 @@ export function computePerServicePricing(
       continue;
     }
     const priced = finalizeServiceLinePricing(unit, 0);
+    const gstPct = detail ? Number(detail.gst_percent) || 0 : 0;
+    const customerTotal = detail
+      ? roundMoney(priced.amount * (1 + gstPct / 100))
+      : priced.amount;
     lines.push({
       service,
       plan,
       area,
-      price: priced.amount,
+      price: customerTotal,
       baseAmount: priced.baseAmount,
       discount: priced.discount,
     });
-    items.push({ service, plan, area, ...priced });
+    items.push({
+      service,
+      plan,
+      area,
+      baseAmount: priced.baseAmount,
+      discount: priced.discount,
+      amount: customerTotal,
+    });
   }
 
   const total = lines.reduce((sum, line) => sum + line.price, 0);

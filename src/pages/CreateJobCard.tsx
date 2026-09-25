@@ -1163,7 +1163,9 @@ const CreateJobCard: React.FC = () => {
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
-                        {formData.price}
+                        {gstSummary.hasGstMeta
+                          ? gstSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : formData.price}
                      </div>
                      {gstSummary.hasGstMeta && (
                        <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">

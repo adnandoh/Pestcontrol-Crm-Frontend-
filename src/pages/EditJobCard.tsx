@@ -211,7 +211,12 @@ const EditJobCard: React.FC = () => {
       if (savedPriceOnLoadRef.current !== null) {
         const savedPrice = savedPriceOnLoadRef.current;
         savedPriceOnLoadRef.current = null;
-        if (savedPrice > 0 && Math.abs(savedPrice - total) > 0.009) {
+        const catalogGst = computeBookingGstSummary(serviceConfigs, pricingConfig);
+        const nearCatalog = catalogGst.hasGstMeta && (
+          Math.abs(savedPrice - catalogGst.total) <= Math.max(15, catalogGst.total * 0.01)
+          || Math.abs(savedPrice - catalogGst.base) <= Math.max(1, catalogGst.base * 0.01)
+        );
+        if (savedPrice > 0 && Math.abs(savedPrice - total) > 0.009 && !nearCatalog) {
           setIsPriceManuallyEdited(true);
           const syncedItems = syncServiceItemAmountsToTotal(
             serviceItems.length ? serviceItems : items,
@@ -1257,7 +1262,9 @@ const EditJobCard: React.FC = () => {
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
-                        {formData.price}
+                        {gstSummary.hasGstMeta
+                          ? gstSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : formData.price}
                      </div>
                      {gstSummary.hasGstMeta && (
                        <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
