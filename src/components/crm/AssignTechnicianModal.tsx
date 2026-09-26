@@ -13,6 +13,7 @@ import CopyablePhone from './CopyablePhone';
 import { notify } from '../../utils/notify';
 import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
 import { isTechnicianAssignable } from '../../utils/technicianStatus';
+import { technicianMatchesStaffSearch } from '../../utils/technicianStaffSearch';
 
 /** Normalize booking / tech service labels for overlap checks. */
 function serviceMatchKey(raw: string): string {
@@ -69,6 +70,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
   useEffect(() => {
     if (isOpen) {
+      setSearchQuery('');
       fetchTechnicians();
     }
   }, [isOpen, jobCard?.id, jobCard?.master_city]);
@@ -142,17 +144,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
   const bookingServices = bookingServiceLabels(jobCard);
 
-  const filteredTechnicians = technicians.filter((tech) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.trim().toLowerCase();
-    const mobile = (tech.mobile || tech.phone || '').replace(/\D/g, '');
-    const services = techBaseServices(tech).join(' ').toLowerCase();
-    return (
-      tech.name.toLowerCase().includes(q) ||
-      mobile.includes(q.replace(/\D/g, '')) ||
-      services.includes(q)
-    );
-  });
+  const filteredTechnicians = technicians.filter((tech) =>
+    technicianMatchesStaffSearch(tech, searchQuery),
+  );
 
   // Qualified (matching base services) first, then others — still all assignable.
   const orderedTechnicians = [...filteredTechnicians].sort((a, b) => {
