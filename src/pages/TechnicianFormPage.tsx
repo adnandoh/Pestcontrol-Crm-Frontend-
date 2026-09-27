@@ -33,6 +33,12 @@ type FormState = {
   alternative_mobile: string;
   service_city_ids: number[];
   base_services: string[];
+  // New technicians start with every eligibility flag on, matching the API
+  // default for existing technicians. Staff uncheck the job types to withhold.
+  accepts_one_time_jobs: boolean;
+  accepts_amc_jobs: boolean;
+  accepts_standard_service: boolean;
+  accepts_premium_service: boolean;
   is_active: boolean;
   technician_type: 'partner' | 'salaried' | 'secondary';
   branch: string;
@@ -52,6 +58,10 @@ const emptyForm: FormState = {
   service_city_ids: [],
   // Technicians handle all pest work by default; staff can narrow later.
   base_services: [...BASE_SERVICE_OPTIONS],
+  accepts_one_time_jobs: true,
+  accepts_amc_jobs: true,
+  accepts_standard_service: true,
+  accepts_premium_service: true,
   is_active: true,
   technician_type: 'partner',
   branch: '',
@@ -99,6 +109,12 @@ const TechnicianFormPage: React.FC = () => {
       service_city_ids: fromM2M,
       // Empty / legacy → all pest services selected (current default).
       base_services: cleaned.length ? cleaned : [...BASE_SERVICE_OPTIONS],
+      // Missing flags (older payloads) stay enabled so an edit does not
+      // silently turn every job off.
+      accepts_one_time_jobs: tech.accepts_one_time_jobs !== false,
+      accepts_amc_jobs: tech.accepts_amc_jobs !== false,
+      accepts_standard_service: tech.accepts_standard_service !== false,
+      accepts_premium_service: tech.accepts_premium_service !== false,
       is_active: tech.is_active,
       technician_type: tech.technician_type || 'partner',
       branch: tech.branch || '',
@@ -258,6 +274,10 @@ const TechnicianFormPage: React.FC = () => {
           : '',
         service_city_ids: form.service_city_ids,
         base_services: form.base_services,
+        accepts_one_time_jobs: form.accepts_one_time_jobs,
+        accepts_amc_jobs: form.accepts_amc_jobs,
+        accepts_standard_service: form.accepts_standard_service,
+        accepts_premium_service: form.accepts_premium_service,
         is_active: form.is_active,
         // Sent regardless of the revenue-model flag: this is the one status
         // the partner app and every dispatch check read.
@@ -479,6 +499,69 @@ const TechnicianFormPage: React.FC = () => {
                   Selected: {form.base_services.join(' · ')}
                 </p>
               )}
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className={labelClass}>Service Eligibility</label>
+              <p className="mb-3 text-xs text-gray-500">
+                A technician only receives a job when both the service category and the
+                service type match. One-Time and AMC can both be on. Standard and Premium
+                can both be on. New technicians start with all four checked.
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <fieldset className="rounded-md border border-gray-200 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    One-Time Service
+                  </legend>
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={form.accepts_one_time_jobs}
+                      onChange={(e) => setField('accepts_one_time_jobs', e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-600"
+                    />
+                    One-Time Jobs
+                  </label>
+                </fieldset>
+                <fieldset className="rounded-md border border-gray-200 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    AMC Service
+                  </legend>
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={form.accepts_amc_jobs}
+                      onChange={(e) => setField('accepts_amc_jobs', e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-600"
+                    />
+                    AMC Jobs
+                  </label>
+                </fieldset>
+                <fieldset className="rounded-md border border-gray-200 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Service Type
+                  </legend>
+                  <div className="mt-2 space-y-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={form.accepts_standard_service}
+                        onChange={(e) => setField('accepts_standard_service', e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-600"
+                      />
+                      Standard Service
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={form.accepts_premium_service}
+                        onChange={(e) => setField('accepts_premium_service', e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-600"
+                      />
+                      Premium Service
+                    </label>
+                  </div>
+                </fieldset>
+              </div>
             </div>
             <div>
               <label className={labelClass}>Branch</label>

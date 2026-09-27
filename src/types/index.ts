@@ -92,6 +92,20 @@ export interface Technician {
   security_deposit_status?: 'pending' | 'collected' | 'refunded';
   /** Canonical pest services this technician handles (Termite, Rodent, …). */
   base_services?: string[];
+  /**
+   * Service eligibility. New technicians start with all four enabled (same
+   * default the API applies to existing technicians).
+   */
+  accepts_one_time_jobs?: boolean;
+  accepts_amc_jobs?: boolean;
+  accepts_standard_service?: boolean;
+  accepts_premium_service?: boolean;
+  /**
+   * Present on GET /technicians/active/?job_id=. False means the desk can see
+   * this person but must not assign them to that booking.
+   */
+  service_eligible?: boolean | null;
+  service_ineligibility_reason?: string | null;
   /** @deprecated Prefer base_services — kept in sync by the API. */
   skills?: string[];
   star_rating?: number | string;

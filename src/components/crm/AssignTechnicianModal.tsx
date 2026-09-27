@@ -128,6 +128,17 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     if (!jobCard) return;
     const tech = technicians.find((row) => row.id === techId) || null;
     if (!tech) return;
+    if (tech.service_eligible === false) {
+      setAssignError({
+        message: tech.service_ineligibility_reason
+          || `${tech.name} is not eligible for this booking.`,
+        code: 'technician_service_ineligible',
+        technicianId: tech.id,
+        technicianName: tech.name,
+        editTechnicianPath: `/technicians/edit/${tech.id}`,
+      });
+      return;
+    }
 
     try {
       setAssigning(techId);
@@ -173,8 +184,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     return a.name.localeCompare(b.name);
   });
 
-  const { assigned: assignedTechnicians, unassigned: unassignedTechnicians } =
+  const { assigned: assignedTechnicians, unassigned: unassignedAll } =
     splitAssignedTechnicians(orderedTechnicians, booking);
+  const unassignedTechnicians = unassignedAll.filter((tech) => tech.service_eligible !== false);
+  const ineligibleTechnicians = unassignedAll.filter((tech) => tech.service_eligible === false);
 
   if (!isOpen) return null;
 
@@ -225,6 +238,12 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                       Set the technician to Active on their profile, then try again.
                     </p>
                   )}
+                  {assignError.code === 'technician_service_ineligible' && (
+                    <p className="text-[10px] font-semibold text-red-600/90">
+                      Turn on One-Time Jobs, AMC Jobs, Standard Service, or Premium Service
+                      for this booking, then try again.
+                    </p>
+                  )}
                   {assignError.editTechnicianPath && (
                     <Link
                       to={assignError.editTechnicianPath}
@@ -233,7 +252,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                     >
                       {assignError.code === 'technician_unavailable'
                         ? 'Edit technician status →'
-                        : 'Edit technician service areas →'}
+                        : assignError.code === 'technician_service_ineligible'
+                          ? 'Edit service eligibility →'
+                          : 'Edit technician service areas →'}
                     </Link>
                   )}
                 </div>
@@ -243,8 +264,10 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
           <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug">
             Only Active technicians are listed — anyone On Leave or Suspended is hidden until
-            their status changes. Areas, Priority or Secondary, and same-day bookings are shown
-            for lineup. Matching base services appear first in each section.
+            their status changes. Technicians who do not match this booking&apos;s One-Time/AMC
+            or Standard/Premium settings stay visible with the reason, and cannot be assigned.
+            Areas, Priority or Secondary, and same-day bookings are shown for lineup. Matching
+            base services appear first in each section.
           </div>
 
           <div className="mb-4 p-3 bg-white border border-gray-200 rounded-xl">
@@ -333,14 +356,23 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                   title: 'Assigned technicians',
                   rows: assignedTechnicians,
                   empty: 'No active technician is on this booking yet.',
+                  blocked: false,
                 },
                 {
                   key: 'unassigned',
                   title: 'Unassigned technicians',
                   rows: unassignedTechnicians,
                   empty: 'No other active technicians match.',
+                  blocked: false,
                 },
-              ].map((section) => (
+                {
+                  key: 'ineligible',
+                  title: 'Not eligible for this booking',
+                  rows: ineligibleTechnicians,
+                  empty: '',
+                  blocked: true,
+                },
+              ].filter((section) => section.key !== 'ineligible' || section.rows.length > 0).map((section) => (
                 <div key={section.key} className="space-y-2">
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest pt-1">
                     {section.title} ({section.rows.length})
@@ -358,17 +390,22 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                       const onThisBooking = (tech.assigned_service_lines || [])
                         .map((line) => line.service_type)
                         .filter(Boolean);
+                      const blocked = section.blocked;
 
                       return (
                         <button
                           key={tech.id}
                           type="button"
-                          onClick={() => handleAssign(tech.id)}
-                          disabled={assigning !== null}
-                          title="Click to assign — no job limit"
+                          onClick={() => {
+                            if (!blocked) handleAssign(tech.id);
+                          }}
+                          disabled={assigning !== null || blocked}
+                          title={blocked ? 'Not eligible for this booking' : 'Click to assign — no job limit'}
                           className={cn(
-                            "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-start justify-between gap-3",
-                            covers && "border-emerald-300 ring-1 ring-emerald-100",
+                            "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-all text-left flex items-start justify-between gap-3",
+                            !blocked && "hover:shadow-md hover:border-blue-500",
+                            covers && !blocked && "border-emerald-300 ring-1 ring-emerald-100",
+                            blocked && "cursor-not-allowed border-amber-200 bg-amber-50/40 opacity-90",
                             assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
                             assigning !== null && assigning !== tech.id && "opacity-60"
                           )}
@@ -387,12 +424,23 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                                 )}>
                                   {role}
                                 </span>
-                                {covers && (
+                                {covers && !blocked && (
                                   <span className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-800">
                                     Matches booking
                                   </span>
                                 )}
+                                {blocked && (
+                                  <span className="inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-800">
+                                    Not assignable
+                                  </span>
+                                )}
                               </h4>
+                              {blocked && (
+                                <p className="mb-1 text-[10px] font-semibold leading-snug text-amber-800">
+                                  {tech.service_ineligibility_reason
+                                    || 'Does not match this booking’s One-Time/AMC or Standard/Premium settings.'}
+                                </p>
+                              )}
                               {onThisBooking.length > 0 && (
                                 <p className="mb-1 text-[10px] font-bold leading-snug text-indigo-700">
                                   On this booking: {onThisBooking.join(' · ')}

@@ -6,6 +6,7 @@ export type AssignTechnicianErrorCode =
   | 'technician_inactive'
   /** On leave or suspended — the desk has to change the status first. */
   | 'technician_unavailable'
+  | 'technician_service_ineligible'
   | 'partner_in_progress'
   | 'unknown';
 
