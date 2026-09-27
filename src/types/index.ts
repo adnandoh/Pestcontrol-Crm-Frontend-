@@ -113,8 +113,43 @@ export interface Technician {
     client_name?: string;
     service?: string;
   }[];
+  /**
+   * Open bookings on the assign-popup booking's calendar day.
+   * Present on GET /technicians/active/?job_id=.
+   */
+  lineup_bookings?: TechnicianLineupBooking[];
+  /** This booking and its service lines already assigned to the technician. */
+  assigned_service_lines?: TechnicianAssignedServiceLine[];
   created_at: string;
   updated_at: string;
+}
+
+/** One open booking already on the technician for the lineup day. */
+export interface TechnicianLineupBooking {
+  id: number;
+  client_name?: string;
+  service_type?: string;
+  status?: string;
+  schedule_datetime?: string | null;
+  time_slot?: string;
+  city?: string;
+  location?: string;
+  role?: 'lead' | 'crew' | string;
+  this_booking?: boolean;
+}
+
+/** A service line of the booking currently being assigned. */
+export interface TechnicianAssignedServiceLine {
+  id: number;
+  client_name?: string;
+  service_type?: string;
+  status?: string;
+  schedule_datetime?: string | null;
+  time_slot?: string;
+  city?: string;
+  location?: string;
+  role?: 'lead' | 'crew' | string;
+  this_booking?: boolean;
 }
 
 /** CRM technician edit page — monthly earnings + completed bookings. */

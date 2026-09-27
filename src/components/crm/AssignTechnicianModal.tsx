@@ -14,6 +14,16 @@ import { notify } from '../../utils/notify';
 import { parseAssignTechnicianError, type AssignTechnicianError } from '../../utils/assignTechnicianErrors';
 import { isTechnicianAssignable } from '../../utils/technicianStatus';
 import { technicianMatchesStaffSearch } from '../../utils/technicianStaffSearch';
+import { technicianTypeTone } from '../../utils/technicianType';
+import {
+  bookingCityLabel,
+  bookingLocationLabel,
+  formatLineupClock,
+  formatLineupWhen,
+  lineupRoleLabel,
+  splitAssignedTechnicians,
+  technicianAreaChips,
+} from '../../utils/assignTechnicianLineup';
 
 /** Normalize booking / tech service labels for overlap checks. */
 function serviceMatchKey(raw: string): string {
@@ -67,9 +77,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const [assigning, setAssigning] = useState<number | null>(null);
   const [assignError, setAssignError] = useState<AssignTechnicianError | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveJob, setLiveJob] = useState<JobCard | null>(jobCard);
 
   useEffect(() => {
     if (isOpen) {
+      setLiveJob(jobCard);
       setSearchQuery('');
       fetchTechnicians();
     }
@@ -87,6 +99,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
           booking = jobCard;
         }
       }
+      if (booking) setLiveJob(booking);
       const activeTechnicians = await enhancedApiService.getActiveTechnicians({
         fresh: true,
         jobId: booking?.id,
@@ -142,7 +155,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     }
   };
 
-  const bookingServices = bookingServiceLabels(jobCard);
+  const booking = liveJob || jobCard;
+  const bookingServices = bookingServiceLabels(booking);
+  const bookingCity = bookingCityLabel(booking);
+  const bookingLocation = bookingLocationLabel(booking);
+  const bookingWhen = formatLineupWhen(booking?.schedule_datetime, booking?.time_slot);
 
   const filteredTechnicians = technicians.filter((tech) =>
     technicianMatchesStaffSearch(tech, searchQuery),
@@ -156,6 +173,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
     return a.name.localeCompare(b.name);
   });
 
+  const { assigned: assignedTechnicians, unassigned: unassignedTechnicians } =
+    splitAssignedTechnicians(orderedTechnicians, booking);
+
   if (!isOpen) return null;
 
   return (
@@ -167,7 +187,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
       />
       
       {/* Modal Container */}
-      <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-zoom-in">
+      <div className="relative bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-zoom-in">
         {/* Header */}
         <div className="bg-gray-900 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -176,9 +196,9 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
             </div>
             <div>
               <h3 className="text-white font-black text-lg tracking-tight">Assign Technician</h3>
-              {jobCard && (
+              {booking && (
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
-                  Booking {jobCard.id} • {jobCard.client_name}
+                  Booking {booking.id} • {booking.client_name}
                 </p>
               )}
             </div>
@@ -223,8 +243,23 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
 
           <div className="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-xl text-[11px] text-sky-900 leading-snug">
             Only Active technicians are listed — anyone On Leave or Suspended is hidden until
-            their status changes. Base Services and Service Areas are shown for reference;
-            matching Base Services appear first.
+            their status changes. Areas, Priority or Secondary, and same-day bookings are shown
+            for lineup. Matching base services appear first in each section.
+          </div>
+
+          <div className="mb-4 p-3 bg-white border border-gray-200 rounded-xl">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              This booking
+            </p>
+            <p className="mt-1 text-sm font-black text-gray-900">{bookingWhen}</p>
+            {(bookingCity || bookingLocation) && (
+              <p className="mt-1 text-[11px] font-bold text-emerald-700 flex items-start gap-1">
+                <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                <span>
+                  {[bookingCity, bookingLocation].filter(Boolean).join(' · ')}
+                </span>
+              </p>
+            )}
           </div>
 
           {bookingServices.length > 0 && (
@@ -245,11 +280,11 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
             </div>
           )}
 
-          {jobCard?.parent_job ? (
+          {booking?.parent_job ? (
             <div className="mb-4 p-3 bg-violet-50 border border-violet-100 rounded-xl text-[11px] text-violet-900 leading-snug">
-              This is one service line ({jobCard.service_type}). Assigning here sets the technician for this service only — other services in the package stay unchanged.
+              This is one service line ({booking.service_type}). Assigning here sets the technician for this service only — other services in the package stay unchanged.
             </div>
-          ) : (jobCard?.service_type || '').includes(',') ? (
+          ) : (booking?.service_type || '').includes(',') ? (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[11px] text-amber-900 leading-snug">
               Multi-service package. This name fills only unassigned service lines. Open Cockroach / Termite / etc. separately to assign a different technician per service.
             </div>
@@ -292,126 +327,202 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 </p>
               </div>
             ) : (
-              orderedTechnicians.map((tech) => {
-                // Informational only — CRM desk assign has no active-job capacity limit.
-                const workload = tech.active_jobs || 0;
-                const services = techBaseServices(tech);
-                const covers = techCoversBooking(tech, bookingServices);
+              [
+                {
+                  key: 'assigned',
+                  title: 'Assigned technicians',
+                  rows: assignedTechnicians,
+                  empty: 'No active technician is on this booking yet.',
+                },
+                {
+                  key: 'unassigned',
+                  title: 'Unassigned technicians',
+                  rows: unassignedTechnicians,
+                  empty: 'No other active technicians match.',
+                },
+              ].map((section) => (
+                <div key={section.key} className="space-y-2">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest pt-1">
+                    {section.title} ({section.rows.length})
+                  </p>
+                  {section.rows.length === 0 ? (
+                    <p className="text-[11px] font-semibold text-gray-400 px-1">{section.empty}</p>
+                  ) : (
+                    section.rows.map((tech) => {
+                      const workload = tech.active_jobs || 0;
+                      const services = techBaseServices(tech);
+                      const covers = techCoversBooking(tech, bookingServices);
+                      const areas = technicianAreaChips(tech, booking);
+                      const role = lineupRoleLabel(tech.technician_type);
+                      const sameDay = tech.lineup_bookings;
+                      const onThisBooking = (tech.assigned_service_lines || [])
+                        .map((line) => line.service_type)
+                        .filter(Boolean);
 
-                return (
-                  <button
-                    key={tech.id}
-                    type="button"
-                    onClick={() => handleAssign(tech.id)}
-                    disabled={assigning !== null}
-                    title="Click to assign — no job limit"
-                    className={cn(
-                      "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-center justify-between",
-                      covers && "border-emerald-300 ring-1 ring-emerald-100",
-                      assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
-                      assigning !== null && assigning !== tech.id && "opacity-60"
-                    )}
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="p-2.5 rounded-full transition-colors bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white shrink-0">
-                        <User className="h-5 w-5" />
-                      </div>
-                      
-                      <div className="min-w-0">
-                        <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-none mb-1">
-                          {tech.name}
-                          {covers && (
-                            <span className="ml-2 inline-flex align-middle rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-800">
-                              Matches booking
-                            </span>
+                      return (
+                        <button
+                          key={tech.id}
+                          type="button"
+                          onClick={() => handleAssign(tech.id)}
+                          disabled={assigning !== null}
+                          title="Click to assign — no job limit"
+                          className={cn(
+                            "w-full group relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all text-left flex items-start justify-between gap-3",
+                            covers && "border-emerald-300 ring-1 ring-emerald-100",
+                            assigning === tech.id && "ring-2 ring-blue-500 bg-blue-50/30",
+                            assigning !== null && assigning !== tech.id && "opacity-60"
                           )}
-                        </h4>
-                        {tech.latest_remark && (
-                          <p
-                            className="mb-1 text-[10px] leading-snug text-red-600 line-clamp-2"
-                            title={tech.latest_remark.remark}
-                          >
-                            {tech.latest_remark.remark}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2">
-                         <div className="flex flex-col gap-1.5">
-                            <span className={cn(
-                              "text-[10px] font-bold flex items-center gap-1",
-                              workload > 0 ? "text-blue-600" : "text-gray-400"
-                            )}>
-                              <Briefcase className="h-3 w-3" /> 
-                              {workload} Active Jobs
-                            </span>
+                        >
+                          <div className="flex items-start gap-4 min-w-0">
+                            <div className="p-2.5 rounded-full transition-colors bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white shrink-0">
+                              <User className="h-5 w-5" />
+                            </div>
 
-                            <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
-                              <Phone className="h-3 w-3 shrink-0" />
-                              <CopyablePhone
-                                phone={tech.mobile || tech.phone}
-                                className="text-[10px] font-bold text-gray-500"
-                              />
-                            </span>
+                            <div className="min-w-0">
+                              <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-snug mb-1 flex flex-wrap items-center gap-1.5">
+                                <span>{tech.name}</span>
+                                <span className={cn(
+                                  'inline-flex rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide ring-1 ring-inset',
+                                  technicianTypeTone(tech.technician_type),
+                                )}>
+                                  {role}
+                                </span>
+                                {covers && (
+                                  <span className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-800">
+                                    Matches booking
+                                  </span>
+                                )}
+                              </h4>
+                              {onThisBooking.length > 0 && (
+                                <p className="mb-1 text-[10px] font-bold leading-snug text-indigo-700">
+                                  On this booking: {onThisBooking.join(' · ')}
+                                </p>
+                              )}
+                              {tech.latest_remark && (
+                                <p
+                                  className="mb-1 text-[10px] leading-snug text-red-600 line-clamp-2"
+                                  title={tech.latest_remark.remark}
+                                >
+                                  {tech.latest_remark.remark}
+                                </p>
+                              )}
+                              <div className="flex flex-col gap-1.5">
+                                <span className={cn(
+                                  "text-[10px] font-bold flex items-center gap-1",
+                                  workload > 0 ? "text-blue-600" : "text-gray-400"
+                                )}>
+                                  <Briefcase className="h-3 w-3" />
+                                  {workload} Active Jobs
+                                </span>
 
-                            <span className="text-[10px] font-bold text-violet-700 flex items-start gap-1">
-                              <Wrench className="h-3 w-3 shrink-0 mt-0.5" />
-                              <span className="leading-snug">
-                                {services.length > 0
-                                  ? services.join(' · ')
-                                  : 'All services (not configured)'}
-                              </span>
-                            </span>
+                                <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
+                                  <Phone className="h-3 w-3 shrink-0" />
+                                  <CopyablePhone
+                                    phone={tech.mobile || tech.phone}
+                                    className="text-[10px] font-bold text-gray-500"
+                                  />
+                                </span>
 
-                            {(tech.service_cities && tech.service_cities.length > 0
-                              ? tech.service_cities.map((c) => c.name).join(', ')
-                              : tech.service_area || tech.city) && (
-                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter">
-                                <MapPin className="h-3 w-3" />
-                                {tech.service_cities && tech.service_cities.length > 0
-                                  ? tech.service_cities.map((c) => c.name).join(', ')
-                                  : `${tech.service_area || ''}${tech.service_area && tech.city ? ' - ' : ''}${tech.city || ''}`}
-                              </span>
-                            )}
+                                <span className="text-[10px] font-bold text-violet-700 flex items-start gap-1">
+                                  <Wrench className="h-3 w-3 shrink-0 mt-0.5" />
+                                  <span className="leading-snug">
+                                    {services.length > 0
+                                      ? services.join(' · ')
+                                      : 'All services (not configured)'}
+                                  </span>
+                                </span>
 
-                            {tech.last_active && (
-                              <span className="text-[9px] font-bold text-gray-400 flex items-center gap-1 italic">
-                                <Clock className="h-3 w-3" />
-                                Active {new Date(tech.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            )}
-                         </div>
-                        </div>
+                                <div className="text-[10px] font-bold text-gray-700">
+                                  <span className="flex items-center gap-1 text-emerald-700 mb-1">
+                                    <MapPin className="h-3 w-3 shrink-0" />
+                                    City / area
+                                  </span>
+                                  {areas.length === 0 ? (
+                                    <span className="text-gray-400">No service area selected</span>
+                                  ) : (
+                                    <span className="flex flex-wrap gap-1">
+                                      {areas.map((chip) => (
+                                        <span
+                                          key={chip.label}
+                                          title={chip.matchesBooking ? 'Covers this booking' : undefined}
+                                          className={cn(
+                                            'inline-flex max-w-full rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-snug whitespace-normal break-words',
+                                            chip.matchesBooking
+                                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                              : 'border-gray-200 bg-gray-50 text-gray-700',
+                                          )}
+                                        >
+                                          {chip.label}
+                                          {chip.matchesBooking && bookingLocation ? ` · ${bookingLocation}` : ''}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  )}
+                                </div>
 
-                        {/* Detailed Active Jobs */}
-                        {tech.active_job_details && tech.active_job_details.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {tech.active_job_details.map((job: any) => (
-                              <span 
-                                key={job.id} 
-                                className="px-1.5 py-0.5 bg-blue-50/50 text-[9px] font-bold text-blue-700 rounded border border-blue-100 flex items-center gap-1"
-                              >
-                                <span className="opacity-50">{job.id}</span>
-                                <span className="max-w-[80px] truncate">{job.client__full_name || job.client_name}</span>
-                              </span>
-                            ))}
+                                <div className="text-[10px] font-bold text-gray-700">
+                                  <span className="block text-[9px] font-black uppercase tracking-wide text-gray-400 mb-0.5">
+                                    Same-day bookings
+                                  </span>
+                                  {Array.isArray(sameDay) ? (
+                                    sameDay.length === 0 ? (
+                                      <span className="text-gray-400 font-semibold">None scheduled this day</span>
+                                    ) : (
+                                      <ul className="space-y-1">
+                                        {sameDay.map((row) => {
+                                          const place = [row.city, row.location].filter(Boolean).join(' · ');
+                                          return (
+                                            <li key={row.id} className="leading-snug text-gray-700 font-semibold">
+                                              <span className="text-gray-900">{formatLineupClock(row.schedule_datetime, row.time_slot)}</span>
+                                              {row.service_type ? ` · ${row.service_type}` : ''}
+                                              {row.client_name ? ` · ${row.client_name}` : ''}
+                                              {place ? ` · ${place}` : ''}
+                                              {row.this_booking ? ' · this booking' : ''}
+                                            </li>
+                                          );
+                                        })}
+                                      </ul>
+                                    )
+                                  ) : (
+                                    tech.active_job_details && tech.active_job_details.length > 0 && (
+                                      <ul className="space-y-1">
+                                        {tech.active_job_details.map((job) => (
+                                          <li key={job.id} className="leading-snug text-gray-700 font-semibold">
+                                            #{job.id} · {job.service_type}
+                                            {(job.client__full_name || job.client_name) ? ` · ${job.client__full_name || job.client_name}` : ''}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )
+                                  )}
+                                </div>
+
+                                {tech.last_active && (
+                                  <span className="text-[9px] font-bold text-gray-400 flex items-center gap-1 italic">
+                                    <Clock className="h-3 w-3" />
+                                    Active {new Date(tech.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                       <div className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border shadow-xs bg-blue-50 text-blue-700 border-blue-200">
-                         Assign
-                       </div>
-                       
-                       {assigning === tech.id ? (
-                         <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                       ) : (
-                         <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
-                       )}
-                    </div>
-                  </button>
-                );
-              })
+                          <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                            <div className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border shadow-xs bg-blue-50 text-blue-700 border-blue-200">
+                              Assign
+                            </div>
+                            {assigning === tech.id ? (
+                              <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>
