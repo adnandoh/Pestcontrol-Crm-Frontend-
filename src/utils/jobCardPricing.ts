@@ -811,7 +811,9 @@ export function computePerServicePricing(
     const unit = detail
       ? roundMoney(Number(detail.base_amount) || 0)
       : getUnitPrice(service, plan, area, config);
-    if (unit === null && !detail) {
+    // unit is null only when there is no GST detail and the catalog has no rate.
+    // Checking null alone also narrows the type for the priced path below.
+    if (unit === null) {
       lines.push({
         service,
         plan,
