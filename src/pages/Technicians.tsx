@@ -281,6 +281,11 @@ const Technicians: React.FC = () => {
                           : `${tech.service_area || ''}${tech.service_area && tech.city ? ' - ' : ''}${tech.city || ''}`}
                       </div>
                     )}
+                    {tech.location ? (
+                      <div className="text-[10px] font-medium text-gray-500" title={tech.address || undefined}>
+                        {tech.location}
+                      </div>
+                    ) : null}
                     {tech.latest_remark && (
                       <div
                         className="mt-0.5 text-[10px] leading-snug text-red-600 line-clamp-2"

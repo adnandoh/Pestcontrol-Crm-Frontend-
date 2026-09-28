@@ -31,6 +31,8 @@ type FormState = {
   mobile: string;
   age: string;
   alternative_mobile: string;
+  address: string;
+  location: string;
   service_city_ids: number[];
   base_services: string[];
   // New technicians start with every eligibility flag on, matching the API
@@ -55,6 +57,8 @@ const emptyForm: FormState = {
   mobile: '',
   age: '',
   alternative_mobile: '',
+  address: '',
+  location: '',
   service_city_ids: [],
   // Technicians handle all pest work by default; staff can narrow later.
   base_services: [...BASE_SERVICE_OPTIONS],
@@ -106,6 +110,8 @@ const TechnicianFormPage: React.FC = () => {
       mobile: tech.mobile || '',
       age: tech.age?.toString() || '',
       alternative_mobile: tech.alternative_mobile || '',
+      address: tech.address || '',
+      location: tech.location || '',
       service_city_ids: fromM2M,
       // Empty / legacy → all pest services selected (current default).
       base_services: cleaned.length ? cleaned : [...BASE_SERVICE_OPTIONS],
@@ -259,8 +265,13 @@ const TechnicianFormPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const mobile = form.mobile.replace(/\D/g, '').slice(0, 10);
+    const altMobile = form.alternative_mobile.replace(/\D/g, '').slice(0, 10);
     if (!form.name.trim() || mobile.length !== 10) {
       showAlert('Please enter full name and a valid 10-digit mobile number.');
+      return;
+    }
+    if (altMobile && altMobile.length !== 10) {
+      showAlert('Alternative mobile must be a 10-digit number, or leave it blank.');
       return;
     }
     setSaving(true);
@@ -269,9 +280,9 @@ const TechnicianFormPage: React.FC = () => {
         name: form.name.trim(),
         mobile,
         age: form.age ? parseInt(form.age, 10) : undefined,
-        alternative_mobile: form.alternative_mobile
-          ? form.alternative_mobile.replace(/\D/g, '').slice(0, 10)
-          : '',
+        alternative_mobile: altMobile,
+        address: form.address.trim(),
+        location: form.location.trim(),
         service_city_ids: form.service_city_ids,
         base_services: form.base_services,
         accepts_one_time_jobs: form.accepts_one_time_jobs,
@@ -314,10 +325,12 @@ const TechnicianFormPage: React.FC = () => {
     } catch (error: unknown) {
       const apiErr = error as { message?: string; details?: Record<string, string[] | string> };
       let msg = apiErr.message || 'Failed to save technician.';
-      if (apiErr.details?.mobile) {
-        msg = Array.isArray(apiErr.details.mobile)
-          ? apiErr.details.mobile[0]
-          : String(apiErr.details.mobile);
+      const detailKey = ['mobile', 'alternative_mobile', 'address', 'location'].find(
+        (key) => apiErr.details?.[key],
+      );
+      if (detailKey && apiErr.details) {
+        const detail = apiErr.details[detailKey];
+        msg = Array.isArray(detail) ? detail[0] : String(detail);
       }
       showAlert(msg);
     } finally {
@@ -410,10 +423,38 @@ const TechnicianFormPage: React.FC = () => {
                 onChange={(e) =>
                   setField('alternative_mobile', e.target.value.replace(/\D/g, '').slice(0, 10))
                 }
-                placeholder="Optional"
+                placeholder="Optional 10 digit number"
                 maxLength={10}
+                inputMode="numeric"
                 className={fieldClass}
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className={labelClass}>Address</label>
+              <textarea
+                value={form.address}
+                onChange={(e) => setField('address', e.target.value)}
+                placeholder="House, street, landmark"
+                rows={3}
+                maxLength={1000}
+                className={`${fieldClass} h-auto min-h-[5.5rem] py-2`}
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                Full address where this technician lives or works from.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Location</label>
+              <Input
+                value={form.location}
+                onChange={(e) => setField('location', e.target.value)}
+                placeholder="City and area, e.g. Baner, Pune"
+                maxLength={255}
+                className={fieldClass}
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                City and area where they are based.
+              </p>
             </div>
             <div className="md:col-span-2 lg:col-span-3">
               <label className={labelClass}>

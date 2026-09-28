@@ -65,6 +65,10 @@ export interface Technician {
   phone?: string;
   age?: number;
   alternative_mobile?: string;
+  /** Full address where this technician lives or works from. */
+  address?: string;
+  /** City and area they are based in. Separate from service areas. */
+  location?: string;
   is_active: boolean;
   service_area?: string;
   city?: string;
