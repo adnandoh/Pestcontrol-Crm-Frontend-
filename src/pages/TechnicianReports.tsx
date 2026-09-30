@@ -1,414 +1,424 @@
-
-import React, { useState, useEffect } from 'react';
-import CopyablePhone from '../components/crm/CopyablePhone';
-import { 
-  CheckCircle, 
-  IndianRupee, 
-  Star, 
-  Clock, 
-  Wrench, 
-  Search, 
-  Filter, 
-  TrendingUp, 
-  Award,
-  ChevronRight,
-  Calendar
-} from 'lucide-react';
-import dayjs from 'dayjs';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  IndianRupee,
+  MapPin,
+  UserX,
+  Users,
+} from 'lucide-react';
+import CopyablePhone from '../components/crm/CopyablePhone';
 import { enhancedApiService } from '../services/api.enhanced';
-import type { TechnicianPerformance } from '../types';
+import type {
+  TechnicianDailyCityEarning,
+  TechnicianDailyTypeReport,
+  TechnicianDailyTypeRow,
+} from '../types';
 import { cn } from '../utils/cn';
-import { Button } from '../components/ui';
+
+/**
+ * Priority is the partner broadcast pool. Dates are Asia/Kolkata so a visit
+ * finished after midnight in India is not attributed to the previous UTC day.
+ */
+const TYPE_TABS = [
+  { api: 'priority', label: 'Priority' },
+  { api: 'secondary', label: 'Secondary' },
+  { api: 'salaried', label: 'Salaried' },
+] as const;
+
+function todayInKolkata(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+function money(value: string | number | undefined): string {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return '₹0';
+  const whole = Math.abs(amount - Math.round(amount)) < 0.001;
+  return `₹${amount.toLocaleString('en-IN', {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  })}`;
+}
 
 const TechnicianReports: React.FC = () => {
   const navigate = useNavigate();
+  const [date, setDate] = useState(todayInKolkata);
+  const [typeTab, setTypeTab] = useState<(typeof TYPE_TABS)[number]['api']>('priority');
   const [loading, setLoading] = useState(true);
-  const [reports, setReports] = useState<{
-    stats: any;
-    technicians: TechnicianPerformance[];
-  } | null>(null);
-  const [filters, setFilters] = useState({
-    from: dayjs().startOf('month').format('YYYY-MM-DD'),
-    to: dayjs().endOf('month').format('YYYY-MM-DD'),
-    service_type: '',
-    search: ''
-  });
+  const [report, setReport] = useState<TechnicianDailyTypeReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (filters.from && filters.to && filters.from > filters.to) {
-      return;
-    }
-    fetchReports();
-  }, [filters.from, filters.to, filters.service_type]);
-
-  const fetchReports = async () => {
-    try {
-      setLoading(true);
-      const data = await enhancedApiService.getTechnicianPerformance({
-        from: filters.from || undefined,
-        to: filters.to || undefined,
-        service_type: filters.service_type || undefined,
-      });
-      setReports(data);
-    } catch (err) {
-      console.error('Failed to fetch performance reports:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onFromChange = (value: string) => {
-    setFilters((prev) => {
-      const next = { ...prev, from: value };
-      if (value && prev.to && value > prev.to) {
-        next.to = value;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await enhancedApiService.getTechnicianDailyTypeReport({
+          date,
+          technician_type: typeTab,
+        });
+        if (!cancelled) setReport(data);
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message =
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+            || 'Failed to load technician report';
+          setError(message);
+          setReport(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      return next;
-    });
-  };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [date, typeTab]);
 
-  const onToChange = (value: string) => {
-    setFilters((prev) => {
-      const next = { ...prev, to: value };
-      if (value && prev.from && value < prev.from) {
-        next.from = value;
-      }
-      return next;
-    });
-  };
-
-  const filteredTechnicians = reports?.technicians?.filter(t => 
-    t.name.toLowerCase().includes(filters.search.toLowerCase())
-  ) || [];
-
-  // Top Performers for Leaderboard
-  const techShare = (t: TechnicianPerformance) =>
-    Number(t.technician_share ?? (t.total_revenue || 0) * 0.4);
-
-  const topByRating = [...(reports?.technicians || [])].sort((a, b) => b.avg_rating - a.avg_rating).slice(0, 3);
-  const topByRevenue = [...(reports?.technicians || [])].sort((a, b) => techShare(b) - techShare(a)).slice(0, 3);
-  const topByJobs = [...(reports?.technicians || [])].sort((a, b) => b.completed_count - a.completed_count).slice(0, 3);
+  const performing = report?.performing || [];
+  const nonPerforming = report?.non_performing || [];
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header & Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-            <TrendingUp className="h-7 w-7 text-blue-600" />
-            Technician Performance
+            <BarChart3 className="h-7 w-7 text-emerald-600" />
+            Technician Reports
           </h1>
-          <p className="text-sm font-bold text-gray-500 mt-1">Real-time technician performance analytics and reporting</p>
+          <p className="text-sm font-bold text-gray-500 mt-1">
+            Priority, Secondary, and Salaried are separate. Performing means at least one completed service that day.
+          </p>
         </div>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Start Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={filters.from}
-                max={filters.to || undefined}
-                onChange={(e) => onFromChange(e.target.value)}
-                className="h-10 pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
-              />
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-          <span className="pb-2.5 text-gray-400 font-bold">to</span>
-          <div>
-            <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-500">
-              End Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={filters.to}
-                min={filters.from || undefined}
-                onChange={(e) => onToChange(e.target.value)}
-                className="h-10 pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
-              />
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-            </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-500">
+            Date (India)
+          </label>
+          <div className="relative">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                if (e.target.value) setDate(e.target.value);
+              }}
+              className="h-10 pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+            />
+            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {[
-          { label: 'Completed Jobs', value: reports?.stats?.total_completed, icon: CheckCircle, color: 'emerald', trend: '+12%' },
-          {
-            label: 'Technician Share (40%)',
-            value: `₹${Math.round(reports?.stats?.total_technician_share ?? (reports?.stats?.total_revenue || 0) * 0.4).toLocaleString()}`,
-            icon: IndianRupee,
-            color: 'blue',
-            trend: '+8%',
-          },
-          { label: 'Average Rating', value: `${(reports?.stats?.avg_rating || 0).toFixed(1)} / 5.0`, icon: Star, color: 'amber', trend: 'Stable' },
-          { label: 'Pending Jobs', value: reports?.stats?.pending_jobs, icon: Clock, color: 'rose', trend: '-5%' },
-          { label: 'Service Calls', value: reports?.stats?.service_calls, icon: Wrench, color: 'indigo', trend: '+15%' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-            <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform`} />
-            <div className="flex items-center justify-between relative">
-              <div className={cn(
-                "p-3 rounded-xl",
-                `bg-${stat.color}-50 text-${stat.color}-600 group-hover:bg-${stat.color}-600 group-hover:text-white transition-colors`
-              )}>
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                stat.trend.startsWith('+') ? "bg-emerald-50 text-emerald-600" : 
-                stat.trend.startsWith('-') ? "bg-rose-50 text-rose-600" : "bg-gray-50 text-gray-500"
-              )}>
-                {stat.trend}
-              </div>
-            </div>
-            <div className="mt-4 relative">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-black text-gray-900 tracking-tight">
-                {loading ? '...' : stat.value ?? 0}
-              </h3>
-            </div>
-          </div>
+      <div className="flex flex-wrap gap-2">
+        {TYPE_TABS.map((tab) => (
+          <button
+            key={tab.api}
+            type="button"
+            onClick={() => setTypeTab(tab.api)}
+            className={cn(
+              'rounded-full px-4 py-2 text-sm font-semibold transition',
+              typeTab === tab.api
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50',
+            )}
+          >
+            {tab.label}
+          </button>
         ))}
       </div>
 
-      {/* Leaderboard & Top Performers */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-              <Award className="h-4 w-4 text-amber-500" />
-              Top by Ratings
-            </h3>
-          </div>
-          <div className="p-4 space-y-4 flex-1">
-            {topByRating.map((tech, i) => (
-              <div key={tech.id} className="flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black",
-                    i === 0 ? "bg-amber-100 text-amber-700" : 
-                    i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-700"
-                  )}>
-                    {i + 1}
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-gray-900 uppercase group-hover:text-blue-600 transition-colors">{tech.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400">{tech.completed_count} Jobs Done</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-amber-500 font-black text-sm">
-                  <Star className="h-3.5 w-3.5 fill-amber-500" />
-                  {(tech.avg_rating || 0).toFixed(1)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {report && (
+        <p className="text-xs text-gray-500">
+          {report.technician_type_label} · {report.date} · {report.performing_rule}
+        </p>
+      )}
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Top by Technician Share
-            </h3>
-          </div>
-          <div className="p-4 space-y-4 flex-1">
-            {topByRevenue.map((tech, i) => (
-              <div key={tech.id} className="flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black",
-                    i === 0 ? "bg-emerald-100 text-emerald-700" : 
-                    i === 1 ? "bg-gray-100 text-gray-600" : "bg-blue-50 text-blue-700"
-                  )}>
-                    {i + 1}
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-gray-900 uppercase group-hover:text-blue-600 transition-colors">{tech.name}</p>
-                    <CopyablePhone phone={tech.mobile} className="text-[10px] font-bold text-gray-400" />
-                  </div>
-                </div>
-                <div className="text-emerald-600 font-black text-sm">
-                  ₹{Math.round(techShare(tech)).toLocaleString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-blue-500" />
-              Most Jobs Done
-            </h3>
-          </div>
-          <div className="p-4 space-y-4 flex-1">
-            {topByJobs.map((tech, i) => (
-              <div key={tech.id} className="flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black",
-                    i === 0 ? "bg-blue-100 text-blue-700" : 
-                    i === 1 ? "bg-gray-100 text-gray-600" : "bg-indigo-50 text-indigo-700"
-                  )}>
-                    {i + 1}
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-gray-900 uppercase group-hover:text-blue-600 transition-colors">{tech.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400">{(tech.completion_rate || 0).toFixed(0)}% Success Rate</p>
-                  </div>
-                </div>
-                <div className="text-blue-600 font-black text-sm">
-                  {tech.completed_count} Jobs
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard
+          icon={<Users className="h-5 w-5 text-blue-600" />}
+          label="Active technicians"
+          value={loading ? '…' : String(report?.summary.total_technicians ?? 0)}
+        />
+        <StatCard
+          icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+          label="Performing"
+          value={loading ? '…' : String(report?.summary.performing_count ?? 0)}
+        />
+        <StatCard
+          icon={<UserX className="h-5 w-5 text-amber-600" />}
+          label="Non-performing"
+          value={loading ? '…' : String(report?.summary.non_performing_count ?? 0)}
+        />
+        <StatCard
+          icon={<IndianRupee className="h-5 w-5 text-violet-600" />}
+          label="Day share"
+          value={loading ? '…' : money(report?.summary.total_earnings)}
+        />
       </div>
 
-      {/* Main Performance Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              placeholder="Search technician by name..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest gap-2">
-              <Filter className="h-3.5 w-3.5" />
-              Advanced Filters
-            </Button>
-            <Button size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest gap-2 bg-gray-900 hover:bg-black">
-              Export PDF
-            </Button>
-          </div>
+      {error ? (
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm font-semibold text-red-700">
+          {error}
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technician</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completed / Pending / On Process</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Service Calls</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technician Share (40%)</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Average Rating</th>
-                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Completion Rate</th>
-                <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                Array(5).fill(0).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={7} className="px-6 py-8">
-                      <div className="h-4 bg-gray-100 rounded w-full" />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredTechnicians.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
-                    <p className="text-sm font-bold text-gray-400 italic">No technician data found for selected filters</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredTechnicians.map((tech) => (
-                  <tr key={tech.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm border border-blue-100">
-                          {tech.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-gray-900 uppercase leading-none mb-1 group-hover:text-blue-600 transition-colors">
-                            {tech.name}
-                          </p>
-                          <CopyablePhone phone={tech.mobile} className="text-[10px] font-bold text-gray-500" />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap items-center justify-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold border border-emerald-100">
-                          Completed {tech.completed_count}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-700 rounded text-[10px] font-bold border border-rose-100">
-                          Pending {tech.pending_count}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-bold border border-amber-100">
-                          On Process {tech.on_process_count}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
-                        {tech.service_calls_count}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <p className="text-sm font-black text-emerald-700">₹{Math.round(techShare(tech)).toLocaleString()}</p>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">
-                        To pay tech · Booking ₹{Math.round(tech.total_revenue || 0).toLocaleString()}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1 text-amber-500 font-black">
-                        <Star className="h-3.5 w-3.5 fill-amber-500" />
-                        {(tech.avg_rating || 0).toFixed(1)}
-                        <span className="text-[9px] text-gray-400 ml-1">({tech.feedback_count})</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-center gap-1.5 min-w-[100px]">
-                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              tech.completion_rate >= 80 ? "bg-emerald-500" :
-                              tech.completion_rate >= 50 ? "bg-amber-500" : "bg-rose-500"
-                            )}
-                            style={{ width: `${tech.completion_rate}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-black text-gray-600">{(tech.completion_rate || 0).toFixed(0)}% Rate</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => navigate(`/technician-ledger?technician=${tech.id}`)}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
-                        title="Open technician ledger"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      ) : (
+        <>
+          <TechnicianGroup
+            title="Performing"
+            hint="Completed at least one service on this date. Counts are finished visits, not cancelled jobs."
+            tone="emerald"
+            rows={performing}
+            loading={loading}
+            showServices
+            onOpenLedger={(id) => navigate(`/technician-ledger?technician=${id}`)}
+          />
+          <TechnicianGroup
+            title="Non-performing"
+            hint="Active technicians of this type with zero completed services on this date."
+            tone="amber"
+            rows={nonPerforming}
+            loading={loading}
+            showServices={false}
+            onOpenLedger={(id) => navigate(`/technician-ledger?technician=${id}`)}
+          />
+          <CityEarnings cities={report?.city_earnings || []} loading={loading} />
+        </>
+      )}
     </div>
   );
 };
+
+function TechnicianGroup({
+  title,
+  hint,
+  tone,
+  rows,
+  loading,
+  showServices,
+  onOpenLedger,
+}: {
+  title: string;
+  hint: string;
+  tone: 'emerald' | 'amber';
+  rows: TechnicianDailyTypeRow[];
+  loading: boolean;
+  showServices: boolean;
+  onOpenLedger: (id: number) => void;
+}) {
+  return (
+    <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+            <span
+              className={cn(
+                'h-2 w-2 rounded-full',
+                tone === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500',
+              )}
+            />
+            {title}
+            <span className="text-gray-400">{loading ? '' : rows.length}</span>
+          </h2>
+          <p className="text-[11px] font-medium text-gray-500 mt-1">{hint}</p>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50/50">
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                Technician
+              </th>
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                Jobs
+              </th>
+              {showServices && (
+                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                  Services completed
+                </th>
+              )}
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                Earnings by city
+              </th>
+              <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                Share
+              </th>
+              <th className="px-4 py-3 border-b border-gray-200" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td colSpan={showServices ? 6 : 5} className="px-4 py-6">
+                    <div className="h-4 bg-gray-100 rounded w-full" />
+                  </td>
+                </tr>
+              ))
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={showServices ? 6 : 5} className="px-4 py-10 text-center text-sm font-bold text-gray-400">
+                  No technicians in this group
+                </td>
+              </tr>
+            ) : (
+              rows.map((tech) => (
+                <tr key={tech.id} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-3">
+                    <p className="text-sm font-black text-gray-900 uppercase">{tech.name}</p>
+                    <CopyablePhone phone={tech.mobile} className="text-[10px] font-bold text-gray-500" />
+                    <p className="text-[10px] font-semibold text-gray-400 mt-0.5">{tech.city || '—'}</p>
+                  </td>
+                  <td className="px-4 py-3 font-black text-gray-900">{tech.completed_count}</td>
+                  {showServices && (
+                    <td className="px-4 py-3">
+                      <ServiceChips tech={tech} />
+                    </td>
+                  )}
+                  <td className="px-4 py-3">
+                    <CityShareList cities={tech.city_earnings} />
+                  </td>
+                  <td className="px-4 py-3 text-right font-black text-emerald-700">
+                    {money(tech.earnings)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onOpenLedger(tech.id)}
+                      className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
+                      title="Open technician ledger"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function ServiceChips({ tech }: { tech: TechnicianDailyTypeRow }) {
+  if (!tech.services?.length) {
+    return <span className="text-xs font-semibold text-gray-400">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5 max-w-md">
+      {tech.services.map((service) => (
+        <span
+          key={service.service_type}
+          className="inline-flex items-center gap-1 rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800"
+        >
+          {service.service_type}
+          <span className="font-black">{service.count}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CityShareList({ cities }: { cities: TechnicianDailyCityEarning[] | undefined }) {
+  if (!cities?.length) {
+    return <span className="text-xs font-semibold text-gray-400">—</span>;
+  }
+  return (
+    <div className="space-y-1">
+      {cities.map((city) => (
+        <div key={city.city} className="flex items-center gap-1.5 text-xs text-gray-700">
+          <MapPin className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          <span className="font-semibold">{city.city}</span>
+          <span className="text-gray-400">{city.completed_jobs} jobs</span>
+          <span className="font-black text-gray-900">{money(city.earnings)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CityEarnings({
+  cities,
+  loading,
+}: {
+  cities: TechnicianDailyCityEarning[];
+  loading: boolean;
+}) {
+  return (
+    <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="p-4 bg-gray-50 border-b border-gray-200">
+        <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-blue-500" />
+          Earnings by city
+        </h2>
+        <p className="text-[11px] font-medium text-gray-500 mt-1">
+          Technician share of the stored service base, grouped by the booking city. Salaried staff show ₹0.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50/50">
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">City</th>
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Technicians</th>
+              <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Jobs</th>
+              <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-200">Share</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400">Loading city earnings…</td>
+              </tr>
+            ) : cities.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm font-bold text-gray-400">
+                  No city earnings for this day
+                </td>
+              </tr>
+            ) : (
+              cities.map((city) => (
+                <tr key={city.city} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-3 font-black text-gray-900">{city.city}</td>
+                  <td className="px-4 py-3">{city.technician_count ?? '—'}</td>
+                  <td className="px-4 py-3">{city.completed_jobs}</td>
+                  <td className="px-4 py-3 text-right font-black text-emerald-700">{money(city.earnings)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-2 text-2xl font-black text-gray-900 tracking-tight">{value}</div>
+    </div>
+  );
+}
 
 export default TechnicianReports;
