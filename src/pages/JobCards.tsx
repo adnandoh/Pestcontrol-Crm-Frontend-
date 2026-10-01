@@ -38,6 +38,7 @@ import {
   ConfirmationModal
 } from '../components/ui';
 import { enhancedApiService, ApiError } from '../services/api.enhanced';
+import { shouldRunVisibleRefetch } from '../utils/latestRequest';
 import { cn } from '../utils/cn';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import AssignTechnicianModal from '../components/crm/AssignTechnicianModal';
@@ -325,45 +326,42 @@ const JobCards: React.FC = () => {
     };
   }, []);
 
-  // Refetch data when page becomes visible
+  // Refetch data when page becomes visible.
+  // Chrome fires both visibilitychange and focus when a tab returns, which loaded the list twice.
   const isInitialMount = useRef(true);
+  const lastVisibleRefetchAt = useRef(0);
   useEffect(() => {
     const timer = setTimeout(() => {
       isInitialMount.current = false;
     }, 1000);
 
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !isInitialMount.current) {
-        if (activeTab === 'reminders') {
-          loadReminders(filters);
-        } else {
-          loadJobCards(pagination.current, filters);
-        }
+    const refetchVisibleList = () => {
+      if (document.hidden || isInitialMount.current) return;
+      const now = Date.now();
+      if (!shouldRunVisibleRefetch(now, lastVisibleRefetchAt.current)) return;
+      lastVisibleRefetchAt.current = now;
+      if (activeTab === 'reminders') {
+        loadReminders(filters);
+      } else {
+        loadJobCards(pagination.current, filters);
       }
     };
 
-    const handleFocus = () => {
-      if (!isInitialMount.current) {
-        if (activeTab === 'reminders') {
-          loadReminders(filters);
-        } else {
-          loadJobCards(pagination.current, filters);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', refetchVisibleList);
+    window.addEventListener('focus', refetchVisibleList);
 
     return () => {
       clearTimeout(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      document.removeEventListener('visibilitychange', refetchVisibleList);
+      window.removeEventListener('focus', refetchVisibleList);
     };
   }, [pagination.current, filters, loadJobCards, activeTab, loadReminders]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Handle search input change with debouncing
   const handleSearchInputChange = (value: string) => {

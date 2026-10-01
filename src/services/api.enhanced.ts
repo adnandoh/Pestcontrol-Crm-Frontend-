@@ -162,6 +162,8 @@ const logError = (error: AxiosError) => {
 class EnhancedApiService {
   private api: AxiosInstance;
   private requestQueue: Map<string, Promise<any>> = new Map();
+  /** Bumped on login and logout so an older response cannot refill the cache. */
+  private cacheEpoch = 0;
 
   constructor() {
     this.api = axios.create({
@@ -234,6 +236,14 @@ class EnhancedApiService {
           }
         }
 
+        if (
+          error.response?.status === 401 &&
+          originalRequest?._retry &&
+          !isAuthEndpoint
+        ) {
+          forceSessionLogout(SESSION_EXPIRED_MESSAGE);
+        }
+
         const data = error.response?.data as Record<string, unknown> | undefined;
         const apiError = new ApiError(
           formatApiErrorMessage(data, error.message),
@@ -264,12 +274,12 @@ class EnhancedApiService {
 
     try {
       const result = await promise;
-      if (!bypassQueue) {
+      if (!bypassQueue && this.requestQueue.get(key) === promise) {
         this.requestQueue.delete(key);
       }
       return result;
     } catch (error) {
-      if (!bypassQueue) {
+      if (!bypassQueue && this.requestQueue.get(key) === promise) {
         this.requestQueue.delete(key);
       }
       throw error;
@@ -310,6 +320,13 @@ class EnhancedApiService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
+    this.invalidateClientCache();
+  }
+
+  /** Drop cached CRM responses and in-flight shares so the next user cannot read them. */
+  private invalidateClientCache(): void {
+    this.cacheEpoch += 1;
+    this.requestQueue.clear();
     apiCache.clear();
   }
 
@@ -319,6 +336,7 @@ class EnhancedApiService {
     requestFn: () => Promise<T>,
     ttl?: number
   ): Promise<T> {
+    const epoch = this.cacheEpoch;
     if (apiConfig.enableCache) {
       const cached = apiCache.get<T>(cacheKey);
       if (cached) {
@@ -331,6 +349,7 @@ class EnhancedApiService {
 
     const result = await requestFn();
 
+    if (epoch !== this.cacheEpoch) return result;
     if (apiConfig.enableCache) {
       apiCache.set(cacheKey, result, ttl);
     }
@@ -341,6 +360,7 @@ class EnhancedApiService {
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<{ user: AuthUser; access: string; refresh: string }> {
     const response = await this.api.post<AuthTokens>(API_ENDPOINTS.AUTH.LOGIN, credentials);
+    this.invalidateClientCache();
 
     // Store tokens
     localStorage.setItem('access_token', response.data.access);

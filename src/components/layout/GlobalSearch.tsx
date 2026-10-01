@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, User, Briefcase, FileText, X, Loader2, Bell, Globe } from 'lucide-react';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { GlobalSearchResult } from '../../types';
+import { isStaleRequest } from '../../utils/latestRequest';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface GlobalSearchProps {
@@ -17,6 +18,14 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const searchRequestId = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      searchRequestId.current += 1;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,21 +50,26 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectClient }) => {
   }, []);
 
   const handleSearch = async (val: string) => {
+    const requestId = ++searchRequestId.current;
     if (val.length < 2) {
-      setResults([]);
-      setLoading(false);
+      if (!isStaleRequest(requestId, searchRequestId.current)) {
+        setResults([]);
+        setLoading(false);
+      }
       return;
     }
 
     setLoading(true);
     try {
       const data = await enhancedApiService.getGlobalSearch(val);
+      if (isStaleRequest(requestId, searchRequestId.current)) return;
       setResults(data);
       setShowResults(true);
     } catch (err) {
+      if (isStaleRequest(requestId, searchRequestId.current)) return;
       console.error('Search error:', err);
     } finally {
-      setLoading(false);
+      if (!isStaleRequest(requestId, searchRequestId.current)) setLoading(false);
     }
   };
 
