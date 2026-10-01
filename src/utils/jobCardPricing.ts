@@ -337,8 +337,13 @@ export interface ServiceItemConfig {
   baseAmount: number;
   /** Discount belonging only to this service. */
   discount: number;
-  /** Net final price (baseAmount - discount). Ledger uses this. */
+  /** Net customer payable after the GST pricing mode. Ledger and shares use this. */
   amount: number;
+  /** GST pulled out of, or added onto, the service price. */
+  taxableAmount?: number;
+  gstAmount?: number;
+  gstMode?: 'GST_INCLUSIVE' | 'GST_EXCLUSIVE';
+  gstRate?: number;
 }
 
 export interface ServicePricingTotals {
@@ -349,6 +354,91 @@ export interface ServicePricingTotals {
 
 export function roundMoney(n: number): number {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+}
+
+export type GstPricingMode = 'GST_INCLUSIVE' | 'GST_EXCLUSIVE';
+
+/** Inclusive is the default. Any other value is Exclusive only when it matches exactly. */
+export function normalizeGstPricingMode(value: unknown): GstPricingMode {
+  return String(value || '').trim().toUpperCase() === 'GST_EXCLUSIVE'
+    ? 'GST_EXCLUSIVE'
+    : 'GST_INCLUSIVE';
+}
+
+/**
+ * Inclusive: entered price is the customer payable. GST is taken out of it.
+ * Exclusive: entered price is before GST. GST is added on top.
+ */
+export function splitPriceByGstMode(
+  entered: number,
+  mode: GstPricingMode,
+  gstPercent = 18,
+): { entered: number; taxable: number; gst: number; final: number; gstRate: number; mode: GstPricingMode } {
+  const price = roundMoney(Math.max(0, Number(entered) || 0));
+  const rate = roundMoney(Math.max(0, Number(gstPercent) || 0));
+  if (price <= 0 || rate <= 0) {
+    return { entered: price, taxable: price, gst: 0, final: price, gstRate: rate, mode };
+  }
+  if (mode === 'GST_EXCLUSIVE') {
+    const taxable = price;
+    const gst = roundMoney((taxable * rate) / 100);
+    return {
+      entered: price,
+      taxable,
+      gst,
+      final: roundMoney(taxable + gst),
+      gstRate: rate,
+      mode,
+    };
+  }
+  const final = price;
+  const taxable = roundMoney(final / (1 + rate / 100));
+  return {
+    entered: price,
+    taxable,
+    gst: roundMoney(final - taxable),
+    final,
+    gstRate: rate,
+    mode,
+  };
+}
+
+/** Apply one booking GST mode to each service. Entered price is base minus discount. */
+export function applyGstModeToServiceItems(
+  items: ServiceItemConfig[],
+  mode: GstPricingMode,
+  gstPercent = 18,
+): ServiceItemConfig[] {
+  return items.map((item) => {
+    const base = roundMoney(Math.max(0, Number(item.baseAmount) || 0));
+    const discount = Math.min(roundMoney(Math.max(0, Number(item.discount) || 0)), base);
+    const entered = base > 0
+      ? roundMoney(base - discount)
+      : roundMoney(Math.max(0, Number(item.amount) || 0));
+    const split = splitPriceByGstMode(entered, mode, gstPercent);
+    return {
+      ...item,
+      baseAmount: base > 0 ? base : entered,
+      discount: base > 0 ? discount : 0,
+      amount: split.final,
+      taxableAmount: split.taxable,
+      gstAmount: split.gst,
+      gstMode: mode,
+      gstRate: split.gstRate,
+    };
+  });
+}
+
+export function summarizeGstPricing(items: ServiceItemConfig[]): {
+  taxable: number;
+  gst: number;
+  final: number;
+} {
+  return {
+    taxable: roundMoney(items.reduce((sum, item) => sum + (Number(item.taxableAmount) || 0), 0)),
+    gst: roundMoney(items.reduce((sum, item) => sum + (Number(item.gstAmount) || 0), 0)),
+    final: roundMoney(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)),
+  };
 }
 
 /** Clamp discount and compute net amount for one service line. */

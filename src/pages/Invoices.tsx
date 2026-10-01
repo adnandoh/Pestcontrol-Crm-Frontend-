@@ -16,7 +16,7 @@ import { Button, Pagination } from "../components/ui";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { downloadManualInvoicePdf, type ManualInvoiceInput } from "../utils/invoicePdf";
-import { COMPANY, INVOICE_DEFAULTS } from "../constants/quotation";
+import { BANK_DETAILS, COMPANY, INVOICE_DEFAULTS } from "../constants/quotation";
 import { showAlert } from "../utils/notify";
 import { enhancedApiService } from "../services/api.enhanced";
 import type { Invoice } from "../types";
@@ -28,13 +28,19 @@ type InvoiceItemForm = {
   schedule: string;
   technician: string;
   amount: string;
+  quantity: string;
+  rate: string;
+  sac: string;
 };
 
 const createDefaultItem = (): InvoiceItemForm => ({
-  service: INVOICE_DEFAULTS.defaultServiceItem,
+  service: "Pest control service",
   schedule: "",
   technician: "",
   amount: "",
+  quantity: "1",
+  rate: "",
+  sac: "998531",
 });
 
 type InvoiceFormState = {
@@ -53,6 +59,16 @@ type InvoiceFormState = {
   reference: string;
   tax: string;
   notes: string;
+  supplyCategory: "" | "B2B" | "B2C";
+  customerState: string;
+  placeOfSupply: string;
+  sacCode: string;
+  gstRate: string;
+  paymentReceived: string;
+  customerEmail: string;
+  dueDate: string;
+  isCancelled: boolean;
+  noteKind: "" | "credit" | "debit";
 };
 
 const emptyForm = (): InvoiceFormState => ({
@@ -71,6 +87,16 @@ const emptyForm = (): InvoiceFormState => ({
   reference: INVOICE_DEFAULTS.reference,
   tax: "0",
   notes: "",
+  supplyCategory: "B2C",
+  customerState: "Maharashtra",
+  placeOfSupply: "Maharashtra",
+  sacCode: "998531",
+  gstRate: "18",
+  paymentReceived: "0",
+  customerEmail: "",
+  dueDate: "",
+  isCancelled: false,
+  noteKind: "",
 });
 
 const invoiceToPdfPayload = (invoice: Invoice): ManualInvoiceInput => ({
@@ -92,11 +118,36 @@ const invoiceToPdfPayload = (invoice: Invoice): ManualInvoiceInput => ({
   reference: invoice.reference || "",
   tax: invoice.tax_amount ?? "0",
   notes: invoice.notes || "",
+  supplyCategory: invoice.supply_category || "",
+  customerState: invoice.customer_state || "",
+  placeOfSupply: invoice.place_of_supply || "",
+  sacCode: invoice.sac_code || "998531",
+  gstRate: String(invoice.gst_rate ?? "18"),
+  cgst: invoice.cgst_amount ?? "0",
+  sgst: invoice.sgst_amount ?? "0",
+  igst: invoice.igst_amount ?? "0",
+  subtotal: invoice.subtotal ?? "0",
+  grandTotal: invoice.grand_total ?? "0",
+  paymentReceived: invoice.payment_received ?? "0",
+  balanceDue: invoice.balance_due ?? "0",
+  paymentTerms: invoice.payment_terms || "Due end of next month",
+  dueDate: invoice.due_date || "",
+  bankIfsc: invoice.bank_ifsc || BANK_DETAILS.ifsc,
+  documentLabel: invoice.is_cancelled
+    ? "Cancelled"
+    : invoice.note_kind === "credit"
+      ? "Credit note"
+      : invoice.note_kind === "debit"
+        ? "Debit note"
+        : "Invoice",
   items: (invoice.items || []).map((item) => ({
     service: item.service || INVOICE_DEFAULTS.defaultServiceItem,
     schedule: item.schedule || "",
     technician: item.technician || "",
     amount: item.amount ?? "0",
+    quantity: item.quantity ?? "1",
+    rate: item.rate ?? item.amount ?? "0",
+    sacCode: item.sac_code || invoice.sac_code || "998531",
   })),
 });
 
@@ -123,13 +174,23 @@ const Invoices: React.FC = () => {
   const subtotal = useMemo(
     () =>
       items.reduce((sum, item) => {
-        const value = Number.parseFloat(item.amount || "0");
+        const qty = Number.parseFloat(item.quantity || "0");
+        const rate = Number.parseFloat(item.rate || "0");
+        const value = qty > 0 && rate > 0 ? qty * rate : Number.parseFloat(item.amount || "0");
         return sum + (Number.isFinite(value) ? value : 0);
       }, 0),
     [items]
   );
   const taxAmount = Number.parseFloat(form.tax || "0") || 0;
-  const grandTotal = subtotal + taxAmount;
+  const gstRate = Number.parseFloat(form.gstRate || "18") || 18;
+  const intraState = form.placeOfSupply.toLowerCase().includes("maharashtra");
+  const outputGst = form.supplyCategory ? Math.round(subtotal * gstRate) / 100 : taxAmount;
+  const cgstPreview = form.supplyCategory && intraState ? Math.round(subtotal * (gstRate / 2)) / 100 : 0;
+  const sgstPreview = form.supplyCategory && intraState ? Math.round((outputGst - cgstPreview) * 100) / 100 : 0;
+  const igstPreview = form.supplyCategory && !intraState ? outputGst : 0;
+  const grandTotal = subtotal + outputGst;
+  const paymentReceived = Number.parseFloat(form.paymentReceived || "0") || 0;
+  const balanceDue = grandTotal - paymentReceived;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const pageRevenue = useMemo(
     () => savedInvoices.reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0),
@@ -167,7 +228,7 @@ const Invoices: React.FC = () => {
     void loadSavedInvoices();
   }, [debouncedSearch, page]);
 
-  const updateFormField = (field: keyof typeof form, value: string) => {
+  const updateFormField = (field: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -224,6 +285,16 @@ const Invoices: React.FC = () => {
       reference: invoice.reference || INVOICE_DEFAULTS.reference,
       tax: String(invoice.tax_amount ?? "0"),
       notes: invoice.notes || "",
+      supplyCategory: invoice.supply_category || "",
+      customerState: invoice.customer_state || "",
+      placeOfSupply: invoice.place_of_supply || "Maharashtra",
+      sacCode: invoice.sac_code || "998531",
+      gstRate: String(invoice.gst_rate ?? "18"),
+      paymentReceived: String(invoice.payment_received ?? "0"),
+      customerEmail: invoice.customer_email || "",
+      dueDate: invoice.due_date || "",
+      isCancelled: Boolean(invoice.is_cancelled),
+      noteKind: invoice.note_kind || "",
     });
     setItems(
       invoice.items?.length
@@ -232,6 +303,9 @@ const Invoices: React.FC = () => {
             schedule: (item.schedule || "").slice(0, 10),
             technician: item.technician || "",
             amount: String(item.amount ?? ""),
+            quantity: String(item.quantity ?? "1"),
+            rate: String(item.rate ?? ""),
+            sac: item.sac_code || invoice.sac_code || "998531",
           }))
         : [createDefaultItem()]
     );
@@ -261,12 +335,23 @@ const Invoices: React.FC = () => {
       showAlert("Customer name is required.");
       return;
     }
+    if (form.supplyCategory && !form.invoiceNo.trim()) {
+      showAlert("Enter the invoice number. Duplicate numbers are not allowed.");
+      return;
+    }
+    if (form.supplyCategory === "B2B" && !form.billedToGstNumber.trim()) {
+      showAlert("Customer GSTIN is required for a B2B invoice.");
+      return;
+    }
 
     const lineItems = items.map((item) => ({
       service: item.service,
       schedule: item.schedule,
       technician: item.technician,
       amount: item.amount || "0",
+      quantity: item.quantity || "1",
+      rate: item.rate || "0",
+      sac: item.sac || form.sacCode || "998531",
     }));
 
     const apiPayload = {
@@ -283,13 +368,28 @@ const Invoices: React.FC = () => {
       booking_created_at: form.bookingCreatedAt || null,
       next_service_date: form.nextServiceDate || null,
       reference: form.reference,
-      tax_amount: form.tax || "0",
+      tax_amount: form.supplyCategory ? "0" : form.tax || "0",
       notes: form.notes,
+      supply_category: form.supplyCategory,
+      customer_state: form.customerState,
+      place_of_supply: form.placeOfSupply,
+      sac_code: form.sacCode || "998531",
+      gst_rate: form.gstRate || "18.00",
+      payment_received: form.paymentReceived || "0",
+      customer_email: form.customerEmail.trim(),
+      payment_terms: "Due end of next month",
+      due_date: form.dueDate || null,
+      is_cancelled: form.isCancelled,
+      note_kind: form.noteKind,
+      bank_ifsc: BANK_DETAILS.ifsc,
       items: lineItems.map((item) => ({
-        service: item.service.trim() || INVOICE_DEFAULTS.defaultServiceItem,
+        service: item.service.trim() || "Pest control service",
         schedule: item.schedule || "",
         technician: item.technician || "",
         amount: item.amount || "0",
+        quantity: item.quantity || "1",
+        rate: item.rate || "0",
+        sac_code: item.sac || form.sacCode || "998531",
       })),
     };
 
@@ -311,29 +411,7 @@ const Invoices: React.FC = () => {
         billedToGstNumber: saved.customer_gst_number || "",
       }));
 
-      const pdfPayload: ManualInvoiceInput = {
-        invoiceNo: saved.invoice_no,
-        invoiceDate: saved.invoice_date || form.invoiceDate,
-        billedByName: saved.billed_by_name || form.billedByName,
-        billedByAddress: saved.billed_by_address || form.billedByAddress,
-        billedByGstNumber:
-          saved.billed_by_gst_number !== undefined && saved.billed_by_gst_number !== null
-            ? saved.billed_by_gst_number
-            : form.billedByGstNumber,
-        billedToName: saved.customer_name,
-        billedToMobile: saved.customer_mobile || "",
-        billedToAddress: saved.customer_address || "",
-        billedToGstNumber: saved.customer_gst_number || "",
-        bookingCode: saved.booking_code || "",
-        bookingCreatedAt: saved.booking_created_at || "",
-        nextServiceDate: saved.next_service_date || "",
-        reference: saved.reference || "",
-        tax: saved.tax_amount ?? form.tax,
-        notes: saved.notes || "",
-        items: lineItems,
-      };
-
-      await downloadManualInvoicePdf(pdfPayload);
+      await downloadManualInvoicePdf(invoiceToPdfPayload(saved));
       // New invoices should appear at the top of page 1.
       if (page !== 1) {
         setPage(1);
@@ -342,7 +420,9 @@ const Invoices: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to save invoice", err);
-      showAlert("Failed to save invoice. Please try again.");
+      const data = (err as { response?: { data?: Record<string, string[] | string> } })?.response?.data;
+      const first = data && Object.values(data).flat()[0];
+      showAlert(typeof first === "string" ? first : "Failed to save invoice. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -584,6 +664,23 @@ const Invoices: React.FC = () => {
                 <X className="h-4 w-4" />
                 Close
               </Button>
+              {editingId && form.customerEmail.trim() ? (
+                <Button
+                  variant="outline"
+                  disabled={isGenerating}
+                  onClick={async () => {
+                    try {
+                      await enhancedApiService.emailInvoiceToCustomer(editingId);
+                      showAlert("Invoice emailed to the customer.");
+                    } catch (err) {
+                      const data = (err as { response?: { data?: { detail?: string } } })?.response?.data;
+                      showAlert(data?.detail || "Could not email the invoice. Save it first, and check that email is configured.");
+                    }
+                  }}
+                >
+                  Email customer
+                </Button>
+              ) : null}
               <Button onClick={onGenerate} disabled={isGenerating} className="gap-2 bg-blue-600 hover:bg-blue-700">
                 <Download className="h-4 w-4" />
                 {isGenerating ? "Saving..." : editingId ? "Update & Download PDF" : "Generate & Download PDF"}
@@ -596,7 +693,7 @@ const Invoices: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <input
                 className="px-3 py-2 border rounded-lg"
-                placeholder="Invoice No (optional)"
+                placeholder="Invoice number (type it, no duplicates)"
                 value={form.invoiceNo}
                 onChange={(e) => updateFormField("invoiceNo", e.target.value)}
               />
@@ -619,6 +716,71 @@ const Invoices: React.FC = () => {
                 onChange={(e) => updateFormField("reference", e.target.value)}
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+              <select
+                className="px-3 py-2 border rounded-lg"
+                value={form.supplyCategory}
+                onChange={(e) => updateFormField("supplyCategory", e.target.value)}
+                aria-label="B2B or B2C"
+              >
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+                <option value="">Older invoice (no GST split)</option>
+              </select>
+              <input
+                className="px-3 py-2 border rounded-lg"
+                placeholder="Customer state"
+                value={form.customerState}
+                onChange={(e) => updateFormField("customerState", e.target.value)}
+              />
+              <input
+                className="px-3 py-2 border rounded-lg"
+                placeholder="Place of supply"
+                value={form.placeOfSupply}
+                onChange={(e) => updateFormField("placeOfSupply", e.target.value)}
+              />
+              <input
+                className="px-3 py-2 border rounded-lg"
+                placeholder="SAC code"
+                value={form.sacCode}
+                onChange={(e) => updateFormField("sacCode", e.target.value)}
+              />
+              <input
+                className="px-3 py-2 border rounded-lg"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => updateFormField("dueDate", e.target.value)}
+                aria-label="Due date"
+              />
+              <input
+                className="px-3 py-2 border rounded-lg"
+                type="email"
+                placeholder="Customer email"
+                value={form.customerEmail}
+                onChange={(e) => updateFormField("customerEmail", e.target.value)}
+              />
+              <select
+                className="px-3 py-2 border rounded-lg"
+                value={form.noteKind}
+                onChange={(e) => updateFormField("noteKind", e.target.value)}
+                aria-label="Document type"
+              >
+                <option value="">Tax invoice</option>
+                <option value="credit">Credit note</option>
+                <option value="debit">Debit note</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={form.isCancelled}
+                  onChange={(e) => updateFormField("isCancelled", e.target.checked)}
+                />
+                Cancelled
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Maharashtra uses CGST and SGST. Any other place of supply uses IGST. SAC 998531 is pest control services. Bank IFSC on the PDF is {BANK_DETAILS.ifsc}.
+            </p>
           </Card>
 
           <Card className="p-5 border border-gray-100">
@@ -694,7 +856,7 @@ const Invoices: React.FC = () => {
                 />
                 <input
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Customer GST Number"
+                  placeholder={form.supplyCategory === "B2C" ? "B2C – Unregistered (GSTIN not used)" : "Customer GSTIN (required for B2B)"}
                   value={form.billedToGstNumber}
                   onChange={(e) => updateFormField("billedToGstNumber", e.target.value)}
                   maxLength={30}
@@ -723,9 +885,10 @@ const Invoices: React.FC = () => {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="text-left text-xs font-bold text-gray-600 p-3 border">Service</th>
-                    <th className="text-left text-xs font-bold text-gray-600 p-3 border">Schedule</th>
-                    <th className="text-left text-xs font-bold text-gray-600 p-3 border">Technician</th>
-                    <th className="text-right text-xs font-bold text-gray-600 p-3 border">Amount</th>
+                    <th className="text-left text-xs font-bold text-gray-600 p-3 border">SAC</th>
+                    <th className="text-right text-xs font-bold text-gray-600 p-3 border">Qty</th>
+                    <th className="text-right text-xs font-bold text-gray-600 p-3 border">Rate</th>
+                    <th className="text-right text-xs font-bold text-gray-600 p-3 border">Taxable amount</th>
                     <th className="text-center text-xs font-bold text-gray-600 p-3 border w-16">Action</th>
                   </tr>
                 </thead>
@@ -743,17 +906,28 @@ const Invoices: React.FC = () => {
                       <td className="border p-2">
                         <input
                           className="w-full px-2 py-1.5 border rounded"
-                          type="date"
-                          value={item.schedule}
-                          onChange={(e) => updateItem(idx, "schedule", e.target.value)}
+                          value={item.sac}
+                          onChange={(e) => updateItem(idx, "sac", e.target.value)}
                         />
                       </td>
                       <td className="border p-2">
                         <input
-                          className="w-full px-2 py-1.5 border rounded"
-                          placeholder="Technician"
-                          value={item.technician}
-                          onChange={(e) => updateItem(idx, "technician", e.target.value)}
+                          className="w-24 px-2 py-1.5 border rounded text-right"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <input
+                          className="w-28 px-2 py-1.5 border rounded text-right"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.rate}
+                          onChange={(e) => updateItem(idx, "rate", e.target.value)}
                         />
                       </td>
                       <td className="border p-2">
@@ -806,35 +980,51 @@ const Invoices: React.FC = () => {
               </div>
               <div className="md:ml-auto md:w-[320px] border rounded-lg p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">
-                    ₹
-                    {subtotal.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
+                  <span className="text-gray-600">Taxable amount</span>
+                  <span className="font-semibold">{formatMoney(subtotal)}</span>
+                </div>
+                {form.supplyCategory ? (
+                  <>
+                    {intraState ? (
+                      <>
+                        <div className="flex justify-between text-sm"><span className="text-gray-600">CGST {gstRate / 2}%</span><span>{formatMoney(cgstPreview)}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-600">SGST {gstRate / 2}%</span><span>{formatMoney(sgstPreview)}</span></div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between text-sm"><span className="text-gray-600">IGST {gstRate}%</span><span>{formatMoney(igstPreview)}</span></div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Tax</span>
+                    <input
+                      className="w-28 px-2 py-1 border rounded text-right"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.tax}
+                      onChange={(e) => updateFormField("tax", e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="pt-2 border-t flex justify-between">
+                  <span className="text-base font-bold">Grand Total</span>
+                  <span className="text-base font-extrabold">{formatMoney(grandTotal)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
+                  <span className="text-gray-600">Payment received</span>
                   <input
                     className="w-28 px-2 py-1 border rounded text-right"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={form.tax}
-                    onChange={(e) => updateFormField("tax", e.target.value)}
+                    value={form.paymentReceived}
+                    onChange={(e) => updateFormField("paymentReceived", e.target.value)}
                   />
                 </div>
-                <div className="pt-2 border-t flex justify-between">
-                  <span className="text-base font-bold">Grand Total</span>
-                  <span className="text-base font-extrabold">
-                    ₹
-                    {grandTotal.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Balance due</span>
+                  <span>{formatMoney(balanceDue)}</span>
                 </div>
               </div>
             </div>

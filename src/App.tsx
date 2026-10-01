@@ -1,64 +1,67 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useEffect } from 'react';
 import { enhancedApiService } from './services/api.enhanced';
 import { Layout } from './components/layout';
-import { FullScreenLoading } from './components/ui';
+import { FullScreenLoading, PageLoading } from './components/ui';
 import { ToastProvider } from './components/ui/toast/ToastProvider';
 import { ErrorBoundary, NotifyBridge } from './components/errors';
 import { notify } from './utils/notify';
 import { logErrorForDev } from './utils/errors';
 import BlogCMSLayout from './components/layout/BlogCMSLayout';
 import { ProtectedRoute, SuperAdminRoute, AdminRoute } from './components/auth';
-import StaffFormPage from './pages/StaffFormPage';
 import { isBlogUser, blogUserDefaultPath } from './utils/roles';
 import Login from './pages/Login';
 import Forbidden from './pages/Forbidden';
 import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import Inquiries from './pages/Inquiries';
-import JobCards from './pages/JobCards';
-import CreateJobCard from './pages/CreateJobCard';
-import EditJobCard from './pages/EditJobCard';
-import Renewals from './pages/Renewals';
-import References from './pages/References';
-import Technicians from './pages/Technicians';
-import TechnicianFormPage from './pages/TechnicianFormPage';
-import Settlements from './pages/Settlements';
-import CRMInquiries from './pages/CRMInquiries';
-import WhatsAppInbox from './pages/WhatsAppInbox';
-import Feedbacks from './pages/Feedbacks';
-import ECardTracking from './pages/ECardTracking';
-import Quotations from './pages/Quotations';
-import Invoices from './pages/Invoices';
-import PendingAmounts from './pages/PendingAmounts';
-import CreateQuotation from './pages/CreateQuotation';
-import QuotationPreview from './pages/QuotationPreview';
-import TechnicianReports from './pages/TechnicianReports';
-import TechnicianLedgerReport from './pages/TechnicianLedgerReport';
-import StaffPerformance from './pages/StaffPerformance';
-import TechnicianSelfies from './pages/TechnicianSelfies';
 import PublicFeedback from './pages/PublicFeedback';
-import StaffManagement from './pages/StaffManagement';
-import ActivityLogs from './pages/ActivityLogs';
-import MasterCountries from './pages/MasterCountries';
-import MasterCities from './pages/MasterCities';
-import MasterStates from './pages/MasterStates';
-import MasterLocations from './pages/MasterLocations';
-import PricingMaster from './pages/PricingMaster';
-import AccountsDashboard from './pages/accounts/AccountsDashboard';
-import AccountsInventory from './pages/accounts/AccountsInventory';
-import AccountsExpenses from './pages/accounts/AccountsExpenses';
-import AccountsBookingProfit from './pages/accounts/AccountsBookingProfit';
-import AccountsAlerts from './pages/accounts/AccountsAlerts';
-import AccountsReports from './pages/accounts/AccountsReports';
-import BlogDashboard from './pages/blog/BlogDashboard';
-import BlogList from './pages/blog/BlogList';
-import BlogEditor from './pages/blog/BlogEditor';
-import BlogCategories from './pages/blog/BlogCategories';
+
+const StaffFormPage = lazy(() => import('./pages/StaffFormPage'));
+const Clients = lazy(() => import('./pages/Clients'));
+const ClientDetail = lazy(() => import('./pages/ClientDetail'));
+const Inquiries = lazy(() => import('./pages/Inquiries'));
+const JobCards = lazy(() => import('./pages/JobCards'));
+const CreateJobCard = lazy(() => import('./pages/CreateJobCard'));
+const EditJobCard = lazy(() => import('./pages/EditJobCard'));
+const Renewals = lazy(() => import('./pages/Renewals'));
+const References = lazy(() => import('./pages/References'));
+const Technicians = lazy(() => import('./pages/Technicians'));
+const TechnicianFormPage = lazy(() => import('./pages/TechnicianFormPage'));
+const Settlements = lazy(() => import('./pages/Settlements'));
+const CRMInquiries = lazy(() => import('./pages/CRMInquiries'));
+const WhatsAppInbox = lazy(() => import('./pages/WhatsAppInbox'));
+const Feedbacks = lazy(() => import('./pages/Feedbacks'));
+const ECardTracking = lazy(() => import('./pages/ECardTracking'));
+const Quotations = lazy(() => import('./pages/Quotations'));
+const Invoices = lazy(() => import('./pages/Invoices'));
+const PurchaseBills = lazy(() => import('./pages/PurchaseBills'));
+const GstCaReport = lazy(() => import('./pages/GstCaReport'));
+const PendingAmounts = lazy(() => import('./pages/PendingAmounts'));
+const CreateQuotation = lazy(() => import('./pages/CreateQuotation'));
+const QuotationPreview = lazy(() => import('./pages/QuotationPreview'));
+const TechnicianReports = lazy(() => import('./pages/TechnicianReports'));
+const TechnicianLedgerReport = lazy(() => import('./pages/TechnicianLedgerReport'));
+const StaffPerformance = lazy(() => import('./pages/StaffPerformance'));
+const TechnicianSelfies = lazy(() => import('./pages/TechnicianSelfies'));
+const StaffManagement = lazy(() => import('./pages/StaffManagement'));
+const ActivityLogs = lazy(() => import('./pages/ActivityLogs'));
+const MasterCountries = lazy(() => import('./pages/MasterCountries'));
+const MasterCities = lazy(() => import('./pages/MasterCities'));
+const MasterStates = lazy(() => import('./pages/MasterStates'));
+const MasterLocations = lazy(() => import('./pages/MasterLocations'));
+const PricingMaster = lazy(() => import('./pages/PricingMaster'));
+const AccountsDashboard = lazy(() => import('./pages/accounts/AccountsDashboard'));
+const AccountsInventory = lazy(() => import('./pages/accounts/AccountsInventory'));
+const AccountsExpenses = lazy(() => import('./pages/accounts/AccountsExpenses'));
+const AccountsBookingProfit = lazy(() => import('./pages/accounts/AccountsBookingProfit'));
+const AccountsAlerts = lazy(() => import('./pages/accounts/AccountsAlerts'));
+const AccountsReports = lazy(() => import('./pages/accounts/AccountsReports'));
+const BlogDashboard = lazy(() => import('./pages/blog/BlogDashboard'));
+const BlogList = lazy(() => import('./pages/blog/BlogList'));
+const BlogEditor = lazy(() => import('./pages/blog/BlogEditor'));
+const BlogCategories = lazy(() => import('./pages/blog/BlogCategories'));
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -89,6 +92,7 @@ const queryClient = new QueryClient({
 });
 
 const BlogCMSRoutes: React.FC = () => (
+  <Suspense fallback={<PageLoading text="Loading..." />}>
   <Routes>
     <Route path="/blog" element={<BlogDashboard />} />
     <Route path="/blog/list" element={<BlogList />} />
@@ -98,6 +102,7 @@ const BlogCMSRoutes: React.FC = () => (
     <Route path="/403" element={<Forbidden />} />
     <Route path="*" element={<Navigate to={blogUserDefaultPath()} replace />} />
   </Routes>
+  </Suspense>
 );
 
 const AppContent: React.FC = () => {
@@ -145,6 +150,7 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Layout user={user ?? null} onLogout={logout}>
+                  <Suspense fallback={<PageLoading text="Loading..." />}>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/clients" element={<Clients />} />
@@ -169,6 +175,8 @@ const AppContent: React.FC = () => {
                     <Route path="/whatsapp/inbox" element={<WhatsAppInbox />} />
                     <Route path="/quotations" element={<Quotations />} />
                     <Route path="/invoices" element={<Invoices />} />
+                    <Route path="/purchase-bills" element={<PurchaseBills />} />
+                    <Route path="/gst-ca-report" element={<GstCaReport />} />
                     <Route path="/pending-amounts" element={<PendingAmounts />} />
                     <Route path="/quotations/create" element={<CreateQuotation />} />
                     <Route path="/quotations/edit/:id" element={<CreateQuotation />} />
@@ -231,6 +239,7 @@ const AppContent: React.FC = () => {
                     <Route path="/blog/categories" element={<BlogCategories />} />
                     <Route path="/403" element={<Forbidden />} />
                   </Routes>
+                  </Suspense>
                 </Layout>
               </ProtectedRoute>
             }

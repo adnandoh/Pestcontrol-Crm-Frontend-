@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyGstModeToServiceItems,
   finalizeServiceLinePricing,
   mergeCatalogIntoServiceItems,
+  splitPriceByGstMode,
   summarizeServicePricing,
   type ServiceItemConfig,
 } from './jobCardPricing';
@@ -55,5 +57,32 @@ describe('service-level pricing', () => {
     expect(merged[0].baseAmount).toBe(4000);
     expect(merged[0].discount).toBe(500);
     expect(merged[0].amount).toBe(3500);
+  });
+
+  it('treats an inclusive price as the customer total', () => {
+    const split = splitPriceByGstMode(1050, 'GST_INCLUSIVE', 18);
+    expect(split.taxable).toBe(889.83);
+    expect(split.gst).toBe(160.17);
+    expect(split.final).toBe(1050);
+  });
+
+  it('adds GST on top of an exclusive price', () => {
+    const split = splitPriceByGstMode(1050, 'GST_EXCLUSIVE', 18);
+    expect(split.taxable).toBe(1050);
+    expect(split.gst).toBe(189);
+    expect(split.final).toBe(1239);
+  });
+
+  it('keeps GST on each service instead of one combined guess', () => {
+    const priced = applyGstModeToServiceItems(
+      [
+        { service: 'A', plan: 'One Time Service', area: '1 BHK', baseAmount: 1050, discount: 0, amount: 1050 },
+        { service: 'B', plan: 'One Time Service', area: '1 BHK', baseAmount: 1050, discount: 0, amount: 1050 },
+      ],
+      'GST_EXCLUSIVE',
+    );
+    expect(priced.map((item) => item.amount)).toEqual([1239, 1239]);
+    expect(priced[0].taxableAmount).toBe(1050);
+    expect(priced[0].gstAmount).toBe(189);
   });
 });

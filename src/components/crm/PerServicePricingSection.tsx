@@ -251,9 +251,25 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-emerald-100">
-                      <span className="text-[11px] font-bold text-gray-600 uppercase">Final Price</span>
+                      <span className="text-[11px] font-bold text-gray-600 uppercase">
+                        {item?.gstMode === 'GST_EXCLUSIVE' ? 'Final payable' : 'Final price (GST included)'}
+                      </span>
                       <span className="text-lg font-black text-emerald-900">{inr(finalPrice)}</span>
                     </div>
+                    {item?.taxableAmount != null && (
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
+                          <div className="text-[9px] font-bold text-gray-500 uppercase">Taxable amount</div>
+                          <div className="font-extrabold text-gray-800">{inr(item.taxableAmount)}</div>
+                        </div>
+                        <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
+                          <div className="text-[9px] font-bold text-gray-500 uppercase">
+                            {item.gstMode === 'GST_EXCLUSIVE' ? 'GST added' : 'GST included'}
+                          </div>
+                          <div className="font-extrabold text-gray-800">{inr(item.gstAmount || 0)}</div>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
                         <div className="text-[9px] font-bold text-gray-500 uppercase">

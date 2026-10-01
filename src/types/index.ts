@@ -469,6 +469,13 @@ export interface JobCard {
   gst_paid?: boolean | null;
   has_extra_amount?: boolean;
   extra_amount?: number | string;
+  gst_mode?: 'GST_INCLUSIVE' | 'GST_EXCLUSIVE';
+  gst_rate?: number | string;
+  original_service_price?: number | string | null;
+  taxable_amount?: number | string | null;
+  gst_amount?: number | string | null;
+  final_payable_amount?: number | string | null;
+  overridden_price?: number | string | null;
   service_type: string;
   service_items?: ServiceItemConfig[];
   schedule_datetime: string;
@@ -1440,6 +1447,9 @@ export interface InvoiceItem {
   schedule?: string;
   technician?: string;
   amount: number | string;
+  quantity?: number | string;
+  rate?: number | string;
+  sac_code?: string;
 }
 
 export interface Invoice {
@@ -1463,11 +1473,44 @@ export interface Invoice {
   subtotal?: number | string;
   grand_total?: number | string;
   notes?: string;
+  supply_category?: "" | "B2B" | "B2C";
+  customer_state?: string;
+  place_of_supply?: string;
+  sac_code?: string;
+  gst_rate?: number | string;
+  cgst_amount?: number | string;
+  sgst_amount?: number | string;
+  igst_amount?: number | string;
+  payment_received?: number | string;
+  balance_due?: number | string;
+  customer_email?: string;
+  payment_terms?: string;
+  due_date?: string | null;
+  is_cancelled?: boolean;
+  note_kind?: "" | "credit" | "debit";
+  bank_ifsc?: string;
   created_by?: number;
   created_by_name?: string;
   items: InvoiceItem[];
   created_at: string;
   updated_at: string;
+}
+
+export interface PurchaseBill {
+  id: number;
+  supplier_name: string;
+  supplier_gstin: string;
+  bill_number: string;
+  bill_date: string;
+  taxable_amount: string;
+  cgst_amount: string;
+  sgst_amount: string;
+  igst_amount: string;
+  total_amount: string;
+  attachment?: string | null;
+  attachment_name?: string;
+  input_eligibility: "pending" | "eligible" | "not_eligible";
+  notes?: string;
 }
 
 export interface InvoiceFormData extends Partial<Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'created_by_name' | 'subtotal' | 'grand_total'>> {

@@ -55,6 +55,9 @@ import {
   priceLinesFromServiceItems,
   serviceItemsToConfigMap,
   summarizeServicePricing,
+  summarizeGstPricing,
+  applyGstModeToServiceItems,
+  normalizeGstPricingMode,
   supportsAutoPricing,
   allowsEditableServicePricing,
   syncServiceItemAmountsToTotal,
@@ -63,10 +66,12 @@ import {
   type ServiceConfigMap,
   type ServiceItemConfig,
   type ServicePriceLine,
+  type GstPricingMode,
 } from '../utils/jobCardPricing';
 import { toClockDisplay, toStorageTime } from '../utils/clockTime';
 import { groupServiceOptions } from '../utils/serviceGrouping';
 import PerServicePricingSection from '../components/crm/PerServicePricingSection';
+import GstPricingModeField from '../components/crm/GstPricingModeField';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import {
   SERVICE_PICKER_CARD,
@@ -123,6 +128,8 @@ const EditJobCard: React.FC = () => {
   const savedPriceOnLoadRef = React.useRef<number | null>(null);
   const prevMasterStateRef = React.useRef<number | undefined>(undefined);
   const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
+  const [gstMode, setGstMode] = useState<GstPricingMode>('GST_INCLUSIVE');
+  const [applyGstMode, setApplyGstMode] = useState(false);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [serviceConfigs, setServiceConfigs] = useState<ServiceConfigMap>({});
   const [serviceItems, setServiceItems] = useState<ServiceItemConfig[]>([]);
@@ -386,14 +393,27 @@ const EditJobCard: React.FC = () => {
           }
           setSelectedPackages(packages);
           setServiceConfigs(serviceItemsToConfigMap(normalizedItems));
-          const itemsSum = normalizedItems.reduce(
+          const savedGstMode = data.final_payable_amount != null
+            ? normalizeGstPricingMode(data.gst_mode)
+            : null;
+          const pricedItems = savedGstMode
+            ? applyGstModeToServiceItems(normalizedItems, savedGstMode)
+            : normalizedItems;
+          if (savedGstMode) {
+            setGstMode(savedGstMode);
+            setApplyGstMode(true);
+            setIsPriceManuallyEdited(true);
+            savedPriceOnLoadRef.current = null;
+          }
+          const itemsSum = pricedItems.reduce(
             (sum, item) => sum + (Number(item.amount) || 0),
             0,
           );
           if (
-            savedPrice > 0
+            !savedGstMode
+            && savedPrice > 0
             && Math.abs(savedPrice - itemsSum) > 0.009
-            && !serviceItemsMatchPrice(normalizedItems, savedPrice)
+            && !serviceItemsMatchPrice(pricedItems, savedPrice)
           ) {
             // Only redistribute when lines cannot explain the saved price
             // (preserves service-level discounts when nets already match).
@@ -403,7 +423,7 @@ const EditJobCard: React.FC = () => {
             setServiceItems(syncedItems);
             setPriceBreakdown(priceLinesFromServiceItems(syncedItems));
           } else {
-            setServiceItems(normalizedItems);
+            setServiceItems(pricedItems);
             if (savedPrice > 0 && Math.abs(savedPrice - itemsSum) > 0.009) {
               // Nets explain the price via base-discount; keep line discounts.
               savedPriceOnLoadRef.current = null;
@@ -527,6 +547,7 @@ const EditJobCard: React.FC = () => {
     () => computeBookingGstSummary(serviceConfigs, pricingConfig),
     [serviceConfigs, pricingConfig],
   );
+  const bookingGst = useMemo(() => summarizeGstPricing(serviceItems), [serviceItems]);
 
   /** Same per-service price boxes as Home — including commercial after Done. */
   const canEditServicePrices = useMemo(
@@ -695,11 +716,15 @@ const EditJobCard: React.FC = () => {
         isPriceManuallyEdited
         && manualPrice > 0
         && !serviceItemsMatchPrice(serviceItems, manualPrice);
-      const itemsForSubmit = (
-        shouldRedistribute
+      const normalizedForSubmit = (
+        shouldRedistribute && !applyGstMode
           ? syncServiceItemAmountsToTotal(serviceItems, manualPrice)
           : serviceItems
-      ).map((item) => ({
+      ).map((item) => normalizeServiceItemConfig(item as any));
+      const itemsForPricing = applyGstMode
+        ? applyGstModeToServiceItems(normalizedForSubmit, gstMode)
+        : normalizedForSubmit;
+      const itemsForSubmit = itemsForPricing.map((item) => ({
         service: item.service,
         plan: item.plan,
         area: item.area,
@@ -707,27 +732,21 @@ const EditJobCard: React.FC = () => {
         discount: item.discount,
         amount: item.amount,
       }));
-      const pricingTotals = summarizeServicePricing(
-        itemsForSubmit.map((item) => normalizeServiceItemConfig(item as any)),
-      );
-      const submitData = {
-        ...formData,
-        price: (shouldRedistribute && manualPrice > 0
+      const pricingTotals = summarizeServicePricing(itemsForPricing);
+      const payable = applyGstMode ? summarizeGstPricing(itemsForPricing).final : (
+        shouldRedistribute && manualPrice > 0
           ? manualPrice
           : pricingTotals.finalAmount > 0
             ? pricingTotals.finalAmount
             : manualPrice
-        ).toFixed(2),
+      );
+      const submitData = {
+        ...formData,
+        price: payable.toFixed(2),
         discount_amount: pricingTotals.totalDiscount,
+        ...(applyGstMode ? { gst_mode: gstMode, gst_rate: '18.00' } : {}),
         // Final price after visit / Done is no longer an estimate.
-        is_price_estimated: (
-          (shouldRedistribute && manualPrice > 0
-            ? manualPrice
-            : pricingTotals.finalAmount > 0
-              ? pricingTotals.finalAmount
-              : manualPrice
-          ) <= 0
-        ) && Boolean(formData.is_price_estimated),
+        is_price_estimated: payable <= 0 && Boolean(formData.is_price_estimated),
         job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
         contract_duration: isSocietyBooking(formData)
           ? (formData.contract_duration || deriveSocietyContractDuration(
@@ -1237,6 +1256,24 @@ const EditJobCard: React.FC = () => {
                         <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.service_type}</p>
                       )}
                    </div>
+                   <GstPricingModeField
+                     mode={gstMode}
+                     onChange={(mode) => {
+                       setGstMode(mode);
+                       setApplyGstMode(true);
+                       setIsPriceManuallyEdited(true);
+                       setServiceItems((prev) => {
+                         const next = applyGstModeToServiceItems(prev, mode);
+                         const totals = summarizeGstPricing(next);
+                         setFormData((form) => ({
+                           ...form,
+                           price: totals.final.toFixed(2),
+                         }));
+                         return next;
+                       });
+                     }}
+                   />
+
                    <PerServicePricingSection
                      selectedPackages={selectedPackages}
                      serviceConfigs={serviceConfigs}
@@ -1262,11 +1299,19 @@ const EditJobCard: React.FC = () => {
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
-                        {gstSummary.hasGstMeta
-                          ? gstSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                          : formData.price}
+                        {applyGstMode
+                          ? bookingGst.final.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : gstSummary.hasGstMeta
+                            ? gstSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : formData.price}
                      </div>
-                     {gstSummary.hasGstMeta && (
+                     {applyGstMode ? (
+                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
+                         <p>Taxable ₹{bookingGst.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                         <p>GST ₹{bookingGst.gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                         <p className="text-gray-700">Final payable ₹{bookingGst.final.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                       </div>
+                     ) : gstSummary.hasGstMeta && (
                        <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
                          <p>Base ₹{gstSummary.base.toLocaleString('en-IN')}</p>
                          <p>GST ₹{gstSummary.gst.toLocaleString('en-IN')}</p>

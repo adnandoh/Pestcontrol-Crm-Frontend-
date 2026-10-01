@@ -63,6 +63,7 @@ import type {
   QuotationFormData,
   QuotationFilters,
   Invoice,
+  PurchaseBill,
   InvoiceFormData,
   PartnerJobSelfie,
   InquiryRemarkEntry,
@@ -2320,6 +2321,74 @@ class EnhancedApiService {
       this.api.post<Invoice>(API_ENDPOINTS.INVOICES, data)
     );
     apiCache.deletePattern(CACHE_KEYS.INVOICES);
+    return result.data;
+  }
+
+  async emailInvoiceToCustomer(id: number): Promise<{ status: string; email: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ status: string; email: string }>(`${API_ENDPOINTS.INVOICES}${id}/email-customer/`)
+    );
+    return result.data;
+  }
+
+  async getPurchaseBills(params?: { search?: string; page?: number }): Promise<PaginatedResponse<PurchaseBill>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<PurchaseBill>>(API_ENDPOINTS.PURCHASE_BILLS, { params })
+    );
+    return result.data;
+  }
+
+  async createPurchaseBill(data: FormData): Promise<PurchaseBill> {
+    const result = await this.retryRequest(() =>
+      this.api.post<PurchaseBill>(API_ENDPOINTS.PURCHASE_BILLS, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    );
+    return result.data;
+  }
+
+  async updatePurchaseBillEligibility(id: number, input_eligibility: string): Promise<PurchaseBill> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<PurchaseBill>(`${API_ENDPOINTS.PURCHASE_BILLS}${id}/`, { input_eligibility })
+    );
+    return result.data;
+  }
+
+  async getGstCaSettings(): Promise<{ ca_email: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.get<{ ca_email: string }>(API_ENDPOINTS.GST_CA_SETTINGS)
+    );
+    return result.data;
+  }
+
+  async saveGstCaEmail(ca_email: string): Promise<{ ca_email: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<{ ca_email: string }>(API_ENDPOINTS.GST_CA_SETTINGS, { ca_email })
+    );
+    return result.data;
+  }
+
+  async downloadGstReport(month: string, format: "xlsx" | "zip"): Promise<Blob> {
+    const result = await this.retryRequest(() =>
+      this.api.get(API_ENDPOINTS.GST_REPORTS, {
+        params: { month, format },
+        responseType: "blob",
+      })
+    );
+    return result.data;
+  }
+
+  async emailGstReport(month: string): Promise<{ status: string; detail: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ status: string; detail: string }>(API_ENDPOINTS.GST_REPORTS_EMAIL, { month })
+    );
+    return result.data;
+  }
+
+  async getGstReportDispatches(): Promise<Array<{ period_start: string; period_end: string; ca_email: string; status: string; detail: string; created_at: string }>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<Array<{ period_start: string; period_end: string; ca_email: string; status: string; detail: string; created_at: string }>>(API_ENDPOINTS.GST_REPORTS_EMAIL)
+    );
     return result.data;
   }
 

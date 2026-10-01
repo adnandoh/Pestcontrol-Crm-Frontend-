@@ -1,7 +1,7 @@
 import html2pdf from "html2pdf.js";
 import type { JobCard } from "../types";
 import { COMPANY_LOGO_URL, COMPANY_SIGNATURE_STAMP_URL } from "../constants/companyAssets";
-import { COMPANY, INVOICE_DEFAULTS, formatCompanyGstin, formatCompanyPhone } from "../constants/quotation";
+import { BANK_DETAILS, COMPANY, INVOICE_DEFAULTS, formatCompanyGstin, formatCompanyPhone } from "../constants/quotation";
 import { waitForImagesInElement } from "./pdfImagePreload";
 
 const formatDate = (value?: string) => {
@@ -27,6 +27,9 @@ export interface ManualInvoiceItem {
   schedule?: string;
   technician?: string;
   amount: number | string;
+  quantity?: number | string;
+  rate?: number | string;
+  sacCode?: string;
 }
 
 export interface ManualInvoiceInput {
@@ -48,6 +51,22 @@ export interface ManualInvoiceInput {
   tax?: number | string;
   notes?: string;
   items: ManualInvoiceItem[];
+  supplyCategory?: string;
+  customerState?: string;
+  placeOfSupply?: string;
+  sacCode?: string;
+  gstRate?: number | string;
+  cgst?: number | string;
+  sgst?: number | string;
+  igst?: number | string;
+  subtotal?: number | string;
+  grandTotal?: number | string;
+  paymentReceived?: number | string;
+  balanceDue?: number | string;
+  paymentTerms?: string;
+  dueDate?: string;
+  bankIfsc?: string;
+  documentLabel?: string;
 }
 
 interface RenderInvoicePayload {
@@ -267,9 +286,147 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
   return node;
 };
 
-const exportInvoicePdf = async (payload: RenderInvoicePayload, filenameBase: string) => {
-  const node = buildInvoiceNode(payload);
+const moneyPlain = (value: string | number | undefined) => {
+  const n = Number.parseFloat(String(value ?? 0).replace(/[^\d.-]/g, "")) || 0;
+  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
+const belowTwenty = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const tensNames = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+const wordsBelowHundred = (n: number) => {
+  if (n < 20) return belowTwenty[n];
+  return `${tensNames[Math.floor(n / 10)]}${n % 10 ? ` ${belowTwenty[n % 10]}` : ""}`.trim();
+};
+
+const wordsBelowThousand = (n: number) => {
+  if (n < 100) return wordsBelowHundred(n);
+  const rest = n % 100;
+  return `${belowTwenty[Math.floor(n / 100)]} Hundred${rest ? ` ${wordsBelowHundred(rest)}` : ""}`;
+};
+
+const rupeesInWords = (value: string | number | undefined) => {
+  const amount = Math.round((Number.parseFloat(String(value ?? 0).replace(/[^\d.-]/g, "")) || 0) * 100);
+  const rupees = Math.floor(amount / 100);
+  const paise = amount % 100;
+  const chunks = [
+    [10000000, "Crore"],
+    [100000, "Lakh"],
+    [1000, "Thousand"],
+  ] as const;
+  let pending = rupees;
+  const parts: string[] = [];
+  for (const [size, label] of chunks) {
+    const count = Math.floor(pending / size);
+    if (count) parts.push(`${wordsBelowThousand(count)} ${label}`);
+    pending %= size;
+  }
+  if (pending) parts.push(wordsBelowThousand(pending));
+  const rupeeWords = parts.filter(Boolean).join(" ") || "Zero";
+  const paiseWords = paise ? ` and ${wordsBelowHundred(paise)} Paise` : "";
+  return `Indian Rupee ${rupeeWords}${paiseWords} Only`;
+};
+
+const buildTaxInvoiceNode = (data: ManualInvoiceInput) => {
+  const gstRate = Number.parseFloat(String(data.gstRate ?? 18)) || 18;
+  const half = gstRate / 2;
+  const igst = Number.parseFloat(String(data.igst ?? 0)) || 0;
+  const intra = igst <= 0;
+  const partyGst = data.supplyCategory === "B2C"
+    ? "B2C – Unregistered"
+    : formatGstinLine(data.billedToGstNumber) || "-";
+  const rows = data.items.map((item, index) => {
+    const qty = Number.parseFloat(String(item.quantity ?? 1)) || 1;
+    const rate = Number.parseFloat(String(item.rate ?? item.amount ?? 0)) || 0;
+    const amount = Number.parseFloat(String(item.amount ?? 0)) || qty * rate;
+    const lineCgst = intra ? (amount * half) / 100 : 0;
+    const lineSgst = intra ? (amount * half) / 100 : 0;
+    const lineIgst = intra ? 0 : (amount * gstRate) / 100;
+    const taxCells = intra
+      ? `<td style="padding:6px;border:1px solid #d1d5db;text-align:right">${half}%</td><td style="padding:6px;border:1px solid #d1d5db;text-align:right">${moneyPlain(lineCgst)}</td><td style="padding:6px;border:1px solid #d1d5db;text-align:right">${half}%</td><td style="padding:6px;border:1px solid #d1d5db;text-align:right">${moneyPlain(lineSgst)}</td>`
+      : `<td style="padding:6px;border:1px solid #d1d5db;text-align:right">${gstRate}%</td><td style="padding:6px;border:1px solid #d1d5db;text-align:right">${moneyPlain(lineIgst)}</td>`;
+    return `<tr>
+      <td style="padding:6px;border:1px solid #d1d5db">${index + 1}</td>
+      <td style="padding:6px;border:1px solid #d1d5db">${item.service}</td>
+      <td style="padding:6px;border:1px solid #d1d5db">${item.sacCode || data.sacCode || "998531"}</td>
+      <td style="padding:6px;border:1px solid #d1d5db;text-align:right">${qty.toFixed(2)}</td>
+      <td style="padding:6px;border:1px solid #d1d5db;text-align:right">${moneyPlain(rate || amount)}</td>
+      ${taxCells}
+      <td style="padding:6px;border:1px solid #d1d5db;text-align:right">${moneyPlain(amount)}</td>
+    </tr>`;
+  }).join("");
+  const taxHead = intra
+    ? `<th style="padding:6px;border:1px solid #d1d5db">CGST</th><th style="padding:6px;border:1px solid #d1d5db">Amt</th><th style="padding:6px;border:1px solid #d1d5db">SGST</th><th style="padding:6px;border:1px solid #d1d5db">Amt</th>`
+    : `<th style="padding:6px;border:1px solid #d1d5db">IGST</th><th style="padding:6px;border:1px solid #d1d5db">Amt</th>`;
+  const node = document.createElement("div");
+  node.style.width = "680px";
+  node.style.background = "#fff";
+  node.style.color = "#111";
+  node.style.fontFamily = "Arial, sans-serif";
+  node.innerHTML = `
+    <div style="padding:18px 20px 8px;display:flex;justify-content:space-between;gap:16px">
+      <div style="max-width:340px">
+        <img src="${COMPANY_LOGO_URL}" alt="${COMPANY.brandName}" style="height:54px;object-fit:contain" />
+        <div style="font-size:16px;font-weight:800;margin-top:8px">${data.billedByName || COMPANY.legalName}</div>
+        <div style="font-size:11px;line-height:1.45;white-space:pre-line">${data.billedByAddress || INVOICE_DEFAULTS.billedByAddress}</div>
+        <div style="font-size:11px;margin-top:4px">${formatGstinLine(data.billedByGstNumber) || formatCompanyGstin()}</div>
+        <div style="font-size:11px">${formatCompanyPhone()} · ${COMPANY.website}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;letter-spacing:.04em">TAX INVOICE</div>
+        <div style="font-size:12px;margin-top:8px"># : ${data.invoiceNo || ""}</div>
+        <div style="font-size:12px">Invoice Date : ${formatDate(data.invoiceDate)}</div>
+        <div style="font-size:12px">Terms : ${data.paymentTerms || "Due end of next month"}</div>
+        <div style="font-size:12px">Due Date : ${formatDate(data.dueDate)}</div>
+        <div style="font-size:12px">Place Of Supply : ${data.placeOfSupply || "Maharashtra"}</div>
+        ${data.documentLabel && data.documentLabel !== "Invoice" ? `<div style="margin-top:6px;font-size:12px;font-weight:800;color:#991b1b">${data.documentLabel}</div>` : ""}
+      </div>
+    </div>
+    <div style="padding:8px 20px 12px">
+      <div style="font-size:11px;color:#6b7280">Bill To</div>
+      <div style="font-size:14px;font-weight:800">${data.billedToName}</div>
+      <div style="font-size:12px">${partyGst}</div>
+      <div style="font-size:12px;white-space:pre-line">${data.billedToAddress || ""}</div>
+      <div style="font-size:12px">${data.customerState || ""}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#f3f4f6">
+          <th style="padding:6px;border:1px solid #d1d5db">#</th>
+          <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Description</th>
+          <th style="padding:6px;border:1px solid #d1d5db">HSN/SAC</th>
+          <th style="padding:6px;border:1px solid #d1d5db">Qty</th>
+          <th style="padding:6px;border:1px solid #d1d5db">Rate</th>
+          ${taxHead}
+          <th style="padding:6px;border:1px solid #d1d5db">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;padding:12px 20px">
+      <table style="width:280px;font-size:12px;border-collapse:collapse">
+        <tr><td style="padding:4px 0">Sub Total</td><td style="text-align:right">${moneyPlain(data.subtotal)}</td></tr>
+        ${intra ? `<tr><td style="padding:4px 0">CGST (${half}%)</td><td style="text-align:right">${moneyPlain(data.cgst)}</td></tr><tr><td style="padding:4px 0">SGST (${half}%)</td><td style="text-align:right">${moneyPlain(data.sgst)}</td></tr>` : `<tr><td style="padding:4px 0">IGST (${gstRate}%)</td><td style="text-align:right">${moneyPlain(data.igst)}</td></tr>`}
+        <tr><td style="padding:6px 0;font-weight:800;border-top:1px solid #111">Total</td><td style="padding:6px 0;text-align:right;font-weight:800;border-top:1px solid #111">₹${moneyPlain(data.grandTotal)}</td></tr>
+        <tr><td style="padding:4px 0">Payment Made</td><td style="text-align:right">(-) ${moneyPlain(data.paymentReceived)}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:800">Balance Due</td><td style="text-align:right;font-weight:800">₹${moneyPlain(data.balanceDue)}</td></tr>
+      </table>
+    </div>
+    <div style="padding:0 20px 8px;font-size:12px"><strong>Total In Words</strong><div>${rupeesInWords(data.grandTotal)}</div></div>
+    <div style="padding:8px 20px;font-size:12px;line-height:1.5">
+      <div style="font-weight:800">Bank details</div>
+      <div>${BANK_DETAILS.accountName}</div>
+      <div>${BANK_DETAILS.bankName}, ${BANK_DETAILS.branch}</div>
+      <div>Account ${BANK_DETAILS.accountNo}</div>
+      <div>IFSC ${data.bankIfsc || BANK_DETAILS.ifsc}</div>
+    </div>
+    <div style="padding:0 20px 16px;font-size:12px">Thanks for your business.</div>
+    ${buildSignatureBlockHtml()}
+  `;
+  return node;
+};
+
+const printInvoiceNode = async (node: HTMLElement, filenameBase: string) => {
   const wrapper = document.createElement("div");
   wrapper.style.cssText = [
     "position:fixed",
@@ -314,6 +471,10 @@ const exportInvoicePdf = async (payload: RenderInvoicePayload, filenameBase: str
   }
 };
 
+const exportInvoicePdf = async (payload: RenderInvoicePayload, filenameBase: string) => {
+  await printInvoiceNode(buildInvoiceNode(payload), filenameBase);
+};
+
 export const downloadInvoicePdf = async (job: JobCard) => {
   const numericAmount = Number.parseFloat(String(job.price ?? 0).replace(/[^\d.-]/g, "")) || 0;
   const payload: RenderInvoicePayload = {
@@ -347,6 +508,10 @@ export const downloadInvoicePdf = async (job: JobCard) => {
 };
 
 export const downloadManualInvoicePdf = async (data: ManualInvoiceInput) => {
+  if (data.supplyCategory) {
+    await printInvoiceNode(buildTaxInvoiceNode(data), data.invoiceNo || "invoice");
+    return;
+  }
   const items = data.items
     .filter((item) => item.service.trim())
     .map((item) => {
