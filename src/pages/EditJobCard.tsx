@@ -596,7 +596,7 @@ const EditJobCard: React.FC = () => {
       price: totals.finalAmount.toFixed(2),
       discount_amount: totals.totalDiscount,
     }));
-    setIsPriceManuallyEdited(false);
+    setIsPriceManuallyEdited(true);
   };
 
   const handleServiceBaseAmountChange = (service: string, baseAmount: number) => {
