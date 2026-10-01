@@ -1,4 +1,4 @@
-import { waitForImagesInElement } from './pdfImagePreload';
+import { preparePdfImages } from './pdfImagePreload';
 
 export interface DownloadQuotationPdfOptions {
   element: HTMLElement;
@@ -118,7 +118,7 @@ export async function downloadQuotationPdf({
   document.body.appendChild(wrapper);
 
   try {
-    await waitForImagesInElement(clone);
+    await preparePdfImages(clone);
 
     const options = {
       margin: [0, 0, 0, 0] as [number, number, number, number],

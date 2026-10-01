@@ -2,7 +2,7 @@ import html2pdf from "html2pdf.js";
 import type { JobCard } from "../types";
 import { COMPANY_LOGO_URL, COMPANY_SIGNATURE_STAMP_URL } from "../constants/companyAssets";
 import { BANK_DETAILS, COMPANY, INVOICE_DEFAULTS, formatCompanyGstin, formatCompanyPhone } from "../constants/quotation";
-import { waitForImagesInElement } from "./pdfImagePreload";
+import { preparePdfImages } from "./pdfImagePreload";
 
 const formatDate = (value?: string) => {
   if (!value) return "-";
@@ -109,7 +109,9 @@ const buildSignatureBlockHtml = () => `
       <img
         src="${COMPANY_SIGNATURE_STAMP_URL}"
         alt="Authorised Signatory"
-        style="height:76px;max-width:210px;width:auto;object-fit:contain;display:block;margin:0 auto"
+        width="200"
+        height="76"
+        style="height:76px;max-width:210px;width:200px;object-fit:contain;display:block;margin:0 auto"
       />
       <div style="font-size:11px;font-weight:800;color:#1e5a9e;margin-top:8px">${COMPANY.legalName}</div>
       <div style="font-size:9px;color:#6b7280;margin-top:2px">${COMPANY.brandName}</div>
@@ -217,7 +219,7 @@ const buildInvoiceNode = (payload: RenderInvoicePayload) => {
       <table class="inv-header inv-header-table" style="background:#138443;color:#fff;width:100%">
         <tr>
           <td style="padding:14px 16px;width:55%">
-            <img class="inv-logo" src="${logoPath}" style="height:48px;max-width:200px;object-fit:contain;background:#fff;border-radius:6px;padding:4px;display:block" />
+            <img class="inv-logo" src="${logoPath}" alt="${COMPANY.brandName}" width="200" height="48" style="height:48px;width:200px;max-width:200px;object-fit:contain;background:#fff;border-radius:6px;padding:4px;display:block" />
           </td>
           <td style="padding:14px 16px;width:45%;text-align:right;color:#fff">
             <div style="font-size:26px;font-weight:900;letter-spacing:.04em;line-height:1.1;color:#fff">INVOICE</div>
@@ -366,7 +368,7 @@ const buildTaxInvoiceNode = (data: ManualInvoiceInput) => {
   node.innerHTML = `
     <div style="padding:18px 20px 8px;display:flex;justify-content:space-between;gap:16px">
       <div style="max-width:340px">
-        <img src="${COMPANY_LOGO_URL}" alt="${COMPANY.brandName}" style="height:54px;object-fit:contain" />
+        <img src="${COMPANY_LOGO_URL}" alt="${COMPANY.brandName}" width="220" height="54" style="height:54px;width:220px;max-width:220px;object-fit:contain" />
         <div style="font-size:16px;font-weight:800;margin-top:8px">${data.billedByName || COMPANY.legalName}</div>
         <div style="font-size:11px;line-height:1.45;white-space:pre-line">${data.billedByAddress || INVOICE_DEFAULTS.billedByAddress}</div>
         <div style="font-size:11px;margin-top:4px">${formatGstinLine(data.billedByGstNumber) || formatCompanyGstin()}</div>
@@ -429,22 +431,20 @@ const buildTaxInvoiceNode = (data: ManualInvoiceInput) => {
 const printInvoiceNode = async (node: HTMLElement, filenameBase: string) => {
   const wrapper = document.createElement("div");
   wrapper.style.cssText = [
-    "position:fixed",
-    "left:0",
+    "position:absolute",
+    "left:-9999px",
     "top:0",
     "width:680px",
     "padding:0",
     "margin:0",
     "background:#ffffff",
-    "z-index:-1",
-    "opacity:0",
-    "pointer-events:none",
+    "overflow:visible",
   ].join(";");
   wrapper.appendChild(node);
   document.body.appendChild(wrapper);
 
   try {
-    await waitForImagesInElement(node);
+    await preparePdfImages(node);
 
     await html2pdf()
       .set({
