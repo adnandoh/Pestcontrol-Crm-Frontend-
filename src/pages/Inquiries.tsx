@@ -97,6 +97,8 @@ const Inquiries: React.FC = () => {
       const params: Record<string, string | number | undefined> = {
         page,
         page_size: pagination.pageSize,
+        // updated_at so silent mobile re-captures / detail upgrades surface on top
+        ordering: '-updated_at',
         status: filters.status || undefined,
         search: filters.search || undefined,
         from: dateParams.from,
@@ -514,17 +516,7 @@ const Inquiries: React.FC = () => {
                     </p>
                   </td>
                   <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
-                    <RemarkListCell
-                      sourceType="website"
-                      row={inquiry}
-                      onUpdate={(id, patch) => {
-                        patchLeadRow(id, patch);
-                        if (patch.latest_remark) {
-                          void loadInquiries(pagination.current);
-                        }
-                      }}
-                      compact
-                    />
+                    <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} compact />
                   </td>
                   <td className={crmTdCompactClass}>
                     <Badge
