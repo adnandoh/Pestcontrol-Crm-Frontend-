@@ -353,6 +353,8 @@ export interface Inquiry {
   remark?: string | null;
   latest_remark?: LatestRemarkSummary | null;
   remark_count?: number;
+  /** True when the lead has no comment, or the comment is older than a later lead change. */
+  needs_comment_update?: boolean;
   service_rate_info?: ServiceRateInfo;
   reminder_date?: string | null;
   reminder_time?: string | null;
@@ -650,12 +652,19 @@ export interface InquiryStatusCounts {
   Closed: number;
 }
 
+export interface InquiryReadCounts {
+  all: number;
+  unread: number;
+  read: number;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
   results: T[];
   status_counts?: InquiryStatusCounts;
+  read_counts?: InquiryReadCounts;
   summary?: StaffSummary;
 }
 
@@ -1029,6 +1038,11 @@ export interface DashboardStatisticsResponse {
   today_booking_count?: number;
   today_service_call_count?: number;
   today_complaint_call_count?: number;
+  tomorrow_booking_count?: number;
+  tomorrow_city_stats?: Array<{
+    city: string;
+    count: number;
+  }>;
   total_complaint_calls?: number;
   property_type_stats?: Array<{
     property_type: string;

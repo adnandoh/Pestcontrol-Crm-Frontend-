@@ -18,7 +18,7 @@ import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThCompactClass, crmTdCompactClass } from '../components/crm/CrmDataTable';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
-import type { Inquiry, InquiryStatusCounts, PaginatedResponse } from '../types';
+import type { Inquiry, InquiryReadCounts, InquiryStatusCounts, PaginatedResponse } from '../types';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import ReminderModal from '../components/crm/ReminderModal';
 import SendECardModal from '../components/crm/SendECardModal';
@@ -55,6 +55,7 @@ const Inquiries: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [statusCounts, setStatusCounts] = useState<InquiryStatusCounts | null>(null);
+  const [readCounts, setReadCounts] = useState<InquiryReadCounts | null>(null);
   const { refreshCounts, counts } = useDashboardCounts();
   const [pagination, setPagination] = useState({
     count: 0,
@@ -67,6 +68,8 @@ const Inquiries: React.FC = () => {
   const [filters, setFilters] = useState({
     status: '',
     search: '',
+    /** '' = all, unread, read */
+    read: '' as '' | 'unread' | 'read',
   });
   const [dateDraft, setDateDraft] = useState<InquiryDateFilterState>(() =>
     loadStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY),
@@ -94,16 +97,17 @@ const Inquiries: React.FC = () => {
       setLoading(true);
       const dateParams = dateFilterToApiParams(appliedDateFilter);
 
-      const params: Record<string, string | number | undefined> = {
+      const params: Record<string, string | number | boolean | undefined> = {
         page,
         page_size: pagination.pageSize,
-        // updated_at so silent mobile re-captures / detail upgrades surface on top
-        ordering: '-updated_at',
+        // Server sorts pending/outdated comments first, then current comments.
         status: filters.status || undefined,
         search: filters.search || undefined,
         from: dateParams.from,
         to: dateParams.to,
       };
+      if (filters.read === 'unread') params.is_read = false;
+      if (filters.read === 'read') params.is_read = true;
       if (opts?.focus) {
         params.focus = opts.focus;
       }
@@ -112,6 +116,7 @@ const Inquiries: React.FC = () => {
 
       setInquiries(response.results);
       setStatusCounts(response.status_counts ?? null);
+      setReadCounts(response.read_counts ?? null);
       const total = response.status_counts?.all ?? response.count;
       setPagination(prev => ({
         ...prev,
@@ -153,7 +158,7 @@ const Inquiries: React.FC = () => {
     if (focusId) return;
     setFocusPreview(null);
     loadInquiries(1);
-  }, [filters.status, filters.search, appliedDateFilter, focusId, loadInquiries]);
+  }, [filters.status, filters.search, filters.read, appliedDateFilter, focusId, loadInquiries]);
 
   const handleApplyDateFilter = () => {
     setAppliedDateFilter(dateDraft);
@@ -163,7 +168,7 @@ const Inquiries: React.FC = () => {
   const handleClearFilters = () => {
     setSearchInput('');
     setActiveTab('All');
-    setFilters({ status: '', search: '' });
+    setFilters({ status: '', search: '', read: '' });
     setDateDraft({ ...EMPTY_DATE_FILTER });
     setAppliedDateFilter({ ...EMPTY_DATE_FILTER });
     saveStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY, EMPTY_DATE_FILTER);
@@ -200,9 +205,22 @@ const Inquiries: React.FC = () => {
   const handleMarkAsRead = async (id: number) => {
     try {
       await enhancedApiService.markInquiryAsRead(id);
-      setInquiries((prev) =>
-        prev.map((inq) => (inq.id === id ? { ...inq, is_read: true } : inq)),
-      );
+      if (filters.read === 'unread') {
+        await loadInquiries(pagination.current);
+      } else {
+        setInquiries((prev) =>
+          prev.map((inq) => (inq.id === id ? { ...inq, is_read: true } : inq)),
+        );
+        setReadCounts((prev) =>
+          prev
+            ? {
+                ...prev,
+                unread: Math.max(0, prev.unread - 1),
+                read: prev.read + 1,
+              }
+            : prev,
+        );
+      }
       refreshCounts();
     } catch (err: any) {
       showAlert('Failed to mark inquiry as read: ' + err.message);
@@ -215,7 +233,16 @@ const Inquiries: React.FC = () => {
     try {
       setMarkingAllRead(true);
       await enhancedApiService.markInquiriesAsRead();
-      setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
+      if (filters.read === 'unread') {
+        await loadInquiries(1);
+      } else {
+        setInquiries((prev) => prev.map((inq) => ({ ...inq, is_read: true })));
+        setReadCounts((prev) =>
+          prev
+            ? { all: prev.all, unread: 0, read: prev.all }
+            : prev,
+        );
+      }
       refreshCounts();
     } catch (err: any) {
       showAlert('Failed to mark all as read: ' + (err.message || 'Unknown error'));
@@ -304,24 +331,54 @@ const Inquiries: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-200">
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => handleTabChange(tab)}
-            className={cn(
-              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2",
-              activeTab === tab 
-                ? "border-blue-600 text-blue-600 bg-blue-50/50" 
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            )}
-          >
-            {tab}
-            {getTabCount(tab) !== null && (
-              <span className="ml-1 text-[10px] opacity-70">({getTabCount(tab)})</span>
-            )}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200">
+        <div className="flex items-center gap-1">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              className={cn(
+                "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2",
+                activeTab === tab 
+                  ? "border-blue-600 text-blue-600 bg-blue-50/50" 
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              )}
+            >
+              {tab}
+              {getTabCount(tab) !== null && (
+                <span className="ml-1 text-[10px] opacity-70">({getTabCount(tab)})</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 pb-1">
+          {([
+            { key: '', label: 'All messages', count: readCounts?.all },
+            { key: 'unread', label: 'Unread', count: readCounts?.unread },
+            { key: 'read', label: 'Read', count: readCounts?.read },
+          ] as const).map((item) => (
+            <button
+              key={item.key || 'all-messages'}
+              type="button"
+              onClick={() => setFilters((prev) => ({ ...prev, read: item.key }))}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors',
+                filters.read === item.key
+                  ? item.key === 'unread'
+                    ? 'border-red-600 bg-red-600 text-white'
+                    : item.key === 'read'
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-800 bg-slate-800 text-white'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
+              )}
+            >
+              {item.label}
+              {typeof item.count === 'number' && (
+                <span className="ml-1 opacity-80">({item.count})</span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 2. Filter Bar - High Density */}
@@ -424,13 +481,17 @@ const Inquiries: React.FC = () => {
                 <tr>
                    <td colSpan={10} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
                 </tr>
-              ) : inquiries.map((inquiry) => (
+              ) : inquiries.map((inquiry) => {
+                const needsComment = Boolean(inquiry.needs_comment_update);
+                return (
                 <tr
                   key={inquiry.id}
                   id={inquiryRowAnchorId(inquiry.id)}
                   className={cn(
                     'transition-colors hover:bg-slate-50/80',
-                    !inquiry.is_read && 'bg-blue-50/50 border-l-2 border-l-blue-500',
+                    needsComment
+                      ? 'bg-red-50/40 border-l-2 border-l-red-500'
+                      : !inquiry.is_read && 'bg-blue-50/50 border-l-2 border-l-blue-500',
                   )}
                 >
                   <td className={cn(crmTdCompactClass, 'font-semibold text-slate-400 tabular-nums')}>
@@ -438,11 +499,20 @@ const Inquiries: React.FC = () => {
                   </td>
                   <td className={crmTdCompactClass}>
                     <div className="flex items-start gap-1.5 min-w-0">
-                      {!inquiry.is_read && (
+                      {needsComment ? (
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                      ) : !inquiry.is_read ? (
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
-                      )}
+                      ) : null}
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate text-xs">{inquiry.name}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                          <p className="font-semibold text-slate-900 truncate text-xs">{inquiry.name}</p>
+                          {needsComment && (
+                            <span className="inline-flex shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-red-700 ring-1 ring-inset ring-red-200">
+                              Needs comment
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-0.5">
                           <CopyablePhone
                             phone={inquiry.mobile}
@@ -516,7 +586,19 @@ const Inquiries: React.FC = () => {
                     </p>
                   </td>
                   <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
-                    <RemarkListCell sourceType="website" row={inquiry} onUpdate={patchLeadRow} compact />
+                    <div className={cn(needsComment && 'rounded-md ring-1 ring-red-200 bg-red-50/70 p-0.5')}>
+                      <RemarkListCell
+                        sourceType="website"
+                        row={inquiry}
+                        onUpdate={(id, patch) => {
+                          patchLeadRow(id, patch);
+                          if (patch.latest_remark) {
+                            void loadInquiries(pagination.current);
+                          }
+                        }}
+                        compact
+                      />
+                    </div>
                   </td>
                   <td className={crmTdCompactClass}>
                     <Badge
@@ -538,7 +620,7 @@ const Inquiries: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       <button
                         type="button"
-                        title="Send pestecardaadsd E-Card"
+                        title="Send E-Card"
                         onClick={() => {
                           setECardTarget({
                             name: inquiry.name,
@@ -592,7 +674,8 @@ const Inquiries: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -23,7 +23,16 @@ import {
   lineupRoleLabel,
   splitAssignedTechnicians,
   technicianAreaChips,
+  technicianCoversCity,
 } from '../../utils/assignTechnicianLineup';
+
+const ASSIGN_CITY_FILTERS = [
+  'Mumbai',
+  'Navi Mumbai',
+  'Thane',
+  'Pune',
+  'Lonavala',
+] as const;
 
 /** Normalize booking / tech service labels for overlap checks. */
 function serviceMatchKey(raw: string): string {
@@ -77,12 +86,18 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const [assigning, setAssigning] = useState<number | null>(null);
   const [assignError, setAssignError] = useState<AssignTechnicianError | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
   const [liveJob, setLiveJob] = useState<JobCard | null>(jobCard);
 
   useEffect(() => {
     if (isOpen) {
       setLiveJob(jobCard);
       setSearchQuery('');
+      const bookingCity = bookingCityLabel(jobCard);
+      const matchedCity = ASSIGN_CITY_FILTERS.find(
+        (city) => city.toLowerCase() === bookingCity.toLowerCase(),
+      );
+      setCityFilter(matchedCity || '');
       fetchTechnicians();
     }
   }, [isOpen, jobCard?.id, jobCard?.master_city]);
@@ -173,7 +188,8 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
   const bookingWhen = formatLineupWhen(booking?.schedule_datetime, booking?.time_slot);
 
   const filteredTechnicians = technicians.filter((tech) =>
-    technicianMatchesStaffSearch(tech, searchQuery),
+    technicianMatchesStaffSearch(tech, searchQuery)
+    && technicianCoversCity(tech, cityFilter),
   );
 
   // Qualified (matching base services) first, then others — still all assignable.
@@ -319,7 +335,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 Select Staff Member ({technicians.length} active)
               </p>
             </div>
-            <div className="relative mb-4">
+            <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
@@ -328,6 +344,41 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                 placeholder="Search name or mobile..."
                 className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white font-semibold"
               />
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                City filter
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCityFilter('')}
+                  className={cn(
+                    'rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors',
+                    !cityFilter
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300',
+                  )}
+                >
+                  All
+                </button>
+                {ASSIGN_CITY_FILTERS.map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => setCityFilter(city)}
+                    className={cn(
+                      'rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors',
+                      cityFilter === city
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300',
+                    )}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
             </div>
             
             {loading ? (
@@ -344,9 +395,17 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
               </div>
             ) : filteredTechnicians.length === 0 ? (
               <div className="py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-                <p className="text-xs font-bold text-gray-400 italic">No match for &quot;{searchQuery}&quot;</p>
+                <p className="text-xs font-bold text-gray-400 italic">
+                  {searchQuery
+                    ? `No match for "${searchQuery}"`
+                    : cityFilter
+                      ? `No active technicians for ${cityFilter}`
+                      : 'No matching technicians'}
+                </p>
                 <p className="text-[10px] text-amber-700 mt-2 font-semibold">
-                  If they exist but are Inactive, open Technicians and mark them Active.
+                  {cityFilter
+                    ? 'Try All cities, or add this city on the technician profile.'
+                    : 'If they exist but are Inactive, open Technicians and mark them Active.'}
                 </p>
               </div>
             ) : (
@@ -416,7 +475,7 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                             </div>
 
                             <div className="min-w-0">
-                              <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-snug mb-1 flex flex-wrap items-center gap-1.5">
+                              <h4 className="font-black text-gray-900 text-sm group-hover:text-blue-600 transition-colors uppercase leading-snug mb-0.5 flex flex-wrap items-center gap-1.5">
                                 <span>{tech.name}</span>
                                 <span className={cn(
                                   'inline-flex rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide ring-1 ring-inset',
@@ -435,6 +494,13 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                                   </span>
                                 )}
                               </h4>
+                              <p className="mb-1 text-[11px] font-bold tabular-nums text-gray-700 flex items-center gap-1">
+                                <Phone className="h-3 w-3 shrink-0 text-gray-400" />
+                                <CopyablePhone
+                                  phone={tech.mobile || tech.phone}
+                                  className="text-[11px] font-bold text-gray-700"
+                                />
+                              </p>
                               {blocked && (
                                 <p className="mb-1 text-[10px] font-semibold leading-snug text-amber-800">
                                   {tech.service_ineligibility_reason
@@ -461,14 +527,6 @@ const AssignTechnicianModal: React.FC<AssignTechnicianModalProps> = ({ isOpen, o
                                 )}>
                                   <Briefcase className="h-3 w-3" />
                                   {workload} Active Jobs
-                                </span>
-
-                                <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
-                                  <Phone className="h-3 w-3 shrink-0" />
-                                  <CopyablePhone
-                                    phone={tech.mobile || tech.phone}
-                                    className="text-[10px] font-bold text-gray-500"
-                                  />
                                 </span>
 
                                 <span className="text-[10px] font-bold text-violet-700 flex items-start gap-1">

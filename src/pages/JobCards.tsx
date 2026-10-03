@@ -93,17 +93,21 @@ const JobCards: React.FC = () => {
     totalPages: 0
   });
 
-  // Filter state
+  // Filter state — city / date can arrive from the dashboard booking filter links.
+  const cityFromUrl = (searchParams.get('city') || '').trim();
+  const dateFromUrl = (searchParams.get('date') || '').trim();
+  const initialDatePreset =
+    dateFromUrl === 'today' || dateFromUrl === 'tomorrow' ? dateFromUrl : '';
   const [filters, setFilters] = useState({
     search: '',
     status: '',
     service_category: '',
     assigned_to: '',
-    date_preset: '', // today, tomorrow, custom
+    date_preset: initialDatePreset, // today, tomorrow, custom
     from: '',
     to: '',
     commercial_type: '',
-    city: '',
+    city: cityFromUrl,
   });
   const [cityOptions, setCityOptions] = useState<string[]>([
     'Mumbai', 'Pune', 'Lonavala', 'Thane', 'Navi Mumbai', 'Kalyan',
@@ -121,6 +125,20 @@ const JobCards: React.FC = () => {
     if (tab && ['pending', 'on_process', 'done', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tab)) {
       setActiveTab(tab);
     }
+    const city = (searchParams.get('city') || '').trim();
+    const date = (searchParams.get('date') || '').trim();
+    setFilters((prev) => {
+      const nextDate =
+        date === 'today' || date === 'tomorrow' ? date : prev.date_preset;
+      if (prev.city === city && prev.date_preset === nextDate) return prev;
+      return {
+        ...prev,
+        city,
+        date_preset: nextDate,
+        from: '',
+        to: '',
+      };
+    });
   }, [searchParams]);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);

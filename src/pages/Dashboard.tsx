@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   RefreshCw,
   Clock,
@@ -11,6 +12,7 @@ import {
   AlertCircle,
   RotateCcw,
   Wrench,
+  CalendarDays,
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -24,6 +26,31 @@ import { RevenueSharingPanel } from '../components/dashboard/RevenueSharingPanel
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { DashboardStatisticsResponse } from '../types';
+
+const BOOKING_FILTER_CITIES = [
+  'Mumbai',
+  'Navi Mumbai',
+  'Thane',
+  'Pune',
+  'Lonavala',
+] as const;
+
+function cityCountMap(rows?: Array<{ city: string; count: number }>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of rows || []) {
+    const key = String(row.city || '').trim().toLowerCase();
+    if (!key) continue;
+    out[key] = (out[key] || 0) + (row.count || 0);
+  }
+  return out;
+}
+
+function countForCity(
+  map: Record<string, number>,
+  city: string,
+): number {
+  return map[city.trim().toLowerCase()] || 0;
+}
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
@@ -63,6 +90,19 @@ const Dashboard: React.FC = () => {
     setDateFrom(today);
     setDateTo(today);
   };
+
+  const todayCityMap = useMemo(
+    () => cityCountMap(stats?.today_city_stats),
+    [stats?.today_city_stats],
+  );
+  const tomorrowCityMap = useMemo(
+    () => cityCountMap(stats?.tomorrow_city_stats),
+    [stats?.tomorrow_city_stats],
+  );
+  const rangeCityMap = useMemo(
+    () => cityCountMap(stats?.range_booking_city_stats || stats?.city_stats),
+    [stats?.range_booking_city_stats, stats?.city_stats],
+  );
 
   if (isLoading && !stats) {
     return <PageLoading text="Loading dashboard..." />;
@@ -218,7 +258,102 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* ⚡ 3. TODAY FOCUS - COMPACT ROW */}
+      {/* ⚡ 3. BOOKING FILTERS */}
+      <section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm animate-fade-up delay-200 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-indigo-600" />
+            <div>
+              <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-900">
+                Booking filters
+              </h2>
+              <p className="text-[10px] font-medium text-gray-500">
+                Open Bookings with the selected status, day, or city
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {[
+            {
+              label: 'Pending',
+              value: stats?.status_stats?.pending || 0,
+              to: '/jobcards?tab=pending',
+              tone: 'border-orange-200 bg-orange-50 text-orange-800',
+            },
+            {
+              label: 'On Process',
+              value: stats?.status_stats?.on_process || 0,
+              to: '/jobcards?tab=on_process',
+              tone: 'border-blue-200 bg-blue-50 text-blue-800',
+            },
+            {
+              label: 'Done',
+              value: stats?.status_stats?.done || 0,
+              to: '/jobcards?tab=done',
+              tone: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+            },
+            {
+              label: 'Today',
+              value: stats?.today_booking_count ?? 0,
+              to: '/jobcards?tab=pending&date=today',
+              tone: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+            },
+            {
+              label: 'Tomorrow',
+              value: stats?.tomorrow_booking_count ?? 0,
+              to: '/jobcards?tab=pending&date=tomorrow',
+              tone: 'border-violet-200 bg-violet-50 text-violet-800',
+            },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              to={item.to}
+              className={cn(
+                'rounded-xl border px-3 py-3 text-center transition-all hover:shadow-md hover:-translate-y-0.5',
+                item.tone,
+              )}
+            >
+              <p className="text-2xl font-black tabular-nums leading-none">{item.value}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-wide">{item.label}</p>
+            </Link>
+          ))}
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+              City-wise bookings
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {BOOKING_FILTER_CITIES.map((city) => {
+              const todayCount = countForCity(todayCityMap, city);
+              const tomorrowCount = countForCity(tomorrowCityMap, city);
+              const rangeCount = countForCity(rangeCityMap, city);
+              return (
+                <Link
+                  key={city}
+                  to={`/jobcards?tab=pending&city=${encodeURIComponent(city)}`}
+                  className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 transition-all hover:border-emerald-300 hover:shadow-md"
+                >
+                  <p className="truncate text-[11px] font-black text-emerald-900">{city}</p>
+                  <p className="mt-1 text-xl font-black tabular-nums text-emerald-800 leading-none">
+                    {rangeCount}
+                  </p>
+                  <p className="mt-1.5 text-[10px] font-bold text-emerald-700/80">
+                    Today {todayCount} · Tomorrow {tomorrowCount}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ⚡ 4. TODAY FOCUS - COMPACT ROW */}
       <div className="bg-white p-4 sm:p-2.5 px-5 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4 sm:gap-0 animate-fade-up delay-200">
         <div className="flex items-center gap-2 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-100 w-full sm:w-auto pb-2 sm:pb-0">
            <Clock className="h-4 w-4 text-orange-500" />
@@ -227,11 +362,12 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-1 flex-wrap justify-between sm:justify-start gap-4 sm:gap-8 lg:gap-10 px-2 sm:px-6 w-full sm:w-auto">
            {[
              { label: 'Bookings', value: stats?.today_booking_count ?? 0, color: 'text-indigo-600' },
+             { label: 'Tomorrow', value: stats?.tomorrow_booking_count ?? 0, color: 'text-violet-600' },
              { label: 'Service', value: stats?.today_service_call_count ?? 0, color: 'text-emerald-600' },
              { label: 'Complaints', value: stats?.today_complaint_call_count ?? 0, color: 'text-rose-600' },
-             { label: 'Assigned', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
+             { label: 'On Process', value: stats?.status_stats?.on_process || 0, color: 'text-blue-600' },
              { label: 'Pending', value: stats?.status_stats?.pending || 0, color: 'text-orange-600' },
-             { label: 'Completed', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
+             { label: 'Done', value: stats?.status_stats?.done || 0, color: 'text-emerald-600' },
            ].map((item, i) => (
              <div key={i} className="flex items-center gap-2">
                 <span className={cn("text-xl font-black", item.color)}>{item.value}</span>

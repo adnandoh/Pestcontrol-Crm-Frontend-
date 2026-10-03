@@ -50,6 +50,22 @@ export function bookingCityLabel(job: BookingPlace | null | undefined): string {
   return String(job?.master_city_name || job?.city || job?.client_city || '').trim();
 }
 
+/** True when the technician serves the selected assign-filter city. */
+export function technicianCoversCity(
+  tech: AreaTechnician,
+  cityFilter: string | null | undefined,
+): boolean {
+  const wanted = placeKey(String(cityFilter || ''));
+  if (!wanted) return true;
+
+  for (const chip of technicianAreaChips(tech)) {
+    if (placeKey(chip.label) === wanted || placeKey(chip.label).includes(wanted) || wanted.includes(placeKey(chip.label))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function bookingLocationLabel(job: BookingPlace | null | undefined): string {
   const location = String(job?.master_location_name || '').trim();
   const city = bookingCityLabel(job);

@@ -6,6 +6,7 @@ import {
   lineupRoleLabel,
   splitAssignedTechnicians,
   technicianAreaChips,
+  technicianCoversCity,
   technicianIsAssignedToBooking,
 } from './assignTechnicianLineup';
 
@@ -47,6 +48,15 @@ describe('assign technician lineup areas', () => {
   it('reads the booking city and location separately', () => {
     expect(bookingCityLabel(booking)).toBe('Mumbai');
     expect(bookingLocationLabel(booking)).toBe('Andheri');
+  });
+
+  it('filters technicians by assign city chip', () => {
+    const tech = {
+      service_cities: [{ name: 'Pune' }, { name: 'Lonavala' }],
+    };
+    expect(technicianCoversCity(tech, '')).toBe(true);
+    expect(technicianCoversCity(tech, 'Pune')).toBe(true);
+    expect(technicianCoversCity(tech, 'Mumbai')).toBe(false);
   });
 });
 
