@@ -622,6 +622,9 @@ class EnhancedApiService {
 
   async getTechnicianDailyTypeReport(params?: {
     date?: string;
+    from?: string;
+    to?: string;
+    city?: string;
     technician_type?: string;
   }): Promise<TechnicianDailyTypeReport> {
     return this.retryRequest(() =>

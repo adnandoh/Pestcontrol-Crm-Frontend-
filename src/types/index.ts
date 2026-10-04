@@ -355,6 +355,8 @@ export interface Inquiry {
   remark_count?: number;
   /** True when the lead has no comment, or the comment is older than a later lead change. */
   needs_comment_update?: boolean;
+  /** Backend-derived: required | added */
+  comment_status?: 'required' | 'added';
   service_rate_info?: ServiceRateInfo;
   reminder_date?: string | null;
   reminder_time?: string | null;
@@ -1146,6 +1148,8 @@ export interface TechnicianDailyTypeRow {
   technician_type: string;
   city: string;
   completed_count: number;
+  process_count?: number;
+  performance_status?: 'Performed' | 'Not Performed' | string;
   services: TechnicianDailyServiceCount[];
   services_summary: string;
   earnings: string;
@@ -1153,19 +1157,29 @@ export interface TechnicianDailyTypeRow {
 }
 
 export interface TechnicianDailyTypeReport {
-  date: string;
+  date?: string | null;
+  from?: string;
+  to?: string;
+  city?: string | null;
+  booking_status?: string;
   technician_type: string;
   technician_type_label: string;
   performing_rule: string;
+  performance_rule?: string;
   summary: {
     total_technicians: number;
     performing_count: number;
     non_performing_count: number;
+    performed_count?: number;
+    not_performed_count?: number;
     total_completed_jobs: number;
+    total_process_jobs?: number;
     total_earnings: string;
   };
   performing: TechnicianDailyTypeRow[];
   non_performing: TechnicianDailyTypeRow[];
+  performed?: TechnicianDailyTypeRow[];
+  not_performed?: TechnicianDailyTypeRow[];
   city_earnings: TechnicianDailyCityEarning[];
 }
 

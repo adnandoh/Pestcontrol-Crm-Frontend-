@@ -201,26 +201,11 @@ const Inquiries: React.FC = () => {
     loadInquiries(1);
   };
 
-  // Handle mark as read
+  // Handle mark as read — always reload from API so DB is source of truth.
   const handleMarkAsRead = async (id: number) => {
     try {
       await enhancedApiService.markInquiryAsRead(id);
-      if (filters.read === 'unread') {
-        await loadInquiries(pagination.current);
-      } else {
-        setInquiries((prev) =>
-          prev.map((inq) => (inq.id === id ? { ...inq, is_read: true } : inq)),
-        );
-        setReadCounts((prev) =>
-          prev
-            ? {
-                ...prev,
-                unread: Math.max(0, prev.unread - 1),
-                read: prev.read + 1,
-              }
-            : prev,
-        );
-      }
+      await loadInquiries(pagination.current);
       refreshCounts();
     } catch (err: any) {
       showAlert('Failed to mark inquiry as read: ' + err.message);
@@ -482,7 +467,9 @@ const Inquiries: React.FC = () => {
                    <td colSpan={10} className="py-20 text-center text-gray-400 font-bold uppercase italic text-sm tracking-tight opacity-70">No Lead Records Found</td>
                 </tr>
               ) : inquiries.map((inquiry) => {
-                const needsComment = Boolean(inquiry.needs_comment_update);
+                const needsComment =
+                  inquiry.comment_status === 'required'
+                  || (inquiry.comment_status !== 'added' && Boolean(inquiry.needs_comment_update));
                 return (
                 <tr
                   key={inquiry.id}
@@ -507,9 +494,13 @@ const Inquiries: React.FC = () => {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                           <p className="font-semibold text-slate-900 truncate text-xs">{inquiry.name}</p>
-                          {needsComment && (
+                          {needsComment ? (
                             <span className="inline-flex shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-red-700 ring-1 ring-inset ring-red-200">
-                              Needs comment
+                              Comment Required
+                            </span>
+                          ) : (
+                            <span className="inline-flex shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                              Comment Added
                             </span>
                           )}
                         </div>
@@ -591,7 +582,12 @@ const Inquiries: React.FC = () => {
                         sourceType="website"
                         row={inquiry}
                         onUpdate={(id, patch) => {
-                          patchLeadRow(id, patch);
+                          patchLeadRow(id, {
+                            ...patch,
+                            ...(patch.latest_remark
+                              ? { needs_comment_update: false, comment_status: 'added' as const }
+                              : {}),
+                          });
                           if (patch.latest_remark) {
                             void loadInquiries(pagination.current);
                           }

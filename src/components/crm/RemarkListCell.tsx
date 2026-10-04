@@ -13,6 +13,13 @@ interface RemarkListCellProps {
 
 const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpdate, compact }) => {
   const handleRemarkAdded = (entry: InquiryRemarkEntry, newCount: number) => {
+    const websiteExtras =
+      sourceType === 'website'
+        ? {
+            needs_comment_update: false as const,
+            comment_status: 'added' as const,
+          }
+        : {};
     onUpdate(row.id, {
       remark_count: newCount,
       remark: entry.remark,
@@ -23,6 +30,7 @@ const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpda
         created_by_name: entry.created_by_name,
         created_at: entry.created_at,
       },
+      ...websiteExtras,
     });
   };
 
