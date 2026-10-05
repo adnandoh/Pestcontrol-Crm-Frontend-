@@ -5,10 +5,8 @@ import {
   Calendar,
   CheckCircle2,
   ChevronRight,
-  IndianRupee,
   MapPin,
   UserX,
-  Users,
 } from 'lucide-react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -37,6 +35,8 @@ const CITY_FILTERS = [
   'Lonavala',
 ] as const;
 
+type PerformanceTab = 'performed' | 'not_performed';
+
 function todayInKolkata(): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -63,6 +63,7 @@ const TechnicianReports: React.FC = () => {
   const [dateTo, setDateTo] = useState(today);
   const [city, setCity] = useState('');
   const [typeTab, setTypeTab] = useState<(typeof TYPE_TABS)[number]['api']>('priority');
+  const [performanceTab, setPerformanceTab] = useState<PerformanceTab>('performed');
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<TechnicianDailyTypeReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,9 +100,10 @@ const TechnicianReports: React.FC = () => {
 
   const performed = report?.performed || report?.performing || [];
   const notPerformed = report?.not_performed || report?.non_performing || [];
-  const performedCount = report?.summary.performed_count ?? report?.summary.performing_count ?? 0;
+  const performedCount = report?.summary.performed_count ?? report?.summary.performing_count ?? performed.length;
   const notPerformedCount =
-    report?.summary.not_performed_count ?? report?.summary.non_performing_count ?? 0;
+    report?.summary.not_performed_count ?? report?.summary.non_performing_count ?? notPerformed.length;
+  const activeRows = performanceTab === 'performed' ? performed : notPerformed;
   const rangeLabel =
     report?.from && report?.to
       ? report.from === report.to
@@ -118,7 +120,7 @@ const TechnicianReports: React.FC = () => {
             Technician Reports
           </h1>
           <p className="text-sm font-bold text-gray-500 mt-1">
-            Performed / Not Performed from On Process bookings in the selected India date range and city.
+            Tap Performed or Not Performed to see On Process bookings for the selected India date range and city.
           </p>
         </div>
 
@@ -218,31 +220,54 @@ const TechnicianReports: React.FC = () => {
           {report.technician_type_label} · {rangeLabel}
           {city ? ` · ${city}` : ' · All cities'}
           {' · '}
-          On Process only · {report.performance_rule || report.performing_rule}
+          On Process only
         </p>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          icon={<Users className="h-5 w-5 text-blue-600" />}
-          label="Active technicians"
-          value={loading ? '…' : String(report?.summary.total_technicians ?? 0)}
-        />
-        <StatCard
-          icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
-          label="Performed"
-          value={loading ? '…' : String(performedCount)}
-        />
-        <StatCard
-          icon={<UserX className="h-5 w-5 text-amber-600" />}
-          label="Not Performed"
-          value={loading ? '…' : String(notPerformedCount)}
-        />
-        <StatCard
-          icon={<IndianRupee className="h-5 w-5 text-violet-600" />}
-          label="Period share"
-          value={loading ? '…' : money(report?.summary.total_earnings)}
-        />
+      {/* Performed / Not Performed tap buttons — one list at a time */}
+      <div className="grid grid-cols-2 gap-3 max-w-xl">
+        <button
+          type="button"
+          onClick={() => setPerformanceTab('performed')}
+          className={cn(
+            'flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3.5 text-sm font-black uppercase tracking-wide transition-all',
+            performanceTab === 'performed'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-md'
+              : 'border-emerald-200 bg-white text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50',
+          )}
+        >
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <span>Performed</span>
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-black tabular-nums',
+              performanceTab === 'performed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800',
+            )}
+          >
+            {loading ? '…' : performedCount}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setPerformanceTab('not_performed')}
+          className={cn(
+            'flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3.5 text-sm font-black uppercase tracking-wide transition-all',
+            performanceTab === 'not_performed'
+              ? 'border-amber-600 bg-amber-600 text-white shadow-md'
+              : 'border-amber-200 bg-white text-amber-700 hover:border-amber-400 hover:bg-amber-50',
+          )}
+        >
+          <UserX className="h-5 w-5 shrink-0" />
+          <span>Not Performed</span>
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-black tabular-nums',
+              performanceTab === 'not_performed' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800',
+            )}
+          >
+            {loading ? '…' : notPerformedCount}
+          </span>
+        </button>
       </div>
 
       {error ? (
@@ -252,24 +277,21 @@ const TechnicianReports: React.FC = () => {
       ) : (
         <>
           <TechnicianGroup
-            title="Performed"
-            hint="Has at least one On Process booking in the selected date range and city."
-            tone="emerald"
-            rows={performed}
+            title={performanceTab === 'performed' ? 'Performed' : 'Not Performed'}
+            hint={
+              performanceTab === 'performed'
+                ? 'Technicians with at least one On Process booking in the selected filters.'
+                : 'Active technicians with zero On Process bookings in the selected filters.'
+            }
+            tone={performanceTab === 'performed' ? 'emerald' : 'amber'}
+            rows={activeRows}
             loading={loading}
-            showServices
+            showServices={performanceTab === 'performed'}
             onOpenLedger={(id) => navigate(`/technician-ledger?technician=${id}`)}
           />
-          <TechnicianGroup
-            title="Not Performed"
-            hint="Active technicians of this type with zero On Process bookings in the selected filters."
-            tone="amber"
-            rows={notPerformed}
-            loading={loading}
-            showServices={false}
-            onOpenLedger={(id) => navigate(`/technician-ledger?technician=${id}`)}
-          />
-          <CityEarnings cities={report?.city_earnings || []} loading={loading} />
+          {performanceTab === 'performed' && (
+            <CityEarnings cities={report?.city_earnings || []} loading={loading} />
+          )}
         </>
       )}
     </div>
@@ -496,26 +518,6 @@ function CityEarnings({
         </table>
       </div>
     </section>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-2 text-2xl font-black text-gray-900 tracking-tight">{value}</div>
-    </div>
   );
 }
 
