@@ -85,6 +85,20 @@ export const PRICING_DATA: any = {
       [COMMERCIAL_AREA_OPTION]: 0,
     }
   },
+  // Launch rates 05 Oct 2026 — GST-exclusive basics (Pricing Master is source of truth).
+  'Wood Borer': {
+    'One Time Service': {
+      '1 Small Item / Door Frame': 1500,
+      '1 Double Bed / Wardrobe': 2500,
+      '1 Room (upto 3 items)': 3500,
+      '1 RK': 3000,
+      '1 BHK': 4000,
+      '2 BHK': 5500,
+      '3 BHK': 7000,
+      '4 BHK': 8500,
+      [COMMERCIAL_AREA_OPTION]: 0,
+    }
+  },
   'Rodent': {
     'AMC 3 Services': { 'Windows': 2500, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
     'AMC 4 Services': { 'Windows': 3200, 'Society Area': 0, [COMMERCIAL_AREA_OPTION]: 0 },
@@ -149,6 +163,7 @@ export const SERVICE_TYPES: any = {
   'Cockroach / Ants': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
   'Bed Bugs': ['One Time Service'],
   'Termite': ['One Time Treatment'],
+  'Wood Borer': ['One Time Service'],
   'Rodent': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services'],
   'Mosquito': ['One Time Service', 'AMC 3 Services', 'AMC 4 Services', 'AMC 6 Services', 'AMC 12 Services', 'AMC 24 Services', 'AMC 48 Services'],
   'Hotel / Commercial': ['One Time Service'],

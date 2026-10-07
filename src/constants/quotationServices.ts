@@ -4,6 +4,7 @@ import {
   isAmcPlan,
   isBedBugService,
   isTermiteService,
+  isWoodBorerService,
   normalizeFrequencyToPlan,
   oneTimePlanValue,
   parseAmcCountFromPlan,
@@ -39,13 +40,13 @@ export function defaultPlanForService(service: string): string {
 }
 
 export function quotationSupportsAmc(service: string): boolean {
-  if (isBedBugService(service)) return false;
+  if (isBedBugService(service) || isWoodBorerService(service)) return false;
   return supportsAmcMode(bookingKeyForQuotationService(service));
 }
 
 export function getQuotationPlanOptions(service: string): Array<{ value: string; label: string }> {
   const bookingKey = bookingKeyForQuotationService(service);
-  if (isTermiteService(service) || isBedBugService(service)) {
+  if (isTermiteService(service) || isBedBugService(service) || isWoodBorerService(service)) {
     const plan = defaultPlanForService(service);
     return [{ value: plan, label: formatQuotationPlanLabel(service, plan) }];
   }

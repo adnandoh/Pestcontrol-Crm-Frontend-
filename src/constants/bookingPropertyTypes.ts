@@ -165,13 +165,22 @@ export function isBedBugService(service: string): boolean {
   return s.includes('bed bug') || s.includes('bedbug');
 }
 
+export function isWoodBorerService(service: string): boolean {
+  const s = (service || '').toLowerCase();
+  return s.includes('wood borer') || s.includes('woodborer') || (
+    s.includes('borer') && !s.includes('termite')
+  );
+}
+
 /**
  * Pest families that offer commercial AMC N packages even without rate-card AMC
  * rows. Integrated IPM keeps its named contract cadences only.
  */
 export function isCommercialAmcEligibleService(service: string): boolean {
   const s = (service || '').toLowerCase();
-  if (!s || isBedBugService(service) || isTermiteService(service)) return false;
+  if (!s || isBedBugService(service) || isTermiteService(service) || isWoodBorerService(service)) {
+    return false;
+  }
   if (s.includes('ipm')) return false;
   return (
     s.includes('cockroach') ||
@@ -248,6 +257,7 @@ export function normalizeFrequencyToPlan(frequency: string): string {
 export function getAllPlanValuesForService(service: string): string[] {
   if (isBedBugService(service)) return [oneTimePlanValue(service)];
   if (isTermiteService(service)) return [oneTimePlanValue(service)];
+  if (isWoodBorerService(service)) return [oneTimePlanValue(service)];
   const counts = SERVICE_AMC_PACKAGES[service];
   if (!counts) return [oneTimePlanValue(service)];
   return [oneTimePlanValue(service), ...counts.map(amcPlanValue)];

@@ -370,6 +370,45 @@ export interface Inquiry {
   updated_at: string;
 }
 
+/** Leads from deepcleaning99.com — separate from pest Website Leads. */
+export interface DeepCleaningInquiry {
+  id: number;
+  name: string;
+  mobile: string;
+  email?: string | null;
+  city: string;
+  area?: string;
+  address?: string;
+  segment?: string;
+  service: string;
+  package_name?: string;
+  package_id?: string;
+  quantity?: string;
+  unit?: string;
+  plan?: string;
+  property_size?: string;
+  property_type?: string;
+  preferred_date?: string | null;
+  preferred_date_display?: string;
+  preferred_time?: string;
+  estimated_price?: number | string | null;
+  regular_price?: number | string | null;
+  discount_amount?: number | string | null;
+  notes?: string;
+  page_url?: string | null;
+  source?: string;
+  status: 'New' | 'Contacted' | 'Converted' | 'Closed';
+  is_read?: boolean;
+  remark?: string | null;
+  latest_remark?: LatestRemarkSummary | null;
+  remark_count?: number;
+  needs_comment_update?: boolean;
+  comment_status?: 'required' | 'added';
+  received_display?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type CRMInquiryStatus = 'New' | 'Contacted' | 'Converted' | 'Closed';
 
 export type PartnerReferralPartnerStatus = 'pending' | 'in_progress' | 'successful' | 'closed';

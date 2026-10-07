@@ -7,7 +7,7 @@ import { Modal } from '../ui/Modal';
 import type { InquiryRemarkEntry, LatestRemarkSummary, PaginatedResponse } from '../../types';
 import { showAlert } from '../../utils/notify';
 
-export type RemarkSourceType = 'crm' | 'website';
+export type RemarkSourceType = 'crm' | 'website' | 'deepcleaning';
 
 interface RemarkPanelProps {
   sourceType: RemarkSourceType;
@@ -65,7 +65,12 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
       const res: PaginatedResponse<InquiryRemarkEntry> =
         sourceType === 'crm'
           ? await enhancedApiService.getCRMInquiryRemarks(entityId, { page: 1, page_size: 20 })
-          : await enhancedApiService.getWebsiteLeadRemarks(entityId, { page: 1, page_size: 20 });
+          : sourceType === 'deepcleaning'
+            ? await enhancedApiService.getDeepCleaningInquiryRemarks(entityId, {
+                page: 1,
+                page_size: 20,
+              })
+            : await enhancedApiService.getWebsiteLeadRemarks(entityId, { page: 1, page_size: 20 });
       setHistory(res.results);
       setHistoryTotal(res.count);
     } catch (e) {
@@ -88,7 +93,9 @@ const RemarkPanel: React.FC<RemarkPanelProps> = ({
       const entry =
         sourceType === 'crm'
           ? await enhancedApiService.createCRMInquiryRemark(entityId, { remark: text })
-          : await enhancedApiService.createWebsiteLeadRemark(entityId, { remark: text });
+          : sourceType === 'deepcleaning'
+            ? await enhancedApiService.createDeepCleaningInquiryRemark(entityId, { remark: text })
+            : await enhancedApiService.createWebsiteLeadRemark(entityId, { remark: text });
       const newCount = count + 1;
       setHistoryTotal(newCount);
       setDraft('');

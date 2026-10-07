@@ -23,6 +23,7 @@ import {
   IdCard,
   Wallet,
   Calculator,
+  Sparkles,
 } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -80,6 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'Pending Amounts', href: '/pending-amounts', icon: IndianRupee },
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
+        { name: 'DeepCleaning99 Inquiries', href: '/deepcleaning-inquiries', icon: Sparkles },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]
     },

@@ -17,6 +17,7 @@ import type {
   AuthUser,
   Client,
   Inquiry,
+  DeepCleaningInquiry,
   JobCard,
   Renewal,
   Technician,
@@ -875,6 +876,69 @@ class EnhancedApiService {
       ),
     );
     apiCache.deletePattern(CACHE_KEYS.INQUIRIES);
+    return result.data;
+  }
+
+  async getDeepCleaningInquiries(
+    params?: InquiryFilters & { page?: number; page_size?: number },
+  ): Promise<PaginatedResponse<DeepCleaningInquiry>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<DeepCleaningInquiry>>(
+        API_ENDPOINTS.DEEPCLEANING_INQUIRIES,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async updateDeepCleaningInquiry(
+    id: number,
+    data: Partial<Pick<DeepCleaningInquiry, 'status' | 'is_read'>>,
+  ): Promise<DeepCleaningInquiry> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<DeepCleaningInquiry>(
+        `${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${id}/`,
+        data,
+      ),
+    );
+    return result.data;
+  }
+
+  async markDeepCleaningInquiryAsRead(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.post(`${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${id}/mark_as_read/`),
+    );
+  }
+
+  async markAllDeepCleaningInquiriesAsRead(): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.post(`${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}mark-all-read/`),
+    );
+  }
+
+  async getDeepCleaningInquiryRemarks(
+    inquiryId: number,
+    params?: { page?: number; page_size?: number },
+  ): Promise<PaginatedResponse<InquiryRemarkEntry>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<InquiryRemarkEntry>>(
+        `${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${inquiryId}/remarks/`,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async createDeepCleaningInquiryRemark(
+    inquiryId: number,
+    data: { remark: string; remark_type?: string },
+  ): Promise<InquiryRemarkEntry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<InquiryRemarkEntry>(
+        `${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${inquiryId}/remarks/`,
+        data,
+      ),
+    );
     return result.data;
   }
 

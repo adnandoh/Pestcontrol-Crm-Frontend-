@@ -8,6 +8,7 @@ import {
   isCommercialAmcEligibleService,
   isResidentialCommercialType,
   isTermiteService,
+  isWoodBorerService,
   oneTimePlanValue,
   parseAmcCountFromPlan,
   amcPlanValue,
@@ -768,7 +769,9 @@ export function amcPlanOptionsForService(
 ): Array<{ value: string; label: string }> {
   // Both are fixed-shape packages with no AMC variant; the form renders them
   // as a static box rather than a dropdown.
-  if (isBedBugService(service) || isTermiteService(service)) return [];
+  if (isBedBugService(service) || isTermiteService(service) || isWoodBorerService(service)) {
+    return [];
+  }
 
   const resolved = resolvePricingService(service, config);
   const fromConfig = Object.keys(
