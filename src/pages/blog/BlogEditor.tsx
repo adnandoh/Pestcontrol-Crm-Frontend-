@@ -10,6 +10,7 @@ import {
   getTags, createCategory, createTag
 } from '../../services/blogApi';
 import type { BlogFormData, BlogCategory, BlogTag, BlogSchemaType } from '../../types';
+import { getErrorMessage } from '../../utils/errors';
 import { cn } from '../../utils/cn';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { showAlert } from '../../utils/notify';
@@ -193,10 +194,9 @@ const BlogEditor: React.FC = () => {
         setTimeout(() => navigate(`/blog/edit/${blog.id}`, { replace: true }), 800);
       }
       setTimeout(() => setSaveMsg(''), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Save failed:', err);
-      const apiErr = err?.response?.data?.error || err?.response?.data?.detail;
-      const detail = typeof apiErr === 'string' ? apiErr : Array.isArray(apiErr) ? apiErr.join(', ') : null;
+      const detail = getErrorMessage(err, '');
       setSaveMsg(detail ? `Save failed: ${detail}` : 'Save failed — check console');
     } finally {
       setSaving(false);

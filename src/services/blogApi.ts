@@ -89,17 +89,14 @@ export const getBlog = async (id: number): Promise<Blog> => {
 
 export const createBlog = async (formData: BlogFormData): Promise<Blog> => {
   const fd = buildFormData(formData);
-  const { data } = await api.post('/blogs/create/', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  // Let the browser set the multipart boundary. A bare Content-Type header drops it.
+  const { data } = await api.post('/blogs/create/', fd);
   return data;
 };
 
 export const updateBlog = async (id: number, formData: Partial<BlogFormData>): Promise<Blog> => {
   const fd = buildFormData(formData);
-  const { data } = await api.patch(`/blogs/${id}/`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await api.patch(`/blogs/${id}/`, fd);
   return data;
 };
 
@@ -163,6 +160,12 @@ function buildFormData(obj: Record<string, any>): FormData {
     if (value === undefined || value === null) continue;
     // Empty string breaks PrimaryKeyRelatedField for category_id / numeric fields
     if (value === '') continue;
+    if (key === 'canonical_url' && typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) continue;
+      fd.append(key, trimmed.includes('://') ? trimmed : `https://${trimmed.replace(/^\/+/, '')}`);
+      continue;
+    }
     if (key === 'featured_image' && value instanceof File) {
       fd.append('featured_image', value);
     } else if (key === 'tag_ids' && Array.isArray(value)) {
