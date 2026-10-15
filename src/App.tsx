@@ -23,6 +23,7 @@ const Clients = lazy(() => import('./pages/Clients'));
 const ClientDetail = lazy(() => import('./pages/ClientDetail'));
 const Inquiries = lazy(() => import('./pages/Inquiries'));
 const DeepCleaningInquiries = lazy(() => import('./pages/DeepCleaningInquiries'));
+const DeepCleaningRates = lazy(() => import('./pages/DeepCleaningRates'));
 const JobCards = lazy(() => import('./pages/JobCards'));
 const CreateJobCard = lazy(() => import('./pages/CreateJobCard'));
 const EditJobCard = lazy(() => import('./pages/EditJobCard'));
@@ -158,6 +159,7 @@ const AppContent: React.FC = () => {
                     <Route path="/clients/:id" element={<ClientDetail />} />
                     <Route path="/inquiries" element={<Inquiries />} />
                     <Route path="/deepcleaning-inquiries" element={<DeepCleaningInquiries />} />
+                    <Route path="/deepcleaning-rates" element={<DeepCleaningRates />} />
                     <Route path="/jobcards" element={<JobCards />} />
                     <Route path="/jobcards/create" element={<CreateJobCard />} />
                     <Route path="/jobcards/edit/:id" element={<EditJobCard />} />

@@ -1848,3 +1848,26 @@ export interface CollectPaymentPayload {
   payment_mode: 'Cash' | 'Online';
   remarks?: string;
 }
+
+export interface DeepCleaningRate {
+  id: number;
+  code: string;
+  segment: 'Residential' | 'Commercial';
+  service: string;
+  package_name: string;
+  billing_unit: string;
+  example_qty: string | number;
+  rate_per_unit: string | number;
+  min_charge: string | number;
+  job_amount: string | number;
+  technicians: number;
+  on_site_hours: string;
+  scope_note: string;
+  amc_visits: number;
+  amc_discount: string | number;
+  amc_per_visit: string | number;
+  amc_annual: string | number;
+  amc_interval: string;
+  is_active: boolean;
+  sort_order: number;
+}

@@ -18,6 +18,7 @@ import type {
   Client,
   Inquiry,
   DeepCleaningInquiry,
+  DeepCleaningRate,
   JobCard,
   Renewal,
   Technician,
@@ -940,6 +941,38 @@ class EnhancedApiService {
       ),
     );
     return result.data;
+  }
+
+  async getDeepCleaningRates(): Promise<DeepCleaningRate[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<DeepCleaningRate[]>(API_ENDPOINTS.DEEPCLEANING_RATES),
+    );
+    return result.data;
+  }
+
+  async createDeepCleaningRate(
+    data: Partial<DeepCleaningRate>,
+  ): Promise<DeepCleaningRate> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningRate>(API_ENDPOINTS.DEEPCLEANING_RATES, data),
+    );
+    return result.data;
+  }
+
+  async updateDeepCleaningRate(
+    id: number,
+    data: Partial<DeepCleaningRate>,
+  ): Promise<DeepCleaningRate> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<DeepCleaningRate>(`${API_ENDPOINTS.DEEPCLEANING_RATES}${id}/`, data),
+    );
+    return result.data;
+  }
+
+  async deleteDeepCleaningRate(id: number): Promise<void> {
+    await this.retryRequest(() =>
+      this.api.delete(`${API_ENDPOINTS.DEEPCLEANING_RATES}${id}/`),
+    );
   }
 
   async getBookingReportClients(
