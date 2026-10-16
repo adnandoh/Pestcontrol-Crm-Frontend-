@@ -1253,6 +1253,8 @@ export interface TechnicianLedgerRow {
   client_mobile?: string;
   client_number?: string;
   is_complaint_call?: boolean;
+  is_service_call?: boolean;
+  service_call_fee?: string;
   property_type?: string;
   service_type: string;
   city: string;
@@ -1289,6 +1291,8 @@ export interface TechnicianLedgerSummary {
   one_time_jobs: number;
   amc_jobs: number;
   contract_jobs: number;
+  service_call_jobs?: number;
+  service_call_earning?: string;
   total_revenue_generated: string;
   booking_amount: string;
   technician_share: string;

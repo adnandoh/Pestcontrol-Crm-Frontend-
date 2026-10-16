@@ -505,6 +505,7 @@ const TechnicianLedgerReport: React.FC = () => {
                 <Chip>{data.summary.one_time_jobs} one-time</Chip>
                 <Chip>{data.summary.amc_jobs} AMC</Chip>
                 <Chip>{data.summary.contract_jobs} contract</Chip>
+                <Chip>{data.summary.service_call_jobs || 0} service calls</Chip>
                 <Chip>★ {Number(data.summary.average_rating).toFixed(1)}</Chip>
               </div>
             </div>
@@ -513,6 +514,12 @@ const TechnicianLedgerReport: React.FC = () => {
             <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-8">
               <MiniStat label="Revenue" value={money(data.summary.total_revenue_generated)} />
               <MiniStat label="Tech earned (40%)" value={money(data.summary.technician_share)} tone="emerald" highlight />
+              <MiniStat
+                label="Service calls (₹300)"
+                value={money(data.summary.service_call_earning)}
+                tone="emerald"
+                highlight
+              />
               <MiniStat label="Company (60%)" value={money(data.summary.company_share)} tone="purple" />
               <MiniStat
                 label="Unsettled payable"
@@ -1109,6 +1116,9 @@ const BookingRow = ({
       <td className="min-w-[130px] px-3 py-2 align-middle">
         <div className="flex flex-col items-start gap-1.5">
           <TypePill label={row.booking_type_label} />
+          {row.is_service_call && row.is_completed_visit && (
+            <span className="text-[10px] font-bold text-emerald-700">Earned ₹300</span>
+          )}
           <ServiceSequenceBadge row={row} />
         </div>
       </td>
@@ -1186,6 +1196,9 @@ const BookingCard = ({
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         <ServiceName name={row.service_type} />
         <TypePill label={row.booking_type_label} />
+        {row.is_service_call && row.is_completed_visit && (
+          <span className="text-[10px] font-bold text-emerald-700">Earned ₹300</span>
+        )}
         <ServiceSequenceBadge row={row} />
         {row.assigned_technicians && row.assigned_technicians !== '—' && (
           <span className="text-[10px] font-semibold text-gray-500">
