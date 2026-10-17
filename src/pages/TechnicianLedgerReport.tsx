@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -115,9 +115,11 @@ const TechnicianLedgerReport: React.FC = () => {
   }, [filters.technician, technicianFromUrl, searchParams, setSearchParams]);
 
   const invalidRange = Boolean(filters.from && filters.to && filters.from > filters.to);
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
     if (!filters.technician || invalidRange) return;
+    const seq = ++loadSeq.current;
     setLoading(true);
     try {
       const report = await enhancedApiService.getTechnicianLedger(
@@ -134,15 +136,18 @@ const TechnicianLedgerReport: React.FC = () => {
           page_size: PAGE_SIZE,
         },
       );
+      if (seq !== loadSeq.current) return;
       setData(report);
       setSelectedJobIds([]);
       setError(null);
       if (report.payment_history.length > 0) setShowPayments(true);
     } catch (err) {
+      if (seq !== loadSeq.current) return;
       console.error('Failed to load technician ledger', err);
+      setData(null);
       setError('We could not load this report. Please check your connection and try again.');
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, [filters, invalidRange]);
 
