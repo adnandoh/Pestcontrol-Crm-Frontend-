@@ -262,7 +262,8 @@ const Technicians: React.FC = () => {
                 // of truth. is_active only yields "Inactive" when presence is
                 // still active — never stack Active + Suspended/On Leave.
                 const presence = normalizeTechnicianStatus(tech.presence_status);
-                const showInactive = !tech.is_active && presence === 'active';
+                const pendingApproval = hasApp && !approved;
+                const showInactive = !pendingApproval && !tech.is_active && presence === 'active';
 
                 return (
                 <tr key={tech.id} className="hover:bg-gray-50/80 transition-colors divide-x divide-gray-100">
@@ -306,7 +307,11 @@ const Technicians: React.FC = () => {
                   <td className="px-3 py-2.5 font-bold text-gray-600">{tech.age || '---'}</td>
                   <td className="px-3 py-2.5 font-bold text-gray-600">{new Date(tech.created_at).toLocaleDateString('en-GB')}</td>
                   <td className="px-3 py-2.5">
-                    {showInactive ? (
+                    {pendingApproval ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset bg-amber-50 text-amber-800 ring-amber-600/20">
+                        Pending Approval
+                      </span>
+                    ) : showInactive ? (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/20">
                         Inactive
                       </span>
