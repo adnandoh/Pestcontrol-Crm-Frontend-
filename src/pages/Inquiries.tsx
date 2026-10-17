@@ -35,6 +35,7 @@ import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { showAlert } from '../utils/notify';
+import { websiteLeadDraft } from '../utils/leadConversion';
 
 const WEBSITE_LEADS_DATE_FILTER_KEY = 'website-leads-date-filter';
 
@@ -238,49 +239,12 @@ const Inquiries: React.FC = () => {
 
 
 
-  // Handle convert to job card — draft only; WhatsApp after staff confirms on Edit Booking
-  const handleConvertToJobCard = async (inquiry: Inquiry) => {
+  // Open the booking form only. The job is created when staff click Confirm Booking.
+  const handleConvertToJobCard = (inquiry: Inquiry) => {
     if (!confirm(
-      'Convert this inquiry into a draft booking?\n\nWhatsApp will NOT be sent yet. You will review and confirm the final price on Edit Booking first.',
+      'Open the booking form for this lead?\n\nThe booking is created only after the required details are filled and you click Confirm Booking. It will not show in the technician app until then.',
     )) return;
-
-    try {
-      const jobCardData = {
-        client_name: inquiry.name,
-        client_mobile: inquiry.mobile,
-        client_email: inquiry.email || '',
-        city: inquiry.city || '',
-        state: inquiry.state || '',
-        client_address: inquiry.message || '', 
-        flat_number: inquiry.flat_number || '',
-        building_name: inquiry.building_name || '',
-        landmark: inquiry.landmark || '',
-        area: inquiry.area || '',
-        job_type: 'Customer' as const,
-        service_type: inquiry.service_interest,
-        schedule_datetime: new Date().toISOString(),
-        status: 'Pending',
-        payment_status: 'Unpaid',
-        // Do not send website estimated_price — staff sets final agreed price on Edit Booking.
-        price: '',
-        commercial_type: (inquiry.premise_type === 'commercial' ? 'office' : 'home') as 'office' | 'home',
-        bhk_size: inquiry.premise_size || '',
-        service_category: inquiry.service_frequency === 'amc' ? 'AMC' : 'One-Time Service',
-        next_service_date: '',
-        extra_notes: inquiry.remark || ''
-      };
-
-      const jobCard = await enhancedApiService.convertInquiry(inquiry.id, jobCardData);
-      showAlert(
-        `Draft booking #${jobCard.code} created. Review details and confirm final price before WhatsApp is sent.`,
-      );
-      loadInquiries(pagination.current);
-      refreshCounts();
-      navigate(`/jobcards/edit/${jobCard.id}?confirmBooking=1`);
-    } catch (err: any) {
-      console.error('Conversion error:', err);
-      showAlert(err.message || 'Failed to convert inquiry to booking.');
-    }
+    navigate('/jobcards/create', { state: { leadConversion: websiteLeadDraft(inquiry) } });
   };
 
   if (loading && inquiries.length === 0) {

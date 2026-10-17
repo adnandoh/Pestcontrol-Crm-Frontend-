@@ -243,7 +243,13 @@ const Dashboard: React.FC = () => {
           { label: 'Range Revenue', value: `₹${Math.round(stats?.range_revenue || 0).toLocaleString()}`, color: 'border-emerald-600', bg: 'bg-emerald-50/60' },
           { label: 'Today Revenue', value: `₹${Math.round(stats?.today_revenue || 0).toLocaleString()}`, color: 'border-blue-600', bg: 'bg-blue-50/60' },
           { label: 'Yesterday Revenue', value: `₹${Math.round(stats?.yesterday_revenue || 0).toLocaleString()}`, color: 'border-gray-400', bg: 'bg-gray-50/60' },
-          { label: 'Total Bookings', value: stats?.total_job_cards || 0, color: 'border-indigo-500', bg: 'bg-indigo-50/40' },
+          {
+            label: 'Total Bookings',
+            value: stats?.total_job_cards || 0,
+            extra: `₹${Math.round(stats?.selected_booking_amount || 0).toLocaleString()}`,
+            color: 'border-indigo-500',
+            bg: 'bg-indigo-50/40',
+          },
           { label: 'Complaint Calls', value: stats?.total_complaint_calls || 0, color: 'border-rose-500', bg: 'bg-rose-50/40' },
           { label: 'CRM Inquiries', value: stats?.total_crm_inquiries || 0, color: 'border-purple-500', bg: 'bg-purple-50/40' },
           { label: 'Website Leads', value: stats?.total_web_inquiries || 0, color: 'border-orange-500', bg: 'bg-orange-50/40' },
@@ -252,6 +258,9 @@ const Dashboard: React.FC = () => {
              <div className={cn("absolute inset-0 opacity-50 group-hover:opacity-70 transition-opacity", stat.bg)} />
              <div className="relative">
                 <p className="text-xl font-black text-gray-950 tracking-tighter leading-none mb-1">{stat.value}</p>
+                {'extra' in stat && stat.extra ? (
+                  <p className="text-[11px] font-black text-indigo-700 leading-none mb-1">{stat.extra}</p>
+                ) : null}
                 <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{stat.label}</p>
              </div>
           </div>
@@ -424,7 +433,7 @@ const Dashboard: React.FC = () => {
                   Today’s Service Calls by City
                 </h2>
                 <p className="text-[10px] font-medium text-gray-500">
-                  AMC follow-ups & service visits today
+                  Service calls only. AMC follow-ups are not included.
                 </p>
               </div>
             </div>

@@ -1304,8 +1304,15 @@ const JobCards: React.FC = () => {
                     <td className="px-4 py-4">
                       {job.technician_name || job.assigned_to ? (
                         activeTab === 'on_process' ? (
-                          <span className="font-bold text-indigo-700 uppercase italic tracking-tighter text-[11px]">
-                            {job.technician_name || job.assigned_to}
+                          <span className="block">
+                            <span className="font-bold text-indigo-700 uppercase italic tracking-tighter text-[11px]">
+                              {job.technician_name || job.assigned_to}
+                            </span>
+                            {job.technician_mobile ? (
+                              <span className="mt-0.5 block text-[10px] font-bold normal-case not-italic tracking-normal text-gray-600">
+                                {job.technician_mobile}
+                              </span>
+                            ) : null}
                           </span>
                         ) : (
                           <button 

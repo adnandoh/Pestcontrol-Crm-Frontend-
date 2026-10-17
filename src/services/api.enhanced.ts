@@ -1281,7 +1281,11 @@ class EnhancedApiService {
     );
   }
 
-  async createJobCard(data: JobCardFormData, clientExists: boolean = false): Promise<JobCard> {
+  async createJobCard(
+    data: JobCardFormData,
+    clientExists: boolean = false,
+    link?: { websiteInquiryId?: number; crmInquiryId?: number },
+  ): Promise<JobCard> {
     // Validate field lengths to prevent database errors
     const priceStr = data.price === '' ? '0' : String(data.price || '0');
     if (priceStr.length > 50) {
@@ -1350,6 +1354,8 @@ class EnhancedApiService {
       company_share_percent: data.company_share_percent ?? 60,
       planned_visit_count: data.planned_visit_count ?? null,
       discount_amount: data.discount_amount ?? 0,
+      ...(link?.websiteInquiryId ? { website_inquiry_id: link.websiteInquiryId } : {}),
+      ...(link?.crmInquiryId ? { crm_inquiry_id: link.crmInquiryId } : {}),
     };
 
     // Explicitly ensure no 'id' is sent during creation

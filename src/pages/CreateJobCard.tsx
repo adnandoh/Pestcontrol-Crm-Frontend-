@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -77,6 +77,7 @@ import {
 import { getErrorMessage, logErrorForDev } from '../utils/errors';
 import { showAlert, notify } from '../utils/notify';
 import { FormErrorBanner } from '../components/errors';
+import type { LeadConversionDraft } from '../utils/leadConversion';
 import {
   BOOKING_PROPERTY_TYPES,
   bookingKindFromCommercialType,
@@ -109,6 +110,9 @@ const TEXTAREA_CONTROL =
 
 const CreateJobCard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const leadConversion = (location.state as { leadConversion?: LeadConversionDraft } | null)?.leadConversion;
+  const leadCityRef = useRef(leadConversion?.city || leadConversion?.masterCityName || '');
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -187,6 +191,41 @@ const CreateJobCard: React.FC = () => {
 
   const [formData, setFormData] = useState<JobCardFormData>(getInitialFormData());
   const revenueModelEnabled = useRevenueModelV2();
+
+  // Prefill from a website or CRM lead. No booking exists until Confirm Booking.
+  useEffect(() => {
+    if (!leadConversion) return;
+    const commercial = (leadConversion.premiseType || '').toLowerCase() === 'commercial';
+    setFormData((prev) => ({
+      ...prev,
+      client_name: leadConversion.name || prev.client_name,
+      client_mobile: leadConversion.mobile || prev.client_mobile,
+      client_email: leadConversion.email || prev.client_email,
+      client_address: leadConversion.address || prev.client_address,
+      client_city: leadConversion.masterCityName || leadConversion.city || prev.client_city,
+      client_state: leadConversion.masterStateName || leadConversion.state || prev.client_state,
+      city: leadConversion.masterCityName || leadConversion.city || prev.city,
+      state: leadConversion.masterStateName || leadConversion.state || prev.state,
+      master_state: leadConversion.masterStateId || prev.master_state,
+      master_city: leadConversion.masterCityId || prev.master_city,
+      master_location: leadConversion.masterLocationId || prev.master_location,
+      commercial_type: commercial ? 'office' : prev.commercial_type,
+      property_type: commercial ? 'Office' : prev.property_type,
+      bhk_size: leadConversion.premiseSize || prev.bhk_size,
+      service_category: leadConversion.frequency === 'amc' ? 'AMC' : prev.service_category,
+      reference: leadConversion.source === 'website' ? 'Website' : prev.reference,
+      notes: leadConversion.remark || prev.notes,
+      extra_notes: leadConversion.serviceHint
+        ? `Lead service: ${leadConversion.serviceHint}`
+        : prev.extra_notes,
+    }));
+    if (leadConversion.mobile.length === 10) {
+      setLastCheckedMobile(leadConversion.mobile);
+      void checkClientExists(leadConversion.mobile);
+    }
+    // Prefill once from the navigation state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadConversion?.inquiryId, leadConversion?.source]);
 
   // When revenue model is enabled, default new bookings to revenue_sharing
   useEffect(() => {
@@ -312,9 +351,19 @@ const CreateJobCard: React.FC = () => {
         .then(res => {
           setMasterCities(res.results);
           
-          // Auto-select Mumbai if this is Maharashtra and no city is selected
           const state = masterStates.find(s => s.id === formData.master_state);
-          if (state?.name.toLowerCase() === 'maharashtra' && !formData.master_city) {
+          const wanted = leadCityRef.current.trim().toLowerCase();
+          const wantedCity = wanted
+            ? res.results.find(c => c.name.toLowerCase() === wanted)
+            : undefined;
+          if (wantedCity && !formData.master_city) {
+            setFormData(prev => ({
+              ...prev,
+              master_city: wantedCity.id,
+              city: wantedCity.name,
+              client_city: prev.client_city || wantedCity.name,
+            }));
+          } else if (state?.name.toLowerCase() === 'maharashtra' && !formData.master_city) {
             const mumbai = res.results.find(c => c.name.toLowerCase() === 'mumbai');
             if (mumbai) {
               setFormData(prev => ({ ...prev, master_city: mumbai.id, city: mumbai.name }));
@@ -527,12 +576,12 @@ const CreateJobCard: React.FC = () => {
         setClientCheckFound(client.full_name || 'Unknown Client');
         setFormData(prev => ({
           ...prev,
-          client_name: client.full_name || '',
-          client_email: client.email || '',
-          client_state: client.state || '',
-          client_city: client.city || '',
-          client_address: client.address || '',
-          client_notes: client.notes || ''
+          client_name: client.full_name || prev.client_name,
+          client_email: client.email || prev.client_email,
+          client_state: client.state || prev.client_state,
+          client_city: client.city || prev.client_city,
+          client_address: client.address || prev.client_address,
+          client_notes: client.notes || prev.client_notes
         }));
       } else {
         setClientCheckNotFound();
@@ -653,7 +702,15 @@ const CreateJobCard: React.FC = () => {
         }
         submitData.schedule_datetime = combined.toISOString();
       }
-      const created = await enhancedApiService.createJobCard(submitData, clientCheckStatus === 'found');
+      const created = await enhancedApiService.createJobCard(
+        submitData,
+        clientCheckStatus === 'found',
+        leadConversion
+          ? leadConversion.source === 'website'
+            ? { websiteInquiryId: leadConversion.inquiryId }
+            : { crmInquiryId: leadConversion.inquiryId }
+          : undefined,
+      );
       fireAndForget(sendBookingConfirmationApi(created));
       navigate('/jobcards');
     } catch (err: unknown) {
@@ -678,18 +735,33 @@ const CreateJobCard: React.FC = () => {
     <div className="bg-gray-50/10 h-full relative sm:px-2 lg:px-4 pb-10">
       {/* Page Title Area — shares the form's container so it aligns with the cards. */}
       <div className="max-w-6xl mx-auto flex items-center gap-3 pb-4 sm:pb-5">
-        <button type="button" onClick={() => navigate('/jobcards')} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm bg-white/50">
+        <button type="button" onClick={() => navigate(leadConversion?.source === 'crm' ? '/crm-inquiries' : leadConversion ? '/inquiries' : '/jobcards')} className="p-1.5 hover:bg-white rounded border border-gray-200 transition-colors shadow-sm bg-white/50">
           <ArrowLeft className="h-4 w-4 text-gray-500" />
         </button>
         <div className="flex flex-col">
-          <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none">New Booking</h1>
-          <span className="text-[11px] font-bold text-gray-500 mt-1">Fill out the details below</span>
+          <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none">
+            {leadConversion ? 'Confirm Booking' : 'New Booking'}
+          </h1>
+          <span className="text-[11px] font-bold text-gray-500 mt-1">
+            {leadConversion
+              ? 'Complete the required details. The booking is saved only when you confirm.'
+              : 'Fill out the details below'}
+          </span>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className={FORM_STACK}>
           <FormErrorBanner message={submitError} />
+          {leadConversion && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <p className="font-bold">This lead is not a booking yet</p>
+              <p className="mt-1 text-[13px] text-amber-900/90">
+                Fill service, address, schedule, and price, then click Confirm Booking.
+                Nothing is sent to the technician app until you save.
+              </p>
+            </div>
+          )}
           
           {/* Section: Client & Location */}
           <div className={SECTION_CARD}>
@@ -1268,9 +1340,9 @@ const CreateJobCard: React.FC = () => {
           <div className={`${SECTION_CARD} flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4`}>
              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden sm:block">All fields marked with * are required.</p>
              <div className="flex flex-wrap items-center sm:justify-end gap-3 w-full sm:w-auto">
-               <button type="button" onClick={() => navigate('/jobcards')} className="flex-1 sm:flex-none h-10 px-5 text-[13px] font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">Discard</button>
+               <button type="button" onClick={() => navigate(leadConversion?.source === 'crm' ? '/crm-inquiries' : leadConversion ? '/inquiries' : '/jobcards')} className="flex-1 sm:flex-none h-10 px-5 text-[13px] font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">Discard</button>
 
-               <button
+               {!leadConversion && <button
                   type="button"
                   disabled={savingInquiry || submitting}
                   onClick={async () => {
@@ -1319,10 +1391,10 @@ const CreateJobCard: React.FC = () => {
                 >
                   {savingInquiry ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-700" /> : <MessageCircle className="h-4 w-4" />}
                   Save as Inquiry
-                </button>
+                </button>}
 
                <button type="submit" disabled={submitting} className="flex-1 sm:flex-none h-10 px-8 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all">
-                 {submitting ? 'Creating...' : 'Create Booking'}
+                 {submitting ? 'Saving...' : leadConversion ? 'Confirm Booking' : 'Create Booking'}
                </button>
              </div>
           </div>

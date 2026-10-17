@@ -400,6 +400,7 @@ function TechnicianGroup({
                   {showServices && (
                     <td className="px-4 py-3">
                       <ServiceChips tech={tech} />
+                      <BookingTimePlace bookings={tech.bookings} />
                     </td>
                   )}
                   <td className="px-4 py-3">
@@ -425,6 +426,27 @@ function TechnicianGroup({
         </table>
       </div>
     </section>
+  );
+}
+
+function BookingTimePlace({
+  bookings,
+}: {
+  bookings: TechnicianDailyTypeRow['bookings'];
+}) {
+  if (!bookings?.length) return null;
+  return (
+    <div className="mt-2 space-y-1">
+      {bookings.map((booking) => (
+        <p key={booking.id} className="text-[11px] font-semibold text-gray-600">
+          <span className="font-black text-gray-800">
+            {booking.time_slot || 'Time not set'}
+          </span>
+          {' · '}
+          {booking.location || booking.locality || booking.city || 'Location not set'}
+        </p>
+      ))}
+    </div>
   );
 }
 

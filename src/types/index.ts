@@ -1012,6 +1012,7 @@ export interface DashboardStatisticsResponse {
   total_web_inquiries?: number;
   total_crm_inquiries?: number;
   total_job_cards: number;
+  selected_booking_amount?: number;
   total_clients: number;
   total_technicians?: number;
   total_quotations?: number;
@@ -1180,6 +1181,18 @@ export interface TechnicianDailyCityEarning {
   technician_count?: number;
 }
 
+export interface TechnicianDailyBookingBrief {
+  id: number;
+  code?: string;
+  service_type?: string;
+  status?: string;
+  schedule_datetime?: string | null;
+  time_slot?: string;
+  locality?: string;
+  city?: string;
+  location?: string;
+}
+
 export interface TechnicianDailyTypeRow {
   id: number;
   name: string;
@@ -1193,6 +1206,7 @@ export interface TechnicianDailyTypeRow {
   services_summary: string;
   earnings: string;
   city_earnings: TechnicianDailyCityEarning[];
+  bookings?: TechnicianDailyBookingBrief[];
 }
 
 export interface TechnicianDailyTypeReport {

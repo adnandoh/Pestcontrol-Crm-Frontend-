@@ -34,6 +34,7 @@ import CopyablePhone from '../components/crm/CopyablePhone';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import { showAlert } from '../utils/notify';
+import { crmLeadDraft } from '../utils/leadConversion';
 
 const CRM_DATE_FILTER_KEY = 'crm-inquiries-date-filter';
 
@@ -199,26 +200,11 @@ const CRMInquiries: React.FC = () => {
     }
   };
 
-  const handleConvert = async (id: number) => {
+  const handleConvert = (inquiry: CRMInquiry) => {
     if (!window.confirm(
-      'Convert this inquiry into a draft booking?\n\nWhatsApp will NOT be sent yet. You will review and confirm the final price on Edit Booking first.',
+      'Open the booking form for this lead?\n\nThe booking is created only after the required details are filled and you click Confirm Booking. It will not show in the technician app until then.',
     )) return;
-    
-    try {
-      setSubmitting(id);
-      const result = await enhancedApiService.convertInquiryToBooking(id);
-      showAlert(
-        `Draft booking ${result.job_card_code} created. Review details and confirm final price before WhatsApp is sent.`,
-      );
-      loadInquiries(pagination.current);
-      refreshCounts();
-      navigate(`/jobcards/edit/${result.job_card_id}?confirmBooking=1`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Conversion failed';
-      showAlert(message);
-    } finally {
-      setSubmitting(null);
-    }
+    navigate('/jobcards/create', { state: { leadConversion: crmLeadDraft(inquiry) } });
   };
 
   const statusColors: Record<CRMInquiryStatus, string> = {
@@ -485,7 +471,7 @@ const CRMInquiries: React.FC = () => {
                       {inq.status !== 'Converted' ? (
                         <button
                           type="button"
-                          onClick={() => handleConvert(inq.id)}
+                          onClick={() => handleConvert(inq)}
                           disabled={submitting === inq.id}
                           className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
