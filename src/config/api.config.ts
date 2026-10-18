@@ -57,6 +57,8 @@ export const API_ENDPOINTS = {
   PARTNER_REFERRALS: '/v1/partner-referrals/',
   WEBSITE_LEADS: '/v1/website-leads/',
   DEEPCLEANING_INQUIRIES: '/v1/deepcleaning-inquiries/',
+  DEEPCLEANING_BOOKINGS: '/v1/deepcleaning-bookings/',
+  DEEPCLEANING_TECHNICIANS: '/v1/deepcleaning-technicians/',
   DEEPCLEANING_RATES: '/v1/deepcleaning-rates/',
   BOOKING_REPORT_CLIENTS: '/v1/booking-report-clients/',
   

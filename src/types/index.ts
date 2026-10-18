@@ -405,8 +405,72 @@ export interface DeepCleaningInquiry {
   needs_comment_update?: boolean;
   comment_status?: 'required' | 'added';
   received_display?: string;
+  booking_id?: number | null;
+  booking_code?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeepCleaningTechnician {
+  id: number;
+  name: string;
+  mobile: string;
+  age?: number | null;
+  alternative_mobile?: string | null;
+  address?: string;
+  location?: string;
+  cities: string[];
+  services: string[];
+  presence_status: 'active' | 'on_leave' | 'suspended';
+  presence_label?: string;
+  is_active: boolean;
+  is_available_for_work?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DeepCleaningBookingStatus = 'Pending' | 'On Process' | 'Done' | 'Cancelled';
+
+export interface DeepCleaningBooking {
+  id: number;
+  code: string;
+  inquiry?: number | null;
+  technician?: number | null;
+  technician_name?: string;
+  technician_mobile?: string;
+  name: string;
+  mobile: string;
+  email?: string | null;
+  city: string;
+  area?: string;
+  address?: string;
+  segment?: string;
+  service: string;
+  package_name?: string;
+  package_id?: string;
+  quantity?: string;
+  unit?: string;
+  plan?: string;
+  property_size?: string;
+  property_type?: string;
+  preferred_date?: string | null;
+  preferred_date_display?: string;
+  preferred_time?: string;
+  price?: number | string | null;
+  notes?: string;
+  status: DeepCleaningBookingStatus;
+  assigned_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeepCleaningBookingStatusCounts {
+  all: number;
+  Pending: number;
+  'On Process': number;
+  Done: number;
+  Cancelled: number;
 }
 
 export type CRMInquiryStatus = 'New' | 'Contacted' | 'Converted' | 'Closed';

@@ -82,6 +82,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isOpen = true, onClose, us
         { name: 'CRM Inquiries', href: '/crm-inquiries', icon: Zap },
         { name: 'Website Leads', href: '/inquiries', icon: MessageSquare },
         { name: 'DeepCleaning99 Inquiries', href: '/deepcleaning-inquiries', icon: Sparkles },
+        { name: 'Deep Cleaning Bookings', href: '/deepcleaning-bookings', icon: ClipboardList },
+        { name: 'Deep Cleaning Technicians', href: '/deepcleaning-technicians', icon: Users },
         { name: 'DeepCleaning99 Prices', href: '/deepcleaning-rates', icon: IndianRupee },
         { name: 'Feedbacks', href: '/feedbacks', icon: Star },
       ]

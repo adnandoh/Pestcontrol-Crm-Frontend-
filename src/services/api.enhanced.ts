@@ -18,6 +18,8 @@ import type {
   Client,
   Inquiry,
   DeepCleaningInquiry,
+  DeepCleaningBooking,
+  DeepCleaningTechnician,
   DeepCleaningRate,
   JobCard,
   Renewal,
@@ -939,6 +941,129 @@ class EnhancedApiService {
         `${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${inquiryId}/remarks/`,
         data,
       ),
+    );
+    return result.data;
+  }
+
+  async confirmDeepCleaningInquiry(id: number): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(
+        `${API_ENDPOINTS.DEEPCLEANING_INQUIRIES}${id}/confirm-booking/`,
+      ),
+    );
+    return result.data;
+  }
+
+  async getDeepCleaningBookings(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    search?: string;
+    city?: string;
+  }): Promise<PaginatedResponse<DeepCleaningBooking>> {
+    const result = await this.retryRequest(() =>
+      this.api.get<PaginatedResponse<DeepCleaningBooking>>(
+        API_ENDPOINTS.DEEPCLEANING_BOOKINGS,
+        { params },
+      ),
+    );
+    return result.data;
+  }
+
+  async getDeepCleaningBooking(id: number): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.get<DeepCleaningBooking>(`${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/`),
+    );
+    return result.data;
+  }
+
+  async createDeepCleaningBooking(
+    data: Partial<DeepCleaningBooking>,
+  ): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(API_ENDPOINTS.DEEPCLEANING_BOOKINGS, data),
+    );
+    return result.data;
+  }
+
+  async updateDeepCleaningBooking(
+    id: number,
+    data: Partial<DeepCleaningBooking>,
+  ): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<DeepCleaningBooking>(`${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/`, data),
+    );
+    return result.data;
+  }
+
+  async assignDeepCleaningBooking(
+    id: number,
+    technicianId: number,
+  ): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(
+        `${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/assign/`,
+        { technician_id: technicianId },
+      ),
+    );
+    return result.data;
+  }
+
+  async unassignDeepCleaningBooking(id: number): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(`${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/unassign/`),
+    );
+    return result.data;
+  }
+
+  async completeDeepCleaningBooking(id: number): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(`${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/complete/`),
+    );
+    return result.data;
+  }
+
+  async cancelDeepCleaningBooking(id: number): Promise<DeepCleaningBooking> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningBooking>(`${API_ENDPOINTS.DEEPCLEANING_BOOKINGS}${id}/cancel/`),
+    );
+    return result.data;
+  }
+
+  async getDeepCleaningTechnicians(params?: {
+    available?: number;
+    service?: string;
+    city?: string;
+    search?: string;
+  }): Promise<DeepCleaningTechnician[]> {
+    const result = await this.retryRequest(() =>
+      this.api.get<DeepCleaningTechnician[]>(API_ENDPOINTS.DEEPCLEANING_TECHNICIANS, { params }),
+    );
+    return result.data;
+  }
+
+  async getDeepCleaningTechnician(id: number): Promise<DeepCleaningTechnician> {
+    const result = await this.retryRequest(() =>
+      this.api.get<DeepCleaningTechnician>(`${API_ENDPOINTS.DEEPCLEANING_TECHNICIANS}${id}/`),
+    );
+    return result.data;
+  }
+
+  async createDeepCleaningTechnician(
+    data: Partial<DeepCleaningTechnician>,
+  ): Promise<DeepCleaningTechnician> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningTechnician>(API_ENDPOINTS.DEEPCLEANING_TECHNICIANS, data),
+    );
+    return result.data;
+  }
+
+  async updateDeepCleaningTechnician(
+    id: number,
+    data: Partial<DeepCleaningTechnician>,
+  ): Promise<DeepCleaningTechnician> {
+    const result = await this.retryRequest(() =>
+      this.api.patch<DeepCleaningTechnician>(`${API_ENDPOINTS.DEEPCLEANING_TECHNICIANS}${id}/`, data),
     );
     return result.data;
   }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle, CheckCheck, Search } from 'lucide-react';
 import { PageLoading, Pagination, Badge } from '../components/ui';
 import { CrmTableShell, crmThCompactClass, crmTdCompactClass } from '../components/crm/CrmDataTable';
@@ -9,6 +10,7 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { showAlert } from '../utils/notify';
+import { deepCleaningApiError } from '../constants/deepCleaning';
 import {
   dateFilterToApiParams,
   EMPTY_DATE_FILTER,
@@ -60,6 +62,7 @@ const DeepCleaningInquiries: React.FC = () => {
   );
   const [activeTab, setActiveTab] = useState('All');
   const [searchInput, setSearchInput] = useState('');
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
 
@@ -113,6 +116,23 @@ const DeepCleaningInquiries: React.FC = () => {
 
   const patchRow = (id: number, patch: Partial<DeepCleaningInquiry>) => {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  };
+
+  const handleConfirmBooking = async (row: DeepCleaningInquiry) => {
+    try {
+      setConfirmingId(row.id);
+      const booking = await enhancedApiService.confirmDeepCleaningInquiry(row.id);
+      patchRow(row.id, {
+        status: 'Converted',
+        is_read: true,
+        booking_id: booking.id,
+        booking_code: booking.code,
+      });
+    } catch (err) {
+      showAlert(deepCleaningApiError(err, 'Could not create the booking.'));
+    } finally {
+      setConfirmingId(null);
+    }
   };
 
   const handleMarkAsRead = async (id: number) => {
@@ -440,6 +460,23 @@ const DeepCleaningInquiries: React.FC = () => {
                           <option value="Closed">Closed</option>
                         </select>
                         <div className="mt-1">
+                          {row.booking_id ? (
+                            <Link
+                              to="/deepcleaning-bookings"
+                              className="text-[10px] font-bold text-teal-700"
+                            >
+                              {row.booking_code || `Booking #${row.booking_id}`}
+                            </Link>
+                          ) : row.status !== 'Closed' ? (
+                            <button
+                              type="button"
+                              disabled={confirmingId === row.id}
+                              onClick={() => handleConfirmBooking(row)}
+                              className="rounded bg-teal-700 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-50"
+                            >
+                              {confirmingId === row.id ? 'Saving…' : 'Confirm Booking'}
+                            </button>
+                          ) : null}
                           <Badge
                             variant={
                               row.status === 'Converted'
