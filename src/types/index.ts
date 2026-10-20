@@ -395,6 +395,7 @@ export interface DeepCleaningInquiry {
   regular_price?: number | string | null;
   discount_amount?: number | string | null;
   notes?: string;
+  booking_session_id?: string | null;
   page_url?: string | null;
   source?: string;
   status: 'New' | 'Contacted' | 'Converted' | 'Closed';
