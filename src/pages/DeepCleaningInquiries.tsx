@@ -8,7 +8,12 @@ import CopyablePhone from '../components/crm/CopyablePhone';
 import InquiryDateFilterBar from '../components/crm/InquiryDateFilterBar';
 import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
-import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import { openWhatsApp } from '../utils/whatsapp';
+import {
+  deepCleaningInquiryAcknowledgement,
+  deepCleaningInquiryWhatsAppItems,
+} from '../utils/deepCleaningWhatsApp';
+import DeepCleaningWhatsAppMenu from '../components/crm/DeepCleaningWhatsAppMenu';
 import { showAlert } from '../utils/notify';
 import { deepCleaningApiError } from '../constants/deepCleaning';
 import {
@@ -365,8 +370,9 @@ const DeepCleaningInquiries: React.FC = () => {
                         <CopyablePhone
                           phone={row.mobile}
                           className="text-[11px]"
+                          whatsAppTitle="Open the inquiry acknowledgement in WhatsApp"
                           onWhatsApp={() =>
-                            openWhatsApp(row.mobile, whatsAppTemplates.customerInquiry(row.name))
+                            openWhatsApp(row.mobile, deepCleaningInquiryAcknowledgement(row))
                           }
                         />
                       </td>
@@ -494,7 +500,8 @@ const DeepCleaningInquiries: React.FC = () => {
                         </div>
                       </td>
                       <td className={crmTdCompactClass} onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <DeepCleaningWhatsAppMenu items={deepCleaningInquiryWhatsAppItems(row)} />
                           {!row.is_read ? (
                             <button
                               type="button"

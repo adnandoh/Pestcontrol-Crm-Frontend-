@@ -4,6 +4,8 @@ import { Plus } from 'lucide-react';
 import { Badge, Button, ConfirmationModal, Modal, PageLoading, Pagination } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
 import { deepCleaningApiError, formatDeepCleaningMoney } from '../constants/deepCleaning';
+import { deepCleaningBookingWhatsAppItems } from '../utils/deepCleaningWhatsApp';
+import DeepCleaningWhatsAppMenu from '../components/crm/DeepCleaningWhatsAppMenu';
 import type {
   DeepCleaningBooking,
   DeepCleaningBookingStatus,
@@ -205,7 +207,8 @@ const DeepCleaningBookings: React.FC = () => {
                 <td className="px-3 py-2">{formatDeepCleaningMoney(row.price)}</td>
                 <td className="px-3 py-2">{row.technician_name || '—'}</td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DeepCleaningWhatsAppMenu items={deepCleaningBookingWhatsAppItems(row)} />
                     {row.status === 'Pending' || row.status === 'On Process' ? (
                       <Button size="sm" variant="outline" onClick={() => openAssign(row)}>
                         {row.technician ? 'Change' : 'Assign'}
