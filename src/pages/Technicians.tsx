@@ -8,11 +8,15 @@ import {
   Check,
   X,
   Trash2,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import {
   Button,
   ConfirmationModal,
+  Modal,
   Pagination,
 } from '../components/ui';
 import { enhancedApiService } from '../services/api.enhanced';
@@ -37,6 +41,12 @@ const Technicians: React.FC = () => {
   const [actionBusyId, setActionBusyId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Technician | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<Technician | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [pagination, setPagination] = useState({
@@ -131,6 +141,39 @@ const Technicians: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     loadTechnicians(page, searchInput);
+  };
+
+  const openPasswordReset = (tech: Technician) => {
+    setPasswordTarget(tech);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setPasswordError('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!passwordTarget) return;
+    if (newPassword.length < 6 || !newPassword.trim()) {
+      setPasswordError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    try {
+      setPasswordBusy(true);
+      setPasswordError('');
+      const result = await enhancedApiService.resetTechnicianPassword(passwordTarget.id, newPassword);
+      const name = passwordTarget.name;
+      setPasswordTarget(null);
+      showAlert(result.message || `Password updated for ${name}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not update the password';
+      setPasswordError(message);
+    } finally {
+      setPasswordBusy(false);
+    }
   };
 
   const handleApproveApp = async (tech: Technician) => {
@@ -367,6 +410,18 @@ const Technicians: React.FC = () => {
                           {approved ? 'Revoke' : 'Reject'}
                         </button>
                       )}
+                      {hasApp && (
+                        <button
+                          type="button"
+                          disabled={busy || passwordBusy}
+                          onClick={() => openPasswordReset(tech)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 text-[9px] font-black uppercase tracking-wide disabled:opacity-50"
+                          title="Set a new Partner app password"
+                        >
+                          <KeyRound className="h-3 w-3" />
+                          Forgot password
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => navigate(`/technicians/edit/${tech.id}`)}
@@ -424,6 +479,74 @@ const Technicians: React.FC = () => {
         type="danger"
         isLoading={deleteBusy}
       />
+
+      <Modal
+        open={Boolean(passwordTarget)}
+        onOpenChange={(open) => {
+          if (!open && !passwordBusy) setPasswordTarget(null);
+        }}
+        title="Forgot password"
+        description={
+          passwordTarget
+            ? `Set a new Partner app password for ${passwordTarget.name}. They sign in with ${passwordTarget.mobile}.`
+            : undefined
+        }
+        size="sm"
+      >
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleResetPassword();
+          }}
+        >
+          <label className="block text-xs font-semibold text-slate-700">
+            New password
+            <span className="relative mt-1 block">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+                placeholder="At least 6 characters"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </span>
+          </label>
+          <label className="block text-xs font-semibold text-slate-700">
+            Confirm password
+            <input
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+          {passwordError ? <p className="text-xs font-semibold text-red-600">{passwordError}</p> : null}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={passwordBusy}
+              onClick={() => setPasswordTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={passwordBusy}>
+              {passwordBusy ? 'Updating…' : 'Update password'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

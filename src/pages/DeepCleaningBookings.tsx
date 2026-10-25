@@ -192,7 +192,7 @@ const DeepCleaningBookings: React.FC = () => {
                 <td className="px-3 py-2">
                   <div className="font-medium">{row.name}</div>
                   <div className="text-slate-500">{row.mobile}</div>
-                  <div className="text-slate-500">{row.city}</div>
+                  <div className="text-slate-500">{[row.city, row.area].filter(Boolean).join(' · ')}</div>
                 </td>
                 <td className="px-3 py-2">
                   <div>{row.service}</div>
@@ -257,9 +257,16 @@ const DeepCleaningBookings: React.FC = () => {
         open={Boolean(assignFor)}
         onOpenChange={(open) => { if (!open) setAssignFor(null); }}
         title={assignFor ? `Assign ${assignFor.code}` : 'Assign'}
-        description={assignFor ? `${assignFor.service} in ${assignFor.city}` : ''}
+        description={assignFor ? [assignFor.city, assignFor.area].filter(Boolean).join(' · ') : ''}
       >
         <div className="space-y-3 p-4">
+          {assignFor ? (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">This booking</p>
+              <p className="font-semibold">{assignFor.service}</p>
+              <p>{[assignFor.city, assignFor.area || 'Locality not set'].filter(Boolean).join(' · ')}</p>
+            </div>
+          ) : null}
           {assignError ? <p className="text-sm text-red-600">{assignError}</p> : null}
           {technicians.length === 0 ? (
             <p className="text-sm text-slate-600">
@@ -267,20 +274,49 @@ const DeepCleaningBookings: React.FC = () => {
             </p>
           ) : (
             <div className="max-h-72 space-y-2 overflow-y-auto">
-              {technicians.map((tech) => (
-                <label key={tech.id} className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2">
-                  <input
-                    type="radio"
-                    name="deep-cleaning-tech"
-                    checked={pickedId === tech.id}
-                    onChange={() => setPickedId(tech.id)}
-                  />
-                  <span>
-                    <span className="block font-medium">{tech.name}</span>
-                    <span className="block text-xs text-slate-500">{tech.mobile} · {tech.cities.join(', ')}</span>
-                  </span>
-                </label>
-              ))}
+              {[...technicians].sort((a, b) => {
+                const area = (assignFor?.area || '').trim().toLowerCase();
+                const score = (tech: DeepCleaningTechnician) => (
+                  area && (tech.localities || []).some((item) => item.name.trim().toLowerCase() === area) ? 0 : 1
+                );
+                return score(a) - score(b) || a.name.localeCompare(b.name);
+              }).map((tech) => {
+                const area = (assignFor?.area || '').trim().toLowerCase();
+                return (
+                  <label key={tech.id} className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2">
+                    <input
+                      type="radio"
+                      name="deep-cleaning-tech"
+                      checked={pickedId === tech.id}
+                      onChange={() => setPickedId(tech.id)}
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium">{tech.name}</span>
+                      <span className="block text-xs text-slate-500">{tech.mobile}</span>
+                      <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-slate-400">City</span>
+                      <span className="block text-xs text-slate-700">{tech.cities.join(', ') || '—'}</span>
+                      <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-slate-400">Locality</span>
+                      <span className="mt-0.5 flex flex-wrap gap-1">
+                        {(tech.localities || []).length === 0 ? (
+                          <span className="text-xs text-slate-500">No locality selected</span>
+                        ) : (tech.localities || []).map((item) => {
+                          const matches = area && item.name.trim().toLowerCase() === area;
+                          return (
+                            <span
+                              key={`${item.city}-${item.name}`}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                matches ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {item.city ? `${item.city} · ${item.name}` : item.name}
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           )}
           <div className="flex justify-end gap-2">

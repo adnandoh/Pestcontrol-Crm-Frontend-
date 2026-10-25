@@ -623,6 +623,18 @@ class EnhancedApiService {
     return result.data.technician ?? (result.data as unknown as Technician);
   }
 
+  async resetTechnicianPassword(
+    technicianId: number,
+    password: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const result = await this.retryRequest(() =>
+      this.api.post<{ success: boolean; message: string }>(
+        `${API_ENDPOINTS.TECHNICIANS}${technicianId}/reset-password/`,
+        { password },
+      ),
+    );
+    return result.data;
+  }
 
   async getTechnicianDailyTypeReport(params?: {
     date?: string;
@@ -890,6 +902,15 @@ class EnhancedApiService {
         API_ENDPOINTS.DEEPCLEANING_INQUIRIES,
         { params },
       ),
+    );
+    return result.data;
+  }
+
+  async createDeepCleaningInquiry(
+    data: Partial<DeepCleaningInquiry>,
+  ): Promise<DeepCleaningInquiry> {
+    const result = await this.retryRequest(() =>
+      this.api.post<DeepCleaningInquiry>(API_ENDPOINTS.DEEPCLEANING_INQUIRIES, data),
     );
     return result.data;
   }

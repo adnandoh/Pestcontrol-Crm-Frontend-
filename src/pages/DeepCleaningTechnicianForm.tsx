@@ -8,6 +8,9 @@ import {
   DEEP_CLEANING_SERVICES,
   deepCleaningApiError,
 } from '../constants/deepCleaning';
+import { loadDeepCleaningLocalities } from '../utils/deepCleaningLocalities';
+
+type Locality = { city: string; name: string };
 
 type FormState = {
   name: string;
@@ -15,8 +18,8 @@ type FormState = {
   age: string;
   alternative_mobile: string;
   address: string;
-  location: string;
   cities: string[];
+  localities: Locality[];
   services: string[];
   presence_status: 'active' | 'on_leave' | 'suspended';
 };
@@ -27,8 +30,8 @@ const emptyForm = (): FormState => ({
   age: '',
   alternative_mobile: '',
   address: '',
-  location: '',
   cities: [],
+  localities: [],
   services: [],
   presence_status: 'active',
 });
@@ -42,26 +45,36 @@ const DeepCleaningTechnicianForm: React.FC = () => {
   const techId = id ? Number(id) : null;
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [loading, setLoading] = useState(Boolean(techId));
+  const [places, setPlaces] = useState<Record<string, string[]>>({});
+  const [localityDraft, setLocalityDraft] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!techId) return;
     let active = true;
-    enhancedApiService.getDeepCleaningTechnician(techId).then((row) => {
+    const technicianRequest = techId
+      ? enhancedApiService.getDeepCleaningTechnician(techId)
+      : Promise.resolve(null);
+    Promise.all([
+      technicianRequest,
+      loadDeepCleaningLocalities().catch(() => ({})),
+    ]).then(([row, locationRows]) => {
       if (!active) return;
-      setForm({
-        name: row.name,
-        mobile: row.mobile,
-        age: row.age ? String(row.age) : '',
-        alternative_mobile: row.alternative_mobile || '',
-        address: row.address || '',
-        location: row.location || '',
-        cities: row.cities || [],
-        services: row.services || [],
-        presence_status: row.presence_status,
-      });
+      if (row) {
+        setForm({
+          name: row.name,
+          mobile: row.mobile,
+          age: row.age ? String(row.age) : '',
+          alternative_mobile: row.alternative_mobile || '',
+          address: row.address || '',
+          cities: row.cities || [],
+          localities: row.localities || [],
+          services: row.services || [],
+          presence_status: row.presence_status,
+        });
+      }
+      setPlaces(locationRows || {});
       setLoading(false);
     }).catch((err) => {
       if (!active) return;
@@ -87,8 +100,9 @@ const DeepCleaningTechnicianForm: React.FC = () => {
       age: form.age ? Number(form.age) : null,
       alternative_mobile: form.alternative_mobile || null,
       address: form.address.trim(),
-      location: form.location.trim(),
+      location: form.localities.map((item) => item.name).join(', '),
       cities: form.cities,
+      localities: form.localities,
       services: form.services,
       presence_status: form.presence_status,
       is_active: true,
@@ -137,24 +151,102 @@ const DeepCleaningTechnicianForm: React.FC = () => {
           Alternate mobile
           <input inputMode="numeric" maxLength={10} className="mt-1 w-full rounded-md border px-3 py-2" value={form.alternative_mobile} onChange={(e) => setField('alternative_mobile', e.target.value.replace(/\D/g, '').slice(0, 10))} />
         </label>
-        <label className="text-sm">
-          Location
-          <input className="mt-1 w-full rounded-md border px-3 py-2" value={form.location} onChange={(e) => setField('location', e.target.value)} placeholder="Area, city" />
-        </label>
         <label className="text-sm sm:col-span-2">
           Address
           <input className="mt-1 w-full rounded-md border px-3 py-2" value={form.address} onChange={(e) => setField('address', e.target.value)} />
         </label>
-        <fieldset className="text-sm">
+        <fieldset className="text-sm sm:col-span-2">
           <legend className="mb-2">Cities</legend>
           <div className="flex flex-wrap gap-2">
             {DEEP_CLEANING_CITIES.map((city) => (
               <label key={city} className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1">
-                <input type="checkbox" checked={form.cities.includes(city)} onChange={() => setField('cities', toggle(form.cities, city))} />
+                <input
+                  type="checkbox"
+                  checked={form.cities.includes(city)}
+                  onChange={() => {
+                    const cities = toggle(form.cities, city);
+                    setForm((prev) => ({
+                      ...prev,
+                      cities,
+                      localities: prev.localities.filter((item) => cities.includes(item.city)),
+                    }));
+                  }}
+                />
                 {city}
               </label>
             ))}
           </div>
+        </fieldset>
+        <fieldset className="text-sm sm:col-span-2">
+          <legend className="mb-2">Localities</legend>
+          {form.cities.length === 0 ? (
+            <p className="text-slate-500">Select a city to choose its localities.</p>
+          ) : (
+            <div className="space-y-3">
+              {form.cities.map((city) => {
+                const names = places[city] || [];
+                const extras = form.localities
+                  .filter((item) => item.city === city && !names.includes(item.name))
+                  .map((item) => item.name);
+                const options = [...extras, ...names];
+                return (
+                  <div key={city}>
+                    <p className="mb-1 font-medium text-slate-800">{city}</p>
+                    {options.length === 0 ? (
+                      <p className="text-slate-500">No saved localities for {city}. Type one below.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {options.map((name) => {
+                          const checked = form.localities.some((item) => item.city === city && item.name === name);
+                          return (
+                            <label key={`${city}-${name}`} className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    localities: checked
+                                      ? prev.localities.filter((item) => !(item.city === city && item.name === name))
+                                      : [...prev.localities, { city, name }],
+                                  }));
+                                }}
+                              />
+                              {name}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="mt-2 flex max-w-md gap-2">
+                      <input
+                        className="w-full rounded-md border px-3 py-1.5"
+                        placeholder={`Add a ${city} locality`}
+                        value={localityDraft[city] || ''}
+                        onChange={(e) => setLocalityDraft((prev) => ({ ...prev, [city]: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="rounded-md border px-3 py-1.5 text-sm font-semibold"
+                        onClick={() => {
+                          const name = (localityDraft[city] || '').trim();
+                          if (!name) return;
+                          setForm((prev) => (
+                            prev.localities.some((item) => item.city === city && item.name.toLowerCase() === name.toLowerCase())
+                              ? prev
+                              : { ...prev, localities: [...prev.localities, { city, name }] }
+                          ));
+                          setLocalityDraft((prev) => ({ ...prev, [city]: '' }));
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </fieldset>
         <fieldset className="text-sm">
           <legend className="mb-2">Services</legend>

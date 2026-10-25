@@ -23,6 +23,7 @@ const Clients = lazy(() => import('./pages/Clients'));
 const ClientDetail = lazy(() => import('./pages/ClientDetail'));
 const Inquiries = lazy(() => import('./pages/Inquiries'));
 const DeepCleaningInquiries = lazy(() => import('./pages/DeepCleaningInquiries'));
+const DeepCleaningInquiryForm = lazy(() => import('./pages/DeepCleaningInquiryForm'));
 const DeepCleaningBookings = lazy(() => import('./pages/DeepCleaningBookings'));
 const DeepCleaningBookingForm = lazy(() => import('./pages/DeepCleaningBookingForm'));
 const DeepCleaningTechnicians = lazy(() => import('./pages/DeepCleaningTechnicians'));
@@ -163,6 +164,7 @@ const AppContent: React.FC = () => {
                     <Route path="/clients/:id" element={<ClientDetail />} />
                     <Route path="/inquiries" element={<Inquiries />} />
                     <Route path="/deepcleaning-inquiries" element={<DeepCleaningInquiries />} />
+                    <Route path="/deepcleaning-inquiries/create" element={<DeepCleaningInquiryForm />} />
                     <Route path="/deepcleaning-bookings" element={<DeepCleaningBookings />} />
                     <Route path="/deepcleaning-bookings/create" element={<DeepCleaningBookingForm />} />
                     <Route path="/deepcleaning-bookings/edit/:id" element={<DeepCleaningBookingForm />} />

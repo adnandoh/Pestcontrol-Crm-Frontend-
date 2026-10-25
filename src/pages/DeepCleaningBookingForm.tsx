@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, PageLoading } from '../components/ui';
+import DeepCleaningRateChoices from '../components/crm/DeepCleaningRateChoices';
+import DeepCleaningWhatsAppMenu from '../components/crm/DeepCleaningWhatsAppMenu';
 import { enhancedApiService } from '../services/api.enhanced';
 import {
   DEEP_CLEANING_CITIES,
@@ -9,7 +11,10 @@ import {
   DEEP_CLEANING_TIMES,
   deepCleaningApiError,
 } from '../constants/deepCleaning';
-import type { DeepCleaningBooking } from '../types';
+import { deepCleaningBookingWhatsAppItems } from '../utils/deepCleaningWhatsApp';
+import { bestDeepCleaningRate, deepCleaningRateAmount, ratesForBooking } from '../utils/deepCleaningRates';
+import { loadDeepCleaningLocalities } from '../utils/deepCleaningLocalities';
+import type { DeepCleaningBooking, DeepCleaningRate } from '../types';
 
 type FormState = {
   name: string;
@@ -19,11 +24,13 @@ type FormState = {
   property_size: string;
   property_type: string;
   city: string;
+  area: string;
   address: string;
   preferred_date: string;
   preferred_time: string;
   price: string;
   package_name: string;
+  package_id: string;
   notes: string;
 };
 
@@ -35,11 +42,13 @@ const emptyForm = (): FormState => ({
   property_size: '1BHK',
   property_type: 'Furnished',
   city: 'Mumbai',
+  area: '',
   address: '',
   preferred_date: '',
   preferred_time: DEEP_CLEANING_TIMES[0],
   price: '',
   package_name: '',
+  package_id: '',
   notes: '',
 });
 
@@ -52,11 +61,13 @@ function fromBooking(row: DeepCleaningBooking): FormState {
     property_size: row.property_size || '1BHK',
     property_type: row.property_type || 'Furnished',
     city: row.city,
+    area: row.area || '',
     address: row.address || '',
     preferred_date: row.preferred_date || '',
     preferred_time: row.preferred_time || DEEP_CLEANING_TIMES[0],
     price: row.price === null || row.price === undefined || row.price === '' ? '' : String(row.price),
     package_name: row.package_name || '',
+    package_id: row.package_id || '',
     notes: row.notes || '',
   };
 }
@@ -66,19 +77,34 @@ const DeepCleaningBookingForm: React.FC = () => {
   const bookingId = id ? Number(id) : null;
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [saved, setSaved] = useState<DeepCleaningBooking | null>(null);
+  const [rates, setRates] = useState<DeepCleaningRate[]>([]);
+  const [places, setPlaces] = useState<Record<string, string[]>>({});
   const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(Boolean(bookingId));
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const skipRateFill = useRef(Boolean(bookingId));
   const locked = status === 'Done' || status === 'Cancelled';
 
   useEffect(() => {
-    if (!bookingId) return;
     let active = true;
-    enhancedApiService.getDeepCleaningBooking(bookingId).then((row) => {
+    const bookingRequest = bookingId
+      ? enhancedApiService.getDeepCleaningBooking(bookingId)
+      : Promise.resolve(null);
+    Promise.all([
+      bookingRequest,
+      enhancedApiService.getDeepCleaningRates().catch(() => [] as DeepCleaningRate[]),
+      loadDeepCleaningLocalities().catch(() => ({})),
+    ]).then(([row, rateRows, locationRows]) => {
       if (!active) return;
-      setForm(fromBooking(row));
-      setStatus(row.status);
+      if (row) {
+        setForm(fromBooking(row));
+        setStatus(row.status);
+        setSaved(row);
+      }
+      setRates(rateRows.filter((rate) => rate.is_active));
+      setPlaces(locationRows || {});
       setLoading(false);
     }).catch((err) => {
       if (!active) return;
@@ -89,6 +115,35 @@ const DeepCleaningBookingForm: React.FC = () => {
       active = false;
     };
   }, [bookingId]);
+
+  useEffect(() => {
+    if (loading || locked) return;
+    if (skipRateFill.current) {
+      skipRateFill.current = false;
+      return;
+    }
+    const choice = {
+      segment: form.segment,
+      service: form.service,
+      propertySize: form.property_size,
+      propertyType: form.property_type,
+    };
+    const match = bestDeepCleaningRate(rates, choice);
+    if (match) {
+      setForm((prev) => ({
+        ...prev,
+        price: deepCleaningRateAmount(match),
+        package_name: match.package_name,
+        package_id: match.code,
+      }));
+      return;
+    }
+    setForm((prev) => {
+      const stillShown = ratesForBooking(rates, choice).some((rate) => rate.code === prev.package_id);
+      if (stillShown || !prev.package_id) return prev;
+      return { ...prev, price: '', package_name: '', package_id: '' };
+    });
+  }, [form.segment, form.service, form.property_size, form.property_type, rates, loading, locked]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -107,20 +162,24 @@ const DeepCleaningBookingForm: React.FC = () => {
       property_size: form.property_size,
       property_type: form.property_type,
       city: form.city,
+      area: form.area,
       address: form.address.trim(),
       preferred_date: form.preferred_date || null,
       preferred_time: form.preferred_time,
       price: form.price === '' ? null : form.price,
       package_name: form.package_name.trim(),
+      package_id: form.package_id,
       notes: form.notes.trim(),
     };
     try {
-      if (bookingId) {
-        await enhancedApiService.updateDeepCleaningBooking(bookingId, payload);
-      } else {
-        await enhancedApiService.createDeepCleaningBooking(payload);
+      const row = bookingId
+        ? await enhancedApiService.updateDeepCleaningBooking(bookingId, payload)
+        : await enhancedApiService.createDeepCleaningBooking(payload);
+      setSaved(row);
+      setStatus(row.status);
+      if (!bookingId) {
+        navigate(`/deepcleaning-bookings/edit/${row.id}`, { replace: true });
       }
-      navigate('/deepcleaning-bookings');
     } catch (err) {
       setError(deepCleaningApiError(err, 'Could not save this booking.'));
     } finally {
@@ -137,9 +196,15 @@ const DeepCleaningBookingForm: React.FC = () => {
           {bookingId ? 'Edit Deep Cleaning booking' : 'Create Deep Cleaning booking'}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          A new booking starts in Pending. Assign a technician from the bookings list to move it to On Process.
+          A new booking starts in Pending. The price comes from the rate for this service and home size. GST is extra.
         </p>
       </div>
+      {saved && saved.status !== 'Cancelled' ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <p className="text-sm text-slate-700">WhatsApp for {saved.code || 'this booking'}</p>
+          <DeepCleaningWhatsAppMenu items={deepCleaningBookingWhatsAppItems(saved)} />
+        </div>
+      ) : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {locked ? <p className="text-sm text-slate-600">This booking is {status} and can no longer be edited.</p> : null}
       <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2">
@@ -177,11 +242,44 @@ const DeepCleaningBookingForm: React.FC = () => {
             <option>Empty</option>
           </select>
         </label>
+        <div className="sm:col-span-2">
+          <DeepCleaningRateChoices
+            rates={rates}
+            segment={form.segment}
+            service={form.service}
+            propertySize={form.property_size}
+            propertyType={form.property_type}
+            selectedCode={form.package_id}
+            disabled={locked}
+            onSelect={(rate) => {
+              setForm((prev) => ({
+                ...prev,
+                price: deepCleaningRateAmount(rate),
+                package_name: rate.package_name,
+                package_id: rate.code,
+              }));
+            }}
+          />
+        </div>
         <label className="text-sm">
           City
-          <select disabled={locked} className="mt-1 w-full rounded-md border px-3 py-2" value={form.city} onChange={(e) => setField('city', e.target.value)}>
+          <select disabled={locked} className="mt-1 w-full rounded-md border px-3 py-2" value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value, area: '' }))}>
             {DEEP_CLEANING_CITIES.map((city) => <option key={city}>{city}</option>)}
           </select>
+        </label>
+        <label className="text-sm">
+          Locality
+          <select disabled={locked} className="mt-1 w-full rounded-md border px-3 py-2" value={(places[form.city] || []).includes(form.area) ? form.area : ''} onChange={(e) => setField('area', e.target.value)}>
+            <option value="">Select locality</option>
+            {(places[form.city] || []).map((area) => <option key={area} value={area}>{area}</option>)}
+          </select>
+          <input
+            disabled={locked}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+            placeholder="Or type the locality"
+            value={form.area}
+            onChange={(e) => setField('area', e.target.value)}
+          />
         </label>
         <label className="text-sm">
           Price (excl. GST)

@@ -85,7 +85,12 @@ const DeepCleaningTechnicians: React.FC = () => {
                 <tr key={row.id} className="border-t border-slate-100">
                   <td className="px-3 py-2 font-medium text-slate-900">{row.name}</td>
                   <td className="px-3 py-2">{row.mobile}</td>
-                  <td className="px-3 py-2">{row.cities.join(', ')}</td>
+                  <td className="px-3 py-2">
+                    <div>{row.cities.join(', ')}</div>
+                    <div className="text-xs text-slate-500">
+                      {(row.localities || []).map((item) => item.name).join(', ') || 'No locality'}
+                    </div>
+                  </td>
                   <td className="px-3 py-2">{row.services.join(', ')}</td>
                   <td className="px-3 py-2">
                     <Badge variant={row.presence_status === 'active' ? 'success' : 'warning'}>

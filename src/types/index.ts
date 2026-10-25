@@ -421,6 +421,7 @@ export interface DeepCleaningTechnician {
   address?: string;
   location?: string;
   cities: string[];
+  localities?: Array<{ city: string; name: string }>;
   services: string[];
   presence_status: 'active' | 'on_leave' | 'suspended';
   presence_label?: string;

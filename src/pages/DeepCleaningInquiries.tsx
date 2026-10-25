@@ -241,6 +241,12 @@ const DeepCleaningInquiries: React.FC = () => {
           ))}
         </div>
         <div className="flex items-center gap-1 pb-1">
+          <Link
+            to="/deepcleaning-inquiries/create"
+            className="mr-2 inline-flex items-center rounded-lg bg-teal-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-teal-800"
+          >
+            Create inquiry
+          </Link>
           {([
             { key: '', label: 'All', count: readCounts?.all },
             { key: 'unread', label: 'Unread', count: readCounts?.unread },
