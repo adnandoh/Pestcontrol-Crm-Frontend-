@@ -1434,7 +1434,12 @@ const JobCards: React.FC = () => {
                             In partner app
                           </span>
                         )}
-                        {job.partner_status && activeTab === 'on_process' && (
+                        {job.partner_status === 'completed' && activeTab === 'on_process' && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                            Technician finished
+                          </span>
+                        )}
+                        {job.partner_status && job.partner_status !== 'completed' && activeTab === 'on_process' && (
                           <span className="text-[9px] font-bold text-indigo-600 capitalize">
                             App: {job.partner_status.replace('_', ' ')}
                           </span>
@@ -1569,7 +1574,7 @@ const JobCards: React.FC = () => {
                                 <button 
                                   onClick={() => handleCompleteBookingClick(job)} 
                                   className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded shadow-xs border border-emerald-100 transition-all group/done"
-                                  title="Mark as Done"
+                                  title={job.partner_status === 'completed' ? 'Move to Done' : 'Mark as Done'}
                                 >
                                   <CheckCircle className="h-3.5 w-3.5" />
                                 </button>
