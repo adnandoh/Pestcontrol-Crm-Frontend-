@@ -55,6 +55,23 @@ describe('deep cleaning rate selection', () => {
     expect(shown).toEqual(['R1', 'R2']);
   });
 
+  it('uses the Diwali Standard rate and leaves the old furnished 2BHK out', () => {
+    const diwali = [
+      rate({ code: '4999', package_name: 'Furnished 2BHK up to 900 sq ft', job_amount: 5000, sort_order: 3 }),
+      rate({ code: 'H15', package_name: 'Furnished 2BHK Premium up to 900 sq ft', job_amount: 14000, sort_order: 15 }),
+      rate({ code: 'H13', package_name: 'Furnished 2BHK Standard up to 900 sq ft', job_amount: 6000, sort_order: 13 }),
+      rate({ code: 'H14', package_name: 'Empty 2BHK Standard up to 900 sq ft', job_amount: 5000, sort_order: 14 }),
+    ];
+    const choice = {
+      segment: 'Residential',
+      service: 'Full Home Deep Cleaning',
+      propertySize: '2BHK',
+      propertyType: 'Furnished',
+    };
+    expect(bestDeepCleaningRate(diwali, choice)?.code).toBe('H13');
+    expect(ratesForBooking(diwali, choice).map((row) => row.code)).toEqual(['H13', 'H14', 'H15']);
+  });
+
   it('shows the service rates when the package is not sized by BHK', () => {
     const shown = ratesForBooking(rates, {
       segment: 'Residential',

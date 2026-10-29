@@ -5,6 +5,7 @@ export const DEEP_CLEANING_SERVICES = [
   'Sofa Cleaning',
   'Mattress Cleaning',
   'Carpet Cleaning',
+  'Home Add-on Cleaning',
   'Office Deep Cleaning',
 ] as const;
 
@@ -16,7 +17,7 @@ export const DEEP_CLEANING_CITIES = [
   'Lonavala',
 ] as const;
 
-export const DEEP_CLEANING_SIZES = ['1RK', '1BHK', '2BHK', '3BHK', '4BHK'] as const;
+export const DEEP_CLEANING_SIZES = ['Chawl', '1RK', '1BHK', '2BHK', '3BHK', '4BHK', '5BHK'] as const;
 
 export const DEEP_CLEANING_TIMES = [
   '9 AM – 12 PM',

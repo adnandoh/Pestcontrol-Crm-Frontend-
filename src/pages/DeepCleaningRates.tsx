@@ -1,18 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge, Button, ConfirmationModal, Modal, PageLoading } from '../components/ui';
+import { DEEP_CLEANING_SERVICES } from '../constants/deepCleaning';
 import { enhancedApiService } from '../services/api.enhanced';
 import type { DeepCleaningRate } from '../types';
 
-const SERVICES = [
-  'Full Home Deep Cleaning',
-  'Kitchen Deep Cleaning',
-  'Bathroom Deep Cleaning',
-  'Sofa Cleaning',
-  'Mattress Cleaning',
-  'Carpet Cleaning',
-  'Office Deep Cleaning',
-];
+const SERVICES = [...DEEP_CLEANING_SERVICES];
 
 type FormState = {
   code: string;
@@ -124,6 +117,7 @@ const DeepCleaningRates: React.FC = () => {
   const [segment, setSegment] = useState('');
   const [service, setService] = useState('');
   const [query, setQuery] = useState('');
+  const [showHidden, setShowHidden] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<DeepCleaningRate | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -152,6 +146,7 @@ const DeepCleaningRates: React.FC = () => {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
+      if (!showHidden && !row.is_active) return false;
       if (segment && row.segment !== segment) return false;
       if (service && row.service !== service) return false;
       if (!q) return true;
@@ -159,7 +154,7 @@ const DeepCleaningRates: React.FC = () => {
         .toLowerCase()
         .includes(q);
     });
-  }, [rows, segment, service, query]);
+  }, [rows, segment, service, query, showHidden]);
 
   function openCreate() {
     setEditing(null);
@@ -252,8 +247,9 @@ const DeepCleaningRates: React.FC = () => {
         <div>
           <h1 className="text-xl font-semibold text-slate-900">DeepCleaning99 Prices</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Master list for deepcleaning99.com. One-time prices are before the 30% website offer.
-            GST is extra. Scheduled cleaning uses the AMC amount. Inactive rates stay off the website.
+            Diwali 2026 selling rates for deepcleaning99.com. The amount shown is the customer price
+            and excludes GST. The 30% OFF label on the website does not reduce it. Older rates stay
+            hidden so they do not conflict with Standard and Premium.
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -288,6 +284,14 @@ const DeepCleaningRates: React.FC = () => {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        <label className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={showHidden}
+            onChange={(event) => setShowHidden(event.target.checked)}
+          />
+          Show hidden rates
+        </label>
       </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -356,7 +360,7 @@ const DeepCleaningRates: React.FC = () => {
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? `Update ${editing.code}` : 'Add DeepCleaning99 rate'}
-        description="These amounts exclude GST. The website applies the 30% one-time offer itself."
+        description="These amounts exclude GST. They are the selling rates. The website 30% OFF label does not change them."
         size="lg"
       >
         <div className="grid gap-3 p-4 sm:grid-cols-2">

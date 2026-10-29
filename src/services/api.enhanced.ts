@@ -1091,9 +1091,11 @@ class EnhancedApiService {
 
   async getDeepCleaningRates(): Promise<DeepCleaningRate[]> {
     const result = await this.retryRequest(() =>
-      this.api.get<DeepCleaningRate[]>(API_ENDPOINTS.DEEPCLEANING_RATES),
+      this.api.get<DeepCleaningRate[] | { results?: DeepCleaningRate[] }>(API_ENDPOINTS.DEEPCLEANING_RATES),
     );
-    return result.data;
+    const data = result.data;
+    if (Array.isArray(data)) return data;
+    return Array.isArray(data?.results) ? data.results : [];
   }
 
   async createDeepCleaningRate(
