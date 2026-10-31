@@ -26,6 +26,7 @@ import {
   sendBookingDonePairApi,
 } from '../services/whatsappPc99Send';
 import CopyablePhone from '../components/crm/CopyablePhone';
+import TodayTechnicianReport from '../components/crm/TodayTechnicianReport';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -115,14 +116,14 @@ const JobCards: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(
-    tabFromUrl && ['pending', 'on_process', 'done', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tabFromUrl)
+    tabFromUrl && ['pending', 'on_process', 'done', 'today_technician_report', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tabFromUrl)
       ? tabFromUrl
       : 'pending',
   );
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['pending', 'on_process', 'done', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tab)) {
+    if (tab && ['pending', 'on_process', 'done', 'today_technician_report', 'upcoming_renewals', 'upcoming_services', 'reminders', 'complaint_calls', 'cancelled'].includes(tab)) {
       setActiveTab(tab);
     }
     const city = (searchParams.get('city') || '').trim();
@@ -317,7 +318,7 @@ const JobCards: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'reminders') {
       loadReminders();
-    } else {
+    } else if (activeTab !== 'today_technician_report') {
       loadJobCards(1);
     }
   }, [activeTab, loadReminders, loadJobCards]);
@@ -360,7 +361,7 @@ const JobCards: React.FC = () => {
       lastVisibleRefetchAt.current = now;
       if (activeTab === 'reminders') {
         loadReminders(filters);
-      } else {
+      } else if (activeTab !== 'today_technician_report') {
         loadJobCards(pagination.current, filters);
       }
     };
@@ -790,7 +791,9 @@ const JobCards: React.FC = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-extrabold text-gray-800 tracking-tight italic uppercase">View Bookings</h1>
             <span className="text-[10px] font-bold text-gray-400 border border-gray-100 px-2 py-0.5 rounded tracking-widest uppercase">
-              Total {activeTab === 'reminders' ? reminderTotal : pagination.count} Records
+              {activeTab === 'today_technician_report'
+                ? "Today's assignments"
+                : `Total ${activeTab === 'reminders' ? reminderTotal : pagination.count} Records`}
             </span>
             {activeTab === 'done' && filters.city && (
               <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded tracking-widest uppercase">
@@ -811,6 +814,7 @@ const JobCards: React.FC = () => {
             { id: 'pending', label: 'Pending' },
             { id: 'on_process', label: 'On Process' },
             { id: 'done', label: 'Done' },
+            { id: 'today_technician_report', label: "Today's Technician Report" },
             { id: 'upcoming_renewals', label: 'Upcoming Renewals' },
             { id: 'upcoming_services', label: 'Upcoming Services' },
             { id: 'reminders', label: 'Reminders', badge: counts.reminders },
@@ -844,6 +848,7 @@ const JobCards: React.FC = () => {
       </div>
 
       {/* 2. Filter Bar */}
+      {activeTab !== 'today_technician_report' && (
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded animate-fade-up delay-100">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search By Mobile / Name</label>
@@ -920,7 +925,12 @@ const JobCards: React.FC = () => {
            </button>
         </div>
       </div>
+      )}
 
+      {activeTab === 'today_technician_report' ? (
+        <TodayTechnicianReport />
+      ) : (
+      <>
       {/* 3. Table Results */}
       <div className="bg-white border-x border-t border-gray-200 shadow-xs overflow-hidden animate-fade-up delay-200">
         <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
@@ -1747,6 +1757,8 @@ const JobCards: React.FC = () => {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <AssignTechnicianModal
         isOpen={showAssignModal}

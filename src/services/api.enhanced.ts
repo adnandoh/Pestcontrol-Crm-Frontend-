@@ -22,6 +22,7 @@ import type {
   DeepCleaningTechnician,
   DeepCleaningRate,
   JobCard,
+  TodayTechnicianReport,
   Renewal,
   Technician,
   TechnicianRemark,
@@ -1409,6 +1410,13 @@ class EnhancedApiService {
         !!signal,
       ),
     );
+  }
+
+  async getTodayTechnicianReport(): Promise<TodayTechnicianReport> {
+    const result = await this.retryRequest(() =>
+      this.api.get<TodayTechnicianReport>(`${API_ENDPOINTS.JOBCARDS}today-technician-report/`)
+    );
+    return result.data;
   }
 
   async getJobCard(id: number, options?: { fresh?: boolean }): Promise<JobCard> {

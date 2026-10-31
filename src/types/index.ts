@@ -661,6 +661,33 @@ export interface JobCard {
   payout_status?: PayoutStatus;
 }
 
+export interface TodayTechnicianJob {
+  id: number;
+  customer_name: string;
+  customer_mobile: string;
+  service_type: string;
+  price_label: string;
+  location: string;
+  status: string;
+  time_slot: string;
+}
+
+export interface TodayTechnicianGroup {
+  id: number;
+  name: string;
+  mobile: string;
+  booking_count: number;
+  locations: string[];
+  jobs: TodayTechnicianJob[];
+}
+
+export interface TodayTechnicianReport {
+  date: string;
+  technician_count: number;
+  booking_count: number;
+  technicians: TodayTechnicianGroup[];
+}
+
 export interface PartnerJobSelfie {
   id: number;
   code: string;
