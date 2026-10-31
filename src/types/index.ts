@@ -1144,6 +1144,7 @@ export interface DashboardStatisticsResponse {
     count: number;
   }>;
   today_booking_count?: number;
+  today_booking_amount?: number;
   today_service_call_count?: number;
   today_complaint_call_count?: number;
   tomorrow_booking_count?: number;

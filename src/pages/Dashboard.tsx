@@ -52,6 +52,15 @@ function countForCity(
   return map[city.trim().toLowerCase()] || 0;
 }
 
+function formatInrAmount(value: number | undefined): string {
+  const amount = Number(value) || 0;
+  const whole = Math.abs(amount - Math.round(amount)) < 0.005;
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  });
+}
+
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStatisticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -401,9 +410,15 @@ const Dashboard: React.FC = () => {
                 </p>
               </div>
             </div>
-            <span className="rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-black text-white">
-              {stats?.today_booking_count ?? 0} bookings
-            </span>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-right">
+              <p className="text-sm font-black leading-tight tabular-nums text-indigo-900">
+                {stats?.today_booking_count ?? 0}{' '}
+                {(stats?.today_booking_count ?? 0) === 1 ? 'Booking' : 'Bookings'}
+              </p>
+              <p className="mt-0.5 text-[12px] font-black tabular-nums text-gray-900">
+                ₹{formatInrAmount(stats?.today_booking_amount)} Total Booking Amount
+              </p>
+            </div>
           </div>
           {(stats?.today_city_stats?.length || 0) === 0 ? (
             <p className="text-xs font-medium text-gray-400">No bookings scheduled for today yet.</p>
