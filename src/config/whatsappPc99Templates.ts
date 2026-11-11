@@ -4,6 +4,7 @@
  */
 import dayjs from 'dayjs';
 import type { CRMInquiry, Inquiry, JobCard, Technician } from '../types';
+import { formatWhatsAppAmountParam } from '../utils/customerPrice';
 import { normalizeWhatsAppPhone } from './whatsappEcard';
 
 export const PC99_WA_LANGUAGE = 'en_US' as const;
@@ -67,6 +68,18 @@ export type JobWhatsAppSource = {
   schedule_datetime?: string | null;
   time_slot?: string | null;
   price?: string | number | null;
+  taxable_amount?: string | number | null;
+  gst_amount?: string | number | null;
+  gst_mode?: string | null;
+  original_service_price?: string | number | null;
+  final_payable_amount?: string | number | null;
+  service_items?: Array<{
+    amount?: string | number | null;
+    base_amount?: string | number | null;
+    baseAmount?: string | number | null;
+    taxableAmount?: string | number | null;
+    taxable_amount?: string | number | null;
+  }> | null;
   notes?: string | null;
   extra_notes?: string | null;
   technician_name?: string | null;
@@ -86,7 +99,7 @@ const areaOf = (job: JobWhatsAppSource) =>
 
 const addressOf = (job: JobWhatsAppSource) => str(job.full_address || job.client_address);
 
-const amountOf = (job: JobWhatsAppSource) => str(job.price ?? '0', '0');
+const amountOf = (job: JobWhatsAppSource) => formatWhatsAppAmountParam(job);
 
 const scheduleParts = (job: JobWhatsAppSource) => {
   const when = job.schedule_datetime ? dayjs(job.schedule_datetime) : null;

@@ -19,6 +19,7 @@ import { Drawer, Button, Badge, Loading } from '../ui';
 import ComplaintModal from '../crm/ComplaintModal';
 import { enhancedApiService } from '../../services/api.enhanced';
 import type { CustomerHistory, JobCard } from '../../types';
+import { formatCustomerPricePlusGst } from '../../utils/customerPrice';
 import dayjs from 'dayjs';
 
 interface CustomerHistoryDrawerProps {
@@ -354,7 +355,9 @@ const CustomerHistoryDrawer: React.FC<CustomerHistoryDrawerProps> = ({ clientId,
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                          {job.price_display || (job.is_complaint_call ? 'Free (Complaint)' : isNested ? 'Included in Service' : `₹${job.price}`)}
+                          {job.price_display
+                            || (isNested && !job.is_complaint_call ? 'Included in Service' : null)
+                            || formatCustomerPricePlusGst(job)}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {job.status === 'Done' && !job.is_complaint_call && role === 'booking' && (

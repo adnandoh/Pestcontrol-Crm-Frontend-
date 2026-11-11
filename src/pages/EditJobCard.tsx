@@ -9,6 +9,7 @@ import {
   Send,
   UserCheck
 } from 'lucide-react';
+import { formatWhatsAppAmountParam } from '../utils/customerPrice';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import {
   fireAndForget,
@@ -866,7 +867,7 @@ const EditJobCard: React.FC = () => {
               area: formData.bhk_size || formData.property_type || '',
               date: dayjs(formData.schedule_datetime).format('DD/MM/YYYY'),
               time: formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A'),
-              amount: formData.price?.toString() || '0',
+              amount: formatWhatsAppAmountParam(jobCard || formData),
               address: formData.client_address || ''
             }))}
             className="p-2 bg-green-50 hover:bg-green-600 text-green-600 hover:text-white rounded-md transition-all shadow-sm"
@@ -885,7 +886,7 @@ const EditJobCard: React.FC = () => {
                   clientMobile: formData.client_mobile,
                   serviceType: formData.service_type,
                   area: formData.bhk_size || formData.property_type || '',
-                  amount: formData.price?.toString() || '0',
+                  amount: formatWhatsAppAmountParam({ ...jobCard, price: formData.price || jobCard.price }),
                   address: formData.client_address || '',
                   dateTime: `${dayjs(formData.schedule_datetime).format('DD/MM/YYYY')} @ ${formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A')}`,
                   instructions: formData.notes || ''
@@ -905,7 +906,7 @@ const EditJobCard: React.FC = () => {
                   serviceType: formData.service_type,
                   area: formData.bhk_size || formData.property_type || '',
                   dateTime: `${dayjs(formData.schedule_datetime).format('DD/MM/YYYY')} @ ${formData.time_slot || dayjs(formData.schedule_datetime).format('hh:mm A')}`,
-                  amount: formData.price?.toString() || '0'
+                  amount: formatWhatsAppAmountParam({ ...jobCard, price: formData.price || jobCard.price })
                 }))}
                 className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-md transition-all shadow-sm"
                 title="Notify Client (Tech Assigned)"

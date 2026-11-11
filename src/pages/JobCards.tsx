@@ -19,6 +19,7 @@ import {
   RotateCw,
   Download,
 } from 'lucide-react';
+import { formatCustomerPricePlusGst, formatWhatsAppAmountParam } from '../utils/customerPrice';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import {
   fireAndForget,
@@ -1270,9 +1271,7 @@ const JobCards: React.FC = () => {
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-blue-50 text-blue-700 border-blue-200"
                           )}>
-                            {job.price_display || (job.included_in_amc || job.price === "0" || job.price === 0 
-                              ? "Included in AMC" 
-                              : `₹${job.price}`)}
+                            {job.price_display || formatCustomerPricePlusGst(job)}
                           </span>
                         </div>
 
@@ -1610,7 +1609,7 @@ const JobCards: React.FC = () => {
                                       area: job.bhk_size || job.property_type || '',
                                       date: dayjs(job.schedule_datetime).format('DD/MM/YYYY'),
                                       time: job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A'),
-                                      amount: job.price?.toString() || '0',
+                                      amount: formatWhatsAppAmountParam(job),
                                       address: job.client_address || ''
                                     }))}
                                     className="p-2 bg-green-50 hover:bg-green-600 text-green-600 hover:text-white rounded shadow-xs border border-green-100 transition-all"
@@ -1631,7 +1630,7 @@ const JobCards: React.FC = () => {
                                             clientMobile: job.client_mobile,
                                             serviceType: job.service_type,
                                             area: job.bhk_size || job.property_type || '',
-                                            amount: job.price?.toString() || '0',
+                                            amount: formatWhatsAppAmountParam(job),
                                             address: job.client_address || '',
                                             dateTime: `${dayjs(job.schedule_datetime).format('DD/MM/YYYY')} @ ${job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A')}`,
                                             instructions: job.notes || ''
@@ -1652,7 +1651,7 @@ const JobCards: React.FC = () => {
                                           serviceType: job.service_type,
                                           area: job.bhk_size || job.property_type || '',
                                           dateTime: `${dayjs(job.schedule_datetime).format('DD/MM/YYYY')} @ ${job.time_slot || dayjs(job.schedule_datetime).format('hh:mm A')}`,
-                                          amount: job.price?.toString() || '0'
+                                          amount: formatWhatsAppAmountParam(job)
                                         }))}
                                         className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded shadow-xs border border-indigo-100 transition-all"
                                         title="Notify Client about Technician"

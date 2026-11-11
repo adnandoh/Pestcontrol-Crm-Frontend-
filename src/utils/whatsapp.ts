@@ -38,7 +38,7 @@ Service Details:
 • Selected Area: ${data.area}
 • Service Date: ${data.date}
 • Service Time: ${data.time}
-• Service Amount: ₹${data.amount}
+• Service Amount: ₹${data.amount.includes('+ GST') ? data.amount : `${data.amount} + GST`}
 • Service Address: ${data.address}
 
 Our technician will contact you before arrival.
@@ -78,7 +78,7 @@ Service Details:
 • Selected Service Type: ${data.serviceType}
 • Selected Area: ${data.area}
 • Visit Date & Time: ${data.dateTime}
-• Service Amount: ₹${data.amount}
+• Service Amount: ₹${data.amount.includes('+ GST') ? data.amount : `${data.amount} + GST`}
 
 Terms & Conditions Apply:
 ${TC_LINK}
@@ -99,25 +99,27 @@ Thank you for contacting us. Please find our service details below:
 • 1 Year Protection
 • 3 Services (Gel + Spray)
 
-1RK – ₹1800
-1BHK – ₹2200
-2BHK – ₹2500
-3BHK – ₹3000
-4BHK – ₹3500
+1RK – ₹1,800 + GST
+1BHK – ₹2,200 + GST
+2BHK – ₹2,500 + GST
+3BHK – ₹3,000 + GST
+4BHK – ₹3,500 + GST
 
 ✔️ One-Time Service
 
-1RK – ₹1000
-1BHK – ₹1200
-2BHK – ₹1500
-3BHK – ₹1800
-4BHK – ₹2000
+1RK – ₹1,000 + GST
+1BHK – ₹1,200 + GST
+2BHK – ₹1,500 + GST
+3BHK – ₹1,800 + GST
+4BHK – ₹2,000 + GST
 
 🛏️ Bed Bugs Treatment
-(2 Services) ₹2200 – ₹4000
+(2 Services) ₹2,200 – ₹4,000 + GST
 
 🪵 Termite Treatment
-(2 Years Warranty) ₹2500 – ₹4000
+(2 Years Warranty) ₹2,500 – ₹4,000 + GST
+
+All rates are base service prices + GST.
 
 ✔️ Safe & No-Smell Treatment
 ✔️ Professional & Trained Technicians
@@ -159,7 +161,7 @@ Client Details:
 Service Details:
 • Selected Service Type: ${data.serviceType}
 • Selected Area: ${data.area}
-• Service Amount: ₹${data.amount}
+• Service Amount: ₹${data.amount.includes('+ GST') ? data.amount : `${data.amount} + GST`}
 • Service Address: ${data.address}
 • Booking Date & Time: ${data.dateTime}
 

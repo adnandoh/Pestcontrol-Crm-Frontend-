@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 import type { ServiceRateInfo } from '../../types';
+import { formatCustomerPricePlusGst } from '../../utils/customerPrice';
 
 interface ServiceRateDisplayProps {
   info?: ServiceRateInfo | null;
@@ -39,7 +40,7 @@ const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
         )}
         {info.items.length === 1 ? (
           <span className="text-sm font-bold text-emerald-700 tabular-nums">
-            ₹{info.items[0].rate.toLocaleString('en-IN')}
+            {formatCustomerPricePlusGst(info.items[0].rate)}
           </span>
         ) : (
           <div className="space-y-0.5">
@@ -47,13 +48,13 @@ const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
               <div key={item.pest} className="text-[10px] text-slate-600 leading-tight">
                 <span className="font-medium">{item.pest}</span>{' '}
                 <span className="text-emerald-700 font-semibold tabular-nums">
-                  ₹{item.rate.toLocaleString('en-IN')}
+                  {formatCustomerPricePlusGst(item.rate)}
                 </span>
               </div>
             ))}
             {total != null && (
               <div className="text-xs font-bold text-emerald-800 border-t border-slate-100 pt-0.5 mt-0.5 tabular-nums">
-                ₹{total.toLocaleString('en-IN')}
+                {formatCustomerPricePlusGst(total)}
               </div>
             )}
           </div>
@@ -78,7 +79,7 @@ const ServiceRateDisplay: React.FC<ServiceRateDisplayProps> = ({
       </span>
       {amount != null && !Number.isNaN(amount) ? (
         <span className="text-sm font-bold text-emerald-700 tabular-nums">
-          ₹{amount.toLocaleString('en-IN')}
+          {formatCustomerPricePlusGst(amount)}
         </span>
       ) : (
         <span className="text-xs text-slate-400">—</span>
