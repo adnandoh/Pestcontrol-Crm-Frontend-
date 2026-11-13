@@ -342,7 +342,7 @@ export interface Inquiry {
   building_name?: string;
   landmark?: string;
   area?: string;
-  status: 'New' | 'Contacted' | 'Converted' | 'Closed';
+  status: 'New' | 'Inspection Requested' | 'Contacted' | 'Converted' | 'Closed';
   is_read?: boolean;
   premise_type?: string;
   premise_size?: string;
@@ -781,6 +781,7 @@ export interface Reminder {
 export interface InquiryStatusCounts {
   all: number;
   New: number;
+  'Inspection Requested'?: number;
   Contacted: number;
   Converted: number;
   Closed: number;

@@ -42,6 +42,7 @@ const WEBSITE_LEADS_DATE_FILTER_KEY = 'website-leads-date-filter';
 const TAB_STATUS_MAP: Record<string, keyof InquiryStatusCounts | 'all'> = {
   All: 'all',
   New: 'New',
+  'Inspection Requested': 'Inspection Requested',
   Contacted: 'Contacted',
   Converted: 'Converted',
   Closed: 'Closed',
@@ -90,7 +91,7 @@ const Inquiries: React.FC = () => {
     source: 'website';
   } | null>(null);
 
-  const tabs = ['All', 'New', 'Contacted', 'Converted', 'Closed'];
+  const tabs = ['All', 'New', 'Inspection Requested', 'Contacted', 'Converted', 'Closed'];
 
   // Load inquiries
   const loadInquiries = useCallback(async (page = 1, opts?: { focus?: string }) => {
@@ -502,7 +503,11 @@ const Inquiries: React.FC = () => {
                   </td>
                   <td className={crmTdCompactClass}>
                     <p className="text-[11px] font-medium text-slate-700 truncate capitalize">
-                      {inquiry.premise_type || 'Residential'}
+                      {inquiry.premise_type === 'society-free'
+                        ? 'Society Free'
+                        : inquiry.premise_type === 'society-paid'
+                          ? 'Society Paid'
+                          : inquiry.premise_type || 'Residential'}
                     </p>
                     <p className="text-[10px] text-slate-500 truncate">{inquiry.premise_size || '—'}</p>
                   </td>
@@ -567,9 +572,11 @@ const Inquiries: React.FC = () => {
                           ? 'success'
                           : inquiry.status === 'New'
                             ? 'default'
-                            : inquiry.status === 'Contacted'
+                            : inquiry.status === 'Inspection Requested'
                               ? 'warning'
-                              : 'secondary'
+                              : inquiry.status === 'Contacted'
+                                ? 'warning'
+                                : 'secondary'
                       }
                       size="sm"
                     >
