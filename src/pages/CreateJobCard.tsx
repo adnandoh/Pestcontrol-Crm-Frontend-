@@ -56,7 +56,6 @@ import {
 import { toClockDisplay, toStorageTime } from '../utils/clockTime';
 import { groupServiceOptions } from '../utils/serviceGrouping';
 import PerServicePricingSection from '../components/crm/PerServicePricingSection';
-import GstPricingModeField from '../components/crm/GstPricingModeField';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import {
   SERVICE_PICKER_CARD,
@@ -126,7 +125,8 @@ const CreateJobCard: React.FC = () => {
   serviceItemsRef.current = serviceItems;
   const [serviceConfigErrors, setServiceConfigErrors] = useState<string[]>([]);
   const [priceBreakdown, setPriceBreakdown] = useState<ServicePriceLine[]>([]);
-  const [gstMode, setGstMode] = useState<GstPricingMode>('GST_INCLUSIVE');
+  // Staff enter the agreed service amount (after discount). GST is shown as "+ GST" only.
+  const [gstMode] = useState<GstPricingMode>('GST_EXCLUSIVE');
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(MUMBAI_PRICING_CONFIG);
   const [pricingConfigReady, setPricingConfigReady] = useState(false);
   const [pricingConfigFailed, setPricingConfigFailed] = useState(false);
@@ -294,6 +294,7 @@ const CreateJobCard: React.FC = () => {
       gstMode,
     );
     const totals = summarizeServicePricing(merged);
+    const gstTotals = summarizeGstPricing(merged);
     const category = deriveServiceCategoryFromItems(merged);
     const primaryArea = merged.find((i) => i.area)?.area || '';
     setServiceItems(merged);
@@ -301,7 +302,8 @@ const CreateJobCard: React.FC = () => {
     setFormData((formPrev) => ({
       ...formPrev,
       ...(supportsAutoPricing(formPrev.commercial_type, pricingConfig)
-        ? { price: totals.finalAmount.toFixed(2) }
+        // Amount field = agreed base (after discount). GST is only "+ GST" on WhatsApp.
+        ? { price: (gstTotals.taxable || totals.finalAmount).toFixed(2) }
         : {}),
       discount_amount: totals.totalDiscount,
       service_category: category,
@@ -667,7 +669,7 @@ const CreateJobCard: React.FC = () => {
         gst_mode: gstMode,
         gst_rate: '18.00',
         ...(supportsAutoPricing(formData.commercial_type, pricingConfig)
-          ? { price: summarizeServicePricing(serviceItems).finalAmount.toFixed(2) }
+          ? { price: summarizeGstPricing(serviceItems).taxable.toFixed(2) }
           : {}),
         service_category: deriveServiceCategoryFromItems(serviceItems),
       };
@@ -1100,9 +1102,7 @@ const CreateJobCard: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className={FIELD_LABEL}>
-                  {gstMode === 'GST_EXCLUSIVE' ? 'Service price before GST' : 'Customer price (GST included)'}
-                </label>
+                <label className={FIELD_LABEL}>Amount</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -1113,6 +1113,7 @@ const CreateJobCard: React.FC = () => {
                     placeholder="0.00"
                   />
                 </div>
+                <p className="mt-1 text-[10px] font-semibold text-gray-500">WhatsApp shows this amount + GST</p>
               </div>
               {shouldShowNextServiceField(
                 selectedPackages,
@@ -1225,8 +1226,6 @@ const CreateJobCard: React.FC = () => {
                     )}
                   </div>
 
-                  <GstPricingModeField mode={gstMode} onChange={setGstMode} />
-
                   <PerServicePricingSection
                     selectedPackages={selectedPackages}
                     serviceConfigs={serviceConfigs}
@@ -1252,14 +1251,10 @@ const CreateJobCard: React.FC = () => {
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
-                        {(bookingGst.final || Number(formData.price) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {(bookingGst.taxable || Number(formData.price) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                      </div>
-                     {bookingGst.final > 0 && (
-                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
-                         <p>Taxable ₹{bookingGst.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                         <p>GST ₹{bookingGst.gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                         <p className="text-gray-700">Final payable ₹{bookingGst.final.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                       </div>
+                     {(bookingGst.taxable > 0 || Number(formData.price) > 0) && (
+                       <p className="mt-1 text-sm font-bold text-teal-700">+ GST</p>
                      )}
                      {priceBreakdown.length > 0 && (
                        <p className="mt-2 text-[10px] font-bold text-gray-500 text-left lg:text-right">

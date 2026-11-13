@@ -101,8 +101,9 @@ export function resolveCustomerPriceBase(job: CustomerPriceSource): number {
   }
 
   if (mode === 'GST_EXCLUSIVE' || mode === 'EXCLUSIVE') {
+    // Staff amount field is the agreed base (after discount).
     if (original > 0) return original;
-    if (price > 0 && finalPayable > price) return price;
+    if (price > 0) return price;
   }
 
   return reference > 0 ? reference : toMoney(job.total_amount);

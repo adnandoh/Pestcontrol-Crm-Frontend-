@@ -105,10 +105,14 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
 
             const base = item?.baseAmount ?? item?.amount ?? 0;
             const discount = item?.discount ?? 0;
-            const finalPrice = item?.amount ?? 0;
+            const agreedAmount = roundMoney(
+              item?.taxableAmount != null
+                ? Number(item.taxableAmount) || 0
+                : Math.max(0, base - discount),
+            );
             const discountTooHigh = discount > base + 0.001;
-            const techShare = roundMoney((finalPrice * techPct) / 100);
-            const companyShare = roundMoney(finalPrice - techShare);
+            const techShare = roundMoney((agreedAmount * techPct) / 100);
+            const companyShare = roundMoney(agreedAmount - techShare);
 
             return (
               <div
@@ -251,25 +255,11 @@ const PerServicePricingSection: React.FC<PerServicePricingSectionProps> = ({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-emerald-100">
-                      <span className="text-[11px] font-bold text-gray-600 uppercase">
-                        {item?.gstMode === 'GST_EXCLUSIVE' ? 'Final payable' : 'Final price (GST included)'}
+                      <span className="text-[11px] font-bold text-gray-600 uppercase">Amount</span>
+                      <span className="text-lg font-black text-emerald-900">
+                        {inr(agreedAmount)} <span className="text-sm font-bold text-teal-700">+ GST</span>
                       </span>
-                      <span className="text-lg font-black text-emerald-900">{inr(finalPrice)}</span>
                     </div>
-                    {item?.taxableAmount != null && (
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
-                          <div className="text-[9px] font-bold text-gray-500 uppercase">Taxable amount</div>
-                          <div className="font-extrabold text-gray-800">{inr(item.taxableAmount)}</div>
-                        </div>
-                        <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
-                          <div className="text-[9px] font-bold text-gray-500 uppercase">
-                            {item.gstMode === 'GST_EXCLUSIVE' ? 'GST added' : 'GST included'}
-                          </div>
-                          <div className="font-extrabold text-gray-800">{inr(item.gstAmount || 0)}</div>
-                        </div>
-                      </div>
-                    )}
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded bg-white border border-emerald-100 px-2 py-1.5">
                         <div className="text-[9px] font-bold text-gray-500 uppercase">

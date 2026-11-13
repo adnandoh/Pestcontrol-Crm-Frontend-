@@ -37,4 +37,16 @@ describe('customerPrice', () => {
   it('treats bare cash price without GST snapshot as the base', () => {
     expect(formatCustomerPricePlusGst({ price: '1000' })).toBe('₹1,000 + GST');
   });
+
+  it('uses discounted exclusive amount as WhatsApp base', () => {
+    const job = {
+      price: '1500',
+      gst_mode: 'GST_EXCLUSIVE',
+      original_service_price: '1500',
+      taxable_amount: '1500',
+      final_payable_amount: '1770',
+    };
+    expect(resolveCustomerPriceBase(job)).toBe(1500);
+    expect(formatWhatsAppAmountParam(job)).toBe('1,500 + GST');
+  });
 });

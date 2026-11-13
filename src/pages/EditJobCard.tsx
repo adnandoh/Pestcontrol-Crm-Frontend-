@@ -58,7 +58,6 @@ import {
   summarizeServicePricing,
   summarizeGstPricing,
   applyGstModeToServiceItems,
-  normalizeGstPricingMode,
   supportsAutoPricing,
   allowsEditableServicePricing,
   syncServiceItemAmountsToTotal,
@@ -72,7 +71,6 @@ import {
 import { toClockDisplay, toStorageTime } from '../utils/clockTime';
 import { groupServiceOptions } from '../utils/serviceGrouping';
 import PerServicePricingSection from '../components/crm/PerServicePricingSection';
-import GstPricingModeField from '../components/crm/GstPricingModeField';
 import { BOOKING_REFERENCE_OPTIONS } from '../constants/references';
 import {
   SERVICE_PICKER_CARD,
@@ -129,7 +127,8 @@ const EditJobCard: React.FC = () => {
   const savedPriceOnLoadRef = React.useRef<number | null>(null);
   const prevMasterStateRef = React.useRef<number | undefined>(undefined);
   const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
-  const [gstMode, setGstMode] = useState<GstPricingMode>('GST_INCLUSIVE');
+  // Agreed service amount only — WhatsApp sends this base with "+ GST".
+  const [gstMode, setGstMode] = useState<GstPricingMode>('GST_EXCLUSIVE');
   const [applyGstMode, setApplyGstMode] = useState(false);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [serviceConfigs, setServiceConfigs] = useState<ServiceConfigMap>({});
@@ -394,41 +393,18 @@ const EditJobCard: React.FC = () => {
           }
           setSelectedPackages(packages);
           setServiceConfigs(serviceItemsToConfigMap(normalizedItems));
-          const savedGstMode = data.final_payable_amount != null
-            ? normalizeGstPricingMode(data.gst_mode)
-            : null;
-          const pricedItems = savedGstMode
-            ? applyGstModeToServiceItems(normalizedItems, savedGstMode)
-            : normalizedItems;
-          if (savedGstMode) {
-            setGstMode(savedGstMode);
-            setApplyGstMode(true);
-            setIsPriceManuallyEdited(true);
-            savedPriceOnLoadRef.current = null;
-          }
-          const itemsSum = pricedItems.reduce(
-            (sum, item) => sum + (Number(item.amount) || 0),
-            0,
-          );
-          if (
-            !savedGstMode
-            && savedPrice > 0
-            && Math.abs(savedPrice - itemsSum) > 0.009
-            && !serviceItemsMatchPrice(pricedItems, savedPrice)
-          ) {
-            // Only redistribute when lines cannot explain the saved price
-            // (preserves service-level discounts when nets already match).
-            setIsPriceManuallyEdited(true);
-            savedPriceOnLoadRef.current = null;
-            const syncedItems = syncServiceItemAmountsToTotal(normalizedItems, savedPrice);
-            setServiceItems(syncedItems);
-            setPriceBreakdown(priceLinesFromServiceItems(syncedItems));
-          } else {
-            setServiceItems(pricedItems);
-            if (savedPrice > 0 && Math.abs(savedPrice - itemsSum) > 0.009) {
-              // Nets explain the price via base-discount; keep line discounts.
-              savedPriceOnLoadRef.current = null;
-            }
+          // Always treat line amounts as excl-GST base so WhatsApp / UI show
+          // "amount + GST" from the agreed figure (including discounts).
+          const pricedItems = applyGstModeToServiceItems(normalizedItems, 'GST_EXCLUSIVE');
+          setGstMode('GST_EXCLUSIVE');
+          setApplyGstMode(true);
+          setIsPriceManuallyEdited(true);
+          savedPriceOnLoadRef.current = null;
+          setServiceItems(pricedItems);
+          setPriceBreakdown(priceLinesFromServiceItems(pricedItems));
+          const taxableSum = summarizeGstPricing(pricedItems).taxable;
+          if (taxableSum > 0) {
+            setFormData((prev) => ({ ...prev, price: taxableSum.toFixed(2) }));
           }
         } else {
           setSelectedPackages(packages);
@@ -734,20 +710,25 @@ const EditJobCard: React.FC = () => {
         amount: item.amount,
       }));
       const pricingTotals = summarizeServicePricing(itemsForPricing);
-      const payable = applyGstMode ? summarizeGstPricing(itemsForPricing).final : (
-        shouldRedistribute && manualPrice > 0
-          ? manualPrice
-          : pricingTotals.finalAmount > 0
-            ? pricingTotals.finalAmount
-            : manualPrice
-      );
+      const gstTotals = summarizeGstPricing(itemsForPricing);
+      const agreedBase = applyGstMode
+        ? (gstTotals.taxable > 0 ? gstTotals.taxable : manualPrice)
+        : (
+          shouldRedistribute && manualPrice > 0
+            ? manualPrice
+            : pricingTotals.finalAmount > 0
+              ? pricingTotals.finalAmount
+              : manualPrice
+        );
       const submitData = {
         ...formData,
-        price: payable.toFixed(2),
+        // Persist agreed base; backend exclusive GST snapshot adds tax for payable.
+        price: agreedBase.toFixed(2),
         discount_amount: pricingTotals.totalDiscount,
-        ...(applyGstMode ? { gst_mode: gstMode, gst_rate: '18.00' } : {}),
+        gst_mode: 'GST_EXCLUSIVE',
+        gst_rate: '18.00',
         // Final price after visit / Done is no longer an estimate.
-        is_price_estimated: payable <= 0 && Boolean(formData.is_price_estimated),
+        is_price_estimated: agreedBase <= 0 && Boolean(formData.is_price_estimated),
         job_type: (isSocietyBooking(formData) ? 'Society' : 'Customer') as 'Society' | 'Customer',
         contract_duration: isSocietyBooking(formData)
           ? (formData.contract_duration || deriveSocietyContractDuration(
@@ -1257,24 +1238,6 @@ const EditJobCard: React.FC = () => {
                         <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.service_type}</p>
                       )}
                    </div>
-                   <GstPricingModeField
-                     mode={gstMode}
-                     onChange={(mode) => {
-                       setGstMode(mode);
-                       setApplyGstMode(true);
-                       setIsPriceManuallyEdited(true);
-                       setServiceItems((prev) => {
-                         const next = applyGstModeToServiceItems(prev, mode);
-                         const totals = summarizeGstPricing(next);
-                         setFormData((form) => ({
-                           ...form,
-                           price: totals.final.toFixed(2),
-                         }));
-                         return next;
-                       });
-                     }}
-                   />
-
                    <PerServicePricingSection
                      selectedPackages={selectedPackages}
                      serviceConfigs={serviceConfigs}
@@ -1300,25 +1263,14 @@ const EditJobCard: React.FC = () => {
                      <>
                      <div className="text-4xl font-black text-gray-900 flex items-center">
                         <span className="text-2xl mr-1 text-gray-400">₹</span>
-                        {applyGstMode
-                          ? bookingGst.final.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        {(applyGstMode
+                          ? bookingGst.taxable
                           : gstSummary.hasGstMeta
-                            ? gstSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                            : formData.price}
+                            ? gstSummary.base
+                            : Number(formData.price) || 0
+                        ).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                      </div>
-                     {applyGstMode ? (
-                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
-                         <p>Taxable ₹{bookingGst.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                         <p>GST ₹{bookingGst.gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                         <p className="text-gray-700">Final payable ₹{bookingGst.final.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                       </div>
-                     ) : gstSummary.hasGstMeta && (
-                       <div className="mt-2 space-y-0.5 text-[10px] font-semibold text-gray-500 text-left lg:text-right">
-                         <p>Base ₹{gstSummary.base.toLocaleString('en-IN')}</p>
-                         <p>GST ₹{gstSummary.gst.toLocaleString('en-IN')}</p>
-                         <p className="text-gray-700">Total ₹{gstSummary.total.toLocaleString('en-IN')}</p>
-                       </div>
-                     )}
+                     <p className="mt-1 text-sm font-bold text-teal-700">+ GST</p>
                      </>
                    ) : (
                      <div className="flex flex-col items-start lg:items-end">
@@ -1421,7 +1373,7 @@ const EditJobCard: React.FC = () => {
                 {errors.time_slot && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">{errors.time_slot}</p>}
               </div>
               <div>
-                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Service Price Override</label>
+                <label className="text-[13px] font-bold text-gray-700 mb-1.5 block">Amount</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input 
@@ -1442,6 +1394,7 @@ const EditJobCard: React.FC = () => {
                     required 
                   />
                 </div>
+                <p className="mt-1 text-[10px] font-semibold text-gray-500">WhatsApp shows this amount + GST</p>
               </div>
 
               {/* Next Service Date Field */}
