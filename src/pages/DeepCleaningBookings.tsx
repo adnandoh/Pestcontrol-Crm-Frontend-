@@ -32,6 +32,7 @@ const DeepCleaningBookings: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -53,8 +54,12 @@ const DeepCleaningBookings: React.FC = () => {
         page: pageNumber,
         page_size: size,
       });
-      setRows(response.results || []);
-      setTotal(response.count || 0);
+      const results = response.results || [];
+      setRows(results);
+      const count = response.count || 0;
+      setTotal(count);
+      // Prefer API next-link so Next works even if page_size was ignored by the server.
+      setHasNext(Boolean(response.next));
       setCounts({ ...emptyCounts, ...(response.status_counts as DeepCleaningBookingStatusCounts | undefined) });
     } catch (err) {
       setError(deepCleaningApiError(err, 'Could not load bookings.'));
@@ -118,6 +123,9 @@ const DeepCleaningBookings: React.FC = () => {
   }
 
   const visibleRows = rows.filter((row) => row.status === tab);
+  // Prefer count/pageSize; if the API still returns a short page with `next`, keep Next enabled.
+  const countedPages = Math.max(1, Math.ceil(total / Math.max(pageSize, 1)));
+  const safeTotalPages = hasNext ? Math.max(countedPages, page + 1) : countedPages;
 
   if (loading && rows.length === 0 && !search) {
     return <PageLoading text="Loading Deep Cleaning bookings..." />;
@@ -244,12 +252,12 @@ const DeepCleaningBookings: React.FC = () => {
 
       <Pagination
         currentPage={page}
-        totalPages={Math.max(1, Math.ceil(total / pageSize))}
+        totalPages={safeTotalPages}
         totalItems={total}
         itemsPerPage={pageSize}
         onPageChange={setPage}
         onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-        showPageSizeSelector={false}
+        showPageSizeSelector
         showGoToPage
       />
 
