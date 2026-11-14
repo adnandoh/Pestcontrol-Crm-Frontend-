@@ -5,9 +5,9 @@ import { ArrowLeft, Download, Loader2, Printer, Share2, Zap, Pencil, X } from 'l
 import { enhancedApiService } from '../services/api.enhanced';
 import { Button } from '../components/ui/Button';
 import QuotationDocument from '../components/quotation/QuotationDocument';
-import { COMPANY, getQuotationDisplayName } from '../constants/quotation';
+import { getQuotationDisplayName } from '../constants/quotation';
 import { downloadQuotationPdf } from '../utils/downloadQuotationPdf';
-import { resolveQuotationTotals } from '../utils/quotationTotals';
+import { openQuotationWhatsApp } from '../utils/quotationWhatsApp';
 import { showAlert } from '../utils/notify';
 
 const QuotationPreview: React.FC = () => {
@@ -57,19 +57,12 @@ const QuotationPreview: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     if (!quotation) return;
-    const name = getQuotationDisplayName(quotation);
-    const totals = resolveQuotationTotals(quotation);
-    const message = `Hello ${name},
-
-Please find your quotation from ${COMPANY.name}.
-
-Quotation No: ${quotation.quotation_no}
-Amount: Rs.${totals.grand_total.toLocaleString('en-IN')}
-
-Thank you.
-${COMPANY.website}`;
-    const phone = quotation.mobile.replace(/\D/g, '').slice(-10);
-    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    try {
+      openQuotationWhatsApp(quotation);
+    } catch (err) {
+      console.error('Quotation WhatsApp share failed:', err);
+      showAlert('Add a valid mobile number before sharing on WhatsApp.');
+    }
   };
 
   if (isLoading) {

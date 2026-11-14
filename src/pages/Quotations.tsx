@@ -24,6 +24,7 @@ import { Badge } from '../components/ui/Badge';
 import type { Quotation, QuotationStatus, QuotationFilters } from '../types';
 import { getQuotationDisplayName } from '../constants/quotation';
 import { showAlert } from '../utils/notify';
+import { openQuotationWhatsApp } from '../utils/quotationWhatsApp';
 const PAGE_SIZE = 10;
 
 const Quotations: React.FC = () => {
@@ -82,6 +83,16 @@ const Quotations: React.FC = () => {
   const handleConvert = (id: number) => {
     if (window.confirm('Are you sure you want to convert this quotation into a live booking?')) {
       convertMutation.mutate(id);
+    }
+  };
+
+  const handleShareWhatsApp = async (id: number) => {
+    try {
+      const full = await enhancedApiService.getQuotation(id);
+      openQuotationWhatsApp(full);
+    } catch (err) {
+      console.error('Quotation WhatsApp share failed:', err);
+      showAlert('Could not open WhatsApp quotation. Check the mobile number and try again.');
     }
   };
 
@@ -342,7 +353,14 @@ const Quotations: React.FC = () => {
                             <span className="text-[10px] font-bold uppercase tracking-tight">Convert</span>
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                          title="Share quotation on WhatsApp"
+                          aria-label="Share quotation on WhatsApp"
+                          onClick={() => handleShareWhatsApp(q.id)}
+                        >
                           <Share2 className="h-4 w-4" />
                         </Button>
                       </div>
