@@ -141,7 +141,10 @@ function premiumWarranty(quotation: Quotation): string {
 
 function parseVisits(item: QuotationItem, quotation: Quotation): number | undefined {
   const blob = `${item.frequency} ${item.description || ''} ${item.service_name}`;
-  const match = blob.match(/(\d+)\s*visits?/i) || blob.match(/AMC\s*(\d+)/i);
+  const match =
+    blob.match(/AMC\s*(\d+)/i) ||
+    blob.match(/(\d+)\s*services?/i) ||
+    blob.match(/(\d+)\s*visits?/i);
   if (match) return Number(match[1]);
   if (quotation.is_amc && money(quotation.visit_count) > 0) return Number(quotation.visit_count);
   return undefined;
@@ -169,9 +172,10 @@ function isPremium(item: QuotationItem): boolean {
 
 function isAmc(item: QuotationItem, quotation: Quotation): boolean {
   const text = `${item.frequency} ${item.description || ''} ${item.service_name}`.toLowerCase();
-  if (/\bamc\b|annual|year|visits?/.test(text) && !/one[\s-]*time|both visits|15 days/.test(text)) {
-    return true;
-  }
+  // CRM one-time labels are "One Time" / "One Time Service" — never treat as AMC.
+  if (/one[\s-]*time|both visits|15 days/.test(text)) return false;
+  if (/\bamc\b|annual|\byear\b/.test(text)) return true;
+  if (/\d+\s*services?/.test(text)) return true;
   if (quotation.is_amc && detectFamily(item) === 'cockroach') return true;
   return false;
 }
@@ -511,13 +515,76 @@ function hasPendingBaiting(families: ServiceFamily[]): boolean {
   return families.includes('rodent');
 }
 
-function pricedTotal(quotation: Quotation, classified: ClassifiedItem[]): number {
-  const priced = classified
-    .filter((c) => !c.pending && c.amount > 0)
+function fixedPricedAmount(classified: ClassifiedItem[]): number {
+  return classified
+    .filter(
+      (c) =>
+        !c.pending &&
+        c.amount > 0 &&
+        (c.family === 'bed_bug' || c.family === 'termite' || c.family === 'rodent'),
+    )
     .reduce((sum, c) => sum + c.amount, 0);
-  if (priced > 0) return priced;
+}
+
+type PlanChoice = { label: string; amount: number };
+
+/** Cockroach Standard/Premium and Mosquito one-time/plan are alternatives, not add-ons. */
+function alternativeChoices(
+  classified: ClassifiedItem[],
+  slots: Array<{ slot: RateSlot; label: string }>,
+): PlanChoice[] {
+  const choices: PlanChoice[] = [];
+  for (const { slot, label } of slots) {
+    const amount = slotAmount(classified, slot);
+    if (amount > 0) choices.push({ label, amount });
+  }
+  return choices;
+}
+
+function buildCombinedTotalLines(
+  quotation: Quotation,
+  classified: ClassifiedItem[],
+  families: ServiceFamily[],
+  gst: string,
+): string {
+  const pending = hasPendingBaiting(families);
+  const baseLabel = pending ? 'Total for priced services' : 'Total';
+  const fixed = fixedPricedAmount(classified);
+
+  const cockroachChoices = alternativeChoices(classified, [
+    { slot: 'standard_once', label: 'Standard' },
+    { slot: 'premium_once', label: 'Premium' },
+    { slot: 'standard_amc', label: 'Standard annual' },
+    { slot: 'premium_amc', label: 'Premium annual' },
+  ]);
+  const mosquitoChoices = alternativeChoices(classified, [
+    { slot: 'mosquito_once', label: 'Mosquito one-time' },
+    { slot: 'mosquito_plan', label: 'Mosquito plan' },
+  ]);
+
+  const cockroachOpts = cockroachChoices.length ? cockroachChoices : [{ label: '', amount: 0 }];
+  const mosquitoOpts = mosquitoChoices.length ? mosquitoChoices : [{ label: '', amount: 0 }];
+
+  const lines: string[] = [];
+  for (const cock of cockroachOpts) {
+    for (const mos of mosquitoOpts) {
+      const total = fixed + cock.amount + mos.amount;
+      if (total <= 0) continue;
+      const tags = [cock.label, mos.label].filter(Boolean);
+      const label =
+        tags.length > 0 && (cockroachChoices.length > 1 || mosquitoChoices.length > 1)
+          ? `${baseLabel} (${tags.join(' + ')})`
+          : baseLabel;
+      lines.push(`*${label} ${rateWithGst(total, gst)}*`);
+    }
+  }
+
+  if (lines.length > 0) return lines.join('\n');
+
   const totals = resolveQuotationTotals(quotation);
-  return totals.grand_total || totals.total_amount || 0;
+  const fallback = totals.grand_total || totals.total_amount || 0;
+  if (fallback > 0) return `*${baseLabel} ${rateWithGst(fallback, gst)}*`;
+  return `*${baseLabel}* — as per selected services`;
 }
 
 function combinedMessage(
@@ -538,18 +605,12 @@ function combinedMessage(
     if (family === 'mosquito') blocks.push(mosquitoBlock(quotation, classified, gst));
   }
 
-  const pending = hasPendingBaiting(families);
-  const total = pricedTotal(quotation, classified);
-  const totalLabel = pending ? 'Total for priced services' : 'Total';
-  const totalLine =
-    total > 0 ? `*${totalLabel} ${rateWithGst(total, gst)}*` : `*${totalLabel}* — as per selected services`;
-
   return joinBlocks([
     greeting(quotation),
     `*Pest Control Quotation | ${headerPlace}*`,
     'Thank you for sharing your requirements. Here are the services quoted for your property.',
     blocks.join('\n\n'),
-    totalLine,
+    buildCombinedTotalLines(quotation, classified, families, gst),
     'We’ll coordinate the visits and share preparation instructions for each service in advance.',
     'To book, confirm the services and plans you prefer, and send your full address and preferred date. We’ll confirm the available slot.',
     signature(),

@@ -207,20 +207,20 @@ describe('buildQuotationWhatsAppMessage', () => {
         items: [
           item({
             service_name: 'General Pest Control',
-            frequency: 'One Time',
-            description: 'Standard',
+            frequency: 'One Time Service',
+            description: 'One Time Service',
             rate: 1250,
             total: 1250,
           }),
           item({
             service_name: 'Bed Bug Treatment',
-            frequency: '2 Visits',
+            frequency: 'One Time Service',
             rate: 3400,
             total: 3400,
           }),
           item({
             service_name: 'Rodent Control',
-            frequency: 'One Time',
+            frequency: 'One Time Service',
             rate: 1650,
             total: 1650,
           }),
@@ -234,6 +234,59 @@ describe('buildQuotationWhatsAppMessage', () => {
     expect(message).toContain('*Home Rodent Repellent Treatment');
     expect(message).toContain('*Rodent Baiting | Society Common Areas Only*');
     expect(message).toContain('*Total for priced services ₹6,300 + GST*');
+  });
+
+  it('does not add Standard and Premium into one combined total', () => {
+    const message = buildQuotationWhatsAppMessage(
+      quotation({
+        items: [
+          item({
+            service_name: 'General Pest Control',
+            frequency: 'One Time Service',
+            description: 'Standard',
+            rate: 1250,
+            total: 1250,
+          }),
+          item({
+            service_name: 'General Pest Control',
+            frequency: 'One Time Service',
+            description: 'Premium',
+            rate: 1600,
+            total: 1600,
+          }),
+          item({
+            service_name: 'Bed Bug Treatment',
+            frequency: 'One Time Service',
+            rate: 3400,
+            total: 3400,
+          }),
+        ],
+      }),
+    );
+    assertSafe(message);
+    expect(message).toContain('*Total (Standard) ₹4,650 + GST*');
+    expect(message).toContain('*Total (Premium) ₹5,000 + GST*');
+    expect(message).not.toContain('₹6,250');
+  });
+
+  it('maps CRM AMC 3 Services frequency to annual cockroach plan', () => {
+    const message = buildQuotationWhatsAppMessage(
+      quotation({
+        items: [
+          item({
+            service_name: 'General Pest Control',
+            frequency: 'AMC 3 Services',
+            description: 'AMC 3 Services',
+            rate: 2500,
+            total: 2500,
+          }),
+        ],
+      }),
+    );
+    assertSafe(message);
+    expect(message).toContain('*Cockroach & Ant Control Quotation');
+    expect(message).toContain('Annual plan *₹2,500 + GST* for *3 visits*');
+    expect(message).not.toContain('One-time service *₹2,500');
   });
 
   it('uses Hello, when customer name is blank', () => {
