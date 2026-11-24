@@ -73,6 +73,8 @@ const Inquiries: React.FC = () => {
     search: '',
     /** '' = all, unread, read */
     read: '' as '' | 'unread' | 'read',
+    /** '' = all, not_booked, booked */
+    booking: '' as '' | 'not_booked' | 'booked',
   });
   const [dateDraft, setDateDraft] = useState<InquiryDateFilterState>(() =>
     loadStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY),
@@ -106,6 +108,7 @@ const Inquiries: React.FC = () => {
         // Server sorts pending/outdated comments first, then current comments.
         status: filters.status || undefined,
         search: filters.search || undefined,
+        booking: filters.booking || undefined,
         from: dateParams.from,
         to: dateParams.to,
       };
@@ -162,7 +165,7 @@ const Inquiries: React.FC = () => {
     if (focusId) return;
     setFocusPreview(null);
     loadInquiries(1);
-  }, [filters.status, filters.search, filters.read, appliedDateFilter, focusId, loadInquiries]);
+  }, [filters.status, filters.search, filters.read, filters.booking, appliedDateFilter, focusId, loadInquiries]);
 
   const handleApplyDateFilter = () => {
     setAppliedDateFilter(dateDraft);
@@ -172,7 +175,7 @@ const Inquiries: React.FC = () => {
   const handleClearFilters = () => {
     setSearchInput('');
     setActiveTab('All');
-    setFilters({ status: '', search: '', read: '' });
+    setFilters({ status: '', search: '', read: '', booking: '' });
     setDateDraft({ ...EMPTY_DATE_FILTER });
     setAppliedDateFilter({ ...EMPTY_DATE_FILTER });
     saveStoredDateFilter(WEBSITE_LEADS_DATE_FILTER_KEY, EMPTY_DATE_FILTER);
@@ -375,6 +378,27 @@ const Inquiries: React.FC = () => {
             <option value="Contacted">Contacted</option>
             <option value="Converted">Converted</option>
             <option value="Closed">Closed</option>
+          </select>
+        </div>
+
+        <div className="w-40">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Booking
+          </label>
+          <select
+            value={filters.booking}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                booking: e.target.value as '' | 'not_booked' | 'booked',
+              }))
+            }
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+            aria-label="Booking filter"
+          >
+            <option value="">All Customers</option>
+            <option value="not_booked">Not Booked</option>
+            <option value="booked">Booked</option>
           </select>
         </div>
 

@@ -66,10 +66,16 @@ const CRMInquiries: React.FC = () => {
     totalPages: 1,
   });
 
-  const [filters, setFilters] = useState<{ pest_type: string; search: string; status: string }>({
+  const [filters, setFilters] = useState<{
+    pest_type: string;
+    search: string;
+    status: string;
+    booking: '' | 'not_booked' | 'booked';
+  }>({
     pest_type: '',
     search: '',
     status: '',
+    booking: '',
   });
   const [dateDraft, setDateDraft] = useState<InquiryDateFilterState>(() => loadStoredDateFilter(CRM_DATE_FILTER_KEY));
   const [appliedDateFilter, setAppliedDateFilter] = useState<InquiryDateFilterState>(() =>
@@ -99,6 +105,7 @@ const CRMInquiries: React.FC = () => {
         search: filters.search || undefined,
         status: filters.status || undefined,
         pest_type: filters.pest_type || undefined,
+        booking: filters.booking || undefined,
         from: dateParams.from,
         to: dateParams.to,
         ordering: '-created_at',
@@ -155,7 +162,7 @@ const CRMInquiries: React.FC = () => {
 
   const handleClearFilters = () => {
     setSearchInput('');
-    setFilters({ search: '', status: '', pest_type: '' });
+    setFilters({ search: '', status: '', pest_type: '', booking: '' });
     setDateDraft({ ...EMPTY_DATE_FILTER });
     setAppliedDateFilter({ ...EMPTY_DATE_FILTER });
     saveStoredDateFilter(CRM_DATE_FILTER_KEY, EMPTY_DATE_FILTER);
@@ -317,6 +324,27 @@ const CRMInquiries: React.FC = () => {
                 {t}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="w-40">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Booking
+          </label>
+          <select
+            value={filters.booking}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                booking: e.target.value as '' | 'not_booked' | 'booked',
+              })
+            }
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+            aria-label="Booking filter"
+          >
+            <option value="">All Customers</option>
+            <option value="not_booked">Not Booked</option>
+            <option value="booked">Booked</option>
           </select>
         </div>
 

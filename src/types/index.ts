@@ -1032,6 +1032,8 @@ export interface InquiryFilters {
   state?: string;
   city?: string;
   is_read?: boolean;
+  /** booked | not_booked */
+  booking?: string;
   from?: string;
   to?: string;
   ordering?: string;
@@ -1042,6 +1044,8 @@ export interface CRMInquiryFilters {
   status?: string;
   pest_type?: string;
   inquiry_date?: string;
+  /** booked | not_booked */
+  booking?: string;
   from?: string;
   to?: string;
   ordering?: string;
