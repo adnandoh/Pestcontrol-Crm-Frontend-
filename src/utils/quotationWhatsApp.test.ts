@@ -323,4 +323,100 @@ describe('buildQuotationWhatsAppMessage', () => {
     expect(message).toContain('including GST');
     expect(message).not.toContain('+ GST');
   });
+
+  it('matches Pestcontrol99_WhatsApp_Quotation_Templates.docx required phrases', () => {
+    const cockroach = buildQuotationWhatsAppMessage(
+      quotation({
+        items: [
+          item({
+            service_name: 'General Pest Control',
+            description: 'Standard',
+            rate: 1250,
+            total: 1250,
+          }),
+          item({
+            service_name: 'General Pest Control',
+            description: 'Premium',
+            rate: 1600,
+            total: 1600,
+          }),
+          item({
+            service_name: 'General Pest Control',
+            frequency: 'AMC 3 Services',
+            description: 'Standard',
+            rate: 2500,
+            total: 2500,
+          }),
+          item({
+            service_name: 'General Pest Control',
+            frequency: 'AMC 3 Services',
+            description: 'Premium',
+            rate: 3300,
+            total: 3300,
+          }),
+        ],
+        scopes: [{ title: 'Warranty', content: '30 days free revisit.' }],
+      }),
+    );
+    assertSafe(cockroach);
+    expect(cockroach).toContain('*Standard Treatment*');
+    expect(cockroach).toContain(
+      'Spray and gel treatment in the agreed areas. Please clear utensils and food items from the areas scheduled for spray.',
+    );
+    expect(cockroach).toContain('*Premium Treatment – Recommended for an odourless gel service*');
+    expect(cockroach).toContain('Imported, professional-grade gel applied around cockroach hiding spots');
+    expect(cockroach).toContain('If a spray is required, we’ll explain the preparation in advance.');
+    expect(cockroach).toContain('*Service warranty 30 days free revisit*');
+    expect(cockroach).toContain('Ant treatment is included in the agreed areas.');
+
+    const termite = buildQuotationWhatsAppMessage(
+      quotation({
+        items: [item({ service_name: 'Termite Treatment', rate: 3900, total: 3900 })],
+      }),
+    );
+    assertSafe(termite);
+    expect(termite).toContain('drill-and-inject treatment where required');
+    expect(termite).toContain('seal drilled holes with white cement');
+    expect(termite).toContain('*Service warranty – 2 years for the treated areas, as per the agreed scope*');
+
+    const combined = buildQuotationWhatsAppMessage(
+      quotation({
+        master_location_name: 'Kothrud',
+        property_type: 'Office',
+        address: '500 sq. ft. Office, Kothrud',
+        items: [
+          item({
+            service_name: 'General Pest Control',
+            description: 'Standard',
+            rate: 1800,
+            total: 1800,
+          }),
+          item({ service_name: 'Termite Treatment', rate: 3900, total: 3900 }),
+          item({ service_name: 'Mosquito Control', rate: 1650, total: 1650 }),
+          item({
+            service_name: 'Mosquito Control',
+            frequency: 'AMC 3 Services',
+            rate: 3300,
+            total: 3300,
+          }),
+        ],
+        scopes: [
+          {
+            title: 'Area Covered',
+            content: 'Cabins | Workstations | Reception | Pantry',
+          },
+        ],
+      }),
+    );
+    assertSafe(combined);
+    expect(combined).toContain('*Pest Control Quotation |');
+    expect(combined).toContain('Kothrud');
+    expect(combined).toContain('*Cockroach & Ant Control*');
+    expect(combined).toContain('*Termite Treatment | ₹3,900 + GST*');
+    expect(combined).toContain('*Mosquito Control*');
+    expect(combined).toContain('One-time fogging');
+    expect(combined).toContain('Scheduled plan');
+    expect(combined).toContain('Thank you for sharing your requirements.');
+    expect(combined).toContain('confirm the services and plans you prefer');
+  });
 });
