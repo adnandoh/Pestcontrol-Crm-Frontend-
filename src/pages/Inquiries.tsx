@@ -34,7 +34,9 @@ import RemarkListCell from '../components/crm/RemarkListCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import NotBookedBadge from '../components/crm/NotBookedBadge';
+import NotBookedOfferActions from '../components/crm/NotBookedOfferActions';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import { openNotBookedOfferWhatsApp } from '../utils/notBookedOfferWhatsApp';
 import { showAlert } from '../utils/notify';
 import { websiteLeadDraft } from '../utils/leadConversion';
 
@@ -512,14 +514,27 @@ const Inquiries: React.FC = () => {
                           <CopyablePhone
                             phone={inquiry.mobile}
                             className="text-[11px]"
-                            onWhatsApp={() =>
+                            whatsAppTitle={
+                              inquiry.not_booked === true || inquiry.has_booking === false
+                                ? 'Share Not Booked WhatsApp offer'
+                                : 'WhatsApp rate card'
+                            }
+                            onWhatsApp={() => {
+                              if (inquiry.not_booked === true || inquiry.has_booking === false) {
+                                openNotBookedOfferWhatsApp(inquiry.mobile);
+                                return;
+                              }
                               openWhatsApp(
                                 inquiry.mobile,
                                 whatsAppTemplates.customerInquiry(inquiry.name),
-                              )
-                            }
+                              );
+                            }}
                           />
                           <NotBookedBadge
+                            show={inquiry.not_booked === true || inquiry.has_booking === false}
+                          />
+                          <NotBookedOfferActions
+                            mobile={inquiry.mobile}
                             show={inquiry.not_booked === true || inquiry.has_booking === false}
                           />
                         </div>

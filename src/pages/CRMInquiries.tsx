@@ -32,7 +32,9 @@ import { LocationCell, buildLocationTooltip } from '../components/crm/LocationCe
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
 import NotBookedBadge from '../components/crm/NotBookedBadge';
+import NotBookedOfferActions from '../components/crm/NotBookedOfferActions';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
+import { openNotBookedOfferWhatsApp } from '../utils/notBookedOfferWhatsApp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import { showAlert } from '../utils/notify';
 import { crmLeadDraft } from '../utils/leadConversion';
@@ -423,11 +425,24 @@ const CRMInquiries: React.FC = () => {
                         <CopyablePhone
                           phone={inq.mobile}
                           className="text-xs"
-                          onWhatsApp={() =>
-                            openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))
+                          whatsAppTitle={
+                            inq.not_booked === true || inq.has_booking === false
+                              ? 'Share Not Booked WhatsApp offer'
+                              : 'WhatsApp rate card'
                           }
+                          onWhatsApp={() => {
+                            if (inq.not_booked === true || inq.has_booking === false) {
+                              openNotBookedOfferWhatsApp(inq.mobile);
+                              return;
+                            }
+                            openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name));
+                          }}
                         />
                         <NotBookedBadge show={inq.not_booked === true || inq.has_booking === false} />
+                        <NotBookedOfferActions
+                          mobile={inq.mobile}
+                          show={inq.not_booked === true || inq.has_booking === false}
+                        />
                       </div>
                     </div>
                   </td>
