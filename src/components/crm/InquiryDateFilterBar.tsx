@@ -37,12 +37,13 @@ const InquiryDateFilterBar: React.FC<InquiryDateFilterBarProps> = ({
     <>
       <div className="w-full sm:w-44">
         <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
-          Quick Filter
+          Date Range
         </label>
         <select
           value={value.preset}
           onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+          aria-label="Date range"
         >
           {DATE_PRESET_OPTIONS.map((opt) => (
             <option key={opt.value || 'all'} value={opt.value}>
@@ -56,7 +57,7 @@ const InquiryDateFilterBar: React.FC<InquiryDateFilterBarProps> = ({
         <>
           <div className="w-full sm:w-36">
             <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
-              Start Date
+              From Date
             </label>
             <div className="relative">
               <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
@@ -64,13 +65,14 @@ const InquiryDateFilterBar: React.FC<InquiryDateFilterBarProps> = ({
                 type="date"
                 value={value.from}
                 onChange={(e) => onChange({ ...value, preset: 'custom', from: e.target.value })}
-                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white font-bold text-gray-700"
+                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white font-semibold text-gray-700"
+                aria-label="From date"
               />
             </div>
           </div>
           <div className="w-full sm:w-36">
             <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
-              End Date
+              To Date
             </label>
             <div className="relative">
               <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
@@ -79,7 +81,8 @@ const InquiryDateFilterBar: React.FC<InquiryDateFilterBarProps> = ({
                 value={value.to}
                 min={value.from || undefined}
                 onChange={(e) => onChange({ ...value, preset: 'custom', to: e.target.value })}
-                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white font-bold text-gray-700"
+                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white font-semibold text-gray-700"
+                aria-label="To date"
               />
             </div>
           </div>

@@ -62,7 +62,8 @@ const CRMInquiries: React.FC = () => {
   const [pagination, setPagination] = useState({
     count: 0,
     current: 1,
-    pageSize: 10
+    pageSize: 10,
+    totalPages: 1,
   });
 
   const [filters, setFilters] = useState<{ pest_type: string; search: string; status: string }>({
@@ -109,7 +110,14 @@ const CRMInquiries: React.FC = () => {
       const response = await enhancedApiService.getCRMInquiries(params);
       setInquiries(response.results);
       setStatusCounts(response.status_counts ?? null);
-      setPagination(prev => ({ ...prev, count: response.status_counts?.all ?? response.count, current: page }));
+      // Paginate from filtered API count — not status_counts.all (unfiltered tabs).
+      const filteredTotal = Number(response.count) || 0;
+      setPagination((prev) => ({
+        ...prev,
+        count: filteredTotal,
+        current: page,
+        totalPages: Math.max(1, Math.ceil(filteredTotal / prev.pageSize) || 1),
+      }));
     } catch (err) {
       console.error('Failed to load inquiries:', err);
       throw err;
@@ -254,27 +262,38 @@ const CRMInquiries: React.FC = () => {
       {/* 2. Filter Bar - High Density */}
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
         <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search Inquiry</label>
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Search CRM Inquiries
+          </label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search Name, Phone, Location..."
+              placeholder="Name, phone, location, pest…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setFilters((prev) => ({ ...prev, search: searchInput }));
+                }
+              }}
               className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+              aria-label="Search CRM inquiries"
             />
           </div>
         </div>
 
-        <div className="w-32">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Status</label>
+        <div className="w-40">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Inquiry Status
+          </label>
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700 uppercase"
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+            aria-label="Inquiry status"
           >
-            <option value="">Status</option>
+            <option value="">All Statuses</option>
             <option value="New">New</option>
             <option value="Contacted">Contacted</option>
             <option value="Converted">Converted</option>
@@ -282,15 +301,22 @@ const CRMInquiries: React.FC = () => {
           </select>
         </div>
 
-        <div className="w-40">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Pest Type</label>
+        <div className="w-44">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Pest Type
+          </label>
           <select
             value={filters.pest_type}
             onChange={(e) => setFilters({ ...filters, pest_type: e.target.value })}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700"
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+            aria-label="Pest type"
           >
-            <option value="">All Pests</option>
-            {pestTypesList.map(t => <option key={t} value={t}>{t}</option>)}
+            <option value="">All Pest Types</option>
+            {pestTypesList.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -493,13 +519,23 @@ const CRMInquiries: React.FC = () => {
           </table>
         </div>
 
-        <div className="p-4 bg-slate-50/80 border-t border-slate-100">
+        <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            {pagination.count === 0
+              ? 'No inquiries match these filters'
+              : `Showing ${(pagination.current - 1) * pagination.pageSize + 1}–${Math.min(
+                  pagination.current * pagination.pageSize,
+                  pagination.count,
+                )} of ${pagination.count} filtered inquiries`}
+          </p>
           <Pagination
             currentPage={pagination.current}
-            totalPages={Math.ceil(pagination.count / pagination.pageSize)}
+            totalPages={Math.max(1, pagination.totalPages)}
             totalItems={pagination.count}
             itemsPerPage={pagination.pageSize}
             onPageChange={loadInquiries}
+            showGoToPage
+            showPageSizeSelector={false}
           />
         </div>
       </CrmTableShell>

@@ -120,14 +120,15 @@ const Inquiries: React.FC = () => {
       setInquiries(response.results);
       setStatusCounts(response.status_counts ?? null);
       setReadCounts(response.read_counts ?? null);
-      const total = response.status_counts?.all ?? response.count;
+      // Paginate from filtered API count — not status_counts.all (tab totals).
+      const filteredTotal = Number(response.count) || 0;
       setPagination(prev => ({
         ...prev,
-        count: total,
+        count: filteredTotal,
         next: response.next,
         previous: response.previous,
         current: page,
-        totalPages: Math.max(1, Math.ceil(total / prev.pageSize)),
+        totalPages: Math.max(1, Math.ceil(filteredTotal / prev.pageSize) || 1),
       }));
     } catch (err: any) {
       console.error('Error loading inquiries:', err);
@@ -184,11 +185,17 @@ const Inquiries: React.FC = () => {
     return statusCounts[key];
   };
 
+  // Header / tab strip uses status breakdown (all statuses under current search/date/read).
   const totalCount = statusCounts?.all ?? pagination.count;
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     setFilters(prev => ({ ...prev, status: tab === 'All' ? '' : tab }));
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    setActiveTab(status ? status : 'All');
+    setFilters(prev => ({ ...prev, status }));
   };
 
 
@@ -335,32 +342,39 @@ const Inquiries: React.FC = () => {
       {/* 2. Filter Bar - High Density */}
       <div className="bg-white p-3 border border-gray-200 shadow-xs flex flex-wrap lg:flex-nowrap items-end gap-3 rounded">
         <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Search Leads</label>
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Search Website Leads
+          </label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search Name, Phone, Email, Location..."
+              placeholder="Name, phone, email, city, service…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && setFilters(prev => ({ ...prev, search: searchInput }))}
               className="w-full pl-8 pr-4 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none transition-all h-8 font-semibold"
+              aria-label="Search website leads"
             />
           </div>
         </div>
 
-        <div className="w-32">
-          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">Status</label>
+        <div className="w-44">
+          <label className="text-[10px] font-extrabold text-gray-500 mb-1 block uppercase tracking-tight">
+            Lead Status
+          </label>
           <select
             value={filters.status}
-            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-bold text-gray-700 uppercase"
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded h-8 outline-none bg-white cursor-pointer font-semibold text-gray-700"
+            aria-label="Lead status"
           >
-             <option value="">Status</option>
-             <option value="New">New</option>
-             <option value="Contacted">Contacted</option>
-             <option value="Converted">Converted</option>
-             <option value="Closed">Closed</option>
+            <option value="">All Statuses</option>
+            <option value="New">New</option>
+            <option value="Inspection Requested">Inspection Requested</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Converted">Converted</option>
+            <option value="Closed">Closed</option>
           </select>
         </div>
 
@@ -652,17 +666,27 @@ const Inquiries: React.FC = () => {
         </div>
       </CrmTableShell>
 
-      {/* Pagination */}
-      <Pagination
-        currentPage={pagination.current}
-        totalPages={Math.max(1, pagination.totalPages)}
-        totalItems={pagination.count}
-        itemsPerPage={pagination.pageSize}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
-        showPageSizeSelector={false}
-        showGoToPage={true}
-      />
+      {/* Pagination — filtered result count */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border border-gray-200 bg-white rounded px-3 py-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          {pagination.count === 0
+            ? 'No leads match these filters'
+            : `Showing ${(pagination.current - 1) * pagination.pageSize + 1}–${Math.min(
+                pagination.current * pagination.pageSize,
+                pagination.count,
+              )} of ${pagination.count} filtered leads`}
+        </p>
+        <Pagination
+          currentPage={pagination.current}
+          totalPages={Math.max(1, pagination.totalPages)}
+          totalItems={pagination.count}
+          itemsPerPage={pagination.pageSize}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          showPageSizeSelector={false}
+          showGoToPage={true}
+        />
+      </div>
 
       <ReminderModal
         isOpen={showReminderModal}
