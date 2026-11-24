@@ -366,6 +366,11 @@ export interface Inquiry {
   created_by_name?: string;
   converted_by?: number;
   converted_by_name?: string;
+  /** True when any JobCard exists for this inquiry mobile (or linked_jobcard). */
+  has_booking?: boolean;
+  /** Inverse of has_booking — show Not Booked chip when true. */
+  not_booked?: boolean;
+  linked_jobcard?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -531,6 +536,10 @@ export interface CRMInquiry {
   reminder_time?: string | null;
   reminder_note?: string | null;
   is_reminder_done?: boolean;
+  /** True when any JobCard exists for this CRM inquiry mobile. */
+  has_booking?: boolean;
+  /** Inverse of has_booking — show Not Booked chip when true. */
+  not_booked?: boolean;
   created_at: string;
   updated_at: string;
 }

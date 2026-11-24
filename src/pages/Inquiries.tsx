@@ -33,6 +33,7 @@ import {
 import RemarkListCell from '../components/crm/RemarkListCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
+import NotBookedBadge from '../components/crm/NotBookedBadge';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { showAlert } from '../utils/notify';
 import { websiteLeadDraft } from '../utils/leadConversion';
@@ -469,7 +470,7 @@ const Inquiries: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                           <CopyablePhone
                             phone={inquiry.mobile}
                             className="text-[11px]"
@@ -479,6 +480,9 @@ const Inquiries: React.FC = () => {
                                 whatsAppTemplates.customerInquiry(inquiry.name),
                               )
                             }
+                          />
+                          <NotBookedBadge
+                            show={inquiry.not_booked === true || inquiry.has_booking === false}
                           />
                         </div>
                       </div>

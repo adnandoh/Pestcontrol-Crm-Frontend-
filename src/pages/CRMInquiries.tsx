@@ -31,6 +31,7 @@ import RemarkListCell from '../components/crm/RemarkListCell';
 import { LocationCell, buildLocationTooltip } from '../components/crm/LocationCell';
 import ServiceRateDisplay from '../components/crm/ServiceRateDisplay';
 import CopyablePhone from '../components/crm/CopyablePhone';
+import NotBookedBadge from '../components/crm/NotBookedBadge';
 import { openWhatsApp, whatsAppTemplates } from '../utils/whatsapp';
 import { useDashboardCounts } from '../hooks/useDashboardCounts';
 import { showAlert } from '../utils/notify';
@@ -364,7 +365,7 @@ const CRMInquiries: React.FC = () => {
                   <td className={crmTdClass}>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 truncate">{inq.name}</p>
-                      <div className="mt-0.5">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                         <CopyablePhone
                           phone={inq.mobile}
                           className="text-xs"
@@ -372,6 +373,7 @@ const CRMInquiries: React.FC = () => {
                             openWhatsApp(inq.mobile, whatsAppTemplates.customerInquiry(inq.name))
                           }
                         />
+                        <NotBookedBadge show={inq.not_booked === true || inq.has_booking === false} />
                       </div>
                     </div>
                   </td>
