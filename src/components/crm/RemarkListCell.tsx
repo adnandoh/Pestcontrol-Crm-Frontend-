@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CRMInquiry, Inquiry, InquiryRemarkEntry } from '../../types';
 import RemarkPanel from './RemarkPanel';
 
@@ -7,11 +6,11 @@ type RowEntity = CRMInquiry | Inquiry;
 interface RemarkListCellProps {
   sourceType: 'crm' | 'website';
   row: RowEntity;
-  onUpdate: (id: number, patch: Partial<RowEntity>) => void;
+  onUpdate: (id: number, patch: Partial<CRMInquiry> & Partial<Inquiry>) => void;
   compact?: boolean;
 }
 
-const RemarkListCell: React.FC<RemarkListCellProps> = ({ sourceType, row, onUpdate, compact }) => {
+const RemarkListCell = ({ sourceType, row, onUpdate, compact }: RemarkListCellProps) => {
   const handleRemarkAdded = (entry: InquiryRemarkEntry, newCount: number) => {
     const websiteExtras =
       sourceType === 'website'

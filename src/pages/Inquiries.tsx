@@ -182,7 +182,7 @@ const Inquiries: React.FC = () => {
     if (!statusCounts) return null;
     const key = TAB_STATUS_MAP[tab];
     if (!key) return null;
-    return statusCounts[key];
+    return statusCounts[key] ?? null;
   };
 
   // Header / tab strip uses status breakdown (all statuses under current search/date/read).

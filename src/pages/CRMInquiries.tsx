@@ -433,7 +433,11 @@ const CRMInquiries: React.FC = () => {
                     </p>
                   </td>
                   <td className={crmTdClass}>
-                    <RemarkListCell sourceType="crm" row={inq} onUpdate={patchInquiryRow} />
+                    <RemarkListCell
+                      sourceType="crm"
+                      row={inq}
+                      onUpdate={(id, patch) => patchInquiryRow(id, patch)}
+                    />
                   </td>
                   <td className={crmTdClass}>
                     <select

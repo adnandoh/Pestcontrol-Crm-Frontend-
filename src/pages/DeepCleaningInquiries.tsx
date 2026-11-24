@@ -180,7 +180,7 @@ const DeepCleaningInquiries: React.FC = () => {
     if (!statusCounts) return null;
     const key = TAB_STATUS_MAP[tab];
     if (!key) return null;
-    return statusCounts[key];
+    return statusCounts[key] ?? null;
   };
 
   if (loading && rows.length === 0) {
