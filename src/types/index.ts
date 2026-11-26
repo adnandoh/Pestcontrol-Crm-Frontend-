@@ -1257,7 +1257,49 @@ export interface StaffPerformance {
   total_done_updates: number;
   total_complaint_calls_created: number;
   total_reminders_created: number;
+  /** Remark-Based Call Activities in the selected period (CRM + Website). */
+  remark_call_activities?: number;
+  remark_call_activities_crm?: number;
+  remark_call_activities_website?: number;
   conversion_rate: number;
+}
+
+export interface RemarkCallActivityTodayRow {
+  staff_id: number;
+  staff_name: string;
+  count: number;
+  crm_count: number;
+  website_count: number;
+}
+
+export interface RemarkCallActivityStaffRow {
+  staff_id: number;
+  staff_name: string;
+  today: number;
+  today_crm: number;
+  today_website: number;
+  yesterday: number;
+  last_7_days: number;
+  this_month: number;
+  total: number;
+  total_crm: number;
+  total_website: number;
+  custom?: number;
+  custom_crm?: number;
+  custom_website?: number;
+}
+
+export interface RemarkCallActivityReport {
+  label: string;
+  timezone: string;
+  as_of: string;
+  filters: {
+    staff_id: number | null;
+    from: string | null;
+    to: string | null;
+  };
+  today: RemarkCallActivityTodayRow[];
+  staff: RemarkCallActivityStaffRow[];
 }
 
 export interface Feedback {

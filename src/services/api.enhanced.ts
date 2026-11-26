@@ -56,6 +56,7 @@ import type {
   CRMInquiryStatus,
   DashboardCounts,
   StaffPerformance,
+  RemarkCallActivityReport,
   GlobalSearchResult,
   CustomerHistory,
   Reminder,
@@ -2106,6 +2107,19 @@ class EnhancedApiService {
     const response = await this.api.get<StaffPerformance[]>(`${API_ENDPOINTS.DASHBOARD}performance/`, {
       params: { period }
     });
+    return response.data;
+  }
+
+  /** Remark-Based Call Activities (CRM + Website inquiry remarks per staff). */
+  async getRemarkCallActivities(params?: {
+    staff_id?: number;
+    from?: string;
+    to?: string;
+  }): Promise<RemarkCallActivityReport> {
+    const response = await this.api.get<RemarkCallActivityReport>(
+      `${API_ENDPOINTS.DASHBOARD}remark-call-activities/`,
+      { params },
+    );
     return response.data;
   }
 
