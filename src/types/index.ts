@@ -1299,6 +1299,9 @@ export interface RemarkCallActivityReport {
     to: string | null;
   };
   today: RemarkCallActivityTodayRow[];
+  /** Active date-filter board (today, or custom from/to range). */
+  selected?: RemarkCallActivityTodayRow[];
+  selected_label?: string;
   staff: RemarkCallActivityStaffRow[];
 }
 

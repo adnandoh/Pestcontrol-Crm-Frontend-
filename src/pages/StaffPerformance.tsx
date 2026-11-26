@@ -15,6 +15,29 @@ import { enhancedApiService } from '../services/api.enhanced';
 import { cn } from '../utils/cn';
 import type { RemarkCallActivityReport, StaffPerformance } from '../types';
 
+function istYmd(d: Date): string {
+  // Format YYYY-MM-DD in Asia/Kolkata
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(ymd: string): string {
+  if (!ymd) return '';
+  const [y, m, d] = ymd.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 const StaffPerformancePage: React.FC = () => {
   const [performance, setPerformance] = useState<StaffPerformance[]>([]);
   const [remarkReport, setRemarkReport] = useState<RemarkCallActivityReport | null>(null);
@@ -22,19 +45,24 @@ const StaffPerformancePage: React.FC = () => {
   const [period, setPeriod] = useState<string>('today');
   const [searchTerm, setSearchTerm] = useState('');
   const [staffFilter, setStaffFilter] = useState<string>('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  /** Draft date inputs (Apply commits these). */
+  const [dateDraft, setDateDraft] = useState({ from: '', to: '' });
+  /** Applied custom range sent to the API / used by the call board. */
+  const [appliedDates, setAppliedDates] = useState({ from: '', to: '' });
+
+  const hasCustomRange = Boolean(appliedDates.from || appliedDates.to);
 
   const fetchAll = useCallback(async () => {
     try {
       setIsLoading(true);
       const staffId = staffFilter ? Number(staffFilter) : undefined;
+      const performancePeriod = period === 'custom' ? 'today' : period;
       const [perf, remarks] = await Promise.all([
-        enhancedApiService.getStaffPerformance(period),
+        enhancedApiService.getStaffPerformance(performancePeriod),
         enhancedApiService.getRemarkCallActivities({
           staff_id: staffId,
-          from: fromDate || undefined,
-          to: toDate || undefined,
+          from: appliedDates.from || undefined,
+          to: appliedDates.to || undefined,
         }),
       ]);
       setPerformance(perf);
@@ -44,7 +72,7 @@ const StaffPerformancePage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [period, staffFilter, fromDate, toDate]);
+  }, [period, staffFilter, appliedDates.from, appliedDates.to]);
 
   useEffect(() => {
     fetchAll();
@@ -67,10 +95,73 @@ const StaffPerformancePage: React.FC = () => {
     return staff.staff_name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const todayBoard = (remarkReport?.today || []).filter((row) => {
-    if (staffFilter && String(row.staff_id) !== staffFilter) return false;
-    return row.staff_name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  /** Main call board respects applied custom dates (API `selected`), else Today. */
+  const callBoard = useMemo(() => {
+    const source =
+      hasCustomRange && remarkReport?.selected?.length
+        ? remarkReport.selected
+        : hasCustomRange && remarkReport?.staff?.length
+          ? remarkReport.staff.map((s) => ({
+              staff_id: s.staff_id,
+              staff_name: s.staff_name,
+              count: s.custom ?? 0,
+              crm_count: s.custom_crm ?? 0,
+              website_count: s.custom_website ?? 0,
+            }))
+          : period === 'yesterday' && remarkReport?.staff
+            ? remarkReport.staff.map((s) => ({
+                staff_id: s.staff_id,
+                staff_name: s.staff_name,
+                count: s.yesterday,
+                crm_count: 0,
+                website_count: 0,
+              }))
+            : period === 'this_week' && remarkReport?.staff
+              ? remarkReport.staff.map((s) => ({
+                  staff_id: s.staff_id,
+                  staff_name: s.staff_name,
+                  count: s.last_7_days,
+                  crm_count: 0,
+                  website_count: 0,
+                }))
+              : period === 'this_month' && remarkReport?.staff
+                ? remarkReport.staff.map((s) => ({
+                    staff_id: s.staff_id,
+                    staff_name: s.staff_name,
+                    count: s.this_month,
+                    crm_count: 0,
+                    website_count: 0,
+                  }))
+                : remarkReport?.today || [];
+
+    return [...source]
+      .filter((row) => {
+        if (staffFilter && String(row.staff_id) !== staffFilter) return false;
+        return row.staff_name.toLowerCase().includes(searchTerm.toLowerCase());
+      })
+      .sort((a, b) => b.count - a.count || a.staff_name.localeCompare(b.staff_name));
+  }, [remarkReport, hasCustomRange, period, staffFilter, searchTerm]);
+
+  const callBoardTitle = useMemo(() => {
+    if (hasCustomRange) {
+      const from = appliedDates.from || appliedDates.to;
+      const to = appliedDates.to || appliedDates.from;
+      if (from && to && from === to) {
+        return `Staff Call Performance (${formatDisplayDate(from)})`;
+      }
+      return `Staff Call Performance (${formatDisplayDate(from)} – ${formatDisplayDate(to)})`;
+    }
+    if (period === 'yesterday') return "Yesterday's Staff Call Performance";
+    if (period === 'this_week') return 'Last 7 Days Staff Call Performance';
+    if (period === 'this_month') return "This Month's Staff Call Performance";
+    return "Today's Staff Call Performance";
+  }, [hasCustomRange, appliedDates, period]);
+
+  const callCountHeader = hasCustomRange
+    ? 'Call Count'
+    : period === 'today'
+      ? "Today's Call Count"
+      : 'Call Count';
 
   const periods = [
     { id: 'today', label: 'Today' },
@@ -79,11 +170,57 @@ const StaffPerformancePage: React.FC = () => {
     { id: 'this_month', label: 'This Month' },
   ];
 
+  const handlePeriodChange = (id: string) => {
+    setPeriod(id);
+    const today = istYmd(new Date());
+    if (id === 'today') {
+      setDateDraft({ from: '', to: '' });
+      setAppliedDates({ from: '', to: '' });
+      return;
+    }
+    if (id === 'yesterday') {
+      const y = addDaysYmd(today, -1);
+      setDateDraft({ from: y, to: y });
+      setAppliedDates({ from: y, to: y });
+      return;
+    }
+    if (id === 'this_week') {
+      const from = addDaysYmd(today, -6);
+      setDateDraft({ from, to: today });
+      setAppliedDates({ from, to: today });
+      return;
+    }
+    if (id === 'this_month') {
+      const from = `${today.slice(0, 8)}01`;
+      setDateDraft({ from, to: today });
+      setAppliedDates({ from, to: today });
+    }
+  };
+
+  const handleApplyDates = () => {
+    const next = {
+      from: dateDraft.from,
+      to: dateDraft.to || dateDraft.from,
+    };
+    if (next.from && next.to && next.from > next.to) {
+      // swap if user inverted range
+      setDateDraft({ from: next.to, to: next.from });
+      setAppliedDates({ from: next.to, to: next.from });
+    } else {
+      setAppliedDates(next);
+    }
+    // Custom range overrides period chip highlight
+    if (next.from || next.to) {
+      setPeriod('custom');
+    }
+  };
+
   const clearRemarkFilters = () => {
     setStaffFilter('');
-    setFromDate('');
-    setToDate('');
     setSearchTerm('');
+    setDateDraft({ from: '', to: '' });
+    setAppliedDates({ from: '', to: '' });
+    setPeriod('today');
   };
 
   return (
@@ -103,7 +240,8 @@ const StaffPerformancePage: React.FC = () => {
           {periods.map((p) => (
             <button
               key={p.id}
-              onClick={() => setPeriod(p.id)}
+              type="button"
+              onClick={() => handlePeriodChange(p.id)}
               className={cn(
                 'px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg border transition-all shadow-sm',
                 period === p.id
@@ -114,7 +252,13 @@ const StaffPerformancePage: React.FC = () => {
               {p.label}
             </button>
           ))}
+          {period === 'custom' && (
+            <span className="px-3 py-2 text-xs font-black uppercase tracking-wider rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800">
+              Custom Range
+            </span>
+          )}
           <button
+            type="button"
             onClick={fetchAll}
             className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 transition-colors"
             title="Refresh Data"
@@ -162,8 +306,8 @@ const StaffPerformancePage: React.FC = () => {
           </label>
           <input
             type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            value={dateDraft.from}
+            onChange={(e) => setDateDraft((prev) => ({ ...prev, from: e.target.value }))}
             className="w-full px-2 py-2 text-sm border border-gray-200 rounded-lg font-semibold"
           />
         </div>
@@ -173,9 +317,9 @@ const StaffPerformancePage: React.FC = () => {
           </label>
           <input
             type="date"
-            value={toDate}
-            min={fromDate || undefined}
-            onChange={(e) => setToDate(e.target.value)}
+            value={dateDraft.to}
+            min={dateDraft.from || undefined}
+            onChange={(e) => setDateDraft((prev) => ({ ...prev, to: e.target.value }))}
             className="w-full px-2 py-2 text-sm border border-gray-200 rounded-lg font-semibold"
           />
         </div>
@@ -188,23 +332,26 @@ const StaffPerformancePage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={fetchAll}
+          onClick={handleApplyDates}
           className="px-3 py-2 bg-blue-800 hover:bg-blue-900 text-white text-[11px] font-bold rounded-lg uppercase"
         >
           Apply
         </button>
       </div>
 
-      {/* Today's Remark-Based Call Performance */}
+      {/* Remark-Based Call Performance (respects date filter) */}
       <div className="bg-white border border-emerald-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-emerald-100 bg-emerald-50/60 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-black text-emerald-900 tracking-tight flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-emerald-700" />
-              Today&apos;s Staff Call Performance
+              {callBoardTitle}
             </h2>
             <p className="text-[11px] font-bold text-emerald-700/80 uppercase tracking-wide mt-0.5">
               Remark-Based Call Activities · CRM Inquiries + Website Leads remarks
+              {remarkReport?.selected_label && remarkReport.selected_label !== 'today'
+                ? ` · ${remarkReport.selected_label}`
+                : ''}
             </p>
           </div>
           <span className="text-[10px] font-bold text-emerald-800 bg-white border border-emerald-200 px-2 py-1 rounded">
@@ -219,7 +366,7 @@ const StaffPerformancePage: React.FC = () => {
                   Staff Name
                 </th>
                 <th className="px-4 py-3 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">
-                  Today&apos;s Call Count
+                  {callCountHeader}
                 </th>
                 <th className="px-4 py-3 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">
                   CRM Remarks
@@ -233,17 +380,17 @@ const StaffPerformancePage: React.FC = () => {
               {isLoading ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-sm font-bold text-gray-400">
-                    Loading today&apos;s call activities…
+                    Loading call activities…
                   </td>
                 </tr>
-              ) : todayBoard.length === 0 ? (
+              ) : callBoard.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-sm font-bold text-gray-400">
-                    No staff remark activity today yet
+                    No staff remark activity for this date range
                   </td>
                 </tr>
               ) : (
-                todayBoard.map((row) => (
+                callBoard.map((row) => (
                   <tr key={row.staff_id} className="hover:bg-emerald-50/40">
                     <td className="px-6 py-4">
                       <span className="font-black text-gray-900 text-sm uppercase tracking-tight">
@@ -277,7 +424,7 @@ const StaffPerformancePage: React.FC = () => {
           </h2>
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">
             Today · Yesterday · Last 7 Days · This Month · Total
-            {(fromDate || toDate) && ' · Custom range'}
+            {hasCustomRange && ' · Custom range'}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -302,7 +449,7 @@ const StaffPerformancePage: React.FC = () => {
                 <th className="px-3 py-3 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">
                   Total
                 </th>
-                {(fromDate || toDate) && (
+                {hasCustomRange && (
                   <th className="px-3 py-3 text-[11px] font-black text-emerald-600 uppercase tracking-widest text-center">
                     Custom
                   </th>
@@ -343,7 +490,7 @@ const StaffPerformancePage: React.FC = () => {
                     <td className="px-3 py-4 text-center text-sm font-black text-slate-900">
                       {row.total}
                     </td>
-                    {(fromDate || toDate) && (
+                    {hasCustomRange && (
                       <td className="px-3 py-4 text-center text-sm font-black text-emerald-700">
                         {row.custom ?? 0}
                       </td>
@@ -548,16 +695,16 @@ const StaffPerformancePage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">
-                  Top Remark Calls Today
+                  Top Remark Calls (Selected Range)
                 </p>
                 <h3 className="text-2xl font-black tracking-tight">
-                  {todayBoard.length > 0
-                    ? [...todayBoard].sort((a, b) => b.count - a.count)[0].staff_name
+                  {callBoard.length > 0
+                    ? callBoard[0].staff_name
                     : '---'}
                 </h3>
                 <p className="text-sm font-bold mt-1 opacity-90">
-                  {todayBoard.length > 0
-                    ? `${[...todayBoard].sort((a, b) => b.count - a.count)[0].count} activities`
+                  {callBoard.length > 0
+                    ? `${callBoard[0].count} activities`
                     : '0 activities'}
                 </p>
               </div>
@@ -595,10 +742,10 @@ const StaffPerformancePage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                  Today Remark Calls (All)
+                  Selected Range Calls (All)
                 </p>
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">
-                  {todayBoard.reduce((acc, row) => acc + row.count, 0)}
+                  {callBoard.reduce((acc, row) => acc + row.count, 0)}
                 </h3>
               </div>
               <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
